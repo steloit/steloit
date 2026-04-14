@@ -1,6 +1,9 @@
 package evaluation
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 // @Description Score type (NUMERIC, CATEGORICAL, BOOLEAN)
 type ScoreType string
@@ -148,20 +151,20 @@ type BatchScoreRequest struct {
 
 // @Description Score data
 type ScoreResponse struct {
-	ID               string         `json:"id"`
-	ProjectID        string         `json:"project_id"`
-	TraceID          *string        `json:"trace_id,omitempty"`  // Nil for experiment-only scores
-	SpanID           *string        `json:"span_id,omitempty"`   // Nil for experiment-only scores
-	Name             string         `json:"name"`
-	Value            *float64       `json:"value,omitempty"`
-	StringValue      *string        `json:"string_value,omitempty"`
-	Type             string         `json:"type"`
-	Source           string         `json:"source"`
-	Reason           *string        `json:"reason,omitempty"`
-	Metadata         map[string]any `json:"metadata,omitempty"`
-	ExperimentID     *string        `json:"experiment_id,omitempty"`
-	ExperimentItemID *string        `json:"experiment_item_id,omitempty"`
-	Timestamp        time.Time      `json:"timestamp"`
+	ID               string          `json:"id"`
+	ProjectID        string          `json:"project_id"`
+	TraceID          *string         `json:"trace_id,omitempty"`  // Nil for experiment-only scores
+	SpanID           *string         `json:"span_id,omitempty"`   // Nil for experiment-only scores
+	Name             string          `json:"name"`
+	Value            *float64        `json:"value,omitempty"`
+	StringValue      *string         `json:"string_value,omitempty"`
+	Type             string          `json:"type"`
+	Source           string          `json:"source"`
+	Reason           *string         `json:"reason,omitempty"`
+	Metadata         json.RawMessage `json:"metadata,omitempty"`
+	ExperimentID     *string         `json:"experiment_id,omitempty"`
+	ExperimentItemID *string         `json:"experiment_item_id,omitempty"`
+	Timestamp        time.Time       `json:"timestamp"`
 }
 
 // @Description Batch score creation response

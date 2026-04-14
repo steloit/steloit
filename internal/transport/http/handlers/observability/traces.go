@@ -260,7 +260,7 @@ func (h *Handler) GetTraceWithSpans(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param id path string true "Trace ID"
-// @Success 200 {object} response.APIResponse{data=[]observability.Score} "Scores for trace"
+// @Success 200 {object} response.APIResponse{data=[]ScoreResponse} "Scores for trace"
 // @Failure 404 {object} response.APIResponse{error=response.APIError} "Trace not found"
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/traces/{id}/scores [get]
@@ -278,7 +278,7 @@ func (h *Handler) GetTraceWithScores(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, scores)
+	response.Success(c, toScoreResponses(scores))
 }
 
 // DeleteTrace handles DELETE /api/v1/traces/:id

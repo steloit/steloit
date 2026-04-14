@@ -17,6 +17,7 @@ import (
 	commentDomain "brokle/internal/core/domain/comment"
 	"brokle/internal/core/domain/billing"
 	"brokle/internal/core/domain/common"
+	websiteDomain "brokle/internal/core/domain/website"
 	credentialsDomain "brokle/internal/core/domain/credentials"
 	dashboardDomain "brokle/internal/core/domain/dashboard"
 	evaluationDomain "brokle/internal/core/domain/evaluation"
@@ -41,6 +42,7 @@ import (
 	registrationService "brokle/internal/core/services/registration"
 	storageService "brokle/internal/core/services/storage"
 	userService "brokle/internal/core/services/user"
+	websiteServicePkg "brokle/internal/core/services/website"
 	eeAnalytics "brokle/internal/ee/analytics"
 	"brokle/internal/ee/compliance"
 	"brokle/internal/ee/rbac"
@@ -60,6 +62,7 @@ import (
 	promptRepo "brokle/internal/infrastructure/repository/prompt"
 	storageRepo "brokle/internal/infrastructure/repository/storage"
 	userRepo "brokle/internal/infrastructure/repository/user"
+	websiteRepo "brokle/internal/infrastructure/repository/website"
 	"brokle/internal/infrastructure/storage"
 	"brokle/internal/infrastructure/streams"
 	grpcTransport "brokle/internal/transport/grpc"
@@ -132,6 +135,7 @@ type RepositoryContainer struct {
 	Evaluation    *EvaluationRepositories
 	Dashboard     *DashboardRepositories
 	Annotation    *AnnotationRepositories
+	Website       *WebsiteRepositories
 }
 
 type ServiceContainer struct {
@@ -153,6 +157,7 @@ type ServiceContainer struct {
 	Dashboard           *DashboardServices
 	Annotation          *AnnotationServices
 	Comment             commentDomain.Service
+	Website             websiteDomain.WebsiteService
 }
 
 type EnterpriseContainer struct {
@@ -260,6 +265,10 @@ type AnnotationRepositories struct {
 	Queue      annotationDomain.QueueRepository
 	Item       annotationDomain.ItemRepository
 	Assignment annotationDomain.AssignmentRepository
+}
+
+type WebsiteRepositories struct {
+	ContactSubmission websiteDomain.ContactSubmissionRepository
 }
 
 type UserServices struct {
@@ -589,6 +598,19 @@ func ProvideServerServices(core *CoreContainer) *ServiceContainer {
 		logger,
 	)
 
+	// Website service (contact form) - reuses the same email sender as invitations
+	websiteEmailSender, err := createEmailSender(&cfg.External.Email, logger)
+	if err != nil {
+		logger.Warn("failed to create email sender for website service, notifications disabled", "error", err)
+		websiteEmailSender = &email.NoOpEmailSender{}
+	}
+	websiteSvc := websiteServicePkg.NewWebsiteService(
+		repos.Website.ContactSubmission,
+		websiteEmailSender,
+		cfg.Notifications.WebsiteNotificationEmail,
+		logger,
+	)
+
 	// Overview service needs projectService and credentials repo (created after other services)
 	overviewSvc := analyticsService.NewOverviewService(
 		repos.Analytics.Overview,
@@ -617,6 +639,7 @@ func ProvideServerServices(core *CoreContainer) *ServiceContainer {
 		Dashboard:           dashboardServices,
 		Annotation:          annotationServices,
 		Comment:             commentSvc,
+		Website:             websiteSvc,
 	}
 }
 
@@ -760,6 +783,8 @@ func ProvideServer(core *CoreContainer) (*ServerContainer, error) {
 		core.Services.Annotation.Assignment,
 		// Comment service
 		core.Services.Comment,
+		// Website service
+		core.Services.Website,
 	)
 
 	httpServer := http.NewServer(
@@ -946,6 +971,12 @@ func ProvideAnnotationRepositories(db *gorm.DB) *AnnotationRepositories {
 	}
 }
 
+func ProvideWebsiteRepositories(db *gorm.DB) *WebsiteRepositories {
+	return &WebsiteRepositories{
+		ContactSubmission: websiteRepo.NewContactSubmissionRepository(db),
+	}
+}
+
 func ProvideRepositories(dbs *DatabaseContainer, logger *slog.Logger) *RepositoryContainer {
 	return &RepositoryContainer{
 		User:          ProvideUserRepositories(dbs.Postgres.DB),
@@ -961,6 +992,7 @@ func ProvideRepositories(dbs *DatabaseContainer, logger *slog.Logger) *Repositor
 		Evaluation:    ProvideEvaluationRepositories(dbs.Postgres.DB),
 		Dashboard:     ProvideDashboardRepositories(dbs.Postgres.DB, dbs.ClickHouse),
 		Annotation:    ProvideAnnotationRepositories(dbs.Postgres.DB),
+		Website:       ProvideWebsiteRepositories(dbs.Postgres.DB),
 	}
 }
 

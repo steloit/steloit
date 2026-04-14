@@ -129,7 +129,7 @@ type Score struct {
 
 	// Additional fields
 	Reason   *string `json:"reason,omitempty" db:"reason"`
-	Metadata string  `json:"metadata" db:"metadata"`
+	Metadata json.RawMessage `json:"metadata" db:"metadata"`
 
 	// Experiment tracking
 	ExperimentID     *string `json:"experiment_id,omitempty" db:"experiment_id"`

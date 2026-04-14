@@ -260,7 +260,8 @@ type EvaluatorWorkerConfig struct {
 
 // NotificationsConfig contains notification system configuration.
 type NotificationsConfig struct {
-	AlertWebhookURL string `mapstructure:"alert_webhook_url"`
+	AlertWebhookURL            string `mapstructure:"alert_webhook_url"`
+	WebsiteNotificationEmail   string `mapstructure:"website_notification_email"`
 }
 
 // BlobStorageConfig contains blob storage configuration for large payload offloading
@@ -739,6 +740,10 @@ func Load() (*Config, error) {
 	// Email - SendGrid provider
 	//nolint:errcheck
 	viper.BindEnv("external.email.sendgrid_api_key", "SENDGRID_API_KEY")
+
+	// Website notifications
+	//nolint:errcheck
+	viper.BindEnv("notifications.website_notification_email", "WEBSITE_NOTIFICATION_EMAIL")
 
 	// Auth configuration (flexible JWT configuration - HS256 or RS256)
 	//nolint:errcheck

@@ -159,10 +159,10 @@ func (s *experimentItemService) createExperimentScores(
 				continue
 			}
 
-			metadataJSON := "{}"
+			metadataJSON := json.RawMessage("{}")
 			if sc.Metadata != nil {
 				if b, err := json.Marshal(sc.Metadata); err == nil {
-					metadataJSON = string(b)
+					metadataJSON = b
 				}
 			}
 

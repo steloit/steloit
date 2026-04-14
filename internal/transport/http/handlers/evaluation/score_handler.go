@@ -220,10 +220,10 @@ func (h *SDKScoreHandler) validateAgainstConfig(
 }
 
 func (h *SDKScoreHandler) buildScore(projectID string, req *CreateScoreRequest) *observability.Score {
-	metadata := "{}"
+	metadata := json.RawMessage("{}")
 	if req.Metadata != nil {
 		if jsonBytes, err := json.Marshal(req.Metadata); err == nil {
-			metadata = string(jsonBytes)
+			metadata = jsonBytes
 		}
 	}
 
@@ -256,9 +256,13 @@ func (h *SDKScoreHandler) buildScore(projectID string, req *CreateScoreRequest) 
 }
 
 func (h *SDKScoreHandler) toResponse(score *observability.Score) *ScoreResponse {
-	var metadata map[string]any
-	if score.Metadata != "" {
-		_ = json.Unmarshal([]byte(score.Metadata), &metadata)
+	// Ensure metadata is safe for JSON serialization.
+	// Valid JSON passes through as-is. Malformed bytes (from legacy writes)
+	// are escaped as a JSON string so the raw content is preserved losslessly
+	// rather than silently dropped or breaking Gin's c.JSON() marshaling.
+	metadata := score.Metadata
+	if len(metadata) > 0 && !json.Valid(metadata) {
+		metadata, _ = json.Marshal(string(metadata))
 	}
 
 	return &ScoreResponse{

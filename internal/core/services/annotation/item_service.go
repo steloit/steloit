@@ -349,7 +349,7 @@ func (s *itemService) buildScoreMetadata(
 	item *annotation.QueueItem,
 	userID ulid.ULID,
 	comment *string,
-) string {
+) json.RawMessage {
 	metadata := map[string]interface{}{
 		"source":       "annotation_queue",
 		"queue_id":     queue.ID.String(),
@@ -364,9 +364,9 @@ func (s *itemService) buildScoreMetadata(
 
 	jsonBytes, err := json.Marshal(metadata)
 	if err != nil {
-		return "{}"
+		return json.RawMessage("{}")
 	}
-	return string(jsonBytes)
+	return jsonBytes
 }
 
 // Skip marks an item as skipped by the user.

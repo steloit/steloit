@@ -487,14 +487,14 @@ func (w *EvaluationWorker) FlushExecutionStats(ctx context.Context) {
 	}
 }
 
-func (w *EvaluationWorker) buildScoreMetadata(job EvaluationJob) string {
+func (w *EvaluationWorker) buildScoreMetadata(job EvaluationJob) json.RawMessage {
 	metadata := map[string]interface{}{
 		"evaluator_id": job.EvaluatorID.String(),
 		"scorer_type":  string(job.ScorerType),
 		"job_id":       job.JobID.String(),
 	}
 	data, _ := json.Marshal(metadata)
-	return string(data)
+	return data
 }
 
 // GetStats returns current worker statistics

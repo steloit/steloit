@@ -9,6 +9,7 @@ import (
 	"brokle/internal/core/domain/auth"
 	billingDomain "brokle/internal/core/domain/billing"
 	commentDomain "brokle/internal/core/domain/comment"
+	websiteDomain "brokle/internal/core/domain/website"
 	credentialsDomain "brokle/internal/core/domain/credentials"
 	dashboardDomain "brokle/internal/core/domain/dashboard"
 	evaluationDomain "brokle/internal/core/domain/evaluation"
@@ -42,6 +43,7 @@ import (
 	"brokle/internal/transport/http/handlers/rbac"
 	userHandler "brokle/internal/transport/http/handlers/user"
 	"brokle/internal/transport/http/handlers/websocket"
+	websiteHandler "brokle/internal/transport/http/handlers/website"
 )
 
 type Handlers struct {
@@ -90,6 +92,8 @@ type Handlers struct {
 	AnnotationAssignment *annotationHandler.AssignmentHandler
 	// Comment handlers
 	Comment *commentHandler.Handler
+	// Website handlers (public contact form)
+	Website *websiteHandler.Handler
 }
 
 func NewHandlers(
@@ -142,6 +146,8 @@ func NewHandlers(
 	annotationAssignmentService annotationDomain.AssignmentService,
 	// Comment service
 	commentService commentDomain.Service,
+	// Website service (public contact form)
+	websiteService websiteDomain.WebsiteService,
 ) *Handlers {
 	return &Handlers{
 		Health:        health.NewHandler(cfg, logger),
@@ -189,5 +195,7 @@ func NewHandlers(
 		AnnotationAssignment: annotationHandler.NewAssignmentHandler(logger, annotationAssignmentService),
 		// Comment handler
 		Comment: commentHandler.NewHandler(commentService),
+		// Website handler
+		Website: websiteHandler.NewHandler(logger, websiteService),
 	}
 }

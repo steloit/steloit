@@ -9,6 +9,25 @@ const nextConfig: NextConfig = {
     // your project has type errors.
     ignoreBuildErrors: true,
   },
+  async redirects() {
+    return [
+      {
+        source: '/terms',
+        destination: 'https://brokle.com/terms',
+        permanent: false,
+      },
+      {
+        source: '/privacy',
+        destination: 'https://brokle.com/privacy',
+        permanent: false,
+      },
+      {
+        source: '/login',
+        destination: '/signin',
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

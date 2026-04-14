@@ -1,6 +1,7 @@
 package observability
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -11,6 +12,64 @@ import (
 	"brokle/pkg/response"
 	"brokle/pkg/ulid"
 )
+
+// ScoreResponse is a DTO for score API responses.
+// Metadata is json.RawMessage to preserve the stored JSON exactly as-is,
+// avoiding lossy map[string]any conversion that silently drops non-object values.
+type ScoreResponse struct {
+	ID               string           `json:"id"`
+	ProjectID        string           `json:"project_id"`
+	TraceID          *string          `json:"trace_id,omitempty"`
+	SpanID           *string          `json:"span_id,omitempty"`
+	Name             string           `json:"name"`
+	Value            *float64         `json:"value,omitempty"`
+	StringValue      *string          `json:"string_value,omitempty"`
+	Type             string           `json:"type"`
+	Source           string           `json:"source"`
+	Reason           *string          `json:"reason,omitempty"`
+	Metadata         json.RawMessage  `json:"metadata,omitempty"`
+	ExperimentID     *string          `json:"experiment_id,omitempty"`
+	ExperimentItemID *string          `json:"experiment_item_id,omitempty"`
+	CreatedBy        *string          `json:"created_by,omitempty"`
+	Timestamp        time.Time        `json:"timestamp"`
+}
+
+func toScoreResponse(s *observability.Score) *ScoreResponse {
+	// Ensure metadata is safe for JSON serialization.
+	// Valid JSON passes through as-is. Malformed bytes (from legacy writes)
+	// are escaped as a JSON string so the raw content is preserved losslessly
+	// rather than silently dropped or breaking Gin's c.JSON() marshaling.
+	metadata := s.Metadata
+	if len(metadata) > 0 && !json.Valid(metadata) {
+		metadata, _ = json.Marshal(string(metadata))
+	}
+
+	return &ScoreResponse{
+		ID:               s.ID,
+		ProjectID:        s.ProjectID,
+		TraceID:          s.TraceID,
+		SpanID:           s.SpanID,
+		Name:             s.Name,
+		Value:            s.Value,
+		StringValue:      s.StringValue,
+		Type:             s.Type,
+		Source:           s.Source,
+		Reason:           s.Reason,
+		Metadata:         metadata,
+		ExperimentID:     s.ExperimentID,
+		ExperimentItemID: s.ExperimentItemID,
+		CreatedBy:        s.CreatedBy,
+		Timestamp:        s.Timestamp,
+	}
+}
+
+func toScoreResponses(scores []*observability.Score) []*ScoreResponse {
+	result := make([]*ScoreResponse, 0, len(scores))
+	for _, s := range scores {
+		result = append(result, toScoreResponse(s))
+	}
+	return result
+}
 
 // Quality Score Handlers for Dashboard (JWT-authenticated, read + update operations)
 
@@ -29,7 +88,7 @@ import (
 // @Param type query string false "Filter by type (NUMERIC, CATEGORICAL, BOOLEAN)"
 // @Param page query int false "Page number (default 1)"
 // @Param limit query int false "Page size (default 50, max 1000)"
-// @Success 200 {object} response.APIResponse{data=[]observability.Score} "List of scores"
+// @Success 200 {object} response.APIResponse{data=[]ScoreResponse} "List of scores"
 // @Failure 400 {object} response.APIResponse{error=response.APIError} "Invalid parameters"
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/projects/{projectId}/scores [get]
@@ -81,7 +140,7 @@ func (h *Handler) ListProjectScores(c *gin.Context) {
 	}
 
 	paginationMeta := response.NewPagination(params.Page, params.Limit, totalCount)
-	response.SuccessWithPagination(c, scores, paginationMeta)
+	response.SuccessWithPagination(c, toScoreResponses(scores), paginationMeta)
 }
 
 // ListScores handles GET /api/v1/scores
@@ -99,7 +158,7 @@ func (h *Handler) ListProjectScores(c *gin.Context) {
 // @Param type query string false "Filter by type (NUMERIC, CATEGORICAL, BOOLEAN)"
 // @Param limit query int false "Limit (default 50, max 1000)"
 // @Param offset query int false "Offset (default 0)"
-// @Success 200 {object} response.APIResponse{data=[]observability.Score} "List of scores"
+// @Success 200 {object} response.APIResponse{data=[]ScoreResponse} "List of scores"
 // @Failure 400 {object} response.APIResponse{error=response.APIError} "Invalid parameters"
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/scores [get]
@@ -144,7 +203,7 @@ func (h *Handler) ListScores(c *gin.Context) {
 
 	paginationMeta := response.NewPagination(params.Page, params.Limit, totalCount)
 
-	response.SuccessWithPagination(c, scores, paginationMeta)
+	response.SuccessWithPagination(c, toScoreResponses(scores), paginationMeta)
 }
 
 // GetScore handles GET /api/v1/scores/:id
@@ -155,7 +214,7 @@ func (h *Handler) ListScores(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param id path string true "Score ID"
-// @Success 200 {object} response.APIResponse{data=observability.Score} "Score details"
+// @Success 200 {object} response.APIResponse{data=ScoreResponse} "Score details"
 // @Failure 404 {object} response.APIResponse{error=response.APIError} "Score not found"
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/scores/{id} [get]
@@ -172,7 +231,20 @@ func (h *Handler) GetScore(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, score)
+	response.Success(c, toScoreResponse(score))
+}
+
+// UpdateScoreRequest is a DTO for score updates, preventing direct binding to domain entity.
+// Metadata is json.RawMessage so the update API accepts the same JSON shapes the read API
+// returns (objects, arrays, strings, numbers) — enabling lossless round-trips.
+type UpdateScoreRequest struct {
+	Name        string          `json:"name,omitempty"`
+	Value       *float64        `json:"value,omitempty"`
+	StringValue *string         `json:"string_value,omitempty"`
+	Type        string          `json:"type,omitempty"`
+	Source      string          `json:"source,omitempty"`
+	Reason      *string         `json:"reason,omitempty"`
+	Metadata    json.RawMessage `json:"metadata,omitempty"`
 }
 
 // UpdateScore handles PUT /api/v1/scores/:id
@@ -183,8 +255,8 @@ func (h *Handler) GetScore(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param id path string true "Score ID"
-// @Param score body observability.Score true "Updated score data"
-// @Success 200 {object} response.APIResponse{data=observability.Score} "Updated score"
+// @Param score body UpdateScoreRequest true "Updated score data"
+// @Success 200 {object} response.APIResponse{data=ScoreResponse} "Updated score"
 // @Failure 400 {object} response.APIResponse{error=response.APIError} "Invalid request"
 // @Failure 404 {object} response.APIResponse{error=response.APIError} "Score not found"
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
@@ -196,14 +268,31 @@ func (h *Handler) UpdateScore(c *gin.Context) {
 		return
 	}
 
-	var score observability.Score
-	if err := c.ShouldBindJSON(&score); err != nil {
+	var req UpdateScoreRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		response.ValidationError(c, "invalid request body", err.Error())
 		return
 	}
 
-	// Ensure ID matches path parameter
-	score.ID = scoreID
+	// Build domain Score from DTO
+	score := observability.Score{
+		ID:          scoreID,
+		Name:        req.Name,
+		Value:       req.Value,
+		StringValue: req.StringValue,
+		Type:        req.Type,
+		Source:      req.Source,
+		Reason:      req.Reason,
+	}
+
+	// Validate and assign raw JSON metadata directly (no marshaling needed)
+	if len(req.Metadata) > 0 {
+		if !json.Valid(req.Metadata) {
+			response.ValidationError(c, "invalid metadata", "metadata must be valid JSON")
+			return
+		}
+		score.Metadata = req.Metadata
+	}
 
 	if err := h.services.GetScoreService().UpdateScore(c.Request.Context(), &score); err != nil {
 		response.Error(c, err)
@@ -216,7 +305,7 @@ func (h *Handler) UpdateScore(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, updated)
+	response.Success(c, toScoreResponse(updated))
 }
 
 // GetScoreAnalytics handles GET /api/v1/projects/:projectId/scores/analytics
@@ -387,7 +476,7 @@ func (h *Handler) CreateTraceScore(c *gin.Context) {
 		Type:           req.DataType,
 		Source:         observability.ScoreSourceAnnotation,
 		Reason:         req.Reason,
-		Metadata:       "{}",
+		Metadata:       json.RawMessage("{}"),
 		CreatedBy:      &userIDStr,
 		Timestamp:      time.Now(),
 	}

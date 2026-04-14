@@ -102,6 +102,12 @@ func mergeScoreFields(dst *observability.Score, src *observability.Score) {
 	if src.Source != "" {
 		dst.Source = src.Source
 	}
+	if src.Reason != nil {
+		dst.Reason = src.Reason
+	}
+	if len(src.Metadata) > 0 {
+		dst.Metadata = src.Metadata
+	}
 	if !src.Timestamp.IsZero() {
 		dst.Timestamp = src.Timestamp
 	}
