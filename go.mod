@@ -22,7 +22,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.9
 	github.com/lmittmann/tint v1.1.2
-	github.com/nikolalohinski/gonja/v2 v2.5.1
+	github.com/nikolalohinski/gonja/v2 v2.5.2
 	github.com/oklog/ulid/v2 v2.1.1
 	github.com/parquet-go/parquet-go v0.26.4
 	github.com/prometheus/client_golang v1.23.2
