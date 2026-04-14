@@ -24,7 +24,7 @@ require (
 	github.com/lmittmann/tint v1.1.2
 	github.com/nikolalohinski/gonja/v2 v2.5.1
 	github.com/oklog/ulid/v2 v2.1.1
-	github.com/parquet-go/parquet-go v0.26.4
+	github.com/parquet-go/parquet-go v0.27.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/redis/go-redis/v9 v9.17.2
 	github.com/shopspring/decimal v1.4.0
@@ -144,6 +144,7 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/tdewolff/parse/v2 v2.8.3 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
+	github.com/twpayne/go-geom v1.6.1 // indirect
 	github.com/ugorji/go/codec v1.3.0 // indirect
 	github.com/urfave/cli/v2 v2.3.0 // indirect
 	go.opentelemetry.io/otel v1.39.0 // indirect
