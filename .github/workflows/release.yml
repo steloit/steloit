@@ -138,18 +138,18 @@ jobs:
           - name: server
             file: ./Dockerfile
             images: |
-              ghcr.io/brokle-ai/brokle-server
+              ghcr.io/steloit/steloit-server
               brokle/brokle-server
           - name: worker
             file: ./Dockerfile.worker
             images: |
-              ghcr.io/brokle-ai/brokle-worker
+              ghcr.io/steloit/steloit-worker
               brokle/brokle-worker
           - name: web
             context: ./web
             file: ./web/Dockerfile
             images: |
-              ghcr.io/brokle-ai/brokle-web
+              ghcr.io/steloit/steloit-web
               brokle/brokle-web
     steps:
       - name: Checkout code

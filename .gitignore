@@ -219,8 +219,9 @@ google_ai_key
 sdk/competitors/
 competitors/
 
-# Claude Code local settings
+# Claude Code (settings.json and hooks/ are tracked; local overrides are not)
 .claude/settings.local.json
+.claude/plans/
 
 /venv/
 
@@ -233,3 +234,6 @@ competitors/
 
 # Auto Claude data directory
 .auto-claude/
+
+# OpenAI Codex
+.codex

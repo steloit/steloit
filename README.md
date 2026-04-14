@@ -4,7 +4,7 @@
   <a href="https://docs.brokle.com">Docs</a> •
   <a href="https://docs.brokle.com/quickstart">Quick Start</a> •
   <a href="https://discord.gg/brokle">Discord</a> •
-  <a href="https://github.com/brokle-ai/brokle/issues">Issues</a> •
+  <a href="https://github.com/steloit/steloit/issues">Issues</a> •
   <a href="https://brokle.com">Website</a>
 </p>
 
@@ -13,8 +13,8 @@ Debug, evaluate, and optimize your LLM applications with complete visibility. Op
 ## Quick Start
 
 ```bash
-git clone https://github.com/brokle-ai/brokle.git
-cd brokle
+git clone https://github.com/steloit/steloit.git
+cd steloit
 make setup && make dev
 ```
 
@@ -136,7 +136,7 @@ make migrate-up
 ```
 </details>
 
-Need help? Join [Discord](https://discord.gg/brokle) or open a [GitHub Issue](https://github.com/brokle-ai/brokle/issues).
+Need help? Join [Discord](https://discord.gg/brokle) or open a [GitHub Issue](https://github.com/steloit/steloit/issues).
 
 
 ## Contributing
@@ -153,7 +153,7 @@ MIT licensed, except for `ee/` folders. See [LICENSE](LICENSE) for details.
 
 - [Discord](https://discord.gg/brokle) – Chat with the team
 - [Twitter](https://twitter.com/BrokleAI) – Updates and news
-- [GitHub Discussions](https://github.com/brokle-ai/brokle/discussions) – Questions and ideas
+- [GitHub Discussions](https://github.com/steloit/steloit/discussions) – Questions and ideas
 
 ---
 

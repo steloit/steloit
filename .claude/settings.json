@@ -1,0 +1,53 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make *)",
+      "Bash(go test *)",
+      "Bash(go build *)",
+      "Bash(go run cmd/migrate/*)",
+      "Bash(go vet *)",
+      "Bash(pnpm *)",
+      "Bash(cd web && pnpm *)",
+      "Bash(npx playwright *)",
+      "Bash(cd sdk/javascript && pnpm *)",
+      "Bash(cd sdk/python && make *)",
+      "Bash(cd sdk/python && poetry *)",
+      "Bash(cd sdk/python && pytest *)",
+      "Bash(cd sdk/python && python *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git branch*)",
+      "Bash(git submodule*)",
+      "Bash(gh pr *)",
+      "Bash(gh issue *)",
+      "Bash(ls *)",
+      "Bash(tree *)",
+      "Bash(wc *)"
+    ],
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(git push --force*)",
+      "Bash(git reset --hard*)",
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(web/.env)",
+      "Read(web/.env.*)",
+      "Read(sdk/javascript/.env)",
+      "Read(sdk/python/.env)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/post-edit.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

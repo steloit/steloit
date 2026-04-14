@@ -1,0 +1,98 @@
+# Build artifacts & generated (Go)
+bin/
+build/
+docs/docs.go
+docs/swagger.json
+docs/swagger.yaml
+*_gen.go
+*.pb.go
+proto-gen/
+
+# Build artifacts (Frontend)
+.next/
+web/.next/
+web/out/
+out/
+
+# Build artifacts (SDKs)
+sdk/javascript/dist/
+sdk/javascript/node_modules/
+sdk/python/dist/
+sdk/python/*.egg-info/
+sdk/python/brokle.egg-info/
+sdk/python/htmlcov/
+
+# Dependencies
+node_modules/
+vendor/
+.pnpm-store/
+
+# Lock files (large, not useful for context)
+pnpm-lock.yaml
+poetry.lock
+go.sum
+
+# Data & binaries
+*.db
+*.sqlite*
+*.log
+*.tgz
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.lcov
+
+# Data directories
+prometheus_data/
+grafana_data/
+clickhouse_data/
+postgres_data/
+redis_data/
+alertmanager_data/
+
+# Test & coverage output
+coverage/
+test-results/
+web/test-results/
+web/playwright-report/
+.nyc_output/
+.pytest_cache/
+sdk/python/.pytest_cache/
+
+# Caches
+.turbo/
+.cache/
+.parcel-cache/
+
+# OS & editor
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Secrets (defense in depth)
+.env
+.env.*
+*.pem
+*.crt
+*.key
+openai_key
+anthropic_key
+google_ai_key
+
+# Other tools
+.git/
+.terraform/
+.auto-claude/
+.moat/
+.serena/
+.vercel/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
