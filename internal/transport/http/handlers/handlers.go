@@ -21,7 +21,6 @@ import (
 	credentialsService "brokle/internal/core/services/credentials"
 	obsServices "brokle/internal/core/services/observability"
 	"brokle/internal/core/services/registration"
-	"brokle/internal/transport/http/handlers/admin"
 	"brokle/internal/transport/http/handlers/analytics"
 	annotationHandler "brokle/internal/transport/http/handlers/annotation"
 	"brokle/internal/transport/http/handlers/apikey"
@@ -58,7 +57,6 @@ type Handlers struct {
 	Logs               *logs.Handler
 	Billing            *billing.Handler
 	WebSocket          *websocket.Handler
-	Admin              *admin.TokenAdminHandler
 	RBAC               *rbac.Handler
 	Observability      *observability.Handler
 	OTLP               *observability.OTLPHandler
@@ -101,7 +99,6 @@ func NewHandlers(
 	logger *slog.Logger,
 	authSvc auth.AuthService,
 	apiKeyService auth.APIKeyService,
-	blacklistedTokens auth.BlacklistedTokenService,
 	registrationService registration.RegistrationService,
 	oauthProvider *authService.OAuthProviderService,
 	userService user.UserService,
@@ -161,7 +158,6 @@ func NewHandlers(
 		Logs:               logs.NewHandler(cfg, logger),
 		Billing:            billing.NewHandler(cfg, logger),
 		WebSocket:          websocket.NewHandler(cfg, logger),
-		Admin:              admin.NewTokenAdminHandler(authSvc, blacklistedTokens, logger),
 		RBAC:               rbac.NewHandler(cfg, logger, roleService, permissionService, organizationMemberService, scopeService),
 		Observability:      observability.NewHandler(cfg, logger, observabilityServices),
 		OTLP:               observability.NewOTLPHandler(observabilityServices.StreamProducer, observabilityServices.DeduplicationService, observabilityServices.OTLPConverterService, logger),

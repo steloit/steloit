@@ -740,7 +740,6 @@ func ProvideServer(core *CoreContainer) (*ServerContainer, error) {
 		core.Logger,
 		core.Services.Auth.Auth,
 		core.Services.Auth.APIKey,
-		core.Services.Auth.BlacklistedTokens,
 		core.Services.Registration,       // Registration service for signup
 		core.Services.Auth.OAuthProvider, // OAuth provider for Google/GitHub signup
 		core.Services.User.User,

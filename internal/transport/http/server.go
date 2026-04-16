@@ -629,15 +629,6 @@ func (s *Server) setupDashboardRoutes(router *gin.RouterGroup) {
 
 	// User's annotation queue assignments (cross-project view)
 	protected.GET("/annotation-queues/my-assignments", s.handlers.AnnotationAssignment.GetMyAssignments)
-
-	adminRoutes := protected.Group("/admin")
-	adminRoutes.Use(s.authMiddleware.RequirePermission("admin:manage"))
-	{
-		adminRoutes.POST("/tokens/revoke", s.handlers.Admin.RevokeToken)
-		adminRoutes.POST("/users/:userID/tokens/revoke", s.handlers.Admin.RevokeUserTokens)
-		adminRoutes.GET("/tokens/blacklisted", s.handlers.Admin.ListBlacklistedTokens)
-		adminRoutes.GET("/tokens/stats", s.handlers.Admin.GetTokenStats)
-	}
 }
 
 func (s *Server) setupSDKRoutes(router *gin.RouterGroup) {
