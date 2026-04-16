@@ -31,11 +31,7 @@ func (h *Handler) CreateFilterPreset(c *gin.Context) {
 		return
 	}
 
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	var req observability.CreateFilterPresetRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -76,11 +72,7 @@ func (h *Handler) GetFilterPreset(c *gin.Context) {
 		return
 	}
 
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	preset, err := h.services.FilterPresetService.GetByID(c.Request.Context(), projectID, presetID, userID)
 	if err != nil {
@@ -119,11 +111,7 @@ func (h *Handler) UpdateFilterPreset(c *gin.Context) {
 		return
 	}
 
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	var req observability.UpdateFilterPresetRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -163,11 +151,7 @@ func (h *Handler) DeleteFilterPreset(c *gin.Context) {
 		return
 	}
 
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	if err := h.services.FilterPresetService.Delete(c.Request.Context(), projectID, presetID, userID); err != nil {
 		response.Error(c, err)
@@ -195,11 +179,7 @@ func (h *Handler) ListFilterPresets(c *gin.Context) {
 		return
 	}
 
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	var tableName *string
 	if tn := c.Query("table_name"); tn != "" {

@@ -112,11 +112,7 @@ type EnhancedUserProfileResponse struct {
 // @Router /api/v1/users/me [get]
 func (h *Handler) GetProfile(c *gin.Context) {
 	// Get user ID from middleware (set by auth middleware)
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Get basic user information
 	userData, err := h.userService.GetUser(c.Request.Context(), userID)
@@ -258,11 +254,7 @@ type UpdateProfileRequest struct {
 // @Router /api/v1/users/me [patch]
 func (h *Handler) UpdateProfile(c *gin.Context) {
 	// Get user ID from middleware (set by auth middleware)
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Parse request body
 	var req UpdateProfileRequest
@@ -330,11 +322,7 @@ type SetDefaultOrgRequest struct {
 // @Router /api/v1/users/me/default-organization [put]
 func (h *Handler) SetDefaultOrganization(c *gin.Context) {
 	// Get user ID from middleware
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Parse request body
 	var req SetDefaultOrgRequest

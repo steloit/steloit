@@ -91,20 +91,7 @@ func (h *TokenAdminHandler) RevokeToken(c *gin.Context) {
 		return
 	}
 
-	// Get admin user from auth context
-	authContext, exists := middleware.GetAuthContext(c)
-	if !exists {
-		response.Unauthorized(c, "Authentication required")
-		return
-	}
-
-	// Parse admin user ID for audit logging
-	adminUserID, err := uuid.Parse(authContext.UserID.String())
-	if err != nil {
-		h.logger.Error("Failed to parse admin user ID", "error", err)
-		response.InternalServerError(c, "Authentication error")
-		return
-	}
+	adminUserID := middleware.MustGetUserID(c)
 
 	// Check if token is already revoked
 	isRevoked, err := h.authService.IsTokenRevoked(c.Request.Context(), req.JTI)
@@ -173,22 +160,16 @@ func (h *TokenAdminHandler) RevokeUserTokens(c *gin.Context) {
 		return
 	}
 
-	// Get admin user from auth context for audit logging
-	authContext, exists := middleware.GetAuthContext(c)
-	if !exists {
-		response.Unauthorized(c, "Authentication required")
-		return
-	}
+	adminUserID := middleware.MustGetUserID(c)
 
-	// Revoke all user tokens
 	err = h.authService.RevokeUserAccessTokens(c.Request.Context(), userID, req.Reason)
 	if err != nil {
-		h.logger.Error("Failed to revoke user tokens", "error", err, "user_id", userID, "reason", req.Reason, "admin", authContext.UserID)
+		h.logger.Error("Failed to revoke user tokens", "error", err, "user_id", userID, "reason", req.Reason, "admin", adminUserID)
 		response.InternalServerError(c, "Failed to revoke user tokens")
 		return
 	}
 
-	h.logger.Info("All user tokens revoked by admin", "user_id", userID, "reason", req.Reason, "admin_user", authContext.UserID, "request_id", c.GetString("request_id"))
+	h.logger.Info("All user tokens revoked by admin", "user_id", userID, "reason", req.Reason, "admin_user", adminUserID, "request_id", c.GetString("request_id"))
 
 	response.Success(c, gin.H{
 		"message": "All user tokens revoked successfully",

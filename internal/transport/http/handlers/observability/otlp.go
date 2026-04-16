@@ -65,22 +65,9 @@ func NewOTLPHandler(
 func (h *OTLPHandler) HandleTraces(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	// Get project ID from SDK auth middleware (already authenticated)
-	projectIDPtr, exists := middleware.GetProjectID(c)
-	if !exists || projectIDPtr == nil {
-		h.logger.Error("Project ID not found in context")
-		response.Unauthorized(c, "Authentication required")
-		return
-	}
-	projectID := projectIDPtr.String()
-
-	// Get organization ID from SDK auth middleware (for billing aggregation)
-	organizationIDPtr, exists := middleware.GetOrganizationID(c)
-	if !exists || organizationIDPtr == nil {
-		h.logger.Error("Organization ID not found in context")
-		response.InternalServerError(c, "Failed to determine organization for billing")
-		return
-	}
+	projectUUID := middleware.MustGetProjectID(c)
+	projectID := projectUUID.String()
+	organizationUUID := middleware.MustGetOrganizationID(c)
 
 	// Validate Content-Type header (OTLP specification requires explicit Content-Type)
 	contentType := c.GetHeader("Content-Type")
@@ -233,7 +220,7 @@ func (h *OTLPHandler) HandleTraces(c *gin.Context) {
 
 	if len(dedupIDs) > 0 {
 		claimedIDs, duplicateIDs, err = h.deduplicationService.ClaimEvents(
-			ctx, *projectIDPtr, batchID, dedupIDs, 24*time.Hour,
+			ctx, projectUUID, batchID, dedupIDs, 24*time.Hour,
 		)
 		if err != nil {
 			h.logger.Error("Failed to claim OTLP spans for deduplication", "error", err)
@@ -305,8 +292,8 @@ func (h *OTLPHandler) HandleTraces(c *gin.Context) {
 	// 5. Publish to Redis Streams for async processing
 	streamMsg := &streams.TelemetryStreamMessage{
 		BatchID:          batchID,
-		ProjectID:        *projectIDPtr,
-		OrganizationID:   *organizationIDPtr,
+		ProjectID:        projectUUID,
+		OrganizationID:   organizationUUID,
 		Events:           claimedEventData,
 		ClaimedSpanIDs:   claimedIDs,
 		DuplicateSpanIDs: duplicateIDs,

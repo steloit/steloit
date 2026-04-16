@@ -54,10 +54,7 @@ func (h *Handler) validateProjectAccess(c *gin.Context, projectIDStr *string) er
 		return appErrors.NewValidationError("Invalid project_id", "project_id must be a valid UUID")
 	}
 
-	userID, exists := middleware.GetUserIDFromContext(c)
-	if !exists {
-		return appErrors.NewUnauthorizedError("User not authenticated")
-	}
+	userID := middleware.MustGetUserID(c)
 
 	if err := h.projectService.ValidateProjectAccess(c.Request.Context(), userID, projectID); err != nil {
 		if strings.Contains(err.Error(), "not found") {
@@ -93,10 +90,7 @@ func (h *Handler) validateSessionAccess(c *gin.Context, sessionIDStr *string) er
 		return appErrors.NewNotFoundError("Session not found")
 	}
 
-	userID, exists := middleware.GetUserIDFromContext(c)
-	if !exists {
-		return appErrors.NewUnauthorizedError("User not authenticated")
-	}
+	userID := middleware.MustGetUserID(c)
 
 	if err := h.projectService.ValidateProjectAccess(c.Request.Context(), userID, session.ProjectID); err != nil {
 		h.logger.Warn("user attempted to access session without project permission",

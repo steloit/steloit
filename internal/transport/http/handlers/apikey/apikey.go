@@ -91,11 +91,7 @@ func (h *Handler) List(c *gin.Context) {
 	}
 
 	// Get authenticated user from context
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Parse offset pagination parameters
 	params := response.ParsePaginationParams(
@@ -214,11 +210,7 @@ func (h *Handler) Create(c *gin.Context) {
 	}
 
 	// Get authenticated user from context
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Convert expiry option to timestamp
 	var expiresAt *time.Time
@@ -304,11 +296,7 @@ func (h *Handler) Delete(c *gin.Context) {
 	}
 
 	// Get authenticated user from context
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Delete the API key (service validates existence and project ownership)
 	if err := h.apiKeyService.DeleteAPIKey(c.Request.Context(), keyID, projectID); err != nil {

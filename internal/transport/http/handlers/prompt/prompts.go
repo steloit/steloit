@@ -272,11 +272,7 @@ func (h *Handler) DeletePrompt(c *gin.Context) {
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /v1/prompts [post]
 func (h *Handler) UpsertPrompt(c *gin.Context) {
-	projectID, ok := middleware.GetProjectID(c)
-	if !ok || projectID == nil {
-		response.Unauthorized(c, "Invalid API key")
-		return
-	}
+	projectID := middleware.MustGetProjectID(c)
 
 	var req promptDomain.UpsertPromptRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -293,7 +289,7 @@ func (h *Handler) UpsertPrompt(c *gin.Context) {
 		return
 	}
 
-	result, err := h.promptService.UpsertPrompt(c.Request.Context(), *projectID, nil, &req)
+	result, err := h.promptService.UpsertPrompt(c.Request.Context(), projectID, nil, &req)
 	if err != nil {
 		h.logger.Error("Failed to upsert prompt", "name", req.Name, "error", err)
 		response.Error(c, err)
@@ -321,11 +317,7 @@ func (h *Handler) UpsertPrompt(c *gin.Context) {
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /v1/prompts [get]
 func (h *Handler) ListPromptsSDK(c *gin.Context) {
-	projectID, ok := middleware.GetProjectID(c)
-	if !ok || projectID == nil {
-		response.Unauthorized(c, "Invalid API key")
-		return
-	}
+	projectID := middleware.MustGetProjectID(c)
 
 	filters := &promptDomain.PromptFilters{}
 
@@ -354,7 +346,7 @@ func (h *Handler) ListPromptsSDK(c *gin.Context) {
 	)
 	filters.Params = params
 
-	prompts, total, err := h.promptService.ListPrompts(c.Request.Context(), *projectID, filters)
+	prompts, total, err := h.promptService.ListPrompts(c.Request.Context(), projectID, filters)
 	if err != nil {
 		h.logger.Error("Failed to list prompts", "error", err)
 		response.Error(c, err)
@@ -383,11 +375,7 @@ func (h *Handler) ListPromptsSDK(c *gin.Context) {
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /v1/prompts/{name} [get]
 func (h *Handler) GetPromptByName(c *gin.Context) {
-	projectID, ok := middleware.GetProjectID(c)
-	if !ok || projectID == nil {
-		response.Unauthorized(c, "Invalid API key")
-		return
-	}
+	projectID := middleware.MustGetProjectID(c)
 
 	name := c.Param("name")
 	if name == "" {
@@ -418,7 +406,7 @@ func (h *Handler) GetPromptByName(c *gin.Context) {
 		opts.CacheTTL = &cacheTTL
 	}
 
-	prompt, err := h.promptService.GetPrompt(c.Request.Context(), *projectID, name, opts)
+	prompt, err := h.promptService.GetPrompt(c.Request.Context(), projectID, name, opts)
 	if err != nil {
 		h.logger.Error("Failed to get prompt", "name", name, "error", err)
 		response.Error(c, err)

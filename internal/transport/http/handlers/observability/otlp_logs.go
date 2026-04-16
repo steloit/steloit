@@ -62,13 +62,7 @@ func NewOTLPLogsHandler(
 func (h *OTLPLogsHandler) HandleLogs(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	// Get project ID from SDK auth middleware (already authenticated)
-	projectIDPtr, exists := middleware.GetProjectID(c)
-	if !exists || projectIDPtr == nil {
-		h.logger.Error("Project ID not found in context")
-		response.Unauthorized(c, "Authentication required")
-		return
-	}
+	projectID := middleware.MustGetProjectID(c)
 
 	// Validate Content-Type header (OTLP specification requires explicit Content-Type)
 	contentType := c.GetHeader("Content-Type")
@@ -160,7 +154,7 @@ func (h *OTLPLogsHandler) HandleLogs(c *gin.Context) {
 		return
 	}
 
-	h.logger.Debug("Received OTLP logs request", "project_id", projectIDPtr.String(), "resource_logs", len(protoReq.GetResourceLogs()))
+	h.logger.Debug("Received OTLP logs request", "project_id", projectID.String(), "resource_logs", len(protoReq.GetResourceLogs()))
 
 	// Wrap ResourceLogs in LogsData for converter (OTLP spec structure)
 	logsData := &logspb.LogsData{
@@ -168,7 +162,7 @@ func (h *OTLPLogsHandler) HandleLogs(c *gin.Context) {
 	}
 
 	// Convert OTLP logs to Brokle telemetry events using converter service
-	logEvents, err := h.logsConverter.ConvertLogsRequest(ctx, logsData, *projectIDPtr)
+	logEvents, err := h.logsConverter.ConvertLogsRequest(ctx, logsData, projectID)
 	if err != nil {
 		h.logger.Error("Failed to convert OTLP logs to Brokle events", "error", err)
 		response.InternalServerError(c, "Failed to process OTLP logs")
@@ -176,7 +170,7 @@ func (h *OTLPLogsHandler) HandleLogs(c *gin.Context) {
 	}
 
 	// Convert GenAI events (structured log records with GenAI event names)
-	genaiEvents, err := h.eventsConverter.ConvertGenAIEventsRequest(ctx, logsData, *projectIDPtr)
+	genaiEvents, err := h.eventsConverter.ConvertGenAIEventsRequest(ctx, logsData, projectID)
 	if err != nil {
 		h.logger.Error("Failed to convert GenAI events to Brokle events", "error", err)
 		response.InternalServerError(c, "Failed to process GenAI events")
@@ -186,7 +180,7 @@ func (h *OTLPLogsHandler) HandleLogs(c *gin.Context) {
 	// Combine all events (logs + GenAI events)
 	brokleEvents := append(logEvents, genaiEvents...)
 
-	h.logger.Debug("Converted OTLP logs to Brokle events", "project_id", projectIDPtr.String(), "log_events", len(logEvents), "genai_events", len(genaiEvents), "total_events", len(brokleEvents))
+	h.logger.Debug("Converted OTLP logs to Brokle events", "project_id", projectID.String(), "log_events", len(logEvents), "genai_events", len(genaiEvents), "total_events", len(brokleEvents))
 
 	// NO DEDUPLICATION for logs (logs are timeseries data - idempotent inserts)
 	// Publish directly to Redis Streams for async processing by worker
@@ -207,7 +201,7 @@ func (h *OTLPLogsHandler) HandleLogs(c *gin.Context) {
 	batchID := uid.New()
 	streamMessage := &streams.TelemetryStreamMessage{
 		BatchID:   batchID,
-		ProjectID: *projectIDPtr,
+		ProjectID: projectID,
 		Events:    eventData,
 		Timestamp: uid.TimeFromID(batchID), // Use batch ID timestamp (monotonic)
 	}
@@ -220,7 +214,7 @@ func (h *OTLPLogsHandler) HandleLogs(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Successfully published OTLP logs batch to Redis Streams", "project_id", projectIDPtr.String(), "batch_id", batchID.String(), "stream_id", streamID, "event_count", len(brokleEvents))
+	h.logger.Info("Successfully published OTLP logs batch to Redis Streams", "project_id", projectID.String(), "batch_id", batchID.String(), "stream_id", streamID, "event_count", len(brokleEvents))
 
 	// OTLP spec: Return success response
 	response.Success(c, gin.H{

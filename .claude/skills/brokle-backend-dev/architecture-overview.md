@@ -135,7 +135,7 @@ Primary domains in `internal/core/domain/`:
 - Session management with Redis storage
 - Rate limiting: IP-based + user-based
 - Middleware: `Authentication()` + `RateLimitByUser()`
-- Context access: `middleware.GetUserIDFromContext(c)`
+- Context access: `middleware.MustGetUserID(c)` (mandatory auth); `middleware.GetUserIDFromContext(c)` (optional auth)
 
 ### API Key Management
 

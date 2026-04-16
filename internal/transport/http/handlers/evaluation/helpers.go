@@ -13,8 +13,8 @@ import (
 // or from the URL path parameter (for /api/v1/* routes).
 func extractProjectID(c *gin.Context) (uuid.UUID, error) {
 	// Try SDK auth context first
-	if projectIDPtr, exists := middleware.GetProjectID(c); exists && projectIDPtr != nil {
-		return *projectIDPtr, nil
+	if projectID, exists := middleware.GetProjectID(c); exists {
+		return projectID, nil
 	}
 
 	// Fall back to URL path param for dashboard routes

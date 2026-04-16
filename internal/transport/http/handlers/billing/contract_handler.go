@@ -138,11 +138,7 @@ func (h *ContractHandler) CreateContract(c *gin.Context) {
 		return
 	}
 
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Error(c, appErrors.NewUnauthorizedError("User context required"))
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Build contract entity
 	contract := &billing.Contract{
@@ -415,11 +411,7 @@ func (h *ContractHandler) ActivateContract(c *gin.Context) {
 		return
 	}
 
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Error(c, appErrors.NewUnauthorizedError("User context required"))
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	if err := h.contractService.ActivateContract(c.Request.Context(), contractID, userID); err != nil {
 		h.logger.Error("failed to activate contract",
@@ -474,11 +466,7 @@ func (h *ContractHandler) CancelContract(c *gin.Context) {
 		return
 	}
 
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Error(c, appErrors.NewUnauthorizedError("User context required"))
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	if err := h.contractService.CancelContract(c.Request.Context(), contractID, req.Reason, userID); err != nil {
 		h.logger.Error("failed to cancel contract",

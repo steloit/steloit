@@ -181,11 +181,7 @@ func (h *AssignmentHandler) Unassign(c *gin.Context) {
 // @Failure 401 {object} response.ErrorResponse
 // @Router /api/v1/annotation-queues/my-assignments [get]
 func (h *AssignmentHandler) GetMyAssignments(c *gin.Context) {
-	userID, exists := middleware.GetUserIDFromContext(c)
-	if !exists {
-		response.Unauthorized(c, "User authentication required")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	assignments, err := h.service.GetUserQueues(c.Request.Context(), userID)
 	if err != nil {

@@ -73,13 +73,7 @@ type ValidateFilterRequest struct {
 func (h *SpanQueryHandler) HandleQuery(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	projectIDPtr, exists := middleware.GetProjectID(c)
-	if !exists || projectIDPtr == nil {
-		h.logger.Error("Project ID not found in context")
-		response.Unauthorized(c, "Authentication required")
-		return
-	}
-	projectID := projectIDPtr.String()
+	projectID := middleware.MustGetProjectID(c).String()
 
 	var req SpanQueryHTTPRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

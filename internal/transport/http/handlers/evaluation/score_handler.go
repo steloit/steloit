@@ -51,14 +51,7 @@ func NewSDKScoreHandler(
 func (h *SDKScoreHandler) Create(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	// Get project ID from SDK auth middleware
-	projectIDPtr, exists := middleware.GetProjectID(c)
-	if !exists || projectIDPtr == nil {
-		h.logger.Error("Project ID not found in context")
-		response.Unauthorized(c, "Authentication required")
-		return
-	}
-	projectID := *projectIDPtr
+	projectID := middleware.MustGetProjectID(c)
 
 	var req CreateScoreRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -105,14 +98,7 @@ func (h *SDKScoreHandler) Create(c *gin.Context) {
 func (h *SDKScoreHandler) CreateBatch(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	// Get project ID from SDK auth middleware
-	projectIDPtr, exists := middleware.GetProjectID(c)
-	if !exists || projectIDPtr == nil {
-		h.logger.Error("Project ID not found in context")
-		response.Unauthorized(c, "Authentication required")
-		return
-	}
-	projectID := *projectIDPtr
+	projectID := middleware.MustGetProjectID(c)
 
 	var req BatchScoreRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

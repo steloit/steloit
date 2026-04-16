@@ -91,13 +91,8 @@ func (h *SettingsHandler) GetAllSettings(c *gin.Context) {
 		return
 	}
 
-	if _, ok := middleware.GetUserIDFromContext(c); !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
-
-	// TODO: Add access control validation here
-	// For now, just proceed if user is authenticated
+	// Authentication is enforced by RequireAuth middleware at the route tier.
+	// TODO: Add access control validation here (check user membership in org).
 
 	settings, err := h.settingsService.GetAllSettings(c.Request.Context(), orgID)
 	if err != nil {
@@ -196,11 +191,7 @@ func (h *SettingsHandler) CreateSetting(c *gin.Context) {
 	}
 
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	domainReq := &organization.CreateOrganizationSettingRequest{
 		Key:   req.Key,
@@ -268,11 +259,7 @@ func (h *SettingsHandler) UpdateSetting(c *gin.Context) {
 	}
 
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	domainReq := &organization.UpdateOrganizationSettingRequest{
 		Value: req.Value,
@@ -320,11 +307,7 @@ func (h *SettingsHandler) DeleteSetting(c *gin.Context) {
 	}
 
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	err = h.settingsService.DeleteSetting(c.Request.Context(), orgID, key, userID)
 	if err != nil {

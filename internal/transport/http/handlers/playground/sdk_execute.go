@@ -51,13 +51,7 @@ type SDKExecuteRequest struct {
 // @Failure 401 {object} response.ErrorResponse
 // @Router /v1/playground/execute [post]
 func (h *SDKPlaygroundHandler) Execute(c *gin.Context) {
-	projectIDPtr, exists := middleware.GetProjectID(c)
-	if !exists || projectIDPtr == nil {
-		h.logger.Error("Project ID not found in context")
-		response.Unauthorized(c, "Authentication required")
-		return
-	}
-	projectID := *projectIDPtr
+	projectID := middleware.MustGetProjectID(c)
 
 	var req SDKExecuteRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

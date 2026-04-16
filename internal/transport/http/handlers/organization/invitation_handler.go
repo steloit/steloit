@@ -112,11 +112,7 @@ func (h *Handler) CreateInvitation(c *gin.Context) {
 		return
 	}
 
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Parse role ID
 	roleID, err := uuid.Parse(req.RoleID)
@@ -195,11 +191,7 @@ func (h *Handler) GetPendingInvitations(c *gin.Context) {
 		return
 	}
 
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Verify user is member of organization
 	isMember, err := h.memberService.IsMember(c.Request.Context(), userID, orgID)
@@ -287,11 +279,7 @@ func (h *Handler) ResendInvitation(c *gin.Context) {
 		return
 	}
 
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Resend invitation - returns updated invitation directly
 	invitation, err := h.invitationService.ResendInvitation(c.Request.Context(), invitationID, userID)
@@ -357,11 +345,7 @@ func (h *Handler) RevokeInvitation(c *gin.Context) {
 		return
 	}
 
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Revoke invitation
 	err = h.invitationService.RevokeInvitation(c.Request.Context(), invitationID, userID)
@@ -397,11 +381,7 @@ func (h *Handler) AcceptInvitation(c *gin.Context) {
 		return
 	}
 
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Accept invitation - returns org details directly (no extra DB query needed)
 	result, err := h.invitationService.AcceptInvitation(c.Request.Context(), req.Token, userID)
@@ -458,11 +438,7 @@ func (h *Handler) DeclineInvitation(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/invitations [get]
 func (h *Handler) GetUserInvitations(c *gin.Context) {
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Get user email
 	user, err := h.userService.GetUser(c.Request.Context(), userID)

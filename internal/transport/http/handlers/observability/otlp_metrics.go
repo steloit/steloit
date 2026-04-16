@@ -59,13 +59,7 @@ func NewOTLPMetricsHandler(
 func (h *OTLPMetricsHandler) HandleMetrics(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	// Get project ID from SDK auth middleware (already authenticated)
-	projectIDPtr, exists := middleware.GetProjectID(c)
-	if !exists || projectIDPtr == nil {
-		h.logger.Error("Project ID not found in context")
-		response.Unauthorized(c, "Authentication required")
-		return
-	}
+	projectID := middleware.MustGetProjectID(c)
 
 	// Validate Content-Type header (OTLP specification requires explicit Content-Type)
 	contentType := c.GetHeader("Content-Type")
@@ -157,7 +151,7 @@ func (h *OTLPMetricsHandler) HandleMetrics(c *gin.Context) {
 		return
 	}
 
-	h.logger.Debug("Received OTLP metrics request", "project_id", projectIDPtr.String(), "resource_metrics", len(protoReq.GetResourceMetrics()))
+	h.logger.Debug("Received OTLP metrics request", "project_id", projectID.String(), "resource_metrics", len(protoReq.GetResourceMetrics()))
 
 	// Wrap ResourceMetrics in MetricsData for converter (OTLP spec structure)
 	metricsData := &metricspb.MetricsData{
@@ -165,14 +159,14 @@ func (h *OTLPMetricsHandler) HandleMetrics(c *gin.Context) {
 	}
 
 	// Convert OTLP metrics to Brokle telemetry events using converter service
-	brokleEvents, err := h.metricsConverter.ConvertMetricsRequest(ctx, metricsData, *projectIDPtr)
+	brokleEvents, err := h.metricsConverter.ConvertMetricsRequest(ctx, metricsData, projectID)
 	if err != nil {
 		h.logger.Error("Failed to convert OTLP metrics to Brokle events", "error", err)
 		response.InternalServerError(c, "Failed to process OTLP metrics")
 		return
 	}
 
-	h.logger.Debug("Converted OTLP metrics to Brokle events", "project_id", projectIDPtr.String(), "brokle_events", len(brokleEvents))
+	h.logger.Debug("Converted OTLP metrics to Brokle events", "project_id", projectID.String(), "brokle_events", len(brokleEvents))
 
 	// NO DEDUPLICATION for metrics (metrics are timeseries data - idempotent inserts)
 	// Publish directly to Redis Streams for async processing by worker
@@ -193,7 +187,7 @@ func (h *OTLPMetricsHandler) HandleMetrics(c *gin.Context) {
 	batchID := uid.New()
 	streamMessage := &streams.TelemetryStreamMessage{
 		BatchID:   batchID,
-		ProjectID: *projectIDPtr,
+		ProjectID: projectID,
 		Events:    eventData,
 		Timestamp: uid.TimeFromID(batchID), // Use batch ID timestamp (monotonic)
 	}
@@ -206,7 +200,7 @@ func (h *OTLPMetricsHandler) HandleMetrics(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Successfully published OTLP metrics batch to Redis Streams", "project_id", projectIDPtr.String(), "batch_id", batchID.String(), "stream_id", streamID, "event_count", len(brokleEvents))
+	h.logger.Info("Successfully published OTLP metrics batch to Redis Streams", "project_id", projectID.String(), "batch_id", batchID.String(), "stream_id", streamID, "event_count", len(brokleEvents))
 
 	// OTLP spec: Return success response
 	response.Success(c, gin.H{

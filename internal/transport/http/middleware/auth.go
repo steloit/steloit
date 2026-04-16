@@ -276,22 +276,61 @@ func min(a, b int) int {
 	return b
 }
 
-// Helper functions to get auth data from Gin context
+// Helper functions to get auth data from Gin context.
+//
+// Each context value has a Get* form (returns `(value, ok)`) and a Must* form
+// (panics on missing/wrong type — caught by Recovery → 500). Use Must* in
+// handlers protected by RequireAuth where the value is a guaranteed invariant;
+// use Get* only on routes that legitimately run without auth (OptionalAuth).
 
-// GetAuthContext retrieves authentication context from Gin context
+// GetAuthContext returns the dashboard auth context if present.
 func GetAuthContext(c *gin.Context) (*auth.AuthContext, bool) {
-	authContext, exists := c.Get(AuthContextKey)
+	v, exists := c.Get(AuthContextKey)
 	if !exists {
 		return nil, false
 	}
-
-	ctx, ok := authContext.(*auth.AuthContext)
+	ctx, ok := v.(*auth.AuthContext)
 	return ctx, ok
 }
 
+// MustGetAuthContext returns the dashboard auth context. Panics if missing —
+// signals a handler attached outside RequireAuth. Caught by Recovery → 500.
+func MustGetAuthContext(c *gin.Context) *auth.AuthContext {
+	ctx, ok := GetAuthContext(c)
+	if !ok {
+		panic("middleware.MustGetAuthContext: auth context not found — protected route is missing RequireAuth middleware")
+	}
+	return ctx
+}
+
+// GetTokenClaims returns the JWT claims for the current request if present.
+func GetTokenClaims(c *gin.Context) (*auth.JWTClaims, bool) {
+	v, exists := c.Get(TokenClaimsKey)
+	if !exists {
+		return nil, false
+	}
+	claims, ok := v.(*auth.JWTClaims)
+	return claims, ok
+}
+
+// MustGetTokenClaims returns the JWT claims for the current request. Panics if
+// missing — signals a handler attached outside RequireAuth. Caught by
+// Recovery → 500.
+func MustGetTokenClaims(c *gin.Context) *auth.JWTClaims {
+	claims, ok := GetTokenClaims(c)
+	if !ok {
+		panic("middleware.MustGetTokenClaims: token claims not found — protected route is missing RequireAuth middleware")
+	}
+	return claims
+}
+
 // GetUserIDFromContext retrieves the authenticated user's ID from Gin context.
-// It returns the zero UUID and false if no user is present or the value has
-// the wrong type (e.g., if the caller forgot to apply RequireAuth first).
+// Returns the zero UUID and false if no user is present or the value has the
+// wrong type. Use this when a handler legitimately supports both authenticated
+// and unauthenticated callers (routes with OptionalAuth).
+//
+// For routes guaranteed to have run RequireAuth, prefer MustGetUserID — it
+// removes boilerplate and surfaces misconfiguration loudly via panic/Recovery.
 func GetUserIDFromContext(c *gin.Context) (uuid.UUID, bool) {
 	userID, exists := c.Get(UserIDKey)
 	if !exists {
@@ -300,6 +339,29 @@ func GetUserIDFromContext(c *gin.Context) (uuid.UUID, bool) {
 
 	id, ok := userID.(uuid.UUID)
 	return id, ok
+}
+
+// MustGetUserID returns the authenticated user's ID from the Gin context.
+//
+// It assumes RequireAuth has run and set UserIDKey to a uuid.UUID. If the key
+// is missing or has the wrong type, MustGetUserID panics with a descriptive
+// message — this signals a programming bug (a protected route was registered
+// without RequireAuth). The panic is caught by the Recovery middleware and
+// returned to the client as an HTTP 500 with a request ID for log correlation.
+//
+// This follows the idiomatic Go Must* convention (regexp.MustCompile,
+// template.Must, uuid.Must) and Gin's own BasicAuth pattern
+// (c.MustGet(gin.AuthUserKey)): terminate loudly when an invariant the code
+// structurally depends on is violated, rather than paper over a misconfigured
+// route with a misleading 401.
+//
+// Use GetUserIDFromContext instead on routes protected by OptionalAuth.
+func MustGetUserID(c *gin.Context) uuid.UUID {
+	id, ok := GetUserIDFromContext(c)
+	if !ok {
+		panic("middleware.MustGetUserID: user not found in context — protected route is missing RequireAuth middleware")
+	}
+	return id
 }
 
 // Context Resolution Helper Functions

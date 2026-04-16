@@ -157,11 +157,7 @@ func (h *Handler) List(c *gin.Context) {
 	}
 
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Get user organizations
 	organizations, err := h.organizationService.GetUserOrganizations(c.Request.Context(), userID)
@@ -256,11 +252,7 @@ func (h *Handler) Create(c *gin.Context) {
 	}
 
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Create organization request
 	createReq := &organization.CreateOrganizationRequest{
@@ -324,11 +316,7 @@ func (h *Handler) Get(c *gin.Context) {
 	}
 
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Parse organization ID
 	orgID, err := uuid.Parse(req.OrgID)
@@ -410,11 +398,7 @@ func (h *Handler) Update(c *gin.Context) {
 	}
 
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Parse organization ID
 	orgID, err := uuid.Parse(uriReq.OrgID)
@@ -503,11 +487,7 @@ func (h *Handler) Delete(c *gin.Context) {
 	}
 
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Parse organization ID
 	orgID, err := uuid.Parse(req.OrgID)
@@ -582,11 +562,7 @@ func (h *Handler) ListMembers(c *gin.Context) {
 	}
 
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Parse organization ID
 	orgID, err := uuid.Parse(req.OrgID)
@@ -741,11 +717,7 @@ func (h *Handler) InviteMember(c *gin.Context) {
 	req.OrgID = uriReq.OrgID
 
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Parse organization ID
 	orgID, err := uuid.Parse(req.OrgID)
@@ -841,11 +813,7 @@ func (h *Handler) RemoveMember(c *gin.Context) {
 	}
 
 	// Get user ID from context (the user making the request)
-	currentUserID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	currentUserID := middleware.MustGetUserID(c)
 
 	// Parse organization ID
 	orgID, err := uuid.Parse(req.OrgID)

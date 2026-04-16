@@ -98,11 +98,7 @@ type UpdateProjectRequest struct {
 // @Router /api/v1/projects [get]
 func (h *Handler) List(c *gin.Context) {
 	// Extract user ID from JWT
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Bind and validate query parameters
 	var req ListRequest
@@ -270,11 +266,7 @@ func (h *Handler) List(c *gin.Context) {
 // @Router /api/v1/projects [post]
 func (h *Handler) Create(c *gin.Context) {
 	// Extract user ID from JWT
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Bind and validate request body
 	var req CreateProjectRequest
@@ -367,11 +359,7 @@ func (h *Handler) Create(c *gin.Context) {
 // @Router /api/v1/projects/{projectId} [get]
 func (h *Handler) Get(c *gin.Context) {
 	// Extract user ID from JWT
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Parse and validate project ID from path parameter
 	projectID, err := uuid.Parse(c.Param("projectId"))
@@ -446,11 +434,7 @@ func (h *Handler) Get(c *gin.Context) {
 // @Router /api/v1/projects/{projectId} [put]
 func (h *Handler) Update(c *gin.Context) {
 	// Extract user ID from JWT
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Parse and validate project ID from path parameter
 	projectID, err := uuid.Parse(c.Param("projectId"))
@@ -548,11 +532,7 @@ func (h *Handler) Update(c *gin.Context) {
 // @Router /api/v1/projects/{projectId} [delete]
 func (h *Handler) Delete(c *gin.Context) {
 	// Extract user ID from JWT
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Parse and validate project ID from path parameter
 	projectID, err := uuid.Parse(c.Param("projectId"))
@@ -627,11 +607,7 @@ func (h *Handler) Delete(c *gin.Context) {
 // @Router /api/v1/projects/{projectId}/archive [post]
 func (h *Handler) Archive(c *gin.Context) {
 	// Extract user ID from JWT
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Parse and validate project ID from path parameter
 	projectID, err := uuid.Parse(c.Param("projectId"))
@@ -692,11 +668,7 @@ func (h *Handler) Archive(c *gin.Context) {
 // @Router /api/v1/projects/{projectId}/unarchive [post]
 func (h *Handler) Unarchive(c *gin.Context) {
 	// Extract user ID from JWT
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Parse and validate project ID from path parameter
 	projectID, err := uuid.Parse(c.Param("projectId"))

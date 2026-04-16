@@ -436,11 +436,7 @@ func (h *Handler) CreateTraceScore(c *gin.Context) {
 	}
 
 	// Get user ID from JWT (for audit trail)
-	userID, exists := middleware.GetUserIDFromContext(c)
-	if !exists {
-		response.Error(c, appErrors.NewUnauthorizedError("authentication required"))
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Parse request body
 	var req CreateAnnotationRequest
@@ -614,11 +610,7 @@ func (h *Handler) DeleteTraceScore(c *gin.Context) {
 	_ = projectIDStr // used for authorization context
 
 	// Get user ID from JWT
-	userID, exists := middleware.GetUserIDFromContext(c)
-	if !exists {
-		response.Error(c, appErrors.NewUnauthorizedError("authentication required"))
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Get the score to verify ownership
 	score, err := h.services.GetScoreService().GetScoreByID(ctx, scoreID)

@@ -172,11 +172,7 @@ func (h *ItemHandler) ClaimNext(c *gin.Context) {
 		return
 	}
 
-	userID, exists := middleware.GetUserIDFromContext(c)
-	if !exists {
-		response.Unauthorized(c, "User authentication required")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Check user has at least annotator role on this queue
 	if err := h.assignmentService.CheckAccess(
@@ -245,11 +241,7 @@ func (h *ItemHandler) Complete(c *gin.Context) {
 		return
 	}
 
-	userID, exists := middleware.GetUserIDFromContext(c)
-	if !exists {
-		response.Unauthorized(c, "User authentication required")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Check user has at least annotator role on this queue
 	if err := h.assignmentService.CheckAccess(
@@ -318,11 +310,7 @@ func (h *ItemHandler) Skip(c *gin.Context) {
 		return
 	}
 
-	userID, exists := middleware.GetUserIDFromContext(c)
-	if !exists {
-		response.Unauthorized(c, "User authentication required")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Check user has at least annotator role on this queue
 	if err := h.assignmentService.CheckAccess(
@@ -382,11 +370,7 @@ func (h *ItemHandler) ReleaseLock(c *gin.Context) {
 		return
 	}
 
-	userID, exists := middleware.GetUserIDFromContext(c)
-	if !exists {
-		response.Unauthorized(c, "User authentication required")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Check user has at least annotator role on this queue
 	if err := h.assignmentService.CheckAccess(
@@ -497,12 +481,7 @@ func (h *ItemHandler) GetStats(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse "Queue not found"
 // @Router /v1/annotation-queues/{queueId}/items [post]
 func (h *ItemHandler) AddItemsSDK(c *gin.Context) {
-	projectIDPtr, exists := middleware.GetProjectID(c)
-	if !exists || projectIDPtr == nil {
-		response.Unauthorized(c, "API key authentication required")
-		return
-	}
-	projectID := *projectIDPtr
+	projectID := middleware.MustGetProjectID(c)
 
 	queueID, err := uuid.Parse(c.Param("queueId"))
 	if err != nil {
@@ -558,12 +537,7 @@ func (h *ItemHandler) AddItemsSDK(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Router /v1/annotation-queues/{queueId}/items [get]
 func (h *ItemHandler) ListItemsSDK(c *gin.Context) {
-	projectIDPtr, exists := middleware.GetProjectID(c)
-	if !exists || projectIDPtr == nil {
-		response.Unauthorized(c, "API key authentication required")
-		return
-	}
-	projectID := *projectIDPtr
+	projectID := middleware.MustGetProjectID(c)
 
 	queueID, err := uuid.Parse(c.Param("queueId"))
 	if err != nil {

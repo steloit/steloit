@@ -33,7 +33,7 @@ You will review code for:
   - API keys must follow format: `bk_{40_char_random}`
   - No JWT authentication on SDK routes
 - **Dashboard Routes** (`/api/v1/*`): Must use JWT authentication
-  - Extract user with `middleware.GetUserIDFromContext()`, `middleware.GetOrganizationID()`
+  - Extract user with `middleware.MustGetUserID()` (mandatory auth) or `middleware.GetUserIDFromContext()` (optional auth); `middleware.GetOrganizationID()`
   - No API key authentication on dashboard routes
 - **Rate Limiting**: SDK routes use API key-based, dashboard routes use IP/user-based
 

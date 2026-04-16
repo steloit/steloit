@@ -556,26 +556,8 @@ func (h *Handler) RefreshToken(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse "User not found"
 // @Router /api/v1/auth/me [get]
 func (h *Handler) GetCurrentUser(c *gin.Context) {
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
-
-	// Get token claims for expiry information
-	claimsValue, exists := c.Get("token_claims")
-	if !exists {
-		h.logger.Error("Token claims not found in context")
-		response.Unauthorized(c, "Authentication required")
-		return
-	}
-
-	claims, ok := claimsValue.(*auth.JWTClaims)
-	if !ok {
-		h.logger.Error("Invalid token claims type in context")
-		response.InternalServerError(c, "Internal error")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
+	claims := middleware.MustGetTokenClaims(c)
 
 	// Get user data
 	user, err := h.userService.GetUser(c.Request.Context(), userID)
@@ -693,23 +675,7 @@ func (h *Handler) ResetPassword(c *gin.Context) {
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /api/v1/auth/logout [post]
 func (h *Handler) Logout(c *gin.Context) {
-	// Get token claims from context (set by auth middleware)
-	claimsValue, exists := c.Get("token_claims")
-	if !exists {
-		h.logger.Error("Token claims not found in context")
-		// Clear cookies anyway even if no claims
-		clearAuthCookies(c.Writer, h.config.Server.CookieDomain)
-		response.Unauthorized(c, "Authentication required")
-		return
-	}
-
-	claims, ok := claimsValue.(*auth.JWTClaims)
-	if !ok {
-		h.logger.Error("Invalid token claims type in context")
-		clearAuthCookies(c.Writer, h.config.Server.CookieDomain)
-		response.InternalServerError(c, "Internal error")
-		return
-	}
+	claims := middleware.MustGetTokenClaims(c)
 
 	// Logout user by blacklisting current access token JTI
 	err := h.authService.Logout(c.Request.Context(), claims.JWTID, claims.UserID)
@@ -732,11 +698,7 @@ func (h *Handler) Logout(c *gin.Context) {
 
 // GetProfile returns current user profile
 func (h *Handler) GetProfile(c *gin.Context) {
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Get current user
 	user, err := h.userService.GetUser(c.Request.Context(), userID)
@@ -768,11 +730,7 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Create user update request
 	updateReq := &user.UpdateUserRequest{
@@ -823,11 +781,7 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 		return
 	}
 
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Change password
 	err := h.userService.ChangePassword(c.Request.Context(), userID, req.CurrentPassword, req.NewPassword)
@@ -950,11 +904,7 @@ func (h *Handler) ListSessions(c *gin.Context) {
 	}
 
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Get user sessions (using GetUserSessions method)
 	sessions, err := h.authService.GetUserSessions(c.Request.Context(), userID)
@@ -1046,11 +996,7 @@ func (h *Handler) GetSession(c *gin.Context) {
 	}
 
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Get all user sessions first, then filter by session ID
 	sessions, err := h.authService.GetUserSessions(c.Request.Context(), userID)
@@ -1107,11 +1053,7 @@ func (h *Handler) RevokeSession(c *gin.Context) {
 	}
 
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Revoke session
 	err := h.authService.RevokeSession(c.Request.Context(), userID, req.SessionID)
@@ -1151,11 +1093,7 @@ func (h *Handler) RevokeAllSessions(c *gin.Context) {
 	c.ShouldBindJSON(&req)
 
 	// Get user ID from context
-	userID, ok := middleware.GetUserIDFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	// Get current sessions count before revoking
 	sessions, err := h.authService.GetUserSessions(c.Request.Context(), userID)

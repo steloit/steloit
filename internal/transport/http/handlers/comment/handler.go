@@ -52,11 +52,7 @@ func (h *Handler) CreateComment(c *gin.Context) {
 		return
 	}
 
-	userID, exists := middleware.GetUserIDFromContext(c)
-	if !exists {
-		response.Error(c, appErrors.NewUnauthorizedError("authentication required"))
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	var req commentDomain.CreateCommentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -192,11 +188,7 @@ func (h *Handler) UpdateComment(c *gin.Context) {
 		return
 	}
 
-	userID, exists := middleware.GetUserIDFromContext(c)
-	if !exists {
-		response.Error(c, appErrors.NewUnauthorizedError("authentication required"))
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	var req commentDomain.UpdateCommentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -250,11 +242,7 @@ func (h *Handler) DeleteComment(c *gin.Context) {
 		return
 	}
 
-	userID, exists := middleware.GetUserIDFromContext(c)
-	if !exists {
-		response.Error(c, appErrors.NewUnauthorizedError("authentication required"))
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	if err := h.service.DeleteComment(c.Request.Context(), projectID, traceID, commentID, userID); err != nil {
 		response.Error(c, err)
@@ -302,11 +290,7 @@ func (h *Handler) ToggleReaction(c *gin.Context) {
 		return
 	}
 
-	userID, exists := middleware.GetUserIDFromContext(c)
-	if !exists {
-		response.Error(c, appErrors.NewUnauthorizedError("authentication required"))
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	var req commentDomain.ToggleReactionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -361,11 +345,7 @@ func (h *Handler) CreateReply(c *gin.Context) {
 		return
 	}
 
-	userID, exists := middleware.GetUserIDFromContext(c)
-	if !exists {
-		response.Error(c, appErrors.NewUnauthorizedError("authentication required"))
-		return
-	}
+	userID := middleware.MustGetUserID(c)
 
 	var req commentDomain.CreateCommentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
