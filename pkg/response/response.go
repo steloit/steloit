@@ -11,6 +11,15 @@ import (
 	"brokle/pkg/pagination"
 )
 
+// All API endpoints should use the helpers in this package (Success, Error, NoContent, etc.)
+// to return responses wrapped in the standard APIResponse envelope.
+//
+// Intentional exceptions that use c.JSON() directly:
+//   - Health endpoints (/health, /health/ready, /health/live): infrastructure endpoints
+//     consumed by K8s probes and monitoring tools that expect flat responses.
+//   - Billing export JSON (usage_handler.go exportJSON): file download endpoint where
+//     Content-Disposition is set and the raw JSON is the downloadable file content.
+
 // APIResponse represents the standard API response format
 // @Description Standard API response wrapper
 type APIResponse struct {

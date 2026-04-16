@@ -61,6 +61,8 @@ func (h *Handler) Check(c *gin.Context) {
 		Uptime:    time.Since(h.startTime).String(),
 	}
 
+	// Direct c.JSON: infrastructure endpoint consumed by K8s probes and monitoring
+	// tools that expect a flat HealthResponse — not wrapped in APIResponse envelope.
 	c.JSON(http.StatusOK, response)
 }
 
@@ -109,6 +111,8 @@ func (h *Handler) Ready(c *gin.Context) {
 		Checks:    checks,
 	}
 
+	// Direct c.JSON: infrastructure endpoint with dynamic status code (200/503).
+	// SuccessWithStatus would produce {success: true} on 503, which is contradictory.
 	c.JSON(statusCode, response)
 }
 
@@ -126,6 +130,7 @@ func (h *Handler) Live(c *gin.Context) {
 		Uptime:    time.Since(h.startTime).String(),
 	}
 
+	// Direct c.JSON: infrastructure endpoint — see Check() comment.
 	c.JSON(http.StatusOK, response)
 }
 

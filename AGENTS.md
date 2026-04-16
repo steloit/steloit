@@ -45,6 +45,10 @@ Frontend direct commands (inside `web/`): `pnpm test`, `pnpm test:coverage`, `pn
 - Do not create files manually under `migrations/`.
 - Implement backend changes using the Repository → Service → Handler flow.
 - In services, construct errors with `AppError` constructors; in handlers, return errors through `response.Error()`.
+- **Handler validation errors** must use `response.Error(c, appErrors.NewValidationError(message, details))` — never `response.BadRequest()`, never `response.ValidationError()` directly. Messages use Title Case (`"Invalid project ID"`), details use lowercase (`"projectId must be a valid ULID"`).
+- **DELETE handlers** must return `response.NoContent(c)` (HTTP 204) — never `response.Success(c, gin.H{"message": ...})`.
+- **UPDATE handlers** must return the updated entity via `response.Success(c, entity)` — never a message-only response (auth security flows like logout/password reset are the exception).
+- **Parameter parsing** uses inline `ulid.Parse(c.Param(...))` and `c.ShouldBindJSON(&req)` directly in handlers — no shared wrapper helpers. This follows the Go/Gin ecosystem convention (PhotoPrism, Apache Answer).
 
 ## Known Gotchas
 
@@ -53,7 +57,7 @@ Frontend direct commands (inside `web/`): `pnpm test`, `pnpm test:coverage`, `pn
 1. **Swagger docs are generated, not tracked** — `docs/` is gitignored. Run `make generate` after changing API annotations. If tests fail with "cannot find package brokle/docs", run `make generate`.
 2. **Migration files must use the CLI** — `go run cmd/migrate/main.go -db <postgres|clickhouse> -name <name> create`. Manual files in `migrations/` are silently ignored by the framework.
 3. **`json.RawMessage` fields in domain entities** — Several domain types use `json.RawMessage` for provider-agnostic JSON (`observability.Score.Metadata`, `prompt.ModelConfig.Tools/ToolChoice/ResponseFormat`). Always use DTO conversion in handlers; never serialize domain entities with `json.RawMessage` fields directly via `response.Success()`.
-4. **Error import alias** — Services import `appErrors "brokle/pkg/errors"` (not `errors`). Handlers never construct `AppError` directly; they call `response.Error(c, err)`.
+4. **Error import alias** — Services and handlers import `appErrors "brokle/pkg/errors"` (not `errors`). Handlers use `response.Error(c, appErrors.NewValidationError(msg, details))` for validation failures and `response.Error(c, err)` to forward service errors. The canonical validation pattern is: `response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))`.
 5. **Transaction injection only works with PostgreSQL repos** — Repositories using `*gorm.DB` extract transactions from context via `shared.GetDB(ctx, r.db)`. ClickHouse repositories use `clickhouse.Conn` directly (raw driver, no GORM) — transaction injection does not apply to them.
 6. **Dual auth context keys** — SDK routes (`/v1/*`) set `SDKAuthContextKey`, `APIKeyIDKey`, `ProjectIDKey`. Dashboard routes (`/api/v1/*`) set `AuthContextKey`, `UserIDKey`. Using `GetUserID()` in an SDK handler or `GetSDKAuthContext()` in a dashboard handler silently returns zero values. Always match the getter to the route group.
 7. **Dual ports** — HTTP API runs on port **8080**, gRPC (OTLP telemetry ingestion) runs on port **4317**. They are independent servers.
@@ -89,6 +93,7 @@ Frontend direct commands (inside `web/`): `pnpm test`, `pnpm test:coverage`, `pn
 - 2026-04-14: Changing a domain entity field type (e.g., `string` → `json.RawMessage`) requires auditing ALL handlers that serialize that entity. DTO conversion helpers (`toScoreResponse()`) must be used at every endpoint — missing one creates a serialization regression. Swagger annotations must also be updated to reference the DTO type, not the domain entity.
 - 2026-04-14: Synchronous email sends using the HTTP request context are silently dropped when the client disconnects. Always detach email sends into a goroutine with `context.WithTimeout(context.Background(), 30*time.Second)` — matching the invitation service pattern at `internal/core/services/organization/invitation_service.go:147`.
 - 2026-04-14: Swagger `@Success` annotations must reference the DTO type actually returned by the handler, not the domain entity. Stale annotations cause `make generate` to produce incorrect OpenAPI schemas that mislead SDK clients.
+- 2026-04-15: Handler-layer consistency was enforced by standardizing on ONE error pattern (`response.Error(c, appErrors.NewValidationError(...))`) and inline `ulid.Parse(c.Param(...))` / `c.ShouldBindJSON(&req)` across all 41+ handler files. Shared param extraction helpers were tried and removed — the Go/Gin ecosystem (PhotoPrism, Apache Answer) uses inline parsing, not abstractions. The `evaluation` domain retains a package-local `extractProjectID()` for dual SDK/Dashboard routes.
 
 ## Current Product Focus
 

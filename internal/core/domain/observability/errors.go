@@ -25,7 +25,7 @@ var (
 	ErrQualityScoreNotFound  = errors.New("quality score not found")
 	ErrInvalidQualityScoreID = errors.New("invalid quality score ID")
 	ErrInvalidScoreValue     = errors.New("invalid score value")
-	ErrInvalidScoreType = errors.New("invalid score type")
+	ErrInvalidScoreType      = errors.New("invalid score type")
 	ErrEvaluatorNotFound     = errors.New("evaluator not found")
 	ErrDuplicateQualityScore = errors.New("duplicate quality score for the same trace/span and score name")
 
@@ -52,55 +52,6 @@ var (
 	ErrInvalidPagination      = errors.New("invalid pagination parameters")
 )
 
-// ObservabilityError represents a structured error for observability operations
-type ObservabilityError struct {
-	Cause   error                  `json:"-"`
-	Details map[string]interface{} `json:"details,omitempty"`
-	Code    string                 `json:"code"`
-	Message string                 `json:"message"`
-}
-
-// Error implements the error interface
-func (e *ObservabilityError) Error() string {
-	if e.Cause != nil {
-		return fmt.Sprintf("%s: %v", e.Message, e.Cause)
-	}
-	return e.Message
-}
-
-// Unwrap returns the underlying cause
-func (e *ObservabilityError) Unwrap() error {
-	return e.Cause
-}
-
-// NewObservabilityError creates a new observability error
-func NewObservabilityError(code, message string) *ObservabilityError {
-	return &ObservabilityError{
-		Code:    code,
-		Message: message,
-		Details: make(map[string]interface{}),
-	}
-}
-
-// NewObservabilityErrorWithCause creates a new observability error with a cause
-func NewObservabilityErrorWithCause(code, message string, cause error) *ObservabilityError {
-	return &ObservabilityError{
-		Code:    code,
-		Message: message,
-		Details: make(map[string]interface{}),
-		Cause:   cause,
-	}
-}
-
-// WithDetail adds a detail to the error
-func (e *ObservabilityError) WithDetail(key string, value interface{}) *ObservabilityError {
-	if e.Details == nil {
-		e.Details = make(map[string]interface{})
-	}
-	e.Details[key] = value
-	return e
-}
-
 // Error codes for different types of errors
 const (
 	// Trace error codes
@@ -123,7 +74,7 @@ const (
 	ErrCodeQualityScoreNotFound  = "QUALITY_SCORE_NOT_FOUND"
 	ErrCodeInvalidQualityScoreID = "INVALID_QUALITY_SCORE_ID"
 	ErrCodeInvalidScoreValue     = "INVALID_SCORE_VALUE"
-	ErrCodeInvalidScoreType = "INVALID_SCORE_TYPE"
+	ErrCodeInvalidScoreType      = "INVALID_SCORE_TYPE"
 	ErrCodeEvaluatorNotFound     = "EVALUATOR_NOT_FOUND"
 	ErrCodeDuplicateQualityScore = "DUPLICATE_QUALITY_SCORE"
 
@@ -150,112 +101,66 @@ const (
 	ErrCodeInvalidPagination      = "INVALID_PAGINATION"
 )
 
-// Convenience functions for creating common errors
+// Constructor functions for contextualized errors
 
-// NewTraceNotFoundError creates a trace not found error
-func NewTraceNotFoundError(traceID string) *ObservabilityError {
-	return NewObservabilityError(ErrCodeTraceNotFound, "trace not found").
-		WithDetail("trace_id", traceID)
+func NewTraceNotFoundError(traceID string) error {
+	return fmt.Errorf("%w: %s", ErrTraceNotFound, traceID)
 }
 
-// NewSpanNotFoundError creates a span not found error
-func NewSpanNotFoundError(spanID string) *ObservabilityError {
-	return NewObservabilityError(ErrCodeSpanNotFound, "span not found").
-		WithDetail("span_id", spanID)
+func NewSpanNotFoundError(spanID string) error {
+	return fmt.Errorf("%w: %s", ErrSpanNotFound, spanID)
 }
 
-// ValidationError represents a field validation error
+func NewUnauthorizedError(resource string) error {
+	return fmt.Errorf("%w: %s", ErrUnauthorizedAccess, resource)
+}
+
+func NewInsufficientPermissionsError(operation string) error {
+	return fmt.Errorf("%w: %s", ErrInsufficientPermissions, operation)
+}
+
+func NewBatchOperationError(operation string, cause error) error {
+	return fmt.Errorf("%w: %s: %w", ErrBatchOperationFailed, operation, cause)
+}
+
+func NewResourceLimitError(resource string, limit int) error {
+	return fmt.Errorf("%w: %s (limit %d)", ErrResourceLimitExceeded, resource, limit)
+}
+
+// ValidationError represents a field validation error (used as a DTO by ValidateSpanQueryRequest)
 type ValidationError struct {
 	Field   string `json:"field"`
 	Message string `json:"message"`
 }
 
-// NewValidationError creates a validation error with field details
-func NewValidationError(field, message string) *ObservabilityError {
-	return NewObservabilityError(ErrCodeValidationFailed, "validation failed").
-		WithDetail("field", field).
-		WithDetail("message", message)
-}
+// Classification helpers
 
-// NewValidationErrors creates a validation error with multiple field errors
-func NewValidationErrors(fieldErrors []ValidationError) *ObservabilityError {
-	err := NewObservabilityError(ErrCodeValidationFailed, "validation failed")
-
-	fields := make(map[string]string)
-	for _, fieldErr := range fieldErrors {
-		fields[fieldErr.Field] = fieldErr.Message
-	}
-
-	return err.WithDetail("field_errors", fields)
-}
-
-// NewUnauthorizedError creates an unauthorized access error
-func NewUnauthorizedError(resource string) *ObservabilityError {
-	return NewObservabilityError(ErrCodeUnauthorizedAccess, "unauthorized access").
-		WithDetail("resource", resource)
-}
-
-// NewInsufficientPermissionsError creates an insufficient permissions error
-func NewInsufficientPermissionsError(operation string) *ObservabilityError {
-	return NewObservabilityError(ErrCodeInsufficientPermissions, "insufficient permissions").
-		WithDetail("operation", operation)
-}
-
-// NewBatchOperationError creates a batch operation error
-func NewBatchOperationError(operation string, cause error) *ObservabilityError {
-	return NewObservabilityErrorWithCause(ErrCodeBatchOperationFailed, "batch operation failed", cause).
-		WithDetail("operation", operation)
-}
-
-// NewResourceLimitError creates a resource limit exceeded error
-func NewResourceLimitError(resource string, limit int) *ObservabilityError {
-	return NewObservabilityError(ErrCodeResourceLimitExceeded, "resource limit exceeded").
-		WithDetail("resource", resource).
-		WithDetail("limit", limit)
-}
-
-// IsNotFoundError checks if the error is a not found error
 func IsNotFoundError(err error) bool {
-	if obsErr, ok := err.(*ObservabilityError); ok {
-		return obsErr.Code == ErrCodeTraceNotFound ||
-			obsErr.Code == ErrCodeSpanNotFound ||
-			obsErr.Code == ErrCodeQualityScoreNotFound ||
-			obsErr.Code == ErrCodeEvaluatorNotFound
-	}
-	return false
+	return errors.Is(err, ErrTraceNotFound) ||
+		errors.Is(err, ErrSpanNotFound) ||
+		errors.Is(err, ErrQualityScoreNotFound) ||
+		errors.Is(err, ErrEvaluatorNotFound)
 }
 
-// IsValidationError checks if the error is a validation error
 func IsValidationError(err error) bool {
-	if obsErr, ok := err.(*ObservabilityError); ok {
-		return obsErr.Code == ErrCodeValidationFailed ||
-			obsErr.Code == ErrCodeInvalidTraceID ||
-			obsErr.Code == ErrCodeInvalidSpanID ||
-			obsErr.Code == ErrCodeInvalidQualityScoreID ||
-			obsErr.Code == ErrCodeInvalidSpanType ||
-			obsErr.Code == ErrCodeInvalidScoreValue ||
-			obsErr.Code == ErrCodeInvalidScoreType
-	}
-	return false
+	return errors.Is(err, ErrValidationFailed) ||
+		errors.Is(err, ErrInvalidTraceID) ||
+		errors.Is(err, ErrInvalidSpanID) ||
+		errors.Is(err, ErrInvalidQualityScoreID) ||
+		errors.Is(err, ErrInvalidSpanType) ||
+		errors.Is(err, ErrInvalidScoreValue) ||
+		errors.Is(err, ErrInvalidScoreType)
 }
 
-// IsUnauthorizedError checks if the error is an authorization error
 func IsUnauthorizedError(err error) bool {
-	if obsErr, ok := err.(*ObservabilityError); ok {
-		return obsErr.Code == ErrCodeUnauthorizedAccess ||
-			obsErr.Code == ErrCodeInsufficientPermissions
-	}
-	return false
+	return errors.Is(err, ErrUnauthorizedAccess) ||
+		errors.Is(err, ErrInsufficientPermissions)
 }
 
-// IsConflictError checks if the error is a conflict error
 func IsConflictError(err error) bool {
-	if obsErr, ok := err.(*ObservabilityError); ok {
-		return obsErr.Code == ErrCodeTraceAlreadyExists ||
-			obsErr.Code == ErrCodeSpanAlreadyExists ||
-			obsErr.Code == ErrCodeExternalTraceIDExists ||
-			obsErr.Code == ErrCodeDuplicateQualityScore ||
-			obsErr.Code == ErrCodeConcurrentModification
-	}
-	return false
+	return errors.Is(err, ErrTraceAlreadyExists) ||
+		errors.Is(err, ErrSpanAlreadyExists) ||
+		errors.Is(err, ErrExternalTraceIDExists) ||
+		errors.Is(err, ErrDuplicateQualityScore) ||
+		errors.Is(err, ErrConcurrentModification)
 }

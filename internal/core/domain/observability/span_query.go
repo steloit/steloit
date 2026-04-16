@@ -2,6 +2,7 @@ package observability
 
 import (
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -219,23 +220,18 @@ const (
 )
 
 // NewInvalidFilterSyntaxError creates a detailed filter syntax error.
-func NewInvalidFilterSyntaxError(position int, detail string) *ObservabilityError {
-	return NewObservabilityError(ErrCodeInvalidFilterSyntax, "invalid filter syntax").
-		WithDetail("position", position).
-		WithDetail("detail", detail)
+func NewInvalidFilterSyntaxError(position int, detail string) error {
+	return fmt.Errorf("%w: position %d: %s", ErrInvalidFilterSyntax, position, detail)
 }
 
 // NewFilterTooComplexError creates a filter complexity error.
-func NewFilterTooComplexError(clauseCount int) *ObservabilityError {
-	return NewObservabilityError(ErrCodeFilterTooComplex, "filter too complex").
-		WithDetail("clause_count", clauseCount).
-		WithDetail("max_clauses", SpanQueryMaxClauses)
+func NewFilterTooComplexError(clauseCount int) error {
+	return fmt.Errorf("%w: %d clauses (max %d)", ErrFilterTooComplex, clauseCount, SpanQueryMaxClauses)
 }
 
 // NewUnsupportedOperatorError creates an unsupported operator error.
-func NewUnsupportedOperatorError(operator string) *ObservabilityError {
-	return NewObservabilityError(ErrCodeUnsupportedOperator, "unsupported operator").
-		WithDetail("operator", operator)
+func NewUnsupportedOperatorError(operator string) error {
+	return fmt.Errorf("%w: %s", ErrUnsupportedOperator, operator)
 }
 
 // ValidateSpanQueryRequest validates the span query request parameters.

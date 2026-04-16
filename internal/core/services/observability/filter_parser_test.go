@@ -593,14 +593,8 @@ func TestFilterParser_Parse_ErrorCases(t *testing.T) {
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
-			if tt.wantError != nil && !errors.Is(err, tt.wantError) {
-				// Check if it's wrapped
-				if obsErr, ok := err.(*obsDomain.ObservabilityError); ok {
-					// OK - it's a structured error
-					_ = obsErr
-				} else if !containsError(err, tt.wantError) {
-					t.Errorf("expected error containing %v, got %v", tt.wantError, err)
-				}
+			if tt.wantError != nil && !errors.Is(err, tt.wantError) && !containsError(err, tt.wantError) {
+				t.Errorf("expected error containing %v, got %v", tt.wantError, err)
 			}
 		})
 	}

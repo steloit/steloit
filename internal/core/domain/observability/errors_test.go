@@ -7,59 +7,64 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ============================================================================
-// HIGH-VALUE TESTS: Error Wrapping and Chaining
-// ============================================================================
-
-// TestErrorWrapping tests that errors can be unwrapped correctly
 func TestErrorWrapping(t *testing.T) {
-	originalErr := errors.New("database connection failed")
-	wrappedErr := NewObservabilityErrorWithCause(
-		ErrCodeBatchOperationFailed,
-		"failed to process batch",
-		originalErr,
-	)
+	err := NewTraceNotFoundError("trace-abc")
 
-	// Test that we can unwrap to get the original error
-	assert.ErrorIs(t, wrappedErr, originalErr)
-
-	// Test that error message includes both wrapped and original
-	assert.Contains(t, wrappedErr.Error(), "failed to process batch")
-	assert.Contains(t, wrappedErr.Error(), "database connection failed")
+	assert.ErrorIs(t, err, ErrTraceNotFound)
+	assert.Contains(t, err.Error(), "trace-abc")
+	assert.Contains(t, err.Error(), "trace not found")
 }
 
-// TestErrorChaining tests multi-level error wrapping
 func TestErrorChaining(t *testing.T) {
-	// Create a chain of errors
 	dbErr := errors.New("connection timeout")
-	repoErr := NewObservabilityErrorWithCause(ErrCodeBatchOperationFailed, "repository error", dbErr)
-	serviceErr := NewObservabilityErrorWithCause(ErrCodeBatchOperationFailed, "service error", repoErr)
+	batchErr := NewBatchOperationError("bulk insert", dbErr)
 
-	// Verify we can unwrap through the chain
-	assert.ErrorIs(t, serviceErr, repoErr)
-	assert.ErrorIs(t, serviceErr, dbErr)
+	// Must unwrap to both the sentinel AND the original cause
+	assert.ErrorIs(t, batchErr, ErrBatchOperationFailed)
+	assert.ErrorIs(t, batchErr, dbErr, "cause must be unwrappable via errors.Is")
+	assert.Contains(t, batchErr.Error(), "bulk insert")
+	assert.Contains(t, batchErr.Error(), "connection timeout")
 }
 
-// TestObservabilityError_WithDetail tests detail accumulation
-func TestObservabilityError_WithDetail(t *testing.T) {
-	err := NewObservabilityError("TEST_CODE", "test message")
-
-	// Add first detail
-	err.WithDetail("key1", "value1")
-	assert.Equal(t, "value1", err.Details["key1"])
-
-	// Add second detail
-	err.WithDetail("key2", 123)
-	assert.Equal(t, "value1", err.Details["key1"])
-	assert.Equal(t, 123, err.Details["key2"])
-
-	// Add detail with nil Details (should initialize)
-	err2 := &ObservabilityError{
-		Code:    "TEST",
-		Message: "test",
-		Details: nil,
+func TestConstructors(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		sentinel error
+		contains string
+	}{
+		{"TraceNotFound", NewTraceNotFoundError("t1"), ErrTraceNotFound, "t1"},
+		{"SpanNotFound", NewSpanNotFoundError("s1"), ErrSpanNotFound, "s1"},
+		{"Unauthorized", NewUnauthorizedError("traces"), ErrUnauthorizedAccess, "traces"},
+		{"InsufficientPermissions", NewInsufficientPermissionsError("delete"), ErrInsufficientPermissions, "delete"},
+		{"ResourceLimit", NewResourceLimitError("spans", 1000), ErrResourceLimitExceeded, "1000"},
+		{"FilterTooComplex", NewFilterTooComplexError(50), ErrFilterTooComplex, "50"},
+		{"UnsupportedOperator", NewUnsupportedOperatorError("LIKE"), ErrUnsupportedOperator, "LIKE"},
+		{"InvalidFilterSyntax", NewInvalidFilterSyntaxError(5, "unexpected token"), ErrInvalidFilterSyntax, "unexpected token"},
 	}
-	err2.WithDetail("key", "value")
-	assert.NotNil(t, err2.Details)
-	assert.Equal(t, "value", err2.Details["key"])
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.ErrorIs(t, tt.err, tt.sentinel)
+			assert.Contains(t, tt.err.Error(), tt.contains)
+		})
+	}
+}
+
+func TestClassifiers(t *testing.T) {
+	assert.True(t, IsNotFoundError(NewTraceNotFoundError("t1")))
+	assert.True(t, IsNotFoundError(NewSpanNotFoundError("s1")))
+	assert.False(t, IsNotFoundError(NewUnauthorizedError("x")))
+
+	assert.True(t, IsUnauthorizedError(NewUnauthorizedError("x")))
+	assert.True(t, IsUnauthorizedError(NewInsufficientPermissionsError("x")))
+	assert.False(t, IsUnauthorizedError(NewTraceNotFoundError("x")))
+
+	assert.True(t, IsConflictError(ErrTraceAlreadyExists))
+	assert.True(t, IsConflictError(ErrDuplicateQualityScore))
+	assert.False(t, IsConflictError(ErrTraceNotFound))
+
+	assert.True(t, IsValidationError(ErrInvalidTraceID))
+	assert.True(t, IsValidationError(ErrInvalidScoreType))
+	assert.False(t, IsValidationError(ErrTraceNotFound))
 }

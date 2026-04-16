@@ -307,6 +307,8 @@ func (h *UsageHandler) exportJSON(c *gin.Context, usage []*billing.BillableUsage
 
 	filename := "usage_export_" + from.Format("2006-01-02") + "_to_" + to.Format("2006-01-02") + ".json"
 	c.Header("Content-Disposition", "attachment; filename="+filename)
+	// Direct c.JSON: file download endpoint with Content-Disposition header.
+	// The raw JSON is the downloadable file content — not wrapped in APIResponse.
 	c.JSON(200, export)
 }
 
