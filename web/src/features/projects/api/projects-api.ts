@@ -120,7 +120,7 @@ export const getDashboardConfig = async (): Promise<{
 /**
  * Update project settings
  *
- * @param projectId - Project ID (ULID)
+ * @param projectId - Project ID (UUID)
  * @param data - Fields to update (name, description only - use archive/unarchive for status)
  * @returns Updated project
  *
@@ -143,7 +143,7 @@ export async function updateProject(
 /**
  * Archive a project (sets status to archived, read-only, reversible)
  *
- * @param projectId - Project ID (ULID)
+ * @param projectId - Project ID (UUID)
  *
  * @example
  * ```ts
@@ -158,7 +158,7 @@ export async function archiveProject(projectId: string): Promise<void> {
 /**
  * Unarchive a project (sets status back to active)
  *
- * @param projectId - Project ID (ULID)
+ * @param projectId - Project ID (UUID)
  *
  * @example
  * ```ts

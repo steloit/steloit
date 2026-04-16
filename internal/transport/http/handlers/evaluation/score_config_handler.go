@@ -6,11 +6,11 @@ import (
 	"log/slog"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	evaluationDomain "brokle/internal/core/domain/evaluation"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 )
 
 type ScoreConfigHandler struct {
@@ -41,9 +41,9 @@ func NewScoreConfigHandler(
 // @Failure 409 {object} response.ErrorResponse "Name already exists"
 // @Router /api/v1/projects/{projectId}/score-configs [post]
 func (h *ScoreConfigHandler) Create(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
@@ -84,9 +84,9 @@ func (h *ScoreConfigHandler) Create(c *gin.Context) {
 // @Failure 401 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/score-configs [get]
 func (h *ScoreConfigHandler) List(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
@@ -119,15 +119,15 @@ func (h *ScoreConfigHandler) List(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/score-configs/{configId} [get]
 func (h *ScoreConfigHandler) Get(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	configID, err := ulid.Parse(c.Param("configId"))
+	configID, err := uuid.Parse(c.Param("configId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid score config ID", "configId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid score config ID", "configId must be a valid UUID"))
 		return
 	}
 
@@ -155,15 +155,15 @@ func (h *ScoreConfigHandler) Get(c *gin.Context) {
 // @Failure 409 {object} response.ErrorResponse "Name already exists"
 // @Router /api/v1/projects/{projectId}/score-configs/{configId} [put]
 func (h *ScoreConfigHandler) Update(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	configID, err := ulid.Parse(c.Param("configId"))
+	configID, err := uuid.Parse(c.Param("configId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid score config ID", "configId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid score config ID", "configId must be a valid UUID"))
 		return
 	}
 
@@ -210,15 +210,15 @@ func (h *ScoreConfigHandler) Update(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/score-configs/{configId} [delete]
 func (h *ScoreConfigHandler) Delete(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	configID, err := ulid.Parse(c.Param("configId"))
+	configID, err := uuid.Parse(c.Param("configId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid score config ID", "configId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid score config ID", "configId must be a valid UUID"))
 		return
 	}
 

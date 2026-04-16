@@ -5,11 +5,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/google/uuid"
+
 	annotationDomain "brokle/internal/core/domain/annotation"
 	"brokle/internal/transport/http/middleware"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 )
 
 // AssignmentHandler handles annotation queue assignment HTTP endpoints.
@@ -41,15 +42,15 @@ func NewAssignmentHandler(logger *slog.Logger, service annotationDomain.Assignme
 // @Failure 409 {object} response.ErrorResponse "User already assigned"
 // @Router /api/v1/projects/{projectId}/annotation-queues/{queueId}/assignments [post]
 func (h *AssignmentHandler) Assign(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	queueID, err := ulid.Parse(c.Param("queueId"))
+	queueID, err := uuid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid UUID"))
 		return
 	}
 
@@ -59,15 +60,15 @@ func (h *AssignmentHandler) Assign(c *gin.Context) {
 		return
 	}
 
-	userIDToAssign, err := ulid.Parse(req.UserID)
+	userIDToAssign, err := uuid.Parse(req.UserID)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("user_id", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("user_id", "must be a valid UUID"))
 		return
 	}
 
 	// Get assigner's user ID
-	assignedByID, exists := middleware.GetUserIDULID(c)
-	var assignedByPtr *ulid.ULID
+	assignedByID, exists := middleware.GetUserIDFromContext(c)
+	var assignedByPtr *uuid.UUID
 	if exists {
 		assignedByPtr = &assignedByID
 	}
@@ -102,15 +103,15 @@ func (h *AssignmentHandler) Assign(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/annotation-queues/{queueId}/assignments [get]
 func (h *AssignmentHandler) List(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	queueID, err := ulid.Parse(c.Param("queueId"))
+	queueID, err := uuid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid UUID"))
 		return
 	}
 
@@ -141,21 +142,21 @@ func (h *AssignmentHandler) List(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse "Queue or assignment not found"
 // @Router /api/v1/projects/{projectId}/annotation-queues/{queueId}/assignments/{userId} [delete]
 func (h *AssignmentHandler) Unassign(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	queueID, err := ulid.Parse(c.Param("queueId"))
+	queueID, err := uuid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid UUID"))
 		return
 	}
 
-	userID, err := ulid.Parse(c.Param("userId"))
+	userID, err := uuid.Parse(c.Param("userId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid user ID", "userId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid user ID", "userId must be a valid UUID"))
 		return
 	}
 
@@ -180,7 +181,7 @@ func (h *AssignmentHandler) Unassign(c *gin.Context) {
 // @Failure 401 {object} response.ErrorResponse
 // @Router /api/v1/annotation-queues/my-assignments [get]
 func (h *AssignmentHandler) GetMyAssignments(c *gin.Context) {
-	userID, exists := middleware.GetUserIDULID(c)
+	userID, exists := middleware.GetUserIDFromContext(c)
 	if !exists {
 		response.Unauthorized(c, "User authentication required")
 		return

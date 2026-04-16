@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/comment"
 	"brokle/internal/core/domain/user"
 	"brokle/internal/infrastructure/shared"
-	"brokle/pkg/ulid"
 
 	"gorm.io/gorm"
 )
@@ -29,7 +30,7 @@ func (r *CommentRepository) Create(ctx context.Context, c *comment.Comment) erro
 	return result.Error
 }
 
-func (r *CommentRepository) GetByID(ctx context.Context, id ulid.ULID) (*comment.Comment, error) {
+func (r *CommentRepository) GetByID(ctx context.Context, id uuid.UUID) (*comment.Comment, error) {
 	var c comment.Comment
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("id = ?", id.String()).
@@ -44,7 +45,7 @@ func (r *CommentRepository) GetByID(ctx context.Context, id ulid.ULID) (*comment
 	return &c, nil
 }
 
-func (r *CommentRepository) GetByIDWithUser(ctx context.Context, id ulid.ULID) (*comment.CommentWithUser, error) {
+func (r *CommentRepository) GetByIDWithUser(ctx context.Context, id uuid.UUID) (*comment.CommentWithUser, error) {
 	var c comment.Comment
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("id = ?", id.String()).
@@ -93,7 +94,7 @@ func (r *CommentRepository) Update(ctx context.Context, c *comment.Comment) erro
 	return nil
 }
 
-func (r *CommentRepository) Delete(ctx context.Context, id ulid.ULID) error {
+func (r *CommentRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("id = ?", id.String()).
 		Delete(&comment.Comment{})
@@ -107,7 +108,7 @@ func (r *CommentRepository) Delete(ctx context.Context, id ulid.ULID) error {
 	return nil
 }
 
-func (r *CommentRepository) HasActiveReplies(ctx context.Context, parentID ulid.ULID) (bool, error) {
+func (r *CommentRepository) HasActiveReplies(ctx context.Context, parentID uuid.UUID) (bool, error) {
 	var count int64
 	result := r.getDB(ctx).WithContext(ctx).
 		Model(&comment.Comment{}).
@@ -120,7 +121,7 @@ func (r *CommentRepository) HasActiveReplies(ctx context.Context, parentID ulid.
 }
 
 // ListByEntity implements tombstone pattern: returns non-deleted comments OR deleted with active replies.
-func (r *CommentRepository) ListByEntity(ctx context.Context, entityType comment.EntityType, entityID string, projectID ulid.ULID) ([]*comment.CommentWithUser, error) {
+func (r *CommentRepository) ListByEntity(ctx context.Context, entityType comment.EntityType, entityID string, projectID uuid.UUID) ([]*comment.CommentWithUser, error) {
 	var comments []comment.Comment
 
 	// Subquery: parent IDs with active replies
@@ -201,7 +202,7 @@ func (r *CommentRepository) ListByEntity(ctx context.Context, entityType comment
 	return result2, nil
 }
 
-func (r *CommentRepository) CountByEntity(ctx context.Context, entityType comment.EntityType, entityID string, projectID ulid.ULID) (int64, error) {
+func (r *CommentRepository) CountByEntity(ctx context.Context, entityType comment.EntityType, entityID string, projectID uuid.UUID) (int64, error) {
 	var count int64
 	result := r.getDB(ctx).WithContext(ctx).
 		Model(&comment.Comment{}).
@@ -214,7 +215,7 @@ func (r *CommentRepository) CountByEntity(ctx context.Context, entityType commen
 	return count, nil
 }
 
-func (r *CommentRepository) ListReplies(ctx context.Context, parentIDs []ulid.ULID) (map[string][]*comment.CommentWithUser, error) {
+func (r *CommentRepository) ListReplies(ctx context.Context, parentIDs []uuid.UUID) (map[string][]*comment.CommentWithUser, error) {
 	if len(parentIDs) == 0 {
 		return make(map[string][]*comment.CommentWithUser), nil
 	}
@@ -301,7 +302,7 @@ func (r *CommentRepository) ListReplies(ctx context.Context, parentIDs []ulid.UL
 	return result, nil
 }
 
-func (r *CommentRepository) CountReplies(ctx context.Context, parentIDs []ulid.ULID) (map[string]int, error) {
+func (r *CommentRepository) CountReplies(ctx context.Context, parentIDs []uuid.UUID) (map[string]int, error) {
 	if len(parentIDs) == 0 {
 		return make(map[string]int), nil
 	}
@@ -341,7 +342,7 @@ func (r *CommentRepository) CountReplies(ctx context.Context, parentIDs []ulid.U
 	return result, nil
 }
 
-func (r *CommentRepository) getUserByID(ctx context.Context, id ulid.ULID) (*comment.CommentUser, error) {
+func (r *CommentRepository) getUserByID(ctx context.Context, id uuid.UUID) (*comment.CommentUser, error) {
 	var u user.User
 	if err := r.getDB(ctx).WithContext(ctx).
 		Where("id = ?", id.String()).

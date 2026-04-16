@@ -2,11 +2,13 @@ package middleware
 
 import (
 	"log/slog"
+
 	"github.com/gin-gonic/gin"
+
+	"github.com/google/uuid"
 
 	"brokle/internal/core/domain/auth"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 )
 
 // ScopeMiddleware handles scope-based authorization
@@ -44,7 +46,7 @@ func NewScopeMiddleware(
 func (m *ScopeMiddleware) RequireScope(scope string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get user ID from auth context (set by RequireAuth middleware)
-		userID, exists := GetUserIDULID(c)
+		userID, exists := GetUserIDFromContext(c)
 		if !exists {
 			m.logger.Warn("Scope check attempted without authentication")
 			response.Unauthorized(c, "Authentication required")
@@ -100,7 +102,7 @@ func (m *ScopeMiddleware) RequireScope(scope string) gin.HandlerFunc {
 //	scopeMiddleware.RequireAnyScope([]string{"billing:manage", "billing:admin"})
 func (m *ScopeMiddleware) RequireAnyScope(scopes []string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID, exists := GetUserIDULID(c)
+		userID, exists := GetUserIDFromContext(c)
 		if !exists {
 			response.Unauthorized(c, "Authentication required")
 			c.Abort()
@@ -142,7 +144,7 @@ func (m *ScopeMiddleware) RequireAnyScope(scopes []string) gin.HandlerFunc {
 //	scopeMiddleware.RequireAllScopes([]string{"traces:read", "analytics:export"})
 func (m *ScopeMiddleware) RequireAllScopes(scopes []string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID, exists := GetUserIDULID(c)
+		userID, exists := GetUserIDFromContext(c)
 		if !exists {
 			response.Unauthorized(c, "Authentication required")
 			c.Abort()
@@ -179,10 +181,10 @@ func (m *ScopeMiddleware) RequireAllScopes(scopes []string) gin.HandlerFunc {
 
 // ScopeContext holds resolved scope context for a request
 type ScopeContext struct {
-	OrganizationID *ulid.ULID
-	ProjectID      *ulid.ULID
+	OrganizationID *uuid.UUID
+	ProjectID      *uuid.UUID
 	Scopes         []string
-	UserID         ulid.ULID
+	UserID         uuid.UUID
 }
 
 // Context key for storing scope context

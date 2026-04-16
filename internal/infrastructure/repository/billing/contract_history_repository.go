@@ -6,9 +6,10 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/billing"
 	"brokle/internal/infrastructure/shared"
-	"brokle/pkg/ulid"
 )
 
 type contractHistoryRepository struct {
@@ -28,7 +29,7 @@ func (r *contractHistoryRepository) Log(ctx context.Context, history *billing.Co
 	return r.getDB(ctx).WithContext(ctx).Create(history).Error
 }
 
-func (r *contractHistoryRepository) GetByContractID(ctx context.Context, contractID ulid.ULID) ([]*billing.ContractHistory, error) {
+func (r *contractHistoryRepository) GetByContractID(ctx context.Context, contractID uuid.UUID) ([]*billing.ContractHistory, error) {
 	var history []*billing.ContractHistory
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("contract_id = ?", contractID).

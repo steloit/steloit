@@ -17,13 +17,13 @@ DROP TABLE IF EXISTS user_sessions CASCADE;
 
 -- Create clean user_sessions table with secure token management
 CREATE TABLE user_sessions (
-    id CHAR(26) PRIMARY KEY,
-    user_id CHAR(26) NOT NULL,
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL,
     
     -- Secure Token Management (NO ACCESS TOKENS STORED)
     refresh_token_hash CHAR(64) NOT NULL UNIQUE,              -- SHA-256 hash = 64 hex chars
     refresh_token_version INTEGER NOT NULL DEFAULT 1,         -- For rotation tracking
-    current_jti CHAR(26) NOT NULL,                           -- Current access token JTI for blacklisting
+    current_jti UUID NOT NULL,                           -- Current access token JTI for blacklisting
     
     -- Session Metadata
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL,            -- Access token expiry

@@ -13,10 +13,12 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/evaluation"
 	"brokle/internal/core/domain/observability"
 	"brokle/internal/infrastructure/database"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 // ScorerResult represents the output of a scorer execution
@@ -91,7 +93,7 @@ type EvaluationWorker struct {
 // executionProgress tracks progress for a single evaluator execution
 type executionProgress struct {
 	executionID  string
-	projectID    ulid.ULID
+	projectID    uuid.UUID
 	spansScored  int64
 	errorsCount  int64
 	lastActivity time.Time
@@ -111,7 +113,7 @@ func NewEvaluationWorker(
 	if config == nil {
 		config = &EvaluationWorkerConfig{
 			ConsumerGroup:  "evaluation-execution-workers",
-			ConsumerID:     "eval-worker-" + ulid.New().String(),
+			ConsumerID:     "eval-worker-" + uid.New().String(),
 			BatchSize:      10,
 			BlockDuration:  time.Second,
 			MaxRetries:     3,
@@ -343,7 +345,7 @@ func (w *EvaluationWorker) processJob(ctx context.Context, msg redis.XMessage) e
 	scores := make([]*observability.Score, 0, len(result.Scores))
 	for _, output := range result.Scores {
 		score := &observability.Score{
-			ID:          ulid.New().String(),
+			ID:          uid.New().String(),
 			ProjectID:   job.ProjectID.String(),
 			TraceID:     &job.TraceID,
 			SpanID:      &job.SpanID,

@@ -3,8 +3,8 @@
 -- Purpose: Add saved filter presets for traces/spans with sharing capabilities
 
 CREATE TABLE IF NOT EXISTS filter_presets (
-    id VARCHAR(26) PRIMARY KEY,
-    project_id VARCHAR(26) NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     description TEXT,
     table_name VARCHAR(50) NOT NULL DEFAULT 'traces', -- 'traces' or 'spans'
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS filter_presets (
     is_public BOOLEAN NOT NULL DEFAULT FALSE,     -- Visible to all project members
 
     -- Audit fields
-    created_by VARCHAR(26) REFERENCES users(id) ON DELETE SET NULL,
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 

@@ -1,14 +1,15 @@
 package middleware
 
 import (
-	"log/slog"
 	"errors"
+	"log/slog"
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/auth"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 )
 
 // AuthMiddleware handles JWT token authentication and authorization
@@ -121,7 +122,7 @@ func (m *AuthMiddleware) RequirePermission(permission string) gin.HandlerFunc {
 			return
 		}
 
-		userIDParsed, err := ulid.Parse(userID)
+		userIDParsed, err := uuid.Parse(userID)
 		if err != nil {
 			m.logger.Error("Invalid user ID format in context", "error", err)
 			response.InternalServerError(c, "Authentication error")
@@ -165,7 +166,7 @@ func (m *AuthMiddleware) RequireAnyPermission(permissions []string) gin.HandlerF
 			return
 		}
 
-		userIDParsed, err := ulid.Parse(userID)
+		userIDParsed, err := uuid.Parse(userID)
 		if err != nil {
 			m.logger.Error("Invalid user ID format in context", "error", err)
 			response.InternalServerError(c, "Authentication error")
@@ -217,7 +218,7 @@ func (m *AuthMiddleware) RequireAllPermissions(permissions []string) gin.Handler
 			return
 		}
 
-		userIDParsed, err := ulid.Parse(userID)
+		userIDParsed, err := uuid.Parse(userID)
 		if err != nil {
 			m.logger.Error("Invalid user ID format in context", "error", err)
 			response.InternalServerError(c, "Authentication error")
@@ -328,9 +329,9 @@ func GetUserID(c *gin.Context) (string, bool) {
 		return "", false
 	}
 
-	// Handle both ulid.ULID and string types for compatibility
+	// Handle both uuid.UUID and string types for compatibility
 	switch id := userID.(type) {
-	case ulid.ULID:
+	case uuid.UUID:
 		return id.String(), true
 	case string:
 		return id, true
@@ -339,14 +340,14 @@ func GetUserID(c *gin.Context) (string, bool) {
 	}
 }
 
-// GetUserIDULID retrieves user ID as ULID from Gin context
-func GetUserIDULID(c *gin.Context) (ulid.ULID, bool) {
+// GetUserIDFromContext retrieves user ID as UUID from Gin context
+func GetUserIDFromContext(c *gin.Context) (uuid.UUID, bool) {
 	userID, exists := c.Get(UserIDKey)
 	if !exists {
-		return ulid.ULID{}, false
+		return uuid.UUID{}, false
 	}
 
-	id, ok := userID.(ulid.ULID)
+	id, ok := userID.(uuid.UUID)
 	return id, ok
 }
 
@@ -363,8 +364,8 @@ const (
 
 // ContextResolver resolves context IDs from headers or URL parameters
 type ContextResolver struct {
-	OrganizationID *ulid.ULID
-	ProjectID      *ulid.ULID
+	OrganizationID *uuid.UUID
+	ProjectID      *uuid.UUID
 	Environment    string // Environment tag (e.g., "production", "staging")
 }
 
@@ -389,14 +390,14 @@ func ResolveContext(c *gin.Context, contextTypes ...ContextType) *ContextResolve
 	if typeSet[ContextOrg] {
 		// Try X-Org-ID header first
 		if orgIDHeader := c.GetHeader("X-Org-ID"); orgIDHeader != "" {
-			if orgID, err := ulid.Parse(orgIDHeader); err == nil {
+			if orgID, err := uuid.Parse(orgIDHeader); err == nil {
 				resolver.OrganizationID = &orgID
 			}
 		}
 		// Try orgId URL parameter if header failed
 		if resolver.OrganizationID == nil {
 			if orgIDParam := c.Param("orgId"); orgIDParam != "" {
-				if orgID, err := ulid.Parse(orgIDParam); err == nil {
+				if orgID, err := uuid.Parse(orgIDParam); err == nil {
 					resolver.OrganizationID = &orgID
 				}
 			}
@@ -407,14 +408,14 @@ func ResolveContext(c *gin.Context, contextTypes ...ContextType) *ContextResolve
 	if typeSet[ContextProject] {
 		// Try X-Project-ID header first
 		if projectIDHeader := c.GetHeader("X-Project-ID"); projectIDHeader != "" {
-			if projectID, err := ulid.Parse(projectIDHeader); err == nil {
+			if projectID, err := uuid.Parse(projectIDHeader); err == nil {
 				resolver.ProjectID = &projectID
 			}
 		}
 		// Try projectId URL parameter if header failed
 		if resolver.ProjectID == nil {
 			if projectIDParam := c.Param("projectId"); projectIDParam != "" {
-				if projectID, err := ulid.Parse(projectIDParam); err == nil {
+				if projectID, err := uuid.Parse(projectIDParam); err == nil {
 					resolver.ProjectID = &projectID
 				}
 			}
@@ -437,11 +438,11 @@ func ResolveContext(c *gin.Context, contextTypes ...ContextType) *ContextResolve
 }
 
 // Convenience functions for single context resolution
-func ResolveOrganizationID(c *gin.Context) *ulid.ULID {
+func ResolveOrganizationID(c *gin.Context) *uuid.UUID {
 	return ResolveContext(c, ContextOrg).OrganizationID
 }
 
-func ResolveProjectID(c *gin.Context) *ulid.ULID {
+func ResolveProjectID(c *gin.Context) *uuid.UUID {
 	return ResolveContext(c, ContextProject).ProjectID
 }
 

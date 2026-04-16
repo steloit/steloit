@@ -7,10 +7,11 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/evaluation"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/pagination"
-	"brokle/pkg/ulid"
 )
 
 type datasetService struct {
@@ -28,7 +29,7 @@ func NewDatasetService(
 	}
 }
 
-func (s *datasetService) Create(ctx context.Context, projectID ulid.ULID, req *evaluation.CreateDatasetRequest) (*evaluation.Dataset, error) {
+func (s *datasetService) Create(ctx context.Context, projectID uuid.UUID, req *evaluation.CreateDatasetRequest) (*evaluation.Dataset, error) {
 	dataset := evaluation.NewDataset(projectID, req.Name)
 	dataset.Description = req.Description
 	if req.Metadata != nil {
@@ -63,7 +64,7 @@ func (s *datasetService) Create(ctx context.Context, projectID ulid.ULID, req *e
 	return dataset, nil
 }
 
-func (s *datasetService) Update(ctx context.Context, id ulid.ULID, projectID ulid.ULID, req *evaluation.UpdateDatasetRequest) (*evaluation.Dataset, error) {
+func (s *datasetService) Update(ctx context.Context, id uuid.UUID, projectID uuid.UUID, req *evaluation.UpdateDatasetRequest) (*evaluation.Dataset, error) {
 	dataset, err := s.repo.GetByID(ctx, id, projectID)
 	if err != nil {
 		if errors.Is(err, evaluation.ErrDatasetNotFound) {
@@ -114,7 +115,7 @@ func (s *datasetService) Update(ctx context.Context, id ulid.ULID, projectID uli
 	return dataset, nil
 }
 
-func (s *datasetService) Delete(ctx context.Context, id ulid.ULID, projectID ulid.ULID) error {
+func (s *datasetService) Delete(ctx context.Context, id uuid.UUID, projectID uuid.UUID) error {
 	dataset, err := s.repo.GetByID(ctx, id, projectID)
 	if err != nil {
 		if errors.Is(err, evaluation.ErrDatasetNotFound) {
@@ -139,7 +140,7 @@ func (s *datasetService) Delete(ctx context.Context, id ulid.ULID, projectID uli
 	return nil
 }
 
-func (s *datasetService) GetByID(ctx context.Context, id ulid.ULID, projectID ulid.ULID) (*evaluation.Dataset, error) {
+func (s *datasetService) GetByID(ctx context.Context, id uuid.UUID, projectID uuid.UUID) (*evaluation.Dataset, error) {
 	dataset, err := s.repo.GetByID(ctx, id, projectID)
 	if err != nil {
 		if errors.Is(err, evaluation.ErrDatasetNotFound) {
@@ -150,7 +151,7 @@ func (s *datasetService) GetByID(ctx context.Context, id ulid.ULID, projectID ul
 	return dataset, nil
 }
 
-func (s *datasetService) List(ctx context.Context, projectID ulid.ULID, filter *evaluation.DatasetFilter, page, limit int) ([]*evaluation.Dataset, int64, error) {
+func (s *datasetService) List(ctx context.Context, projectID uuid.UUID, filter *evaluation.DatasetFilter, page, limit int) ([]*evaluation.Dataset, int64, error) {
 	offset := (page - 1) * limit
 	datasets, total, err := s.repo.List(ctx, projectID, filter, offset, limit)
 	if err != nil {
@@ -161,7 +162,7 @@ func (s *datasetService) List(ctx context.Context, projectID ulid.ULID, filter *
 
 func (s *datasetService) ListWithFilters(
 	ctx context.Context,
-	projectID ulid.ULID,
+	projectID uuid.UUID,
 	filter *evaluation.DatasetFilter,
 	params pagination.Params,
 ) ([]*evaluation.DatasetWithItemCount, int64, error) {

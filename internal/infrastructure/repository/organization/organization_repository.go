@@ -8,10 +8,11 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	orgDomain "brokle/internal/core/domain/organization"
-	"brokle/pkg/pagination"
-	"brokle/pkg/ulid"
 	"brokle/internal/infrastructure/shared"
+	"brokle/pkg/pagination"
 )
 
 // organizationRepository implements orgDomain.OrganizationRepository using GORM
@@ -37,7 +38,7 @@ func (r *organizationRepository) Create(ctx context.Context, org *orgDomain.Orga
 }
 
 // GetByID retrieves an organization by ID
-func (r *organizationRepository) GetByID(ctx context.Context, id ulid.ULID) (*orgDomain.Organization, error) {
+func (r *organizationRepository) GetByID(ctx context.Context, id uuid.UUID) (*orgDomain.Organization, error) {
 	var org orgDomain.Organization
 	err := r.getDB(ctx).WithContext(ctx).Where("id = ? AND deleted_at IS NULL", id).First(&org).Error
 	if err != nil {
@@ -68,7 +69,7 @@ func (r *organizationRepository) Update(ctx context.Context, org *orgDomain.Orga
 }
 
 // Delete soft deletes an organization
-func (r *organizationRepository) Delete(ctx context.Context, id ulid.ULID) error {
+func (r *organizationRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).Model(&orgDomain.Organization{}).Where("id = ?", id).Update("deleted_at", time.Now()).Error
 }
 
@@ -131,7 +132,7 @@ func (r *organizationRepository) List(ctx context.Context, filters *orgDomain.Or
 }
 
 // GetOrganizationsByUserID retrieves organizations for a user
-func (r *organizationRepository) GetOrganizationsByUserID(ctx context.Context, userID ulid.ULID) ([]*orgDomain.Organization, error) {
+func (r *organizationRepository) GetOrganizationsByUserID(ctx context.Context, userID uuid.UUID) ([]*orgDomain.Organization, error) {
 	var orgs []*orgDomain.Organization
 	err := r.getDB(ctx).WithContext(ctx).
 		Table("organizations").
@@ -147,23 +148,23 @@ func (r *organizationRepository) GetOrganizationsByUserID(ctx context.Context, u
 type orgProjectRow struct {
 	OrgCreatedAt   time.Time
 	OrgUpdatedAt   time.Time
-	ProjectID      *ulid.ULID
+	ProjectID      *uuid.UUID
 	ProjectName    *string
 	ProjectDesc    *string
-	ProjectOrgID   *ulid.ULID
+	ProjectOrgID   *uuid.UUID
 	ProjectCreated *time.Time
 	ProjectUpdated *time.Time
 	ProjectStatus  *string
 	OrgName        string
 	OrgPlan        string
 	RoleName       string
-	OrgID          ulid.ULID
+	OrgID          uuid.UUID
 }
 
 // GetUserOrganizationsWithProjectsBatch fetches all user's organizations with nested projects in a single optimized query
 func (r *organizationRepository) GetUserOrganizationsWithProjectsBatch(
 	ctx context.Context,
-	userID ulid.ULID,
+	userID uuid.UUID,
 ) ([]*orgDomain.OrganizationWithProjectsAndRole, error) {
 	var rows []orgProjectRow
 
@@ -201,8 +202,8 @@ func (r *organizationRepository) GetUserOrganizationsWithProjectsBatch(
 // groupByOrganization converts flattened SQL results into hierarchical structure
 // Preserves SQL ORDER BY by tracking insertion order
 func groupByOrganization(rows []orgProjectRow) []*orgDomain.OrganizationWithProjectsAndRole {
-	orgMap := make(map[ulid.ULID]*orgDomain.OrganizationWithProjectsAndRole)
-	orgOrder := make([]ulid.ULID, 0) // Track insertion order to preserve SQL ORDER BY
+	orgMap := make(map[uuid.UUID]*orgDomain.OrganizationWithProjectsAndRole)
+	orgOrder := make([]uuid.UUID, 0) // Track insertion order to preserve SQL ORDER BY
 
 	for _, row := range rows {
 		// Create organization entry if doesn't exist

@@ -7,12 +7,12 @@ import (
 	"strconv"
 	"time"
 
-	"math/rand"
-
 	"github.com/gin-gonic/gin"
-	"github.com/oklog/ulid/v2"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+
+	"brokle/pkg/uid"
 )
 
 // Prometheus metrics
@@ -40,8 +40,7 @@ func RequestID() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requestID := c.GetHeader("X-Request-ID")
 		if requestID == "" {
-			entropy := rand.New(rand.NewSource(time.Now().UnixNano()))
-			requestID = ulid.MustNew(ulid.Timestamp(time.Now()), entropy).String()
+			requestID = uid.New().String()
 		}
 
 		// Add to response header and context

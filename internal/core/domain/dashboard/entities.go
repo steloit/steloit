@@ -7,7 +7,7 @@ package dashboard
 import (
 	"time"
 
-	"brokle/pkg/ulid"
+	"github.com/google/uuid"
 
 	"gorm.io/gorm"
 )
@@ -88,14 +88,14 @@ type TimeRange struct {
 
 // WidgetQuery defines the data query configuration for a widget.
 type WidgetQuery struct {
-	View       ViewType      `json:"view"`                  // "traces", "spans", "scores"
-	Measures   []string      `json:"measures"`              // ["count", "latency_p50", "total_cost"]
-	Dimensions []string      `json:"dimensions,omitempty"`  // grouping fields
-	Filters    []QueryFilter `json:"filters,omitempty"`     // filter conditions
-	TimeRange  *TimeRange    `json:"time_range,omitempty"`  // time range
-	Limit      int           `json:"limit,omitempty"`       // result limit
-	OrderBy    string        `json:"order_by,omitempty"`    // order by field
-	OrderDir   string        `json:"order_dir,omitempty"`   // "asc" or "desc"
+	View       ViewType      `json:"view"`                 // "traces", "spans", "scores"
+	Measures   []string      `json:"measures"`             // ["count", "latency_p50", "total_cost"]
+	Dimensions []string      `json:"dimensions,omitempty"` // grouping fields
+	Filters    []QueryFilter `json:"filters,omitempty"`    // filter conditions
+	TimeRange  *TimeRange    `json:"time_range,omitempty"` // time range
+	Limit      int           `json:"limit,omitempty"`      // result limit
+	OrderBy    string        `json:"order_by,omitempty"`   // order by field
+	OrderDir   string        `json:"order_dir,omitempty"`  // "asc" or "desc"
 }
 
 // Widget represents a dashboard widget configuration.
@@ -119,20 +119,20 @@ type LayoutItem struct {
 
 // VariableQueryConfig defines how to fetch dynamic options for a "query" type variable.
 type VariableQueryConfig struct {
-	View      ViewType `json:"view"`                // data source view (traces, spans, scores)
-	Dimension string         `json:"dimension"`           // dimension field to get distinct values from
-	Limit     int            `json:"limit,omitempty"`     // max options to fetch (default: 100)
+	View      ViewType `json:"view"`            // data source view (traces, spans, scores)
+	Dimension string   `json:"dimension"`       // dimension field to get distinct values from
+	Limit     int      `json:"limit,omitempty"` // max options to fetch (default: 100)
 }
 
 // Variable represents a dashboard-level variable for dynamic filtering.
 type Variable struct {
 	Name        string               `json:"name"`
-	Type        string               `json:"type"`                      // "string", "number", "select", "query"
-	Label       string               `json:"label,omitempty"`           // display label (defaults to name)
-	Default     any                  `json:"default,omitempty"`         // default value
-	Options     []string             `json:"options,omitempty"`         // for select type - static options
-	QueryConfig *VariableQueryConfig `json:"query_config,omitempty"`    // for query type - dynamic options
-	Multi       bool                 `json:"multi,omitempty"`           // allow multiple values
+	Type        string               `json:"type"`                   // "string", "number", "select", "query"
+	Label       string               `json:"label,omitempty"`        // display label (defaults to name)
+	Default     any                  `json:"default,omitempty"`      // default value
+	Options     []string             `json:"options,omitempty"`      // for select type - static options
+	QueryConfig *VariableQueryConfig `json:"query_config,omitempty"` // for query type - dynamic options
+	Multi       bool                 `json:"multi,omitempty"`        // allow multiple values
 }
 
 // DashboardConfig holds dashboard-level configuration including widgets.
@@ -145,14 +145,14 @@ type DashboardConfig struct {
 
 // Dashboard represents a project dashboard with widget configurations.
 type Dashboard struct {
-	ID          ulid.ULID       `json:"id" gorm:"type:char(26);primaryKey"`
-	ProjectID   ulid.ULID       `json:"project_id" gorm:"type:char(26);not null"`
+	ID          uuid.UUID       `json:"id" gorm:"type:uuid;primaryKey"`
+	ProjectID   uuid.UUID       `json:"project_id" gorm:"type:uuid;not null"`
 	Name        string          `json:"name" gorm:"size:255;not null"`
 	Description string          `json:"description,omitempty" gorm:"type:text"`
 	Config      DashboardConfig `json:"config" gorm:"type:jsonb;serializer:json"`
 	Layout      []LayoutItem    `json:"layout" gorm:"type:jsonb;serializer:json"`
 	IsLocked    bool            `json:"is_locked" gorm:"default:false"`
-	CreatedBy   *ulid.ULID      `json:"created_by,omitempty" gorm:"type:char(26)"`
+	CreatedBy   *uuid.UUID      `json:"created_by,omitempty" gorm:"type:uuid"`
 	CreatedAt   time.Time       `json:"created_at"`
 	UpdatedAt   time.Time       `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt  `json:"deleted_at,omitempty" gorm:"index" swaggertype:"string"`
@@ -181,7 +181,7 @@ type UpdateDashboardRequest struct {
 
 // DashboardFilter represents filters for dashboard queries.
 type DashboardFilter struct {
-	ProjectID ulid.ULID
+	ProjectID uuid.UUID
 	Name      string
 	Limit     int
 	Offset    int
@@ -199,9 +199,9 @@ type DashboardListResponse struct {
 type TemplateCategory string
 
 const (
-	TemplateCategoryLLMOverview    TemplateCategory = "llm-overview"
-	TemplateCategoryCostAnalytics  TemplateCategory = "cost-analytics"
-	TemplateCategoryQualityScores  TemplateCategory = "quality-scores"
+	TemplateCategoryLLMOverview   TemplateCategory = "llm-overview"
+	TemplateCategoryCostAnalytics TemplateCategory = "cost-analytics"
+	TemplateCategoryQualityScores TemplateCategory = "quality-scores"
 )
 
 // IsValid checks if the template category is valid
@@ -216,7 +216,7 @@ func (tc TemplateCategory) IsValid() bool {
 
 // Template represents a pre-defined dashboard template.
 type Template struct {
-	ID          ulid.ULID        `json:"id" gorm:"type:char(26);primaryKey"`
+	ID          uuid.UUID        `json:"id" gorm:"type:uuid;primaryKey"`
 	Name        string           `json:"name" gorm:"size:255;not null;uniqueIndex"`
 	Description string           `json:"description,omitempty" gorm:"type:text"`
 	Category    TemplateCategory `json:"category" gorm:"size:100;not null;index"`
@@ -240,7 +240,7 @@ type TemplateFilter struct {
 
 // CreateFromTemplateRequest represents the request to create a dashboard from a template.
 type CreateFromTemplateRequest struct {
-	TemplateID ulid.ULID `json:"template_id" binding:"required"`
+	TemplateID uuid.UUID `json:"template_id" binding:"required"`
 	Name       string    `json:"name" binding:"required,min=1,max=255"`
 }
 

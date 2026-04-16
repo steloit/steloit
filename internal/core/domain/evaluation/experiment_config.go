@@ -3,7 +3,9 @@ package evaluation
 import (
 	"time"
 
-	"brokle/pkg/ulid"
+	"github.com/google/uuid"
+
+	"brokle/pkg/uid"
 )
 
 // ExperimentSource represents the origin of an experiment.
@@ -45,29 +47,29 @@ func (s VariableMappingSource) IsValid() bool {
 
 // ExperimentVariableMapping defines how to map a prompt template variable to a dataset field.
 type ExperimentVariableMapping struct {
-	VariableName string                `json:"variable_name"` // Template variable: {{query}}, {{context}}
-	Source       VariableMappingSource `json:"source"`        // dataset_input, dataset_expected, dataset_metadata
-	FieldPath    string                `json:"field_path"`    // JSON path: "text", "messages[0].content"
+	VariableName string                `json:"variable_name"`  // Template variable: {{query}}, {{context}}
+	Source       VariableMappingSource `json:"source"`         // dataset_input, dataset_expected, dataset_metadata
+	FieldPath    string                `json:"field_path"`     // JSON path: "text", "messages[0].content"
 	IsAutoMapped bool                  `json:"is_auto_mapped"` // Whether this was auto-mapped or manually set
 }
 
 // ExperimentEvaluator defines an evaluator configuration for an experiment.
 type ExperimentEvaluator struct {
-	Name            string        `json:"name"`
-	ScorerType      ScorerType    `json:"scorer_type"` // llm, builtin, regex (reused from rule.go)
+	Name            string         `json:"name"`
+	ScorerType      ScorerType     `json:"scorer_type"` // llm, builtin, regex (reused from rule.go)
 	ScorerConfig    map[string]any `json:"scorer_config"`
-	VariableMapping []VariableMap `json:"variable_mapping,omitempty"` // Reuse from rule.go
+	VariableMapping []VariableMap  `json:"variable_mapping,omitempty"` // Reuse from rule.go
 }
 
 // ExperimentConfig stores the configuration for experiments created via the dashboard wizard.
 type ExperimentConfig struct {
-	ID               ulid.ULID                   `json:"id" gorm:"type:char(26);primaryKey"`
-	ExperimentID     ulid.ULID                   `json:"experiment_id" gorm:"type:char(26);unique;not null;index"`
-	PromptID         ulid.ULID                   `json:"prompt_id" gorm:"type:char(26);not null"`
-	PromptVersionID  ulid.ULID                   `json:"prompt_version_id" gorm:"type:char(26);not null"`
+	ID               uuid.UUID                   `json:"id" gorm:"type:uuid;primaryKey"`
+	ExperimentID     uuid.UUID                   `json:"experiment_id" gorm:"type:uuid;unique;not null;index"`
+	PromptID         uuid.UUID                   `json:"prompt_id" gorm:"type:uuid;not null"`
+	PromptVersionID  uuid.UUID                   `json:"prompt_version_id" gorm:"type:uuid;not null"`
 	ModelConfig      map[string]any              `json:"model_config,omitempty" gorm:"type:jsonb;serializer:json"`
-	DatasetID        ulid.ULID                   `json:"dataset_id" gorm:"type:char(26);not null"`
-	DatasetVersionID *ulid.ULID                  `json:"dataset_version_id,omitempty" gorm:"type:char(26)"`
+	DatasetID        uuid.UUID                   `json:"dataset_id" gorm:"type:uuid;not null"`
+	DatasetVersionID *uuid.UUID                  `json:"dataset_version_id,omitempty" gorm:"type:uuid"`
 	VariableMapping  []ExperimentVariableMapping `json:"variable_mapping" gorm:"type:jsonb;serializer:json;not null;default:'[]'"`
 	Evaluators       []ExperimentEvaluator       `json:"evaluators" gorm:"type:jsonb;serializer:json;not null;default:'[]'"`
 	CreatedAt        time.Time                   `json:"created_at" gorm:"not null;autoCreateTime"`
@@ -80,14 +82,14 @@ func (ExperimentConfig) TableName() string {
 
 // NewExperimentConfig creates a new experiment config.
 func NewExperimentConfig(
-	experimentID ulid.ULID,
-	promptID ulid.ULID,
-	promptVersionID ulid.ULID,
-	datasetID ulid.ULID,
+	experimentID uuid.UUID,
+	promptID uuid.UUID,
+	promptVersionID uuid.UUID,
+	datasetID uuid.UUID,
 ) *ExperimentConfig {
 	now := time.Now()
 	return &ExperimentConfig{
-		ID:              ulid.New(),
+		ID:              uid.New(),
 		ExperimentID:    experimentID,
 		PromptID:        promptID,
 		PromptVersionID: promptVersionID,
@@ -103,13 +105,13 @@ func NewExperimentConfig(
 func (c *ExperimentConfig) Validate() []ValidationError {
 	var errors []ValidationError
 
-	if c.PromptID.IsZero() {
+	if c.PromptID == uuid.Nil {
 		errors = append(errors, ValidationError{Field: "prompt_id", Message: "prompt_id is required"})
 	}
-	if c.PromptVersionID.IsZero() {
+	if c.PromptVersionID == uuid.Nil {
 		errors = append(errors, ValidationError{Field: "prompt_version_id", Message: "prompt_version_id is required"})
 	}
-	if c.DatasetID.IsZero() {
+	if c.DatasetID == uuid.Nil {
 		errors = append(errors, ValidationError{Field: "dataset_id", Message: "dataset_id is required"})
 	}
 	if len(c.Evaluators) == 0 {

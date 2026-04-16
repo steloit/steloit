@@ -10,7 +10,7 @@ import (
 	"brokle/internal/core/domain/billing"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/pointers"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
@@ -33,12 +33,12 @@ func TestContractService_CreateContract_Success(t *testing.T) {
 	transactor := NewMockTransactor()
 	service := NewContractService(transactor, contractRepo, tierRepo, historyRepo, billingRepo, logger)
 
-	orgID := ulid.New()
+	orgID := uid.New()
 	startDate := time.Now()
-	endDate := startDate.AddDate(0, 12, 0)  // +12 months (handles leap years)
+	endDate := startDate.AddDate(0, 12, 0) // +12 months (handles leap years)
 
 	contract := &billing.Contract{
-		ID:                      ulid.New(),
+		ID:                      uid.New(),
 		OrganizationID:          orgID,
 		ContractName:            "Enterprise Annual 2025",
 		ContractNumber:          "ENT-2025-001",
@@ -52,13 +52,13 @@ func TestContractService_CreateContract_Success(t *testing.T) {
 		CustomPricePer100KSpans: pointers.PtrDecimal(decimal.NewFromFloat(0.25)),
 		Notes:                   "Annual enterprise contract",
 		Status:                  "",
-		CreatedBy:               ulid.New().String(),
+		CreatedBy:               uid.New().String(),
 	}
 
 	// Mock organization exists
 	billingRepo.On("GetByOrgID", ctx, orgID).Return(&billing.OrganizationBilling{
 		OrganizationID: orgID,
-		PlanID:         ulid.New(),
+		PlanID:         uid.New(),
 	}, nil)
 
 	// Mock contract creation
@@ -91,9 +91,9 @@ func TestContractService_ActivateContract_Success(t *testing.T) {
 	transactor := NewMockTransactor()
 	service := NewContractService(transactor, contractRepo, tierRepo, historyRepo, billingRepo, logger)
 
-	contractID := ulid.New()
-	orgID := ulid.New()
-	userID := ulid.New()
+	contractID := uid.New()
+	orgID := uid.New()
+	userID := uid.New()
 
 	// Draft contract to activate
 	draftContract := &billing.Contract{
@@ -104,7 +104,7 @@ func TestContractService_ActivateContract_Success(t *testing.T) {
 	}
 
 	// Existing active contract (should be expired)
-	oldContractID := ulid.New()
+	oldContractID := uid.New()
 	oldContract := &billing.Contract{
 		ID:             oldContractID,
 		OrganizationID: orgID,
@@ -154,8 +154,8 @@ func TestContractService_ActivateContract_NotDraft(t *testing.T) {
 	transactor := NewMockTransactor()
 	service := NewContractService(transactor, contractRepo, tierRepo, historyRepo, billingRepo, logger)
 
-	contractID := ulid.New()
-	userID := ulid.New()
+	contractID := uid.New()
+	userID := uid.New()
 
 	// Already active contract
 	activeContract := &billing.Contract{
@@ -188,7 +188,7 @@ func TestContractService_UpdateContract_Success(t *testing.T) {
 	transactor := NewMockTransactor()
 	service := NewContractService(transactor, contractRepo, tierRepo, historyRepo, billingRepo, logger)
 
-	contractID := ulid.New()
+	contractID := uid.New()
 
 	existingContract := &billing.Contract{
 		ID:                  contractID,
@@ -236,8 +236,8 @@ func TestContractService_CancelContract_Success(t *testing.T) {
 	transactor := NewMockTransactor()
 	service := NewContractService(transactor, contractRepo, tierRepo, historyRepo, billingRepo, logger)
 
-	contractID := ulid.New()
-	userID := ulid.New()
+	contractID := uid.New()
+	userID := uid.New()
 	reason := "Customer requested cancellation"
 
 	activeContract := &billing.Contract{
@@ -272,8 +272,8 @@ func TestContractService_ExpireContract_Success(t *testing.T) {
 	transactor := NewMockTransactor()
 	service := NewContractService(transactor, contractRepo, tierRepo, historyRepo, billingRepo, logger)
 
-	contractID := ulid.New()
-	orgID := ulid.New()
+	contractID := uid.New()
+	orgID := uid.New()
 
 	// Setup: Contract must be in active status to be expired
 	activeContract := &billing.Contract{
@@ -309,8 +309,8 @@ func TestContractService_ExpireContract_NotActive(t *testing.T) {
 	transactor := NewMockTransactor()
 	service := NewContractService(transactor, contractRepo, tierRepo, historyRepo, billingRepo, logger)
 
-	contractID := ulid.New()
-	orgID := ulid.New()
+	contractID := uid.New()
+	orgID := uid.New()
 
 	// Setup: Contract is in draft status (not active)
 	draftContract := &billing.Contract{
@@ -348,7 +348,7 @@ func TestContractService_GetExpiringContracts_Success(t *testing.T) {
 	futureDate := time.Now().Add(7 * 24 * time.Hour)
 	contracts := []*billing.Contract{
 		{
-			ID:      ulid.New(),
+			ID:      uid.New(),
 			Status:  billing.ContractStatusActive,
 			EndDate: &futureDate,
 		},
@@ -379,7 +379,7 @@ func TestContractService_UpdateVolumeTiers_Success(t *testing.T) {
 	transactor := NewMockTransactor()
 	service := NewContractService(transactor, contractRepo, tierRepo, historyRepo, billingRepo, logger)
 
-	contractID := ulid.New()
+	contractID := uid.New()
 
 	contract := &billing.Contract{
 		ID:     contractID,
@@ -430,7 +430,7 @@ func TestContractService_GetContractHistory_Success(t *testing.T) {
 	transactor := NewMockTransactor()
 	service := NewContractService(transactor, contractRepo, tierRepo, historyRepo, billingRepo, logger)
 
-	contractID := ulid.New()
+	contractID := uid.New()
 
 	changes := map[string]interface{}{
 		"contract_name": "Enterprise Contract",
@@ -440,19 +440,19 @@ func TestContractService_GetContractHistory_Success(t *testing.T) {
 
 	history := []*billing.ContractHistory{
 		{
-			ID:         ulid.New(),
+			ID:         uid.New(),
 			ContractID: contractID,
 			Action:     billing.ContractActionCreated,
-			ChangedBy:  ulid.New().String(),
+			ChangedBy:  uid.New().String(),
 			ChangedAt:  time.Now(),
 			Changes:    datatypes.JSON(changesJSON),
 			Reason:     "Initial contract creation",
 		},
 		{
-			ID:         ulid.New(),
+			ID:         uid.New(),
 			ContractID: contractID,
 			Action:     billing.ContractActionUpdated,
-			ChangedBy:  ulid.New().String(),
+			ChangedBy:  uid.New().String(),
 			ChangedAt:  time.Now().Add(1 * time.Hour),
 			Changes:    datatypes.JSON(changesJSON),
 			Reason:     "Activated contract",
@@ -486,7 +486,7 @@ func TestContractService_GetContract_Success(t *testing.T) {
 	transactor := NewMockTransactor()
 	service := NewContractService(transactor, contractRepo, tierRepo, historyRepo, billingRepo, logger)
 
-	contractID := ulid.New()
+	contractID := uid.New()
 	contract := &billing.Contract{
 		ID:           contractID,
 		ContractName: "Test Contract",
@@ -520,7 +520,7 @@ func TestContractService_GetContract_NotFound(t *testing.T) {
 	transactor := NewMockTransactor()
 	service := NewContractService(transactor, contractRepo, tierRepo, historyRepo, billingRepo, logger)
 
-	contractID := ulid.New()
+	contractID := uid.New()
 
 	contractRepo.On("GetByID", ctx, contractID).Return(nil, appErrors.NewNotFoundError("Contract not found"))
 
@@ -548,14 +548,14 @@ func TestContractService_CreateContract_TimestampPrecision(t *testing.T) {
 	transactor := NewMockTransactor()
 	service := NewContractService(transactor, contractRepo, tierRepo, historyRepo, billingRepo, logger)
 
-	orgID := ulid.New()
+	orgID := uid.New()
 
 	// Verify exact timestamps preserved (not normalized to midnight)
-	startsAt := parseTime("2026-01-08T10:15:30.123Z")  // Milliseconds preserved
+	startsAt := parseTime("2026-01-08T10:15:30.123Z") // Milliseconds preserved
 	expiresAt := parseTimePtr("2026-02-08T10:15:30.123Z")
 
 	contract := &billing.Contract{
-		ID:             ulid.New(),
+		ID:             uid.New(),
 		OrganizationID: orgID,
 		ContractName:   "Timestamp Test",
 		ContractNumber: "TS-001",
@@ -563,13 +563,13 @@ func TestContractService_CreateContract_TimestampPrecision(t *testing.T) {
 		EndDate:        expiresAt,
 		Currency:       "USD",
 		Status:         billing.ContractStatusDraft,
-		CreatedBy:      ulid.New().String(),
+		CreatedBy:      uid.New().String(),
 	}
 
 	// Mock organization exists
 	billingRepo.On("GetByOrgID", ctx, orgID).Return(&billing.OrganizationBilling{
 		OrganizationID: orgID,
-		PlanID:         ulid.New(),
+		PlanID:         uid.New(),
 	}, nil)
 
 	contractRepo.On("Create", ctx, mock.MatchedBy(func(c *billing.Contract) bool {
@@ -691,14 +691,14 @@ func TestContractService_CreateContract_MinimumDurationValidation(t *testing.T) 
 			billingRepo := new(MockOrganizationBillingRepository)
 
 			transactor := NewMockTransactor()
-	service := NewContractService(transactor, contractRepo, tierRepo, historyRepo, billingRepo, logger)
+			service := NewContractService(transactor, contractRepo, tierRepo, historyRepo, billingRepo, logger)
 
-			orgID := ulid.New()
+			orgID := uid.New()
 			startsAt := parseTime(tt.startsAt)
 			expiresAt := parseTimePtr(tt.expiresAt)
 
 			contract := &billing.Contract{
-				ID:             ulid.New(),
+				ID:             uid.New(),
 				OrganizationID: orgID,
 				ContractName:   "Duration Test",
 				ContractNumber: "DUR-001",
@@ -706,13 +706,13 @@ func TestContractService_CreateContract_MinimumDurationValidation(t *testing.T) 
 				EndDate:        expiresAt,
 				Currency:       "USD",
 				Status:         billing.ContractStatusDraft,
-				CreatedBy:      ulid.New().String(),
+				CreatedBy:      uid.New().String(),
 			}
 
 			// Setup GetByOrgID mock for all cases (called before validation)
 			billingRepo.On("GetByOrgID", ctx, orgID).Return(&billing.OrganizationBilling{
 				OrganizationID: orgID,
-				PlanID:         ulid.New(),
+				PlanID:         uid.New(),
 			}, nil)
 
 			if tt.expectError {
@@ -758,7 +758,7 @@ func TestContractService_AddVolumeTiers_ValidationFirstTierNotZero(t *testing.T)
 	transactor := NewMockTransactor()
 	service := NewContractService(transactor, contractRepo, tierRepo, historyRepo, billingRepo, logger)
 
-	contractID := ulid.New()
+	contractID := uid.New()
 
 	// Mock contract exists
 	contractRepo.On("GetByID", ctx, contractID).Return(&billing.Contract{
@@ -798,7 +798,7 @@ func TestContractService_AddVolumeTiers_ValidationGapDetection(t *testing.T) {
 	transactor := NewMockTransactor()
 	service := NewContractService(transactor, contractRepo, tierRepo, historyRepo, billingRepo, logger)
 
-	contractID := ulid.New()
+	contractID := uid.New()
 
 	// Mock contract exists
 	contractRepo.On("GetByID", ctx, contractID).Return(&billing.Contract{
@@ -844,7 +844,7 @@ func TestContractService_AddVolumeTiers_ValidationUnlimitedNotLast(t *testing.T)
 	transactor := NewMockTransactor()
 	service := NewContractService(transactor, contractRepo, tierRepo, historyRepo, billingRepo, logger)
 
-	contractID := ulid.New()
+	contractID := uid.New()
 
 	// Mock contract exists
 	contractRepo.On("GetByID", ctx, contractID).Return(&billing.Contract{
@@ -890,7 +890,7 @@ func TestContractService_AddVolumeTiers_MultiDimensionValidation(t *testing.T) {
 	transactor := NewMockTransactor()
 	service := NewContractService(transactor, contractRepo, tierRepo, historyRepo, billingRepo, logger)
 
-	contractID := ulid.New()
+	contractID := uid.New()
 
 	// Mock contract exists
 	contractRepo.On("GetByID", ctx, contractID).Return(&billing.Contract{

@@ -5,9 +5,10 @@ import (
 	"errors"
 	"time"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/annotation"
 	"brokle/internal/infrastructure/shared"
-	"brokle/pkg/ulid"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -64,7 +65,7 @@ func (r *ItemRepository) CreateBatch(ctx context.Context, items []*annotation.Qu
 }
 
 // GetByID retrieves a queue item by its ID.
-func (r *ItemRepository) GetByID(ctx context.Context, id ulid.ULID) (*annotation.QueueItem, error) {
+func (r *ItemRepository) GetByID(ctx context.Context, id uuid.UUID) (*annotation.QueueItem, error) {
 	var item annotation.QueueItem
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("id = ?", id.String()).
@@ -80,7 +81,7 @@ func (r *ItemRepository) GetByID(ctx context.Context, id ulid.ULID) (*annotation
 }
 
 // GetByIDForQueue retrieves a queue item by its ID within a specific queue.
-func (r *ItemRepository) GetByIDForQueue(ctx context.Context, id, queueID ulid.ULID) (*annotation.QueueItem, error) {
+func (r *ItemRepository) GetByIDForQueue(ctx context.Context, id, queueID uuid.UUID) (*annotation.QueueItem, error) {
 	var item annotation.QueueItem
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("id = ? AND queue_id = ?", id.String(), queueID.String()).
@@ -96,7 +97,7 @@ func (r *ItemRepository) GetByIDForQueue(ctx context.Context, id, queueID ulid.U
 }
 
 // List retrieves queue items with optional filtering and pagination.
-func (r *ItemRepository) List(ctx context.Context, queueID ulid.ULID, filter *annotation.ItemFilter) ([]*annotation.QueueItem, int64, error) {
+func (r *ItemRepository) List(ctx context.Context, queueID uuid.UUID, filter *annotation.ItemFilter) ([]*annotation.QueueItem, int64, error) {
 	var items []*annotation.QueueItem
 	var total int64
 
@@ -156,7 +157,7 @@ func (r *ItemRepository) Update(ctx context.Context, item *annotation.QueueItem)
 }
 
 // Delete removes a queue item by ID.
-func (r *ItemRepository) Delete(ctx context.Context, id, queueID ulid.ULID) error {
+func (r *ItemRepository) Delete(ctx context.Context, id, queueID uuid.UUID) error {
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("id = ? AND queue_id = ?", id.String(), queueID.String()).
 		Delete(&annotation.QueueItem{})
@@ -172,7 +173,7 @@ func (r *ItemRepository) Delete(ctx context.Context, id, queueID ulid.ULID) erro
 }
 
 // ExistsByObject checks if an item for the given object exists in the queue.
-func (r *ItemRepository) ExistsByObject(ctx context.Context, queueID ulid.ULID, objectID string, objectType annotation.ObjectType) (bool, error) {
+func (r *ItemRepository) ExistsByObject(ctx context.Context, queueID uuid.UUID, objectID string, objectType annotation.ObjectType) (bool, error) {
 	var count int64
 	result := r.getDB(ctx).WithContext(ctx).
 		Model(&annotation.QueueItem{}).
@@ -191,7 +192,7 @@ func (r *ItemRepository) ExistsByObject(ctx context.Context, queueID ulid.ULID, 
 // - Lock expired (locked_at + lock_timeout < NOW()), OR
 // - Locked by current user (can reclaim)
 // Uses SELECT ... FOR UPDATE SKIP LOCKED for concurrent safety.
-func (r *ItemRepository) FetchAndLockNext(ctx context.Context, queueID, userID ulid.ULID, lockTimeout int, seenItemIDs []ulid.ULID) (*annotation.QueueItem, error) {
+func (r *ItemRepository) FetchAndLockNext(ctx context.Context, queueID, userID uuid.UUID, lockTimeout int, seenItemIDs []uuid.UUID) (*annotation.QueueItem, error) {
 	var item annotation.QueueItem
 	now := time.Now()
 	lockExpiry := now.Add(-time.Duration(lockTimeout) * time.Second)
@@ -251,7 +252,7 @@ func (r *ItemRepository) FetchAndLockNext(ctx context.Context, queueID, userID u
 }
 
 // Complete marks an item as completed by the annotator.
-func (r *ItemRepository) Complete(ctx context.Context, id, userID ulid.ULID) error {
+func (r *ItemRepository) Complete(ctx context.Context, id, userID uuid.UUID) error {
 	now := time.Now()
 	result := r.getDB(ctx).WithContext(ctx).
 		Model(&annotation.QueueItem{}).
@@ -274,7 +275,7 @@ func (r *ItemRepository) Complete(ctx context.Context, id, userID ulid.ULID) err
 }
 
 // Skip marks an item as skipped by the annotator.
-func (r *ItemRepository) Skip(ctx context.Context, id, userID ulid.ULID) error {
+func (r *ItemRepository) Skip(ctx context.Context, id, userID uuid.UUID) error {
 	now := time.Now()
 	result := r.getDB(ctx).WithContext(ctx).
 		Model(&annotation.QueueItem{}).
@@ -297,7 +298,7 @@ func (r *ItemRepository) Skip(ctx context.Context, id, userID ulid.ULID) error {
 }
 
 // ReleaseLock releases the lock on an item.
-func (r *ItemRepository) ReleaseLock(ctx context.Context, id ulid.ULID) error {
+func (r *ItemRepository) ReleaseLock(ctx context.Context, id uuid.UUID) error {
 	now := time.Now()
 	result := r.getDB(ctx).WithContext(ctx).
 		Model(&annotation.QueueItem{}).
@@ -320,7 +321,7 @@ func (r *ItemRepository) ReleaseLock(ctx context.Context, id ulid.ULID) error {
 
 // ReleaseExpiredLocks releases all locks that have expired.
 // Returns the count of locks released.
-func (r *ItemRepository) ReleaseExpiredLocks(ctx context.Context, queueID ulid.ULID, lockTimeout int) (int64, error) {
+func (r *ItemRepository) ReleaseExpiredLocks(ctx context.Context, queueID uuid.UUID, lockTimeout int) (int64, error) {
 	now := time.Now()
 	lockExpiry := now.Add(-time.Duration(lockTimeout) * time.Second)
 
@@ -344,7 +345,7 @@ func (r *ItemRepository) ReleaseExpiredLocks(ctx context.Context, queueID ulid.U
 }
 
 // GetStats retrieves aggregated statistics for a queue.
-func (r *ItemRepository) GetStats(ctx context.Context, queueID ulid.ULID, lockTimeout int) (*annotation.QueueStats, error) {
+func (r *ItemRepository) GetStats(ctx context.Context, queueID uuid.UUID, lockTimeout int) (*annotation.QueueStats, error) {
 	stats := &annotation.QueueStats{}
 	lockExpiry := time.Now().Add(-time.Duration(lockTimeout) * time.Second)
 

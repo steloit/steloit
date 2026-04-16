@@ -8,8 +8,9 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	orgDomain "brokle/internal/core/domain/organization"
-	"brokle/pkg/ulid"
 	"brokle/internal/infrastructure/shared"
 )
 
@@ -36,7 +37,7 @@ func (r *memberRepository) Create(ctx context.Context, member *orgDomain.Member)
 }
 
 // GetByID retrieves a member by ID
-func (r *memberRepository) GetByID(ctx context.Context, id ulid.ULID) (*orgDomain.Member, error) {
+func (r *memberRepository) GetByID(ctx context.Context, id uuid.UUID) (*orgDomain.Member, error) {
 	var member orgDomain.Member
 	err := r.getDB(ctx).WithContext(ctx).Where("id = ? AND deleted_at IS NULL", id).First(&member).Error
 	if err != nil {
@@ -49,7 +50,7 @@ func (r *memberRepository) GetByID(ctx context.Context, id ulid.ULID) (*orgDomai
 }
 
 // GetByUserAndOrganization retrieves a member by user and organization
-func (r *memberRepository) GetByUserAndOrganization(ctx context.Context, userID, orgID ulid.ULID) (*orgDomain.Member, error) {
+func (r *memberRepository) GetByUserAndOrganization(ctx context.Context, userID, orgID uuid.UUID) (*orgDomain.Member, error) {
 	var member orgDomain.Member
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("user_id = ? AND organization_id = ? AND deleted_at IS NULL", userID, orgID).
@@ -69,21 +70,21 @@ func (r *memberRepository) Update(ctx context.Context, member *orgDomain.Member)
 }
 
 // Delete soft deletes a member by composite key (userID as the parameter for compatibility)
-func (r *memberRepository) Delete(ctx context.Context, userID ulid.ULID) error {
+func (r *memberRepository) Delete(ctx context.Context, userID uuid.UUID) error {
 	// Note: This method signature is problematic since Member has composite key
 	// This is a temporary fix - ideally the interface should be updated
 	return fmt.Errorf("delete member method requires organizationID: %w", orgDomain.ErrInsufficientRole)
 }
 
 // DeleteByUserAndOrg soft deletes a member by composite key
-func (r *memberRepository) DeleteByUserAndOrg(ctx context.Context, orgID, userID ulid.ULID) error {
+func (r *memberRepository) DeleteByUserAndOrg(ctx context.Context, orgID, userID uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).Model(&orgDomain.Member{}).
 		Where("organization_id = ? AND user_id = ?", orgID, userID).
 		Update("deleted_at", time.Now()).Error
 }
 
 // GetByOrganizationID retrieves all members of an organization
-func (r *memberRepository) GetByOrganizationID(ctx context.Context, orgID ulid.ULID) ([]*orgDomain.Member, error) {
+func (r *memberRepository) GetByOrganizationID(ctx context.Context, orgID uuid.UUID) ([]*orgDomain.Member, error) {
 	var members []*orgDomain.Member
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("organization_id = ? AND deleted_at IS NULL", orgID).
@@ -93,7 +94,7 @@ func (r *memberRepository) GetByOrganizationID(ctx context.Context, orgID ulid.U
 }
 
 // GetByUserID retrieves all memberships for a user
-func (r *memberRepository) GetByUserID(ctx context.Context, userID ulid.ULID) ([]*orgDomain.Member, error) {
+func (r *memberRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]*orgDomain.Member, error) {
 	var members []*orgDomain.Member
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("user_id = ? AND deleted_at IS NULL", userID).
@@ -103,7 +104,7 @@ func (r *memberRepository) GetByUserID(ctx context.Context, userID ulid.ULID) ([
 }
 
 // IsMember checks if a user is a member of an organization
-func (r *memberRepository) IsMember(ctx context.Context, userID, orgID ulid.ULID) (bool, error) {
+func (r *memberRepository) IsMember(ctx context.Context, userID, orgID uuid.UUID) (bool, error) {
 	var count int64
 	err := r.getDB(ctx).WithContext(ctx).
 		Model(&orgDomain.Member{}).
@@ -113,7 +114,7 @@ func (r *memberRepository) IsMember(ctx context.Context, userID, orgID ulid.ULID
 }
 
 // CountByOrganization counts members in an organization
-func (r *memberRepository) CountByOrganization(ctx context.Context, orgID ulid.ULID) (int64, error) {
+func (r *memberRepository) CountByOrganization(ctx context.Context, orgID uuid.UUID) (int64, error) {
 	var count int64
 	err := r.getDB(ctx).WithContext(ctx).
 		Model(&orgDomain.Member{}).
@@ -123,12 +124,12 @@ func (r *memberRepository) CountByOrganization(ctx context.Context, orgID ulid.U
 }
 
 // GetByUserAndOrg is an alias for GetByUserAndOrganization for interface compliance
-func (r *memberRepository) GetByUserAndOrg(ctx context.Context, userID, orgID ulid.ULID) (*orgDomain.Member, error) {
+func (r *memberRepository) GetByUserAndOrg(ctx context.Context, userID, orgID uuid.UUID) (*orgDomain.Member, error) {
 	return r.GetByUserAndOrganization(ctx, userID, orgID)
 }
 
 // CountByOrganizationAndRole counts members with a specific role in an organization
-func (r *memberRepository) CountByOrganizationAndRole(ctx context.Context, orgID, roleID ulid.ULID) (int, error) {
+func (r *memberRepository) CountByOrganizationAndRole(ctx context.Context, orgID, roleID uuid.UUID) (int, error) {
 	var count int64
 	err := r.getDB(ctx).WithContext(ctx).
 		Model(&orgDomain.Member{}).
@@ -138,7 +139,7 @@ func (r *memberRepository) CountByOrganizationAndRole(ctx context.Context, orgID
 }
 
 // GetByOrganizationAndRole retrieves members with a specific role in an organization
-func (r *memberRepository) GetByOrganizationAndRole(ctx context.Context, orgID, roleID ulid.ULID) ([]*orgDomain.Member, error) {
+func (r *memberRepository) GetByOrganizationAndRole(ctx context.Context, orgID, roleID uuid.UUID) ([]*orgDomain.Member, error) {
 	var members []*orgDomain.Member
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("organization_id = ? AND role_id = ? AND deleted_at IS NULL", orgID, roleID).
@@ -148,23 +149,23 @@ func (r *memberRepository) GetByOrganizationAndRole(ctx context.Context, orgID, 
 }
 
 // GetMembersByOrganizationID is an alias for GetByOrganizationID for interface compliance
-func (r *memberRepository) GetMembersByOrganizationID(ctx context.Context, orgID ulid.ULID) ([]*orgDomain.Member, error) {
+func (r *memberRepository) GetMembersByOrganizationID(ctx context.Context, orgID uuid.UUID) ([]*orgDomain.Member, error) {
 	return r.GetByOrganizationID(ctx, orgID)
 }
 
 // GetMembersByUserID is an alias for GetByUserID for interface compliance
-func (r *memberRepository) GetMembersByUserID(ctx context.Context, userID ulid.ULID) ([]*orgDomain.Member, error) {
+func (r *memberRepository) GetMembersByUserID(ctx context.Context, userID uuid.UUID) ([]*orgDomain.Member, error) {
 	return r.GetByUserID(ctx, userID)
 }
 
 // GetMemberCount is an alias for CountByOrganization for interface compliance
-func (r *memberRepository) GetMemberCount(ctx context.Context, orgID ulid.ULID) (int, error) {
+func (r *memberRepository) GetMemberCount(ctx context.Context, orgID uuid.UUID) (int, error) {
 	count, err := r.CountByOrganization(ctx, orgID)
 	return int(count), err
 }
 
 // UpdateMemberRole updates the role of a member
-func (r *memberRepository) UpdateMemberRole(ctx context.Context, orgID, userID, roleID ulid.ULID) error {
+func (r *memberRepository) UpdateMemberRole(ctx context.Context, orgID, userID, roleID uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).
 		Model(&orgDomain.Member{}).
 		Where("organization_id = ? AND user_id = ?", orgID, userID).
@@ -172,13 +173,13 @@ func (r *memberRepository) UpdateMemberRole(ctx context.Context, orgID, userID, 
 }
 
 // GetMemberRole retrieves the role of a member
-func (r *memberRepository) GetMemberRole(ctx context.Context, userID, orgID ulid.ULID) (ulid.ULID, error) {
+func (r *memberRepository) GetMemberRole(ctx context.Context, userID, orgID uuid.UUID) (uuid.UUID, error) {
 	var member orgDomain.Member
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("user_id = ? AND organization_id = ?", userID, orgID).
 		First(&member).Error
 	if err != nil {
-		return ulid.ULID{}, err
+		return uuid.UUID{}, err
 	}
 	return member.RoleID, nil
 }

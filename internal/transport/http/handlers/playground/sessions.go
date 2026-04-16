@@ -6,11 +6,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/google/uuid"
+
 	playgroundDomain "brokle/internal/core/domain/playground"
 	"brokle/internal/transport/http/middleware"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 )
 
 // CreateSessionRequest represents the request body for creating a session.
@@ -47,9 +48,9 @@ type UpdateSessionRequest struct {
 // @Failure 401 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/playground/sessions [post]
 func (h *Handler) CreateSession(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
@@ -59,8 +60,8 @@ func (h *Handler) CreateSession(c *gin.Context) {
 		return
 	}
 
-	userID, exists := middleware.GetUserIDULID(c)
-	var userIDPtr *ulid.ULID
+	userID, exists := middleware.GetUserIDFromContext(c)
+	var userIDPtr *uuid.UUID
 	if exists {
 		userIDPtr = &userID
 	}
@@ -98,15 +99,15 @@ func (h *Handler) CreateSession(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/playground/sessions/{sessionId} [get]
 func (h *Handler) GetSession(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	sessionID, err := ulid.Parse(c.Param("sessionId"))
+	sessionID, err := uuid.Parse(c.Param("sessionId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid session ID", "sessionId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid session ID", "sessionId must be a valid UUID"))
 		return
 	}
 
@@ -138,9 +139,9 @@ func (h *Handler) GetSession(c *gin.Context) {
 // @Failure 401 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/playground/sessions [get]
 func (h *Handler) ListSessions(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
@@ -183,15 +184,15 @@ func (h *Handler) ListSessions(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/playground/sessions/{sessionId} [put]
 func (h *Handler) UpdateSession(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	sessionID, err := ulid.Parse(c.Param("sessionId"))
+	sessionID, err := uuid.Parse(c.Param("sessionId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid session ID", "sessionId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid session ID", "sessionId must be a valid UUID"))
 		return
 	}
 
@@ -239,15 +240,15 @@ func (h *Handler) UpdateSession(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/playground/sessions/{sessionId} [delete]
 func (h *Handler) DeleteSession(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	sessionID, err := ulid.Parse(c.Param("sessionId"))
+	sessionID, err := uuid.Parse(c.Param("sessionId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid session ID", "sessionId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid session ID", "sessionId must be a valid UUID"))
 		return
 	}
 

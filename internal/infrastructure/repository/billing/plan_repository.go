@@ -7,9 +7,10 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/billing"
 	"brokle/internal/infrastructure/shared"
-	"brokle/pkg/ulid"
 )
 
 type planRepository struct {
@@ -25,7 +26,7 @@ func (r *planRepository) getDB(ctx context.Context) *gorm.DB {
 	return shared.GetDB(ctx, r.db)
 }
 
-func (r *planRepository) GetByID(ctx context.Context, id ulid.ULID) (*billing.Plan, error) {
+func (r *planRepository) GetByID(ctx context.Context, id uuid.UUID) (*billing.Plan, error) {
 	var plan billing.Plan
 	err := r.getDB(ctx).WithContext(ctx).Where("id = ?", id).First(&plan).Error
 	if err != nil {

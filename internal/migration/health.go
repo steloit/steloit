@@ -1,13 +1,12 @@
 package migration
 
 import (
-	"log/slog"
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
-
 )
 
 // HealthService provides migration health check capabilities

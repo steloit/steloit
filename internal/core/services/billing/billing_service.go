@@ -8,8 +8,10 @@ import (
 
 	"github.com/shopspring/decimal"
 
+	"github.com/google/uuid"
+
 	billingDomain "brokle/internal/core/domain/billing"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 // BillingService implements billing operations for gateway usage
@@ -92,7 +94,7 @@ func (s *BillingService) RecordUsage(ctx context.Context, usage *billingDomain.C
 
 	// Create usage record
 	record := &billingDomain.UsageRecord{
-		ID:             ulid.New(),
+		ID:             uid.New(),
 		OrganizationID: usage.OrganizationID,
 		RequestID:      usage.RequestID,
 		ProviderID:     usage.ProviderID,
@@ -127,7 +129,7 @@ func (s *BillingService) RecordUsage(ctx context.Context, usage *billingDomain.C
 }
 
 // CalculateBill generates a billing summary for an organization
-func (s *BillingService) CalculateBill(ctx context.Context, orgID ulid.ULID, period string) (*billingDomain.BillingSummary, error) {
+func (s *BillingService) CalculateBill(ctx context.Context, orgID uuid.UUID, period string) (*billingDomain.BillingSummary, error) {
 	// Calculate period start and end dates
 	start, end := s.calculatePeriodBounds(period)
 
@@ -139,7 +141,7 @@ func (s *BillingService) CalculateBill(ctx context.Context, orgID ulid.ULID, per
 
 	if len(usageRecords) == 0 {
 		return &billingDomain.BillingSummary{
-			ID:             ulid.New(),
+			ID:             uid.New(),
 			OrganizationID: orgID,
 			Period:         period,
 			PeriodStart:    start,
@@ -156,7 +158,7 @@ func (s *BillingService) CalculateBill(ctx context.Context, orgID ulid.ULID, per
 
 	// Calculate summary statistics
 	summary := &billingDomain.BillingSummary{
-		ID:                ulid.New(),
+		ID:                uid.New(),
 		OrganizationID:    orgID,
 		Period:            period,
 		PeriodStart:       start,
@@ -220,12 +222,12 @@ func (s *BillingService) CalculateBill(ctx context.Context, orgID ulid.ULID, per
 }
 
 // GetBillingHistory retrieves billing history for an organization
-func (s *BillingService) GetBillingHistory(ctx context.Context, orgID ulid.ULID, start, end time.Time) ([]*billingDomain.BillingRecord, error) {
+func (s *BillingService) GetBillingHistory(ctx context.Context, orgID uuid.UUID, start, end time.Time) ([]*billingDomain.BillingRecord, error) {
 	return s.billingRecordRepo.GetBillingHistory(ctx, orgID, start, end)
 }
 
 // ProcessPayment processes a payment for a billing record
-func (s *BillingService) ProcessPayment(ctx context.Context, billingRecordID ulid.ULID) error {
+func (s *BillingService) ProcessPayment(ctx context.Context, billingRecordID uuid.UUID) error {
 	// Get billing record
 	record, err := s.billingRecordRepo.GetBillingRecord(ctx, billingRecordID)
 	if err != nil {
@@ -248,7 +250,7 @@ func (s *BillingService) ProcessPayment(ctx context.Context, billingRecordID uli
 
 	// TODO: Integrate with payment processor (Stripe, etc.)
 	// This is a placeholder for actual payment processing
-	transactionID := fmt.Sprintf("txn_%s", ulid.New())
+	transactionID := fmt.Sprintf("txn_%s", uid.New())
 
 	// Update billing record with payment information
 	now := time.Now()
@@ -267,7 +269,7 @@ func (s *BillingService) ProcessPayment(ctx context.Context, billingRecordID uli
 }
 
 // CheckUsageQuotas checks if organization is within usage quotas
-func (s *BillingService) CheckUsageQuotas(ctx context.Context, orgID ulid.ULID) (*billingDomain.QuotaStatus, error) {
+func (s *BillingService) CheckUsageQuotas(ctx context.Context, orgID uuid.UUID) (*billingDomain.QuotaStatus, error) {
 	quota, err := s.quotaRepo.GetUsageQuota(ctx, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get usage quota: %w", err)
@@ -324,7 +326,7 @@ func (s *BillingService) CreateBillingRecord(ctx context.Context, summary *billi
 	}
 
 	record := &billingDomain.BillingRecord{
-		ID:             ulid.New(),
+		ID:             uid.New(),
 		OrganizationID: summary.OrganizationID,
 		Period:         summary.Period,
 		Amount:         summary.NetCost,

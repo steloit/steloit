@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
+
 	authDomain "brokle/internal/core/domain/auth"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
 )
 
 // permissionService implements auth.PermissionService interface
@@ -46,7 +47,7 @@ func (s *permissionService) CreatePermission(ctx context.Context, req *authDomai
 }
 
 // GetPermission retrieves a permission by ID
-func (s *permissionService) GetPermission(ctx context.Context, permissionID ulid.ULID) (*authDomain.Permission, error) {
+func (s *permissionService) GetPermission(ctx context.Context, permissionID uuid.UUID) (*authDomain.Permission, error) {
 	return s.permissionRepo.GetByID(ctx, permissionID)
 }
 
@@ -61,7 +62,7 @@ func (s *permissionService) GetPermissionByResourceAction(ctx context.Context, r
 }
 
 // UpdatePermission updates a permission
-func (s *permissionService) UpdatePermission(ctx context.Context, permissionID ulid.ULID, req *authDomain.UpdatePermissionRequest) error {
+func (s *permissionService) UpdatePermission(ctx context.Context, permissionID uuid.UUID, req *authDomain.UpdatePermissionRequest) error {
 	// Get existing permission
 	permission, err := s.permissionRepo.GetByID(ctx, permissionID)
 	if err != nil {
@@ -77,7 +78,7 @@ func (s *permissionService) UpdatePermission(ctx context.Context, permissionID u
 }
 
 // DeletePermission deletes a permission
-func (s *permissionService) DeletePermission(ctx context.Context, permissionID ulid.ULID) error {
+func (s *permissionService) DeletePermission(ctx context.Context, permissionID uuid.UUID) error {
 	// Check if permission is in use
 	// This would need to be implemented properly in a production system
 	return s.permissionRepo.Delete(ctx, permissionID)

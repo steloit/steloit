@@ -15,12 +15,12 @@ DROP TABLE IF EXISTS roles CASCADE;
 -- Recreate roles table with exact schema from 20250908130000
 -- (which kept display_name and description from initial schema)
 CREATE TABLE roles (
-    id CHAR(26) PRIMARY KEY,
+    id UUID PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     display_name VARCHAR(255) NOT NULL,
     description TEXT,
     scope_type VARCHAR(50) NOT NULL,
-    scope_id CHAR(26),
+    scope_id UUID,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     deleted_at TIMESTAMP WITH TIME ZONE
@@ -45,8 +45,8 @@ CREATE INDEX idx_roles_deleted_at ON roles(deleted_at);
 
 -- Recreate user_roles table (from 20250908130000)
 CREATE TABLE user_roles (
-    user_id CHAR(26) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    role_id CHAR(26) NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     PRIMARY KEY (user_id, role_id)
 );
@@ -57,7 +57,7 @@ CREATE INDEX idx_user_roles_role_id ON user_roles(role_id);
 -- Recreate permissions table with exact schema from 20250908130000
 -- (which has resource/action from 20250907172224 plus original fields)
 CREATE TABLE permissions (
-    id CHAR(26) PRIMARY KEY,
+    id UUID PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
     display_name VARCHAR(255) NOT NULL,
     description TEXT,
@@ -76,8 +76,8 @@ CREATE INDEX idx_permissions_resource_action ON permissions(resource, action);
 
 -- Recreate role_permissions table (from 20250908130000)
 CREATE TABLE role_permissions (
-    role_id CHAR(26) NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-    permission_id CHAR(26) NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
+    role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    permission_id UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     PRIMARY KEY (role_id, permission_id)
 );

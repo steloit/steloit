@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	authDomain "brokle/internal/core/domain/auth"
 	orgDomain "brokle/internal/core/domain/organization"
 	userDomain "brokle/internal/core/domain/user"
@@ -14,7 +16,6 @@ import (
 	"brokle/pkg/email"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/token"
-	"brokle/pkg/ulid"
 )
 
 const (
@@ -67,7 +68,7 @@ func NewInvitationService(
 }
 
 // InviteUser creates an invitation for a user to join an organization
-func (s *invitationService) InviteUser(ctx context.Context, orgID ulid.ULID, inviterID ulid.ULID, req *orgDomain.InviteUserRequest) (*orgDomain.Invitation, error) {
+func (s *invitationService) InviteUser(ctx context.Context, orgID uuid.UUID, inviterID uuid.UUID, req *orgDomain.InviteUserRequest) (*orgDomain.Invitation, error) {
 	// Normalize email
 	normalizedEmail := strings.ToLower(strings.TrimSpace(req.Email))
 
@@ -163,7 +164,7 @@ func (s *invitationService) InviteUser(ctx context.Context, orgID ulid.ULID, inv
 
 // AcceptInvitation accepts an invitation and adds the user to the organization.
 // Returns AcceptInvitationResult with org details to avoid extra DB query in handler.
-func (s *invitationService) AcceptInvitation(ctx context.Context, tokenStr string, userID ulid.ULID) (*orgDomain.AcceptInvitationResult, error) {
+func (s *invitationService) AcceptInvitation(ctx context.Context, tokenStr string, userID uuid.UUID) (*orgDomain.AcceptInvitationResult, error) {
 	// Validate token format
 	if !token.ValidateTokenFormat(tokenStr) {
 		return nil, appErrors.NewValidationError("token", "Invalid invitation token format")
@@ -285,7 +286,7 @@ func (s *invitationService) DeclineInvitation(ctx context.Context, tokenStr stri
 }
 
 // RevokeInvitation revokes a pending invitation
-func (s *invitationService) RevokeInvitation(ctx context.Context, invitationID ulid.ULID, revokedByID ulid.ULID) error {
+func (s *invitationService) RevokeInvitation(ctx context.Context, invitationID uuid.UUID, revokedByID uuid.UUID) error {
 	// Get invitation
 	invitation, err := s.inviteRepo.GetByID(ctx, invitationID)
 	if err != nil {
@@ -320,7 +321,7 @@ func (s *invitationService) RevokeInvitation(ctx context.Context, invitationID u
 }
 
 // ResendInvitation resends a pending invitation and returns the updated invitation
-func (s *invitationService) ResendInvitation(ctx context.Context, invitationID ulid.ULID, resentByID ulid.ULID) (*orgDomain.Invitation, error) {
+func (s *invitationService) ResendInvitation(ctx context.Context, invitationID uuid.UUID, resentByID uuid.UUID) (*orgDomain.Invitation, error) {
 	// Get invitation
 	invitation, err := s.inviteRepo.GetByID(ctx, invitationID)
 	if err != nil {
@@ -395,7 +396,7 @@ func (s *invitationService) ResendInvitation(ctx context.Context, invitationID u
 }
 
 // GetInvitation retrieves an invitation by ID
-func (s *invitationService) GetInvitation(ctx context.Context, invitationID ulid.ULID) (*orgDomain.Invitation, error) {
+func (s *invitationService) GetInvitation(ctx context.Context, invitationID uuid.UUID) (*orgDomain.Invitation, error) {
 	return s.inviteRepo.GetByID(ctx, invitationID)
 }
 
@@ -410,7 +411,7 @@ func (s *invitationService) GetInvitationByToken(ctx context.Context, tokenStr s
 }
 
 // GetPendingInvitations retrieves all pending invitations for an organization
-func (s *invitationService) GetPendingInvitations(ctx context.Context, orgID ulid.ULID) ([]*orgDomain.Invitation, error) {
+func (s *invitationService) GetPendingInvitations(ctx context.Context, orgID uuid.UUID) ([]*orgDomain.Invitation, error) {
 	return s.inviteRepo.GetPendingInvitations(ctx, orgID)
 }
 
@@ -444,7 +445,7 @@ func (s *invitationService) ValidateInvitationToken(ctx context.Context, tokenSt
 }
 
 // IsEmailAlreadyInvited checks if an email already has a pending invitation for an organization
-func (s *invitationService) IsEmailAlreadyInvited(ctx context.Context, email string, orgID ulid.ULID) (bool, error) {
+func (s *invitationService) IsEmailAlreadyInvited(ctx context.Context, email string, orgID uuid.UUID) (bool, error) {
 	normalizedEmail := strings.ToLower(strings.TrimSpace(email))
 	return s.inviteRepo.IsEmailAlreadyInvited(ctx, normalizedEmail, orgID)
 }
@@ -455,7 +456,7 @@ func (s *invitationService) CleanupExpiredInvitations(ctx context.Context) error
 }
 
 // createAuditEvent creates an audit event for an invitation action
-func (s *invitationService) createAuditEvent(ctx context.Context, invitationID ulid.ULID, eventType orgDomain.InvitationAuditEventType, actorID *ulid.ULID, metadata map[string]interface{}) {
+func (s *invitationService) createAuditEvent(ctx context.Context, invitationID uuid.UUID, eventType orgDomain.InvitationAuditEventType, actorID *uuid.UUID, metadata map[string]interface{}) {
 	actorType := orgDomain.ActorTypeSystem
 	if actorID != nil {
 		actorType = orgDomain.ActorTypeUser
@@ -476,7 +477,7 @@ func (s *invitationService) createAuditEvent(ctx context.Context, invitationID u
 }
 
 // sendInvitationEmail sends an invitation email asynchronously
-func (s *invitationService) sendInvitationEmail(ctx context.Context, invitation *orgDomain.Invitation, org *orgDomain.Organization, plainTextToken string, inviterID ulid.ULID) {
+func (s *invitationService) sendInvitationEmail(ctx context.Context, invitation *orgDomain.Invitation, org *orgDomain.Organization, plainTextToken string, inviterID uuid.UUID) {
 	if s.emailSender == nil {
 		s.logger.Debug("email sender not configured, skipping invitation email",
 			"invitation_id", invitation.ID,
@@ -541,9 +542,9 @@ func (s *invitationService) sendInvitationEmail(ctx context.Context, invitation 
 		HTML:    htmlContent,
 		Text:    textContent,
 		Tags: map[string]string{
-			"type":           "invitation",
-			"organization":   org.ID.String(),
-			"invitation_id":  invitation.ID.String(),
+			"type":          "invitation",
+			"organization":  org.ID.String(),
+			"invitation_id": invitation.ID.String(),
 		},
 	})
 

@@ -3,7 +3,7 @@ package analytics
 import (
 	"time"
 
-	"brokle/pkg/ulid"
+	"github.com/google/uuid"
 
 	"github.com/shopspring/decimal"
 )
@@ -19,10 +19,10 @@ import (
 // ProviderModel represents an AI provider's LLM model definition (OpenAI, Anthropic, Google)
 // Used to track provider pricing for cost analytics, NOT for billing users
 type ProviderModel struct {
-	ID              ulid.ULID              `json:"id" gorm:"type:char(26);primaryKey"`
+	ID              uuid.UUID              `json:"id" gorm:"type:uuid;primaryKey"`
 	CreatedAt       time.Time              `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt       time.Time              `json:"updated_at" gorm:"autoUpdateTime"`
-	ProjectID       *ulid.ULID             `json:"project_id,omitempty" gorm:"type:char(26)"`
+	ProjectID       *uuid.UUID             `json:"project_id,omitempty" gorm:"type:uuid"`
 	ModelName       string                 `json:"model_name" gorm:"column:model_name;size:255;not null"`
 	MatchPattern    string                 `json:"match_pattern" gorm:"column:match_pattern;size:500;not null"`
 	Provider        string                 `json:"provider" gorm:"size:50;not null"`
@@ -39,11 +39,11 @@ func (ProviderModel) TableName() string { return "provider_models" }
 // Examples: OpenAI charges $2.50/1M input tokens, Anthropic charges $3.00/1M
 // Supports: input, output, cache_read_input_tokens, audio_input, batch_input, etc.
 type ProviderPrice struct {
-	ID              ulid.ULID       `json:"id" gorm:"type:char(26);primaryKey"`
+	ID              uuid.UUID       `json:"id" gorm:"type:uuid;primaryKey"`
 	CreatedAt       time.Time       `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt       time.Time       `json:"updated_at" gorm:"autoUpdateTime"`
-	ProviderModelID ulid.ULID       `json:"provider_model_id" gorm:"type:char(26);not null"`
-	ProjectID       *ulid.ULID      `json:"project_id,omitempty" gorm:"type:char(26)"`
+	ProviderModelID uuid.UUID       `json:"provider_model_id" gorm:"type:uuid;not null"`
+	ProjectID       *uuid.UUID      `json:"project_id,omitempty" gorm:"type:uuid"`
 	UsageType       string          `json:"usage_type" gorm:"size:100;not null"`
 	Price           decimal.Decimal `json:"price" gorm:"type:decimal(20,12);not null"`
 }
@@ -62,10 +62,10 @@ type ProviderPricingSnapshot struct {
 // AvailableModel represents a model available for selection in the UI
 // Combines default models from provider_models table with custom user-defined models
 type AvailableModel struct {
-	ID             string  `json:"id"`                         // model_name or custom model ID
-	Name           string  `json:"name"`                       // display_name for UI
-	Provider       string  `json:"provider"`                   // provider type (openai, anthropic, etc.)
-	CredentialID   *string `json:"credential_id,omitempty"`    // credential ID when multiple configs exist
-	CredentialName *string `json:"credential_name,omitempty"`  // credential name for display
-	IsCustom       bool    `json:"is_custom,omitempty"`        // true for user-defined custom models
+	ID             string  `json:"id"`                        // model_name or custom model ID
+	Name           string  `json:"name"`                      // display_name for UI
+	Provider       string  `json:"provider"`                  // provider type (openai, anthropic, etc.)
+	CredentialID   *string `json:"credential_id,omitempty"`   // credential ID when multiple configs exist
+	CredentialName *string `json:"credential_name,omitempty"` // credential name for display
+	IsCustom       bool    `json:"is_custom,omitempty"`       // true for user-defined custom models
 }

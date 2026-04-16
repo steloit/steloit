@@ -1,17 +1,19 @@
 package observability
 
 import (
-	"log/slog"
 	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"time"
 
 	logspb "go.opentelemetry.io/proto/otlp/logs/v1"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/observability"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 // OTLPEventsConverterService handles conversion of OTLP GenAI events to Brokle domain entities
@@ -34,7 +36,7 @@ func NewOTLPEventsConverterService(logger *slog.Logger) *OTLPEventsConverterServ
 func (s *OTLPEventsConverterService) ConvertGenAIEventsRequest(
 	ctx context.Context,
 	logsData *logspb.LogsData,
-	projectID ulid.ULID,
+	projectID uuid.UUID,
 ) ([]*observability.TelemetryEventRequest, error) {
 	var events []*observability.TelemetryEventRequest
 
@@ -68,7 +70,7 @@ func (s *OTLPEventsConverterService) ConvertGenAIEventsRequest(
 				timestamp := genAIEvent.Timestamp
 				events = append(events, &observability.TelemetryEventRequest{
 					EventType: observability.TelemetryEventTypeGenAIEvent,
-					EventID:   ulid.New(),
+					EventID:   uid.New(),
 					Timestamp: &timestamp,
 					TraceID:   genAIEvent.TraceID,
 					SpanID:    genAIEvent.SpanID,
@@ -87,7 +89,7 @@ func (s *OTLPEventsConverterService) convertGenAIEventRecord(
 	eventName string,
 	resourceAttrs map[string]string,
 	logAttributes map[string]string,
-	projectID ulid.ULID,
+	projectID uuid.UUID,
 ) *observability.GenAIEvent {
 	// Extract timestamps (nanosecond precision)
 	timestamp := time.Unix(0, int64(logRecord.GetTimeUnixNano()))
@@ -150,29 +152,29 @@ func (s *OTLPEventsConverterService) convertGenAIEventRecord(
 	}
 
 	return &observability.GenAIEvent{
-		Timestamp:              timestamp,
-		EventName:              eventName,
-		TraceID:                traceID,
-		SpanID:                 spanID,
-		OperationName:          operationName,
-		ModelName:              modelName,
-		ProviderName:           providerName,
-		InputMessages:          inputMessages,
-		OutputMessages:         outputMessages,
-		InputTokens:            inputTokens,
-		OutputTokens:           outputTokens,
-		Temperature:            temperature,
-		TopP:                   topP,
-		MaxTokens:              maxTokens,
-		FinishReasons:          finishReasons,
-		ResponseID:             responseID,
-		EvaluationName:         evaluationName,
-		EvaluationScore:        evaluationScore,
-		EvaluationLabel:        evaluationLabel,
-		EvaluationExplanation:  evaluationExplanation,
-		ProjectID:              projectID.String(),
-		UserID:                 userID,
-		SessionID:              sessionID,
+		Timestamp:             timestamp,
+		EventName:             eventName,
+		TraceID:               traceID,
+		SpanID:                spanID,
+		OperationName:         operationName,
+		ModelName:             modelName,
+		ProviderName:          providerName,
+		InputMessages:         inputMessages,
+		OutputMessages:        outputMessages,
+		InputTokens:           inputTokens,
+		OutputTokens:          outputTokens,
+		Temperature:           temperature,
+		TopP:                  topP,
+		MaxTokens:             maxTokens,
+		FinishReasons:         finishReasons,
+		ResponseID:            responseID,
+		EvaluationName:        evaluationName,
+		EvaluationScore:       evaluationScore,
+		EvaluationLabel:       evaluationLabel,
+		EvaluationExplanation: evaluationExplanation,
+		ProjectID:             projectID.String(),
+		UserID:                userID,
+		SessionID:             sessionID,
 	}
 }
 

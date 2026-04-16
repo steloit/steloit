@@ -27,7 +27,7 @@ type MessageResponse struct {
 // IDResponse represents a response with a single ID
 // @Description Response containing an ID reference
 type IDResponse struct {
-	ID string `json:"id" example:"ulid_01h2x3y4z5" description:"Resource identifier"`
+	ID string `json:"id" example:"018f6b6a-1234-7abc-8def-0123456789ab" description:"Resource identifier"`
 }
 
 // ListResponse represents a cursor-paginated list response

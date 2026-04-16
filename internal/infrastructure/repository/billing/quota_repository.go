@@ -1,16 +1,17 @@
 package billing
 
 import (
-	"log/slog"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	billingDomain "brokle/internal/core/domain/billing"
-	"brokle/pkg/ulid"
 )
 
 // Ensure QuotaRepository implements the interface
@@ -31,7 +32,7 @@ func NewQuotaRepository(db *gorm.DB, logger *slog.Logger) *QuotaRepository {
 }
 
 // GetUsageQuota retrieves the usage quota for an organization
-func (r *QuotaRepository) GetUsageQuota(ctx context.Context, orgID ulid.ULID) (*billingDomain.UsageQuota, error) {
+func (r *QuotaRepository) GetUsageQuota(ctx context.Context, orgID uuid.UUID) (*billingDomain.UsageQuota, error) {
 	query := `
 		SELECT
 			organization_id, billing_tier, monthly_request_limit, monthly_token_limit,
@@ -51,7 +52,7 @@ func (r *QuotaRepository) GetUsageQuota(ctx context.Context, orgID ulid.ULID) (*
 	}
 
 	// Check if we got empty result
-	if quota.OrganizationID.IsZero() {
+	if quota.OrganizationID == uuid.Nil {
 		return nil, nil
 	}
 
@@ -59,7 +60,7 @@ func (r *QuotaRepository) GetUsageQuota(ctx context.Context, orgID ulid.ULID) (*
 }
 
 // UpdateUsageQuota updates or inserts a usage quota for an organization
-func (r *QuotaRepository) UpdateUsageQuota(ctx context.Context, orgID ulid.ULID, quota *billingDomain.UsageQuota) error {
+func (r *QuotaRepository) UpdateUsageQuota(ctx context.Context, orgID uuid.UUID, quota *billingDomain.UsageQuota) error {
 	query := `
 		INSERT INTO usage_quotas (
 			organization_id, billing_tier, monthly_request_limit, monthly_token_limit,

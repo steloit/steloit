@@ -7,10 +7,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/google/uuid"
+
 	evaluationDomain "brokle/internal/core/domain/evaluation"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 )
 
 type ExperimentHandler struct {
@@ -84,7 +85,7 @@ func (h *ExperimentHandler) Create(c *gin.Context) {
 // @Param dataset_id query string false "Filter by dataset ID"
 // @Param status query string false "Filter by status (pending, running, completed, failed)"
 // @Param search query string false "Search by name or description"
-// @Param ids query string false "Filter by specific experiment IDs (comma-separated ULIDs)"
+// @Param ids query string false "Filter by specific experiment IDs (comma-separated UUIDs)"
 // @Success 200 {object} response.ListResponse{data=[]evaluation.ExperimentResponse}
 // @Failure 400 {object} response.ErrorResponse
 // @Failure 401 {object} response.ErrorResponse
@@ -102,9 +103,9 @@ func (h *ExperimentHandler) List(c *gin.Context) {
 	var filter *evaluationDomain.ExperimentFilter
 
 	if datasetIDStr := c.Query("dataset_id"); datasetIDStr != "" {
-		datasetID, err := ulid.Parse(datasetIDStr)
+		datasetID, err := uuid.Parse(datasetIDStr)
 		if err != nil {
-			response.Error(c, appErrors.NewValidationError("dataset_id", "must be a valid ULID"))
+			response.Error(c, appErrors.NewValidationError("dataset_id", "must be a valid UUID"))
 			return
 		}
 		if filter == nil {
@@ -141,16 +142,16 @@ func (h *ExperimentHandler) List(c *gin.Context) {
 
 	// Parse ids filter (comma-separated)
 	if idsStr := c.Query("ids"); idsStr != "" {
-		var ids []ulid.ULID
+		var ids []uuid.UUID
 		idParts := strings.Split(idsStr, ",")
 		for _, idStr := range idParts {
 			idStr = strings.TrimSpace(idStr)
 			if idStr == "" {
 				continue
 			}
-			id, err := ulid.Parse(idStr)
+			id, err := uuid.Parse(idStr)
 			if err != nil {
-				response.Error(c, appErrors.NewValidationError("ids", "invalid ULID: "+idStr))
+				response.Error(c, appErrors.NewValidationError("ids", "invalid UUID: "+idStr))
 				return
 			}
 			ids = append(ids, id)
@@ -198,9 +199,9 @@ func (h *ExperimentHandler) Get(c *gin.Context) {
 		return
 	}
 
-	experimentID, err := ulid.Parse(c.Param("experimentId"))
+	experimentID, err := uuid.Parse(c.Param("experimentId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid experiment ID", "experimentId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid experiment ID", "experimentId must be a valid UUID"))
 		return
 	}
 
@@ -235,9 +236,9 @@ func (h *ExperimentHandler) Update(c *gin.Context) {
 		return
 	}
 
-	experimentID, err := ulid.Parse(c.Param("experimentId"))
+	experimentID, err := uuid.Parse(c.Param("experimentId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid experiment ID", "experimentId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid experiment ID", "experimentId must be a valid UUID"))
 		return
 	}
 
@@ -274,15 +275,15 @@ func (h *ExperimentHandler) Update(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/experiments/{experimentId} [delete]
 func (h *ExperimentHandler) Delete(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	experimentID, err := ulid.Parse(c.Param("experimentId"))
+	experimentID, err := uuid.Parse(c.Param("experimentId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid experiment ID", "experimentId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid experiment ID", "experimentId must be a valid UUID"))
 		return
 	}
 
@@ -321,21 +322,21 @@ func (h *ExperimentHandler) CompareExperiments(c *gin.Context) {
 		return
 	}
 
-	experimentIDs := make([]ulid.ULID, len(req.ExperimentIDs))
+	experimentIDs := make([]uuid.UUID, len(req.ExperimentIDs))
 	for i, idStr := range req.ExperimentIDs {
-		id, err := ulid.Parse(idStr)
+		id, err := uuid.Parse(idStr)
 		if err != nil {
-			response.Error(c, appErrors.NewValidationError("experiment_ids", "invalid ULID at index "+strconv.Itoa(i)))
+			response.Error(c, appErrors.NewValidationError("experiment_ids", "invalid UUID at index "+strconv.Itoa(i)))
 			return
 		}
 		experimentIDs[i] = id
 	}
 
-	var baselineID *ulid.ULID
+	var baselineID *uuid.UUID
 	if req.BaselineID != nil {
-		id, err := ulid.Parse(*req.BaselineID)
+		id, err := uuid.Parse(*req.BaselineID)
 		if err != nil {
-			response.Error(c, appErrors.NewValidationError("baseline_id", "must be a valid ULID"))
+			response.Error(c, appErrors.NewValidationError("baseline_id", "must be a valid UUID"))
 			return
 		}
 		baselineID = &id
@@ -411,9 +412,9 @@ func (h *ExperimentHandler) CreateItems(c *gin.Context) {
 		return
 	}
 
-	experimentID, err := ulid.Parse(c.Param("experimentId"))
+	experimentID, err := uuid.Parse(c.Param("experimentId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid experiment ID", "experimentId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid experiment ID", "experimentId must be a valid UUID"))
 		return
 	}
 
@@ -461,9 +462,9 @@ func (h *ExperimentHandler) Rerun(c *gin.Context) {
 		return
 	}
 
-	experimentID, err := ulid.Parse(c.Param("experimentId"))
+	experimentID, err := uuid.Parse(c.Param("experimentId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid experiment ID", "experimentId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid experiment ID", "experimentId must be a valid UUID"))
 		return
 	}
 
@@ -499,15 +500,15 @@ func (h *ExperimentHandler) Rerun(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/experiments/{experimentId}/progress [get]
 func (h *ExperimentHandler) GetProgress(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	experimentID, err := ulid.Parse(c.Param("experimentId"))
+	experimentID, err := uuid.Parse(c.Param("experimentId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid experiment ID", "experimentId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid experiment ID", "experimentId must be a valid UUID"))
 		return
 	}
 
@@ -532,15 +533,15 @@ func (h *ExperimentHandler) GetProgress(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/experiments/{experimentId}/metrics [get]
 func (h *ExperimentHandler) GetMetrics(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	experimentID, err := ulid.Parse(c.Param("experimentId"))
+	experimentID, err := uuid.Parse(c.Param("experimentId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid experiment ID", "experimentId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid experiment ID", "experimentId must be a valid UUID"))
 		return
 	}
 

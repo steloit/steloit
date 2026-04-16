@@ -1,15 +1,16 @@
 package billing
 
 import (
-	"log/slog"
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	billingDomain "brokle/internal/core/domain/billing"
-	"brokle/pkg/ulid"
 )
 
 // Ensure UsageRepository implements the interface
@@ -76,7 +77,7 @@ func (r *UsageRepository) InsertUsageRecord(ctx context.Context, record *billing
 }
 
 // GetUsageRecords retrieves usage records for an organization within a time range
-func (r *UsageRepository) GetUsageRecords(ctx context.Context, orgID ulid.ULID, start, end time.Time) ([]*billingDomain.UsageRecord, error) {
+func (r *UsageRepository) GetUsageRecords(ctx context.Context, orgID uuid.UUID, start, end time.Time) ([]*billingDomain.UsageRecord, error) {
 	query := `
 		SELECT
 			id, organization_id, request_id, provider_id, provider_name,
@@ -99,7 +100,7 @@ func (r *UsageRepository) GetUsageRecords(ctx context.Context, orgID ulid.ULID, 
 }
 
 // UpdateUsageRecord updates an existing usage record
-func (r *UsageRepository) UpdateUsageRecord(ctx context.Context, recordID ulid.ULID, record *billingDomain.UsageRecord) error {
+func (r *UsageRepository) UpdateUsageRecord(ctx context.Context, recordID uuid.UUID, record *billingDomain.UsageRecord) error {
 	query := `
 		UPDATE usage_records
 		SET

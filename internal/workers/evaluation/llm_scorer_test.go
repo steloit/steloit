@@ -13,16 +13,16 @@ func TestLLMScorer_ParseConfig(t *testing.T) {
 	scorer := &LLMScorer{logger: newTestLogger()}
 
 	tests := []struct {
-		name        string
-		config      map[string]any
-		wantCredID  string
-		wantModel   string
-		wantMsgCnt  int
-		wantTemp    float64
-		wantFormat  string
-		wantSchema  int
-		wantErr     bool
-		errContain  string
+		name       string
+		config     map[string]any
+		wantCredID string
+		wantModel  string
+		wantMsgCnt int
+		wantTemp   float64
+		wantFormat string
+		wantSchema int
+		wantErr    bool
+		errContain string
 	}{
 		{
 			name: "valid minimal config",
@@ -567,10 +567,10 @@ func TestExtractJSON(t *testing.T) {
 
 func TestToFloat(t *testing.T) {
 	tests := []struct {
-		name    string
-		input   interface{}
-		want    float64
-		wantOK  bool
+		name   string
+		input  interface{}
+		want   float64
+		wantOK bool
 	}{
 		{
 			name:   "float64",

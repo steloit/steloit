@@ -3,26 +3,26 @@ package dashboard
 import (
 	"context"
 
-	"brokle/pkg/ulid"
+	"github.com/google/uuid"
 )
 
 // DashboardRepository defines the interface for dashboard data access.
 type DashboardRepository interface {
 	// Basic CRUD operations
 	Create(ctx context.Context, dashboard *Dashboard) error
-	GetByID(ctx context.Context, id ulid.ULID) (*Dashboard, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*Dashboard, error)
 	Update(ctx context.Context, dashboard *Dashboard) error
-	Delete(ctx context.Context, id ulid.ULID) error
+	Delete(ctx context.Context, id uuid.UUID) error
 
 	// Project-scoped queries
-	GetByProjectID(ctx context.Context, projectID ulid.ULID, filter *DashboardFilter) (*DashboardListResponse, error)
-	GetByNameAndProject(ctx context.Context, projectID ulid.ULID, name string) (*Dashboard, error)
+	GetByProjectID(ctx context.Context, projectID uuid.UUID, filter *DashboardFilter) (*DashboardListResponse, error)
+	GetByNameAndProject(ctx context.Context, projectID uuid.UUID, name string) (*Dashboard, error)
 
 	// Soft delete operations
-	SoftDelete(ctx context.Context, id ulid.ULID) error
+	SoftDelete(ctx context.Context, id uuid.UUID) error
 
 	// Count operations
-	CountByProject(ctx context.Context, projectID ulid.ULID) (int64, error)
+	CountByProject(ctx context.Context, projectID uuid.UUID) (int64, error)
 }
 
 // TemplateRepository defines the interface for dashboard template data access.
@@ -31,7 +31,7 @@ type TemplateRepository interface {
 	List(ctx context.Context, filter *TemplateFilter) ([]*Template, error)
 
 	// GetByID retrieves a template by its ID.
-	GetByID(ctx context.Context, id ulid.ULID) (*Template, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*Template, error)
 
 	// GetByName retrieves a template by its name.
 	GetByName(ctx context.Context, name string) (*Template, error)
@@ -46,7 +46,7 @@ type TemplateRepository interface {
 	Update(ctx context.Context, template *Template) error
 
 	// Delete removes a template by its ID.
-	Delete(ctx context.Context, id ulid.ULID) error
+	Delete(ctx context.Context, id uuid.UUID) error
 
 	// Upsert creates or updates a template by name (used for seeding).
 	Upsert(ctx context.Context, template *Template) error

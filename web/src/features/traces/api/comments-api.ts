@@ -69,7 +69,7 @@ export interface ToggleReactionRequest {
  *
  * Backend endpoint: GET /api/v1/traces/:trace_id/comments
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @param traceId - Trace ID
  * @returns List of comments with user information
  */
@@ -88,7 +88,7 @@ export const listComments = async (
  *
  * Backend endpoint: GET /api/v1/traces/:trace_id/comments/count
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @param traceId - Trace ID
  * @returns Comment count
  */
@@ -107,7 +107,7 @@ export const getCommentCount = async (
  *
  * Backend endpoint: POST /api/v1/traces/:trace_id/comments
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @param traceId - Trace ID
  * @param data - Comment content
  * @returns Created comment
@@ -129,7 +129,7 @@ export const createComment = async (
  *
  * Backend endpoint: PUT /api/v1/traces/:trace_id/comments/:comment_id
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @param traceId - Trace ID
  * @param commentId - Comment ID
  * @param data - Updated content
@@ -153,7 +153,7 @@ export const updateComment = async (
  *
  * Backend endpoint: DELETE /api/v1/traces/:trace_id/comments/:comment_id
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @param traceId - Trace ID
  * @param commentId - Comment ID
  */
@@ -173,7 +173,7 @@ export const deleteComment = async (
  *
  * Backend endpoint: POST /api/v1/traces/:trace_id/comments/:comment_id/reactions
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @param traceId - Trace ID
  * @param commentId - Comment ID
  * @param data - Reaction emoji
@@ -197,7 +197,7 @@ export const toggleReaction = async (
  *
  * Backend endpoint: POST /api/v1/traces/:trace_id/comments/:comment_id/replies
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @param traceId - Trace ID
  * @param parentId - Parent comment ID
  * @param data - Reply content

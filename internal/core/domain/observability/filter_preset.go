@@ -15,8 +15,8 @@ type FilterPreset struct {
 	ProjectID        string          `json:"project_id" gorm:"column:project_id;not null"`
 	Name             string          `json:"name" gorm:"column:name;not null"`
 	Description      *string         `json:"description,omitempty" gorm:"column:description"`
-	TargetTable      string          `json:"table_name" gorm:"column:table_name;not null;default:traces"` // "traces" or "spans"
-	Filters          json.RawMessage `json:"filters" gorm:"column:filters;type:jsonb;not null" swaggertype:"object"`           // Array of filter conditions
+	TargetTable      string          `json:"table_name" gorm:"column:table_name;not null;default:traces"`            // "traces" or "spans"
+	Filters          json.RawMessage `json:"filters" gorm:"column:filters;type:jsonb;not null" swaggertype:"object"` // Array of filter conditions
 	ColumnOrder      json.RawMessage `json:"column_order,omitempty" gorm:"column:column_order;type:jsonb" swaggertype:"object"`
 	ColumnVisibility json.RawMessage `json:"column_visibility,omitempty" gorm:"column:column_visibility;type:jsonb" swaggertype:"object"`
 	SearchQuery      *string         `json:"search_query,omitempty" gorm:"column:search_query"`
@@ -126,11 +126,11 @@ type FilterPresetRepository interface {
 
 // Filter preset limits
 const (
-	FilterPresetMaxFilters        = 50
-	FilterPresetMaxColumns        = 100
-	FilterPresetNameMaxLength     = 255
-	FilterPresetDescMaxLength     = 1000
-	FilterPresetSearchMaxLength   = 500
+	FilterPresetMaxFilters      = 50
+	FilterPresetMaxColumns      = 100
+	FilterPresetNameMaxLength   = 255
+	FilterPresetDescMaxLength   = 1000
+	FilterPresetSearchMaxLength = 500
 )
 
 // ValidationError represents a validation error for filter presets.

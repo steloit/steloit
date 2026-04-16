@@ -5,12 +5,12 @@
 -- Note: provider_id and model_id are stored as text (no foreign keys to removed gateway tables)
 -- These reference the ClickHouse spans table for cost calculation
 CREATE TABLE IF NOT EXISTS usage_records (
-    id VARCHAR(26) PRIMARY KEY,
-    organization_id VARCHAR(26) NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    request_id VARCHAR(26) NOT NULL,
-    provider_id VARCHAR(26) NOT NULL,
+    id UUID PRIMARY KEY,
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    request_id UUID NOT NULL,
+    provider_id UUID NOT NULL,
     provider_name VARCHAR(255),
-    model_id VARCHAR(26) NOT NULL,
+    model_id UUID NOT NULL,
     model_name VARCHAR(255),
     request_type VARCHAR(50) NOT NULL,
     input_tokens INTEGER NOT NULL DEFAULT 0,
@@ -35,7 +35,7 @@ CREATE INDEX idx_usage_records_processed ON usage_records(processed_at) WHERE pr
 
 -- Usage quotas table for organization limits
 CREATE TABLE IF NOT EXISTS usage_quotas (
-    organization_id VARCHAR(26) PRIMARY KEY REFERENCES organizations(id) ON DELETE CASCADE,
+    organization_id UUID PRIMARY KEY REFERENCES organizations(id) ON DELETE CASCADE,
     billing_tier VARCHAR(50) NOT NULL DEFAULT 'free',
     monthly_request_limit BIGINT NOT NULL DEFAULT 0,
     monthly_token_limit BIGINT NOT NULL DEFAULT 0,
@@ -58,8 +58,8 @@ CREATE TABLE IF NOT EXISTS usage_quotas (
 
 -- Billing records table for payment transactions
 CREATE TABLE IF NOT EXISTS billing_records (
-    id VARCHAR(26) PRIMARY KEY,
-    organization_id VARCHAR(26) NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     period VARCHAR(50) NOT NULL,
     amount DECIMAL(12, 6) NOT NULL,
     currency VARCHAR(3) NOT NULL DEFAULT 'USD',
@@ -82,8 +82,8 @@ CREATE INDEX idx_billing_records_transaction ON billing_records(transaction_id) 
 
 -- Billing summaries table for period summaries
 CREATE TABLE IF NOT EXISTS billing_summaries (
-    id VARCHAR(26) PRIMARY KEY,
-    organization_id VARCHAR(26) NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     period VARCHAR(50) NOT NULL,
     period_start TIMESTAMPTZ NOT NULL,
     period_end TIMESTAMPTZ NOT NULL,
@@ -115,8 +115,8 @@ CREATE INDEX idx_billing_summaries_status ON billing_summaries(status);
 
 -- Discount rules table for promotional pricing
 CREATE TABLE IF NOT EXISTS discount_rules (
-    id VARCHAR(26) PRIMARY KEY,
-    organization_id VARCHAR(26) REFERENCES organizations(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     description TEXT,
     type VARCHAR(50) NOT NULL,
@@ -152,9 +152,9 @@ CREATE INDEX idx_discount_rules_type ON discount_rules(type);
 
 -- Invoices table for invoice management
 CREATE TABLE IF NOT EXISTS invoices (
-    id VARCHAR(26) PRIMARY KEY,
+    id UUID PRIMARY KEY,
     invoice_number VARCHAR(255) NOT NULL UNIQUE,
-    organization_id VARCHAR(26) NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     organization_name VARCHAR(255) NOT NULL,
     billing_address JSONB,
     period VARCHAR(50) NOT NULL,
@@ -195,15 +195,15 @@ CREATE INDEX idx_invoices_paid_at ON invoices(paid_at) WHERE paid_at IS NOT NULL
 -- Invoice line items table for detailed billing breakdown
 -- Note: provider_id and model_id are stored as text (no foreign keys to removed gateway tables)
 CREATE TABLE IF NOT EXISTS invoice_line_items (
-    id VARCHAR(26) PRIMARY KEY,
-    invoice_id VARCHAR(26) NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    invoice_id UUID NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
     description TEXT NOT NULL,
     quantity DECIMAL(12, 6) NOT NULL DEFAULT 1.0,
     unit_price DECIMAL(12, 6) NOT NULL DEFAULT 0.0,
     amount DECIMAL(12, 6) NOT NULL DEFAULT 0.0,
-    provider_id VARCHAR(26),
+    provider_id UUID,
     provider_name VARCHAR(255),
-    model_id VARCHAR(26),
+    model_id UUID,
     model_name VARCHAR(255),
     request_type VARCHAR(50),
     tokens BIGINT,
@@ -225,8 +225,8 @@ CREATE INDEX idx_invoice_line_items_model ON invoice_line_items(model_id) WHERE 
 
 -- Payment methods table for organization payment information
 CREATE TABLE IF NOT EXISTS payment_methods (
-    id VARCHAR(26) PRIMARY KEY,
-    organization_id VARCHAR(26) NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     type VARCHAR(50) NOT NULL DEFAULT 'card',
     provider VARCHAR(100) NOT NULL DEFAULT 'stripe',
     external_id VARCHAR(255) NOT NULL,

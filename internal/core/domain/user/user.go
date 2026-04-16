@@ -7,7 +7,9 @@ package user
 import (
 	"time"
 
-	"brokle/pkg/ulid"
+	"github.com/google/uuid"
+
+	"brokle/pkg/uid"
 
 	"gorm.io/gorm"
 )
@@ -20,7 +22,7 @@ type User struct {
 	OAuthProviderID       *string        `json:"-" gorm:"column:oauth_provider_id;size:255"`
 	OAuthProvider         *string        `json:"oauth_provider,omitempty" gorm:"column:oauth_provider;size:50"`
 	ReferralSource        *string        `json:"referral_source,omitempty" gorm:"size:100"`
-	DefaultOrganizationID *ulid.ULID     `json:"default_organization_id,omitempty" gorm:"type:char(26)"`
+	DefaultOrganizationID *uuid.UUID     `json:"default_organization_id,omitempty" gorm:"type:uuid"`
 	LastLoginAt           *time.Time     `json:"last_login_at,omitempty"`
 	DeletedAt             gorm.DeletedAt `json:"deleted_at,omitempty" gorm:"index"`
 	AuthMethod            string         `json:"auth_method" gorm:"column:auth_method;size:20;default:'password'"`
@@ -32,7 +34,7 @@ type User struct {
 	FirstName             string         `json:"first_name" gorm:"size:255;not null"`
 	Email                 string         `json:"email" gorm:"size:255;not null;uniqueIndex"`
 	LoginCount            int            `json:"login_count" gorm:"default:0"`
-	ID                    ulid.ULID      `json:"id" gorm:"type:char(26);primaryKey"`
+	ID                    uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey"`
 	IsEmailVerified       bool           `json:"is_email_verified" gorm:"default:false"`
 	IsActive              bool           `json:"is_active" gorm:"default:true"`
 }
@@ -53,7 +55,7 @@ type UserProfile struct {
 	Theme                 string    `json:"theme" gorm:"size:20;default:'light'"`
 	Timezone              string    `json:"timezone" gorm:"size:50;default:'UTC'"`
 	UsageThresholdPercent int       `json:"usage_threshold_percent" gorm:"default:80"`
-	UserID                ulid.ULID `json:"user_id" gorm:"type:char(26);primaryKey"`
+	UserID                uuid.UUID `json:"user_id" gorm:"type:uuid;primaryKey"`
 	EmailNotifications    bool      `json:"email_notifications" gorm:"default:true"`
 	PushNotifications     bool      `json:"push_notifications" gorm:"default:true"`
 	MarketingEmails       bool      `json:"marketing_emails" gorm:"default:false"`
@@ -115,7 +117,7 @@ type UpdateProfileRequest struct {
 type PublicUser struct {
 	CreatedAt       time.Time `json:"created_at"`
 	Name            string    `json:"name"`
-	ID              ulid.ULID `json:"id"`
+	ID              uuid.UUID `json:"id"`
 	IsEmailVerified bool      `json:"is_email_verified"`
 }
 
@@ -162,7 +164,7 @@ func (u *User) SetPassword(hashedPassword string) {
 }
 
 // SetDefaultOrganization sets the user's default organization.
-func (u *User) SetDefaultOrganization(orgID ulid.ULID) {
+func (u *User) SetDefaultOrganization(orgID uuid.UUID) {
 	u.DefaultOrganizationID = &orgID
 	u.UpdatedAt = time.Now()
 }
@@ -182,7 +184,7 @@ func (u *User) Reactivate() {
 // NewUser creates a new user with default values.
 func NewUser(email, firstName, lastName, role string) *User {
 	return &User{
-		ID:              ulid.New(),
+		ID:              uid.New(),
 		Email:           email,
 		FirstName:       firstName,
 		LastName:        lastName,
@@ -198,7 +200,7 @@ func NewUser(email, firstName, lastName, role string) *User {
 }
 
 // NewUserProfile creates a new user profile with default values.
-func NewUserProfile(userID ulid.ULID) *UserProfile {
+func NewUserProfile(userID uuid.UUID) *UserProfile {
 	return &UserProfile{
 		UserID:   userID,
 		Timezone: "UTC",

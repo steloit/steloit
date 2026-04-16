@@ -17,6 +17,7 @@ import (
 type MockTraceRepository struct {
 	mock.Mock
 }
+
 func (m *MockTraceRepository) InsertSpan(ctx context.Context, span *observability.Span) error {
 	args := m.Called(ctx, span)
 	return args.Error(0)

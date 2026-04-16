@@ -3,7 +3,9 @@ package evaluation
 import (
 	"time"
 
-	"brokle/pkg/ulid"
+	"github.com/google/uuid"
+
+	"brokle/pkg/uid"
 )
 
 // ExecutionStatus represents the current state of an evaluator execution.
@@ -28,9 +30,9 @@ const (
 // EvaluatorExecution tracks the execution history of an evaluator.
 // Inspired by Langfuse's JobExecution and Opik's automation rule logs.
 type EvaluatorExecution struct {
-	ID           ulid.ULID       `json:"id" gorm:"type:char(26);primaryKey"`
-	EvaluatorID  ulid.ULID       `json:"evaluator_id" gorm:"type:char(26);not null;index"`
-	ProjectID    ulid.ULID       `json:"project_id" gorm:"type:char(26);not null;index"`
+	ID           uuid.UUID       `json:"id" gorm:"type:uuid;primaryKey"`
+	EvaluatorID  uuid.UUID       `json:"evaluator_id" gorm:"type:uuid;not null;index"`
+	ProjectID    uuid.UUID       `json:"project_id" gorm:"type:uuid;not null;index"`
 	Status       ExecutionStatus `json:"status" gorm:"type:varchar(20);not null"`
 	TriggerType  TriggerType     `json:"trigger_type" gorm:"type:varchar(20);not null;default:'automatic'"`
 	SpansMatched int             `json:"spans_matched" gorm:"not null;default:0"`
@@ -49,10 +51,10 @@ func (EvaluatorExecution) TableName() string {
 }
 
 // NewEvaluatorExecution creates a new evaluator execution record.
-func NewEvaluatorExecution(evaluatorID, projectID ulid.ULID, triggerType TriggerType) *EvaluatorExecution {
+func NewEvaluatorExecution(evaluatorID, projectID uuid.UUID, triggerType TriggerType) *EvaluatorExecution {
 	now := time.Now()
 	return &EvaluatorExecution{
-		ID:           ulid.New(),
+		ID:           uid.New(),
 		EvaluatorID:  evaluatorID,
 		ProjectID:    projectID,
 		Status:       ExecutionStatusPending,

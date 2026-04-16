@@ -8,11 +8,13 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
+
 	credentialsDomain "brokle/internal/core/domain/credentials"
 	playgroundDomain "brokle/internal/core/domain/playground"
 	promptDomain "brokle/internal/core/domain/prompt"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 type playgroundService struct {
@@ -72,7 +74,7 @@ func (s *playgroundService) CreateSession(ctx context.Context, req *playgroundDo
 
 	name := req.Name
 	session := &playgroundDomain.Session{
-		ID:          ulid.New(),
+		ID:          uid.New(),
 		ProjectID:   req.ProjectID,
 		Name:        &name,
 		Description: req.Description,
@@ -103,7 +105,7 @@ func (s *playgroundService) CreateSession(ctx context.Context, req *playgroundDo
 	return session.ToResponse(), nil
 }
 
-func (s *playgroundService) GetSession(ctx context.Context, sessionID ulid.ULID) (*playgroundDomain.SessionResponse, error) {
+func (s *playgroundService) GetSession(ctx context.Context, sessionID uuid.UUID) (*playgroundDomain.SessionResponse, error) {
 	session, err := s.repo.GetByID(ctx, sessionID)
 	if err != nil {
 		if errors.Is(err, playgroundDomain.ErrSessionNotFound) {
@@ -193,7 +195,7 @@ func (s *playgroundService) UpdateSession(ctx context.Context, req *playgroundDo
 	return session.ToResponse(), nil
 }
 
-func (s *playgroundService) DeleteSession(ctx context.Context, sessionID ulid.ULID) error {
+func (s *playgroundService) DeleteSession(ctx context.Context, sessionID uuid.UUID) error {
 	if err := s.repo.Delete(ctx, sessionID); err != nil {
 		if errors.Is(err, playgroundDomain.ErrSessionNotFound) {
 			return appErrors.NewNotFoundError("Session not found")
@@ -232,7 +234,7 @@ func (s *playgroundService) UpdateLastRun(ctx context.Context, req *playgroundDo
 	return nil
 }
 
-func (s *playgroundService) UpdateWindows(ctx context.Context, sessionID ulid.ULID, windows json.RawMessage) error {
+func (s *playgroundService) UpdateWindows(ctx context.Context, sessionID uuid.UUID, windows json.RawMessage) error {
 	if err := s.repo.UpdateWindows(ctx, sessionID, playgroundDomain.JSON(windows)); err != nil {
 		if errors.Is(err, playgroundDomain.ErrSessionNotFound) {
 			return appErrors.NewNotFoundError("Session not found")
@@ -247,7 +249,7 @@ func (s *playgroundService) UpdateWindows(ctx context.Context, sessionID ulid.UL
 	return nil
 }
 
-func (s *playgroundService) ValidateProjectAccess(ctx context.Context, sessionID ulid.ULID, projectID ulid.ULID) error {
+func (s *playgroundService) ValidateProjectAccess(ctx context.Context, sessionID uuid.UUID, projectID uuid.UUID) error {
 	exists, err := s.repo.ExistsByProjectID(ctx, sessionID, projectID)
 	if err != nil {
 		return appErrors.NewInternalError("Failed to validate access", err)
@@ -347,7 +349,7 @@ func (s *playgroundService) StreamPrompt(ctx context.Context, req *playgroundDom
 
 // resolveCredentials resolves organization-scoped credentials for execution.
 // Requires both provider and credential_id to be specified.
-func (s *playgroundService) resolveCredentials(ctx context.Context, orgID ulid.ULID, overrides *promptDomain.ModelConfig) (*promptDomain.ModelConfig, error) {
+func (s *playgroundService) resolveCredentials(ctx context.Context, orgID uuid.UUID, overrides *promptDomain.ModelConfig) (*promptDomain.ModelConfig, error) {
 	if overrides == nil {
 		overrides = &promptDomain.ModelConfig{}
 	}
@@ -366,9 +368,9 @@ func (s *playgroundService) resolveCredentials(ctx context.Context, orgID ulid.U
 		return nil, appErrors.NewInternalError("Credentials service not configured", nil)
 	}
 
-	credID, err := ulid.Parse(*overrides.CredentialID)
+	credID, err := uuid.Parse(*overrides.CredentialID)
 	if err != nil {
-		return nil, appErrors.NewValidationError("Invalid credential ID", "credential_id must be a valid ULID")
+		return nil, appErrors.NewValidationError("Invalid credential ID", "credential_id must be a valid UUID")
 	}
 
 	keyConfig, err := s.credentialsService.GetExecutionConfig(ctx, orgID, credID, credentialsDomain.Provider(overrides.Provider))
@@ -407,7 +409,7 @@ func (s *playgroundService) resolveCredentials(ctx context.Context, orgID ulid.U
 // wrapResultForSessionUpdate intercepts the result channel to update session.
 func (s *playgroundService) wrapResultForSessionUpdate(
 	ctx context.Context,
-	sessionID *ulid.ULID,
+	sessionID *uuid.UUID,
 	resultChan <-chan *promptDomain.StreamResult,
 	startTime time.Time,
 ) <-chan *promptDomain.StreamResult {
@@ -430,7 +432,7 @@ func (s *playgroundService) wrapResultForSessionUpdate(
 
 func (s *playgroundService) updateSessionLastRun(
 	ctx context.Context,
-	sessionID ulid.ULID,
+	sessionID uuid.UUID,
 	execResp *promptDomain.ExecutePromptResponse,
 	startTime time.Time,
 ) {
@@ -474,7 +476,7 @@ func (s *playgroundService) updateSessionLastRun(
 
 func (s *playgroundService) updateStreamSessionLastRun(
 	ctx context.Context,
-	sessionID ulid.ULID,
+	sessionID uuid.UUID,
 	result *promptDomain.StreamResult,
 	startTime time.Time,
 ) {

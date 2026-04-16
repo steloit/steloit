@@ -7,9 +7,10 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/annotation"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
 )
 
 type queueService struct {
@@ -35,7 +36,7 @@ func NewQueueService(
 }
 
 // Create creates a new annotation queue.
-func (s *queueService) Create(ctx context.Context, projectID ulid.ULID, userID *ulid.ULID, req *annotation.CreateQueueRequest) (*annotation.AnnotationQueue, error) {
+func (s *queueService) Create(ctx context.Context, projectID uuid.UUID, userID *uuid.UUID, req *annotation.CreateQueueRequest) (*annotation.AnnotationQueue, error) {
 	queue := annotation.NewAnnotationQueue(projectID, req.Name)
 	queue.Description = req.Description
 	queue.Instructions = req.Instructions
@@ -78,7 +79,7 @@ func (s *queueService) Create(ctx context.Context, projectID ulid.ULID, userID *
 }
 
 // GetByID retrieves an annotation queue by its ID.
-func (s *queueService) GetByID(ctx context.Context, id, projectID ulid.ULID) (*annotation.AnnotationQueue, error) {
+func (s *queueService) GetByID(ctx context.Context, id, projectID uuid.UUID) (*annotation.AnnotationQueue, error) {
 	queue, err := s.queueRepo.GetByID(ctx, id, projectID)
 	if err != nil {
 		if errors.Is(err, annotation.ErrQueueNotFound) {
@@ -90,7 +91,7 @@ func (s *queueService) GetByID(ctx context.Context, id, projectID ulid.ULID) (*a
 }
 
 // List retrieves all annotation queues for a project with optional filtering and pagination.
-func (s *queueService) List(ctx context.Context, projectID ulid.ULID, filter *annotation.QueueFilter, page, limit int) ([]*annotation.AnnotationQueue, int64, error) {
+func (s *queueService) List(ctx context.Context, projectID uuid.UUID, filter *annotation.QueueFilter, page, limit int) ([]*annotation.AnnotationQueue, int64, error) {
 	offset := (page - 1) * limit
 	queues, total, err := s.queueRepo.List(ctx, projectID, filter, offset, limit)
 	if err != nil {
@@ -100,7 +101,7 @@ func (s *queueService) List(ctx context.Context, projectID ulid.ULID, filter *an
 }
 
 // ListWithStats retrieves all annotation queues for a project with their statistics and pagination.
-func (s *queueService) ListWithStats(ctx context.Context, projectID ulid.ULID, filter *annotation.QueueFilter, page, limit int) ([]*annotation.AnnotationQueue, []*annotation.QueueStats, int64, error) {
+func (s *queueService) ListWithStats(ctx context.Context, projectID uuid.UUID, filter *annotation.QueueFilter, page, limit int) ([]*annotation.AnnotationQueue, []*annotation.QueueStats, int64, error) {
 	offset := (page - 1) * limit
 	queues, total, err := s.queueRepo.List(ctx, projectID, filter, offset, limit)
 	if err != nil {
@@ -125,7 +126,7 @@ func (s *queueService) ListWithStats(ctx context.Context, projectID ulid.ULID, f
 }
 
 // Update updates an existing annotation queue.
-func (s *queueService) Update(ctx context.Context, id, projectID ulid.ULID, req *annotation.UpdateQueueRequest) (*annotation.AnnotationQueue, error) {
+func (s *queueService) Update(ctx context.Context, id, projectID uuid.UUID, req *annotation.UpdateQueueRequest) (*annotation.AnnotationQueue, error) {
 	queue, err := s.queueRepo.GetByID(ctx, id, projectID)
 	if err != nil {
 		if errors.Is(err, annotation.ErrQueueNotFound) {
@@ -187,7 +188,7 @@ func (s *queueService) Update(ctx context.Context, id, projectID ulid.ULID, req 
 
 // Delete removes an annotation queue by ID.
 // Also deletes all items and assignments in the queue (via CASCADE).
-func (s *queueService) Delete(ctx context.Context, id, projectID ulid.ULID) error {
+func (s *queueService) Delete(ctx context.Context, id, projectID uuid.UUID) error {
 	queue, err := s.queueRepo.GetByID(ctx, id, projectID)
 	if err != nil {
 		if errors.Is(err, annotation.ErrQueueNotFound) {
@@ -213,7 +214,7 @@ func (s *queueService) Delete(ctx context.Context, id, projectID ulid.ULID) erro
 }
 
 // GetWithStats retrieves a queue with its statistics.
-func (s *queueService) GetWithStats(ctx context.Context, id, projectID ulid.ULID) (*annotation.AnnotationQueue, *annotation.QueueStats, error) {
+func (s *queueService) GetWithStats(ctx context.Context, id, projectID uuid.UUID) (*annotation.AnnotationQueue, *annotation.QueueStats, error) {
 	queue, err := s.queueRepo.GetByID(ctx, id, projectID)
 	if err != nil {
 		if errors.Is(err, annotation.ErrQueueNotFound) {

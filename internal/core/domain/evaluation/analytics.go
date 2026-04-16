@@ -3,13 +3,13 @@ package evaluation
 import (
 	"time"
 
-	"brokle/pkg/ulid"
+	"github.com/google/uuid"
 )
 
 // EvaluatorAnalyticsParams defines the parameters for fetching evaluator analytics.
 type EvaluatorAnalyticsParams struct {
-	ProjectID   ulid.ULID
-	EvaluatorID ulid.ULID
+	ProjectID   uuid.UUID
+	EvaluatorID uuid.UUID
 	Period      string     // "24h", "7d", "30d" (default: "7d")
 	From        *time.Time // Optional custom start time
 	To          *time.Time // Optional custom end time
@@ -21,13 +21,13 @@ type EvaluatorAnalyticsResponse struct {
 	Period             string               `json:"period"`
 	TotalExecutions    int64                `json:"total_executions"`
 	TotalSpansScored   int64                `json:"total_spans_scored"`
-	SuccessRate        float64              `json:"success_rate"`        // Percentage of successful executions
-	AverageScore       float64              `json:"average_score"`       // Mean score value across all scored spans
-	ScoreDistribution  []DistributionBucket `json:"score_distribution"`  // Histogram of score values
-	ExecutionTrend     []TimeSeriesPoint    `json:"execution_trend"`     // Executions over time
-	ScoreTrend         []TimeSeriesPoint    `json:"score_trend"`         // Average score over time
-	LatencyPercentiles LatencyStats         `json:"latency_percentiles"` // P50, P90, P99 latencies
-	TopErrors          []ErrorSummary       `json:"top_errors"`          // Most common error types
+	SuccessRate        float64              `json:"success_rate"`            // Percentage of successful executions
+	AverageScore       float64              `json:"average_score"`           // Mean score value across all scored spans
+	ScoreDistribution  []DistributionBucket `json:"score_distribution"`      // Histogram of score values
+	ExecutionTrend     []TimeSeriesPoint    `json:"execution_trend"`         // Executions over time
+	ScoreTrend         []TimeSeriesPoint    `json:"score_trend"`             // Average score over time
+	LatencyPercentiles LatencyStats         `json:"latency_percentiles"`     // P50, P90, P99 latencies
+	TopErrors          []ErrorSummary       `json:"top_errors"`              // Most common error types
 	CostEstimate       *CostEstimate        `json:"cost_estimate,omitempty"` // Estimated cost for LLM evaluators
 }
 
@@ -50,12 +50,12 @@ type TimeSeriesPoint struct {
 
 // LatencyStats contains latency percentile statistics.
 type LatencyStats struct {
-	P50  int64   `json:"p50"`  // 50th percentile (median)
-	P90  int64   `json:"p90"`  // 90th percentile
-	P99  int64   `json:"p99"`  // 99th percentile
-	Avg  float64 `json:"avg"`  // Average latency
-	Max  int64   `json:"max"`  // Maximum latency
-	Min  int64   `json:"min"`  // Minimum latency
+	P50 int64   `json:"p50"` // 50th percentile (median)
+	P90 int64   `json:"p90"` // 90th percentile
+	P99 int64   `json:"p99"` // 99th percentile
+	Avg float64 `json:"avg"` // Average latency
+	Max int64   `json:"max"` // Maximum latency
+	Min int64   `json:"min"` // Minimum latency
 }
 
 // ErrorSummary groups errors by type with occurrence count.
@@ -80,26 +80,26 @@ type EvaluatorAnalyticsRepository interface {
 	GetAnalytics(params *EvaluatorAnalyticsParams) (*EvaluatorAnalyticsResponse, error)
 
 	// GetScoreDistribution returns the histogram of score values.
-	GetScoreDistribution(projectID, evaluatorID ulid.ULID, from, to time.Time, buckets int) ([]DistributionBucket, error)
+	GetScoreDistribution(projectID, evaluatorID uuid.UUID, from, to time.Time, buckets int) ([]DistributionBucket, error)
 
 	// GetExecutionTrend returns executions over time.
-	GetExecutionTrend(projectID, evaluatorID ulid.ULID, from, to time.Time, interval string) ([]TimeSeriesPoint, error)
+	GetExecutionTrend(projectID, evaluatorID uuid.UUID, from, to time.Time, interval string) ([]TimeSeriesPoint, error)
 
 	// GetScoreTrend returns average scores over time.
-	GetScoreTrend(projectID, evaluatorID ulid.ULID, from, to time.Time, interval string) ([]TimeSeriesPoint, error)
+	GetScoreTrend(projectID, evaluatorID uuid.UUID, from, to time.Time, interval string) ([]TimeSeriesPoint, error)
 
 	// GetLatencyStats returns latency percentile statistics.
-	GetLatencyStats(projectID, evaluatorID ulid.ULID, from, to time.Time) (*LatencyStats, error)
+	GetLatencyStats(projectID, evaluatorID uuid.UUID, from, to time.Time) (*LatencyStats, error)
 
 	// GetTopErrors returns the most common errors.
-	GetTopErrors(projectID, evaluatorID ulid.ULID, from, to time.Time, limit int) ([]ErrorSummary, error)
+	GetTopErrors(projectID, evaluatorID uuid.UUID, from, to time.Time, limit int) ([]ErrorSummary, error)
 }
 
 // ExecutionDetailRequest defines the parameters for fetching execution details.
 type ExecutionDetailRequest struct {
-	ProjectID   ulid.ULID
-	EvaluatorID ulid.ULID
-	ExecutionID ulid.ULID
+	ProjectID   uuid.UUID
+	EvaluatorID uuid.UUID
+	ExecutionID uuid.UUID
 }
 
 // ExecutionDetailResponse contains detailed information about a specific execution.

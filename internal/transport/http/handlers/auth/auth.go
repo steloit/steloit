@@ -1,14 +1,16 @@
 package auth
 
 import (
-	"log/slog"
 	"context"
+	"log/slog"
 	"net/http"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/google/uuid"
 
 	"brokle/internal/config"
 	"brokle/internal/core/domain/auth"
@@ -17,7 +19,6 @@ import (
 	"brokle/internal/core/services/registration"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 )
 
 // Handler handles authentication endpoints
@@ -426,7 +427,7 @@ func (h *Handler) ExchangeLoginSession(c *gin.Context) {
 	}
 
 	// Parse user ID
-	userID, err := ulid.Parse(userIDStr)
+	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
 		h.logger.Error("Invalid user ID format in session", "error", err)
 		response.Error(c, appErrors.NewValidationError("Invalid session data: malformed user ID", ""))
@@ -562,7 +563,7 @@ func (h *Handler) GetCurrentUser(c *gin.Context) {
 		return
 	}
 
-	userID, ok := userIDValue.(ulid.ULID)
+	userID, ok := userIDValue.(uuid.UUID)
 	if !ok {
 		h.logger.Error("Invalid user ID type in context")
 		response.InternalServerError(c, "Internal error")
@@ -747,7 +748,7 @@ func (h *Handler) GetProfile(c *gin.Context) {
 		return
 	}
 
-	userID, ok := userIDValue.(ulid.ULID)
+	userID, ok := userIDValue.(uuid.UUID)
 	if !ok {
 		h.logger.Error("Invalid user ID type in context")
 		response.ErrorWithStatus(c, http.StatusInternalServerError, "internal_error", "Internal error", "")
@@ -791,7 +792,7 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	userID, ok := userIDValue.(ulid.ULID)
+	userID, ok := userIDValue.(uuid.UUID)
 	if !ok {
 		response.ErrorWithStatus(c, http.StatusInternalServerError, "internal_error", "Internal error", "")
 		return
@@ -853,7 +854,7 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 		return
 	}
 
-	userID, ok := userIDValue.(ulid.ULID)
+	userID, ok := userIDValue.(uuid.UUID)
 	if !ok {
 		response.ErrorWithStatus(c, http.StatusInternalServerError, "internal_error", "Internal error", "")
 		return
@@ -986,7 +987,7 @@ func (h *Handler) ListSessions(c *gin.Context) {
 		return
 	}
 
-	userID, ok := userIDValue.(ulid.ULID)
+	userID, ok := userIDValue.(uuid.UUID)
 	if !ok {
 		response.InternalServerError(c, "")
 		return
@@ -1057,7 +1058,7 @@ func (h *Handler) ListSessions(c *gin.Context) {
 
 // GetSessionRequest represents request for getting session by ID
 type GetSessionRequest struct {
-	SessionID ulid.ULID `uri:"session_id" binding:"required" example:"01FXYZ123456789ABCDEFGHIJK0" description:"Session ID" swaggertype:"string"`
+	SessionID uuid.UUID `uri:"session_id" binding:"required" example:"01FXYZ123456789ABCDEFGHIJK0" description:"Session ID" swaggertype:"string"`
 }
 
 // GetSession gets a specific user session by ID
@@ -1088,7 +1089,7 @@ func (h *Handler) GetSession(c *gin.Context) {
 		return
 	}
 
-	userID, ok := userIDValue.(ulid.ULID)
+	userID, ok := userIDValue.(uuid.UUID)
 	if !ok {
 		response.InternalServerError(c, "")
 		return
@@ -1124,7 +1125,7 @@ func (h *Handler) GetSession(c *gin.Context) {
 
 // RevokeSessionRequest represents request for revoking a session
 type RevokeSessionRequest struct {
-	SessionID ulid.ULID `uri:"session_id" binding:"required" example:"01FXYZ123456789ABCDEFGHIJK0" description:"Session ID to revoke" swaggertype:"string"`
+	SessionID uuid.UUID `uri:"session_id" binding:"required" example:"01FXYZ123456789ABCDEFGHIJK0" description:"Session ID to revoke" swaggertype:"string"`
 }
 
 // RevokeSession revokes a specific user session
@@ -1155,7 +1156,7 @@ func (h *Handler) RevokeSession(c *gin.Context) {
 		return
 	}
 
-	userID, ok := userIDValue.(ulid.ULID)
+	userID, ok := userIDValue.(uuid.UUID)
 	if !ok {
 		response.InternalServerError(c, "")
 		return
@@ -1205,7 +1206,7 @@ func (h *Handler) RevokeAllSessions(c *gin.Context) {
 		return
 	}
 
-	userID, ok := userIDValue.(ulid.ULID)
+	userID, ok := userIDValue.(uuid.UUID)
 	if !ok {
 		response.InternalServerError(c, "")
 		return

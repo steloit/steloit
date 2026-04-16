@@ -11,11 +11,12 @@ import (
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/config"
 	authDomain "brokle/internal/core/domain/auth"
 	userDomain "brokle/internal/core/domain/user"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
 )
 
 // authService implements the authDomain.AuthService interface
@@ -143,7 +144,7 @@ func (s *authService) Login(ctx context.Context, req *authDomain.LoginRequest) (
 
 // GenerateTokensForUser generates login tokens for a user without password validation.
 // Used for OAuth signup, email verification, trusted authentication flows, and existing OAuth user login.
-func (s *authService) GenerateTokensForUser(ctx context.Context, userID ulid.ULID) (*authDomain.LoginResponse, error) {
+func (s *authService) GenerateTokensForUser(ctx context.Context, userID uuid.UUID) (*authDomain.LoginResponse, error) {
 	// Get user
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
@@ -202,7 +203,7 @@ func (s *authService) GenerateTokensForUser(ctx context.Context, userID ulid.ULI
 }
 
 // Logout invalidates a user access token via JTI blacklisting
-func (s *authService) Logout(ctx context.Context, jti string, userID ulid.ULID) error {
+func (s *authService) Logout(ctx context.Context, jti string, userID uuid.UUID) error {
 	// Blacklist the current access token immediately
 	expiry := time.Now().Add(s.authConfig.AccessTokenTTL) // Blacklist until token would expire
 	err := s.blacklistedTokens.BlacklistToken(ctx, jti, userID, expiry, "user_logout")
@@ -319,7 +320,7 @@ func (s *authService) RefreshToken(ctx context.Context, req *authDomain.RefreshT
 }
 
 // ChangePassword changes a user's password
-func (s *authService) ChangePassword(ctx context.Context, userID ulid.ULID, currentPassword, newPassword string) error {
+func (s *authService) ChangePassword(ctx context.Context, userID uuid.UUID, currentPassword, newPassword string) error {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, userDomain.ErrNotFound) {
@@ -448,7 +449,7 @@ func (s *authService) ConfirmPasswordReset(ctx context.Context, token, newPasswo
 }
 
 // SendEmailVerification sends email verification
-func (s *authService) SendEmailVerification(ctx context.Context, userID ulid.ULID) error {
+func (s *authService) SendEmailVerification(ctx context.Context, userID uuid.UUID) error {
 	// TODO: Generate verification token and send email
 
 	return nil
@@ -461,12 +462,12 @@ func (s *authService) VerifyEmail(ctx context.Context, token string) error {
 }
 
 // GetCurrentUser returns current user information
-func (s *authService) GetCurrentUser(ctx context.Context, userID ulid.ULID) (*userDomain.User, error) {
+func (s *authService) GetCurrentUser(ctx context.Context, userID uuid.UUID) (*userDomain.User, error) {
 	return s.userRepo.GetByID(ctx, userID)
 }
 
 // UpdateProfile updates user profile
-func (s *authService) UpdateProfile(ctx context.Context, userID ulid.ULID, req *authDomain.UpdateProfileRequest) error {
+func (s *authService) UpdateProfile(ctx context.Context, userID uuid.UUID, req *authDomain.UpdateProfileRequest) error {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, userDomain.ErrNotFound) {
@@ -500,12 +501,12 @@ func (s *authService) UpdateProfile(ctx context.Context, userID ulid.ULID, req *
 }
 
 // GetUserSessions returns user's active sessions
-func (s *authService) GetUserSessions(ctx context.Context, userID ulid.ULID) ([]*authDomain.UserSession, error) {
+func (s *authService) GetUserSessions(ctx context.Context, userID uuid.UUID) ([]*authDomain.UserSession, error) {
 	return s.sessionRepo.GetActiveSessionsByUserID(ctx, userID)
 }
 
 // RevokeSession revokes a specific user session
-func (s *authService) RevokeSession(ctx context.Context, userID, sessionID ulid.ULID) error {
+func (s *authService) RevokeSession(ctx context.Context, userID, sessionID uuid.UUID) error {
 	// Verify session belongs to user
 	session, err := s.sessionRepo.GetByID(ctx, sessionID)
 	if err != nil {
@@ -523,7 +524,7 @@ func (s *authService) RevokeSession(ctx context.Context, userID, sessionID ulid.
 }
 
 // RevokeAllSessions revokes all user sessions
-func (s *authService) RevokeAllSessions(ctx context.Context, userID ulid.ULID) error {
+func (s *authService) RevokeAllSessions(ctx context.Context, userID uuid.UUID) error {
 	return s.sessionRepo.RevokeUserSessions(ctx, userID)
 }
 
@@ -551,7 +552,7 @@ func (s *authService) ValidateAuthToken(ctx context.Context, token string) (*aut
 }
 
 // RevokeAccessToken immediately revokes an access token by adding it to blacklist
-func (s *authService) RevokeAccessToken(ctx context.Context, jti string, userID ulid.ULID, reason string) error {
+func (s *authService) RevokeAccessToken(ctx context.Context, jti string, userID uuid.UUID, reason string) error {
 	// Parse JTI to get token expiration time
 	// We need the expiration time to know when to cleanup the blacklisted token
 	// For now, we'll use a default expiration time based on config
@@ -567,7 +568,7 @@ func (s *authService) RevokeAccessToken(ctx context.Context, jti string, userID 
 }
 
 // RevokeUserAccessTokens revokes all active access tokens for a user
-func (s *authService) RevokeUserAccessTokens(ctx context.Context, userID ulid.ULID, reason string) error {
+func (s *authService) RevokeUserAccessTokens(ctx context.Context, userID uuid.UUID, reason string) error {
 	// Blacklist all user tokens
 	err := s.blacklistedTokens.BlacklistUserTokens(ctx, userID, reason)
 	if err != nil {

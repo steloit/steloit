@@ -9,8 +9,9 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	credentialsDomain "brokle/internal/core/domain/credentials"
-	"brokle/pkg/ulid"
 )
 
 type providerCredentialRepository struct {
@@ -37,7 +38,7 @@ func (r *providerCredentialRepository) Create(ctx context.Context, credential *c
 
 // GetByID retrieves a credential by its ID within a specific organization.
 // Returns ErrCredentialNotFound if not found or belongs to different organization.
-func (r *providerCredentialRepository) GetByID(ctx context.Context, id ulid.ULID, orgID ulid.ULID) (*credentialsDomain.ProviderCredential, error) {
+func (r *providerCredentialRepository) GetByID(ctx context.Context, id uuid.UUID, orgID uuid.UUID) (*credentialsDomain.ProviderCredential, error) {
 	var credential credentialsDomain.ProviderCredential
 	err := r.db.WithContext(ctx).
 		Where("id = ? AND organization_id = ?", id, orgID).
@@ -53,7 +54,7 @@ func (r *providerCredentialRepository) GetByID(ctx context.Context, id ulid.ULID
 
 // GetByOrgAndName retrieves the credential for a specific organization and name.
 // Returns nil if not found.
-func (r *providerCredentialRepository) GetByOrgAndName(ctx context.Context, orgID ulid.ULID, name string) (*credentialsDomain.ProviderCredential, error) {
+func (r *providerCredentialRepository) GetByOrgAndName(ctx context.Context, orgID uuid.UUID, name string) (*credentialsDomain.ProviderCredential, error) {
 	var credential credentialsDomain.ProviderCredential
 	err := r.db.WithContext(ctx).
 		Where("organization_id = ? AND name = ?", orgID, name).
@@ -69,7 +70,7 @@ func (r *providerCredentialRepository) GetByOrgAndName(ctx context.Context, orgI
 
 // GetByOrgAndAdapter retrieves all credentials for a specific organization and adapter type.
 // Returns empty slice if none found.
-func (r *providerCredentialRepository) GetByOrgAndAdapter(ctx context.Context, orgID ulid.ULID, adapter credentialsDomain.Provider) ([]*credentialsDomain.ProviderCredential, error) {
+func (r *providerCredentialRepository) GetByOrgAndAdapter(ctx context.Context, orgID uuid.UUID, adapter credentialsDomain.Provider) ([]*credentialsDomain.ProviderCredential, error) {
 	var credentials []*credentialsDomain.ProviderCredential
 	err := r.db.WithContext(ctx).
 		Where("organization_id = ? AND adapter = ?", orgID, adapter).
@@ -81,7 +82,7 @@ func (r *providerCredentialRepository) GetByOrgAndAdapter(ctx context.Context, o
 	return credentials, nil
 }
 
-func (r *providerCredentialRepository) ListByOrganization(ctx context.Context, orgID ulid.ULID) ([]*credentialsDomain.ProviderCredential, error) {
+func (r *providerCredentialRepository) ListByOrganization(ctx context.Context, orgID uuid.UUID) ([]*credentialsDomain.ProviderCredential, error) {
 	var credentials []*credentialsDomain.ProviderCredential
 	err := r.db.WithContext(ctx).
 		Where("organization_id = ?", orgID).
@@ -95,7 +96,7 @@ func (r *providerCredentialRepository) ListByOrganization(ctx context.Context, o
 
 // Update updates an existing credential within a specific organization.
 // Returns ErrCredentialNotFound if not found or belongs to different organization.
-func (r *providerCredentialRepository) Update(ctx context.Context, credential *credentialsDomain.ProviderCredential, orgID ulid.ULID) error {
+func (r *providerCredentialRepository) Update(ctx context.Context, credential *credentialsDomain.ProviderCredential, orgID uuid.UUID) error {
 	credential.UpdatedAt = time.Now()
 
 	// Use organization-scoped update to prevent cross-organization modification
@@ -128,7 +129,7 @@ func (r *providerCredentialRepository) Update(ctx context.Context, credential *c
 
 // Delete removes a credential by ID within a specific organization.
 // Returns ErrCredentialNotFound if not found or belongs to different organization.
-func (r *providerCredentialRepository) Delete(ctx context.Context, id ulid.ULID, orgID ulid.ULID) error {
+func (r *providerCredentialRepository) Delete(ctx context.Context, id uuid.UUID, orgID uuid.UUID) error {
 	result := r.db.WithContext(ctx).
 		Where("id = ? AND organization_id = ?", id, orgID).
 		Delete(&credentialsDomain.ProviderCredential{})
@@ -141,7 +142,7 @@ func (r *providerCredentialRepository) Delete(ctx context.Context, id ulid.ULID,
 	return nil
 }
 
-func (r *providerCredentialRepository) ExistsByOrgAndName(ctx context.Context, orgID ulid.ULID, name string) (bool, error) {
+func (r *providerCredentialRepository) ExistsByOrgAndName(ctx context.Context, orgID uuid.UUID, name string) (bool, error) {
 	var count int64
 	err := r.db.WithContext(ctx).
 		Model(&credentialsDomain.ProviderCredential{}).

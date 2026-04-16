@@ -153,8 +153,8 @@ type BatchScoreRequest struct {
 type ScoreResponse struct {
 	ID               string          `json:"id"`
 	ProjectID        string          `json:"project_id"`
-	TraceID          *string         `json:"trace_id,omitempty"`  // Nil for experiment-only scores
-	SpanID           *string         `json:"span_id,omitempty"`   // Nil for experiment-only scores
+	TraceID          *string         `json:"trace_id,omitempty"` // Nil for experiment-only scores
+	SpanID           *string         `json:"span_id,omitempty"`  // Nil for experiment-only scores
 	Name             string          `json:"name"`
 	Value            *float64        `json:"value,omitempty"`
 	StringValue      *string         `json:"string_value,omitempty"`
@@ -206,7 +206,7 @@ type ExperimentSummaryResponse struct {
 
 // @Description Response containing experiment comparison results
 type CompareExperimentsResponse struct {
-	Experiments map[string]*ExperimentSummaryResponse              `json:"experiments"`
-	Scores      map[string]map[string]*ScoreAggregationResponse    `json:"scores"`
-	Diffs       map[string]map[string]*ScoreDiffResponse           `json:"diffs,omitempty"`
+	Experiments map[string]*ExperimentSummaryResponse           `json:"experiments"`
+	Scores      map[string]map[string]*ScoreAggregationResponse `json:"scores"`
+	Diffs       map[string]map[string]*ScoreDiffResponse        `json:"diffs,omitempty"`
 }

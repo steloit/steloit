@@ -4,10 +4,11 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/analytics"
 	credentialsDomain "brokle/internal/core/domain/credentials"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
 )
 
 // ModelCatalogService provides model selection for the playground.
@@ -16,7 +17,7 @@ type ModelCatalogService interface {
 	// GetAvailableModels returns all available models for an organization based on configured providers.
 	// Standard providers (openai, anthropic, etc.): default models from DB + custom_models
 	// Custom provider: only custom_models (no defaults exist)
-	GetAvailableModels(ctx context.Context, orgID ulid.ULID) ([]*analytics.AvailableModel, error)
+	GetAvailableModels(ctx context.Context, orgID uuid.UUID) ([]*analytics.AvailableModel, error)
 }
 
 type modelCatalogServiceImpl struct {
@@ -41,7 +42,7 @@ func NewModelCatalogService(
 // For multiple credentials of the same provider, includes credential info to allow selection.
 func (s *modelCatalogServiceImpl) GetAvailableModels(
 	ctx context.Context,
-	orgID ulid.ULID,
+	orgID uuid.UUID,
 ) ([]*analytics.AvailableModel, error) {
 	// 1. Get all credentials for this organization
 	credentials, err := s.credentialRepo.ListByOrganization(ctx, orgID)

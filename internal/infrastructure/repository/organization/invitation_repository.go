@@ -8,9 +8,10 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	orgDomain "brokle/internal/core/domain/organization"
 	"brokle/internal/infrastructure/shared"
-	"brokle/pkg/ulid"
 )
 
 // invitationRepository implements orgDomain.InvitationRepository using GORM
@@ -36,7 +37,7 @@ func (r *invitationRepository) Create(ctx context.Context, invitation *orgDomain
 }
 
 // GetByID retrieves an invitation by ID
-func (r *invitationRepository) GetByID(ctx context.Context, id ulid.ULID) (*orgDomain.Invitation, error) {
+func (r *invitationRepository) GetByID(ctx context.Context, id uuid.UUID) (*orgDomain.Invitation, error) {
 	var invitation orgDomain.Invitation
 	err := r.getDB(ctx).WithContext(ctx).Where("id = ?", id).First(&invitation).Error
 	if err != nil {
@@ -54,7 +55,7 @@ func (r *invitationRepository) Update(ctx context.Context, invitation *orgDomain
 }
 
 // GetByOrganizationID retrieves all invitations for an organization
-func (r *invitationRepository) GetByOrganizationID(ctx context.Context, orgID ulid.ULID) ([]*orgDomain.Invitation, error) {
+func (r *invitationRepository) GetByOrganizationID(ctx context.Context, orgID uuid.UUID) ([]*orgDomain.Invitation, error) {
 	var invitations []*orgDomain.Invitation
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("organization_id = ?", orgID).
@@ -64,7 +65,7 @@ func (r *invitationRepository) GetByOrganizationID(ctx context.Context, orgID ul
 }
 
 // GetByOrganizationAndStatus retrieves invitations by organization and status
-func (r *invitationRepository) GetByOrganizationAndStatus(ctx context.Context, orgID ulid.ULID, status orgDomain.InvitationStatus) ([]*orgDomain.Invitation, error) {
+func (r *invitationRepository) GetByOrganizationAndStatus(ctx context.Context, orgID uuid.UUID, status orgDomain.InvitationStatus) ([]*orgDomain.Invitation, error) {
 	var invitations []*orgDomain.Invitation
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("organization_id = ? AND status = ?", orgID, status).
@@ -74,7 +75,7 @@ func (r *invitationRepository) GetByOrganizationAndStatus(ctx context.Context, o
 }
 
 // GetByUserID retrieves all invitations for a user
-func (r *invitationRepository) GetByUserID(ctx context.Context, userID ulid.ULID) ([]*orgDomain.Invitation, error) {
+func (r *invitationRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]*orgDomain.Invitation, error) {
 	var invitations []*orgDomain.Invitation
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("user_id = ?", userID).
@@ -84,7 +85,7 @@ func (r *invitationRepository) GetByUserID(ctx context.Context, userID ulid.ULID
 }
 
 // GetByUserAndStatus retrieves invitations by user and status
-func (r *invitationRepository) GetByUserAndStatus(ctx context.Context, userID ulid.ULID, status orgDomain.InvitationStatus) ([]*orgDomain.Invitation, error) {
+func (r *invitationRepository) GetByUserAndStatus(ctx context.Context, userID uuid.UUID, status orgDomain.InvitationStatus) ([]*orgDomain.Invitation, error) {
 	var invitations []*orgDomain.Invitation
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("user_id = ? AND status = ?", userID, status).
@@ -94,7 +95,7 @@ func (r *invitationRepository) GetByUserAndStatus(ctx context.Context, userID ul
 }
 
 // GetPendingByEmail retrieves pending invitations by email
-func (r *invitationRepository) GetPendingByEmail(ctx context.Context, orgID ulid.ULID, email string) (*orgDomain.Invitation, error) {
+func (r *invitationRepository) GetPendingByEmail(ctx context.Context, orgID uuid.UUID, email string) (*orgDomain.Invitation, error) {
 	var invitation orgDomain.Invitation
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("organization_id = ? AND email = ? AND status = ?", orgID, email, orgDomain.InvitationStatusPending).
@@ -118,7 +119,7 @@ func (r *invitationRepository) GetExpiredInvitations(ctx context.Context) ([]*or
 }
 
 // Delete soft deletes an invitation
-func (r *invitationRepository) Delete(ctx context.Context, id ulid.ULID) error {
+func (r *invitationRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).Model(&orgDomain.Invitation{}).Where("id = ?", id).Update("deleted_at", time.Now()).Error
 }
 
@@ -146,7 +147,7 @@ func (r *invitationRepository) GetByEmail(ctx context.Context, email string) ([]
 }
 
 // GetPendingInvitations retrieves pending invitations for an organization
-func (r *invitationRepository) GetPendingInvitations(ctx context.Context, orgID ulid.ULID) ([]*orgDomain.Invitation, error) {
+func (r *invitationRepository) GetPendingInvitations(ctx context.Context, orgID uuid.UUID) ([]*orgDomain.Invitation, error) {
 	var invitations []*orgDomain.Invitation
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("organization_id = ? AND status = ? AND deleted_at IS NULL", orgID, orgDomain.InvitationStatusPending).
@@ -156,7 +157,7 @@ func (r *invitationRepository) GetPendingInvitations(ctx context.Context, orgID 
 }
 
 // MarkAccepted marks an invitation as accepted
-func (r *invitationRepository) MarkAccepted(ctx context.Context, id ulid.ULID, acceptedByID ulid.ULID) error {
+func (r *invitationRepository) MarkAccepted(ctx context.Context, id uuid.UUID, acceptedByID uuid.UUID) error {
 	now := time.Now()
 	return r.getDB(ctx).WithContext(ctx).
 		Model(&orgDomain.Invitation{}).
@@ -177,7 +178,7 @@ func (r *invitationRepository) CleanupExpiredInvitations(ctx context.Context) er
 }
 
 // IsEmailAlreadyInvited checks if an email already has a pending invitation for an organization
-func (r *invitationRepository) IsEmailAlreadyInvited(ctx context.Context, email string, orgID ulid.ULID) (bool, error) {
+func (r *invitationRepository) IsEmailAlreadyInvited(ctx context.Context, email string, orgID uuid.UUID) (bool, error) {
 	var count int64
 	err := r.getDB(ctx).WithContext(ctx).
 		Model(&orgDomain.Invitation{}).
@@ -187,7 +188,7 @@ func (r *invitationRepository) IsEmailAlreadyInvited(ctx context.Context, email 
 }
 
 // MarkExpired marks an invitation as expired
-func (r *invitationRepository) MarkExpired(ctx context.Context, id ulid.ULID) error {
+func (r *invitationRepository) MarkExpired(ctx context.Context, id uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).
 		Model(&orgDomain.Invitation{}).
 		Where("id = ?", id).
@@ -198,7 +199,7 @@ func (r *invitationRepository) MarkExpired(ctx context.Context, id ulid.ULID) er
 }
 
 // RevokeInvitation revokes an invitation
-func (r *invitationRepository) RevokeInvitation(ctx context.Context, id ulid.ULID, revokedByID ulid.ULID) error {
+func (r *invitationRepository) RevokeInvitation(ctx context.Context, id uuid.UUID, revokedByID uuid.UUID) error {
 	now := time.Now()
 	return r.db.WithContext(ctx).
 		Model(&orgDomain.Invitation{}).
@@ -226,14 +227,13 @@ func (r *invitationRepository) GetByTokenHash(ctx context.Context, tokenHash str
 	return &invitation, nil
 }
 
-
 // CreateAuditEvent creates an audit event for an invitation
 func (r *invitationRepository) CreateAuditEvent(ctx context.Context, event *orgDomain.InvitationAuditEvent) error {
 	return r.db.WithContext(ctx).Create(event).Error
 }
 
 // GetAuditEventsByInvitationID retrieves all audit events for an invitation
-func (r *invitationRepository) GetAuditEventsByInvitationID(ctx context.Context, invitationID ulid.ULID) ([]*orgDomain.InvitationAuditEvent, error) {
+func (r *invitationRepository) GetAuditEventsByInvitationID(ctx context.Context, invitationID uuid.UUID) ([]*orgDomain.InvitationAuditEvent, error) {
 	var events []*orgDomain.InvitationAuditEvent
 	err := r.db.WithContext(ctx).
 		Where("invitation_id = ?", invitationID).
@@ -247,7 +247,7 @@ func (r *invitationRepository) GetAuditEventsByInvitationID(ctx context.Context,
 // Returns ErrResendLimitReached or ErrResendCooldown if constraints are not met.
 func (r *invitationRepository) MarkResent(
 	ctx context.Context,
-	id ulid.ULID,
+	id uuid.UUID,
 	newExpiresAt time.Time,
 	maxAttempts int,
 	cooldown time.Duration,
@@ -291,7 +291,7 @@ func (r *invitationRepository) MarkResent(
 // UpdateTokenHash updates only the token hash and preview fields.
 // Use this instead of Update when you need to preserve other field changes
 // made by atomic operations (like AtomicMarkResent).
-func (r *invitationRepository) UpdateTokenHash(ctx context.Context, id ulid.ULID, tokenHash, tokenPreview string) error {
+func (r *invitationRepository) UpdateTokenHash(ctx context.Context, id uuid.UUID, tokenHash, tokenPreview string) error {
 	return r.getDB(ctx).WithContext(ctx).
 		Model(&orgDomain.Invitation{}).
 		Where("id = ?", id).

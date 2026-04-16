@@ -8,13 +8,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/google/uuid"
+
 	evaluationDomain "brokle/internal/core/domain/evaluation"
 	"brokle/internal/core/domain/observability"
 	obsServices "brokle/internal/core/services/observability"
 	"brokle/internal/transport/http/middleware"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 type SDKScoreHandler struct {
@@ -161,7 +163,7 @@ func (h *SDKScoreHandler) CreateBatch(c *gin.Context) {
 // Returns error if config lookup fails (to prevent bypassing validation during outages).
 func (h *SDKScoreHandler) validateAgainstConfig(
 	ctx context.Context,
-	projectID ulid.ULID,
+	projectID uuid.UUID,
 	name string,
 	scoreType string,
 	value *float64,
@@ -228,7 +230,7 @@ func (h *SDKScoreHandler) buildScore(projectID string, req *CreateScoreRequest) 
 	}
 
 	score := &observability.Score{
-		ID:               ulid.New().String(),
+		ID:               uid.New().String(),
 		ProjectID:        projectID,
 		TraceID:          req.TraceID,
 		Name:             req.Name,

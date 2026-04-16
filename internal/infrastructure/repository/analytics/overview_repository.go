@@ -6,8 +6,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/analytics"
-	"brokle/pkg/ulid"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 )
@@ -625,7 +626,7 @@ func (r *overviewRepository) GetScoresSummary(ctx context.Context, filter *analy
 }
 
 // HasTraces checks if the project has any traces
-func (r *overviewRepository) HasTraces(ctx context.Context, projectID ulid.ULID) (bool, error) {
+func (r *overviewRepository) HasTraces(ctx context.Context, projectID uuid.UUID) (bool, error) {
 	query := `
 		SELECT 1
 		FROM otel_traces
@@ -644,7 +645,7 @@ func (r *overviewRepository) HasTraces(ctx context.Context, projectID ulid.ULID)
 }
 
 // HasScores checks if the project has any scores
-func (r *overviewRepository) HasScores(ctx context.Context, projectID ulid.ULID) (bool, error) {
+func (r *overviewRepository) HasScores(ctx context.Context, projectID uuid.UUID) (bool, error) {
 	query := `
 		SELECT 1
 		FROM scores

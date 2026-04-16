@@ -1,9 +1,9 @@
 package database
 
 import (
-	"log/slog"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"gorm.io/driver/postgres"

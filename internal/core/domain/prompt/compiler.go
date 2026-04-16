@@ -37,10 +37,10 @@ const DialectAuto TemplateDialect = "auto"
 
 // ValidationResult contains the result of template syntax validation.
 type ValidationResult struct {
-	Valid    bool             `json:"valid"`
-	Dialect  TemplateDialect  `json:"dialect"`
-	Errors   []SyntaxError    `json:"errors,omitempty"`
-	Warnings []SyntaxWarning  `json:"warnings,omitempty"`
+	Valid    bool            `json:"valid"`
+	Dialect  TemplateDialect `json:"dialect"`
+	Errors   []SyntaxError   `json:"errors,omitempty"`
+	Warnings []SyntaxWarning `json:"warnings,omitempty"`
 }
 
 // SyntaxError represents a template syntax error with location information.
@@ -67,9 +67,9 @@ type TemplateMetadata struct {
 
 // CompilationOptions provides options for template compilation.
 type CompilationOptions struct {
-	Dialect     TemplateDialect `json:"dialect,omitempty"`      // Explicit dialect (if not auto-detect)
-	StrictMode  bool            `json:"strict_mode,omitempty"`  // Fail if any variable is missing
-	PreserveMissing bool        `json:"preserve_missing,omitempty"` // Keep {{var}} if var not provided
+	Dialect         TemplateDialect `json:"dialect,omitempty"`          // Explicit dialect (if not auto-detect)
+	StrictMode      bool            `json:"strict_mode,omitempty"`      // Fail if any variable is missing
+	PreserveMissing bool            `json:"preserve_missing,omitempty"` // Keep {{var}} if var not provided
 }
 
 // DialectCompiler defines the interface for a specific template dialect compiler.
@@ -115,17 +115,17 @@ const (
 
 // Warning codes for syntax validation
 const (
-	WarnCodeUnusedVariable      = "UNUSED_VARIABLE"
-	WarnCodeDeprecatedSyntax    = "DEPRECATED_SYNTAX"
-	WarnCodeEmptyBlock          = "EMPTY_BLOCK"
-	WarnCodePotentialInjection  = "POTENTIAL_INJECTION"
+	WarnCodeUnusedVariable     = "UNUSED_VARIABLE"
+	WarnCodeDeprecatedSyntax   = "DEPRECATED_SYNTAX"
+	WarnCodeEmptyBlock         = "EMPTY_BLOCK"
+	WarnCodePotentialInjection = "POTENTIAL_INJECTION"
 )
 
 // Template limits for security and performance
 const (
-	MaxTemplateSize    = 100 * 1024 // 100KB max template size
-	MaxNestingDepth    = 10         // Max nesting depth for loops/conditionals
-	MaxVariables       = 100        // Max variables per template
+	MaxTemplateSize = 100 * 1024 // 100KB max template size
+	MaxNestingDepth = 10         // Max nesting depth for loops/conditionals
+	MaxVariables    = 100        // Max variables per template
 )
 
 func NewValidationResult(valid bool, dialect TemplateDialect) *ValidationResult {

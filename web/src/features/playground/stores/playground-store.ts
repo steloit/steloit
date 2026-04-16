@@ -12,7 +12,7 @@ export interface PlaygroundWindow {
   // Prompt linking (Opik-style - track prompt AND version)
   loadedFromPromptId: string | null        // Which prompt was loaded (if any)
   loadedFromPromptName: string | null      // Display name for "Linked: X"
-  loadedFromPromptVersionId: string | null // Version ID (ULID) for precise tracking
+  loadedFromPromptVersionId: string | null // Version ID (UUID) for precise tracking
   loadedFromPromptVersionNumber: number | null // Version number (e.g., 5) for display
   loadedTemplate: string | null            // Original template JSON for change detection
 

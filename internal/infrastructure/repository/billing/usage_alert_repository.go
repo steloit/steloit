@@ -8,9 +8,10 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/billing"
 	"brokle/internal/infrastructure/shared"
-	"brokle/pkg/ulid"
 )
 
 type usageAlertRepository struct {
@@ -26,7 +27,7 @@ func (r *usageAlertRepository) getDB(ctx context.Context) *gorm.DB {
 	return shared.GetDB(ctx, r.db)
 }
 
-func (r *usageAlertRepository) GetByID(ctx context.Context, id ulid.ULID) (*billing.UsageAlert, error) {
+func (r *usageAlertRepository) GetByID(ctx context.Context, id uuid.UUID) (*billing.UsageAlert, error) {
 	var alert billing.UsageAlert
 	err := r.getDB(ctx).WithContext(ctx).Where("id = ?", id).First(&alert).Error
 	if err != nil {
@@ -38,7 +39,7 @@ func (r *usageAlertRepository) GetByID(ctx context.Context, id ulid.ULID) (*bill
 	return &alert, nil
 }
 
-func (r *usageAlertRepository) GetByOrgID(ctx context.Context, orgID ulid.ULID, limit int) ([]*billing.UsageAlert, error) {
+func (r *usageAlertRepository) GetByOrgID(ctx context.Context, orgID uuid.UUID, limit int) ([]*billing.UsageAlert, error) {
 	var alerts []*billing.UsageAlert
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("organization_id = ?", orgID).
@@ -51,7 +52,7 @@ func (r *usageAlertRepository) GetByOrgID(ctx context.Context, orgID ulid.ULID, 
 	return alerts, nil
 }
 
-func (r *usageAlertRepository) GetByBudgetID(ctx context.Context, budgetID ulid.ULID) ([]*billing.UsageAlert, error) {
+func (r *usageAlertRepository) GetByBudgetID(ctx context.Context, budgetID uuid.UUID) ([]*billing.UsageAlert, error) {
 	var alerts []*billing.UsageAlert
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("budget_id = ?", budgetID).
@@ -63,7 +64,7 @@ func (r *usageAlertRepository) GetByBudgetID(ctx context.Context, budgetID ulid.
 	return alerts, nil
 }
 
-func (r *usageAlertRepository) GetUnacknowledged(ctx context.Context, orgID ulid.ULID) ([]*billing.UsageAlert, error) {
+func (r *usageAlertRepository) GetUnacknowledged(ctx context.Context, orgID uuid.UUID) ([]*billing.UsageAlert, error) {
 	var alerts []*billing.UsageAlert
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("organization_id = ? AND status = ?", orgID, billing.AlertStatusTriggered).
@@ -79,7 +80,7 @@ func (r *usageAlertRepository) Create(ctx context.Context, alert *billing.UsageA
 	return r.getDB(ctx).WithContext(ctx).Create(alert).Error
 }
 
-func (r *usageAlertRepository) Acknowledge(ctx context.Context, id ulid.ULID) error {
+func (r *usageAlertRepository) Acknowledge(ctx context.Context, id uuid.UUID) error {
 	now := time.Now()
 	return r.getDB(ctx).WithContext(ctx).
 		Model(&billing.UsageAlert{}).
@@ -90,7 +91,7 @@ func (r *usageAlertRepository) Acknowledge(ctx context.Context, id ulid.ULID) er
 		}).Error
 }
 
-func (r *usageAlertRepository) Resolve(ctx context.Context, id ulid.ULID) error {
+func (r *usageAlertRepository) Resolve(ctx context.Context, id uuid.UUID) error {
 	now := time.Now()
 	return r.getDB(ctx).WithContext(ctx).
 		Model(&billing.UsageAlert{}).
@@ -101,7 +102,7 @@ func (r *usageAlertRepository) Resolve(ctx context.Context, id ulid.ULID) error 
 		}).Error
 }
 
-func (r *usageAlertRepository) MarkNotificationSent(ctx context.Context, id ulid.ULID) error {
+func (r *usageAlertRepository) MarkNotificationSent(ctx context.Context, id uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).
 		Model(&billing.UsageAlert{}).
 		Where("id = ?", id).

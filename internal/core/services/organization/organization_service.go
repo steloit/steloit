@@ -8,17 +8,18 @@ import (
 
 	"github.com/shopspring/decimal"
 
+	"github.com/google/uuid"
+
 	authDomain "brokle/internal/core/domain/auth"
 	billingDomain "brokle/internal/core/domain/billing"
 	orgDomain "brokle/internal/core/domain/organization"
 	userDomain "brokle/internal/core/domain/user"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
 )
 
 // organizationService implements the orgDomain.OrganizationService interface
 type organizationService struct {
-	orgRepo           orgDomain.OrganizationRepository
+	orgRepo     orgDomain.OrganizationRepository
 	userRepo    userDomain.Repository
 	memberSvc   orgDomain.MemberService
 	projectSvc  orgDomain.ProjectService
@@ -50,8 +51,8 @@ func NewOrganizationService(
 	}
 }
 
-func (s *organizationService) CreateOrganization(ctx context.Context, userID ulid.ULID, req *orgDomain.CreateOrganizationRequest) (*orgDomain.Organization, error) {
-	// Create organization (no slug - use ULID only)
+func (s *organizationService) CreateOrganization(ctx context.Context, userID uuid.UUID, req *orgDomain.CreateOrganizationRequest) (*orgDomain.Organization, error) {
+	// Create organization (no slug - use UUID only)
 	org := orgDomain.NewOrganization(req.Name)
 	if req.BillingEmail != "" {
 		org.BillingEmail = req.BillingEmail
@@ -98,7 +99,7 @@ func (s *organizationService) CreateOrganization(ctx context.Context, userID uli
 }
 
 // provisionBilling creates a billing record for a new organization with the default pricing plan
-func (s *organizationService) provisionBilling(ctx context.Context, orgID ulid.ULID) error {
+func (s *organizationService) provisionBilling(ctx context.Context, orgID uuid.UUID) error {
 	// Look up the default pricing plan (dynamically, not hardcoded)
 	defaultPlan, err := s.planRepo.GetDefault(ctx)
 	if err != nil {
@@ -107,8 +108,8 @@ func (s *organizationService) provisionBilling(ctx context.Context, orgID ulid.U
 
 	now := time.Now()
 	billingRecord := &billingDomain.OrganizationBilling{
-		OrganizationID: orgID,
-		PlanID:         defaultPlan.ID,
+		OrganizationID:        orgID,
+		PlanID:                defaultPlan.ID,
 		BillingCycleStart:     now,
 		BillingCycleAnchorDay: 1,
 		// Free tier remaining (from default plan)
@@ -136,7 +137,7 @@ func (s *organizationService) provisionBilling(ctx context.Context, orgID ulid.U
 	return nil
 }
 
-func (s *organizationService) GetOrganization(ctx context.Context, orgID ulid.ULID) (*orgDomain.Organization, error) {
+func (s *organizationService) GetOrganization(ctx context.Context, orgID uuid.UUID) (*orgDomain.Organization, error) {
 	return s.orgRepo.GetByID(ctx, orgID)
 }
 
@@ -144,7 +145,7 @@ func (s *organizationService) GetOrganizationBySlug(ctx context.Context, slug st
 	return s.orgRepo.GetBySlug(ctx, slug)
 }
 
-func (s *organizationService) UpdateOrganization(ctx context.Context, orgID ulid.ULID, req *orgDomain.UpdateOrganizationRequest) error {
+func (s *organizationService) UpdateOrganization(ctx context.Context, orgID uuid.UUID, req *orgDomain.UpdateOrganizationRequest) error {
 	org, err := s.orgRepo.GetByID(ctx, orgID)
 	if err != nil {
 		return appErrors.NewNotFoundError("Organization not found")
@@ -170,7 +171,7 @@ func (s *organizationService) UpdateOrganization(ctx context.Context, orgID ulid
 	return nil
 }
 
-func (s *organizationService) DeleteOrganization(ctx context.Context, orgID ulid.ULID) error {
+func (s *organizationService) DeleteOrganization(ctx context.Context, orgID uuid.UUID) error {
 	// Verify organization exists before deletion
 	_, err := s.orgRepo.GetByID(ctx, orgID)
 	if err != nil {
@@ -189,11 +190,11 @@ func (s *organizationService) ListOrganizations(ctx context.Context, filters *or
 	return s.orgRepo.List(ctx, filters)
 }
 
-func (s *organizationService) GetUserOrganizations(ctx context.Context, userID ulid.ULID) ([]*orgDomain.Organization, error) {
+func (s *organizationService) GetUserOrganizations(ctx context.Context, userID uuid.UUID) ([]*orgDomain.Organization, error) {
 	return s.orgRepo.GetOrganizationsByUserID(ctx, userID)
 }
 
-func (s *organizationService) GetUserDefaultOrganization(ctx context.Context, userID ulid.ULID) (*orgDomain.Organization, error) {
+func (s *organizationService) GetUserDefaultOrganization(ctx context.Context, userID uuid.UUID) (*orgDomain.Organization, error) {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, appErrors.NewNotFoundError("User not found")
@@ -206,7 +207,7 @@ func (s *organizationService) GetUserDefaultOrganization(ctx context.Context, us
 	return s.orgRepo.GetByID(ctx, *user.DefaultOrganizationID)
 }
 
-func (s *organizationService) SetUserDefaultOrganization(ctx context.Context, userID, orgID ulid.ULID) error {
+func (s *organizationService) SetUserDefaultOrganization(ctx context.Context, userID, orgID uuid.UUID) error {
 	// Verify user is member of organization using member service
 	isMember, err := s.memberSvc.IsMember(ctx, userID, orgID)
 	if err != nil {
@@ -221,7 +222,7 @@ func (s *organizationService) SetUserDefaultOrganization(ctx context.Context, us
 
 func (s *organizationService) GetUserOrganizationsWithProjects(
 	ctx context.Context,
-	userID ulid.ULID,
+	userID uuid.UUID,
 ) ([]*orgDomain.OrganizationWithProjectsAndRole, error) {
 	return s.orgRepo.GetUserOrganizationsWithProjectsBatch(ctx, userID)
 }

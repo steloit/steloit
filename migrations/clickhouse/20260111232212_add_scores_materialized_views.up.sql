@@ -34,7 +34,7 @@ GROUP BY project_id, name, day;
 -- ============================================================================
 -- Pre-aggregates score metrics by project, experiment, and name for experiment comparisons
 -- Uses AggregatingMergeTree with -State combinators for correct aggregation during merges
--- Note: allow_nullable_key=1 required because experiment_id is Nullable(String) in source
+-- Note: allow_nullable_key=1 required because experiment_id is Nullable(UUID) in source
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS scores_by_experiment
 ENGINE = AggregatingMergeTree()

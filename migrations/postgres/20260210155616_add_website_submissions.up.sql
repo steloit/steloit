@@ -1,5 +1,5 @@
 CREATE TABLE contact_submissions (
-    id           CHAR(26) PRIMARY KEY,
+    id           UUID PRIMARY KEY,
     name         VARCHAR(255) NOT NULL,
     email        VARCHAR(255) NOT NULL,
     company      VARCHAR(255),

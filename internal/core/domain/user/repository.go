@@ -4,8 +4,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
+
 	"brokle/pkg/pagination"
-	"brokle/pkg/ulid"
 )
 
 // Repository defines the interface for user data persistence.
@@ -15,36 +16,36 @@ import (
 type Repository interface {
 	// User operations
 	Create(ctx context.Context, user *User) error
-	GetByID(ctx context.Context, id ulid.ULID) (*User, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*User, error)
 	GetByEmail(ctx context.Context, email string) (*User, error)
 	GetByEmailWithPassword(ctx context.Context, email string) (*User, error)
 	Update(ctx context.Context, user *User) error
-	Delete(ctx context.Context, id ulid.ULID) error
+	Delete(ctx context.Context, id uuid.UUID) error
 	List(ctx context.Context, filters *ListFilters) ([]*User, int, error)
 
 	// Profile operations
 	CreateProfile(ctx context.Context, profile *UserProfile) error
-	GetProfile(ctx context.Context, userID ulid.ULID) (*UserProfile, error)
+	GetProfile(ctx context.Context, userID uuid.UUID) (*UserProfile, error)
 	UpdateProfile(ctx context.Context, profile *UserProfile) error
 
 	// Authentication operations
-	UpdatePassword(ctx context.Context, userID ulid.ULID, hashedPassword string) error
-	MarkEmailAsVerified(ctx context.Context, userID ulid.ULID) error
-	VerifyEmail(ctx context.Context, userID ulid.ULID, token string) error
-	SetDefaultOrganization(ctx context.Context, userID, orgID ulid.ULID) error
-	GetDefaultOrganization(ctx context.Context, userID ulid.ULID) (*ulid.ULID, error)
-	DeactivateUser(ctx context.Context, userID ulid.ULID) error
-	ReactivateUser(ctx context.Context, userID ulid.ULID) error
+	UpdatePassword(ctx context.Context, userID uuid.UUID, hashedPassword string) error
+	MarkEmailAsVerified(ctx context.Context, userID uuid.UUID) error
+	VerifyEmail(ctx context.Context, userID uuid.UUID, token string) error
+	SetDefaultOrganization(ctx context.Context, userID, orgID uuid.UUID) error
+	GetDefaultOrganization(ctx context.Context, userID uuid.UUID) (*uuid.UUID, error)
+	DeactivateUser(ctx context.Context, userID uuid.UUID) error
+	ReactivateUser(ctx context.Context, userID uuid.UUID) error
 
 	// Batch operations
-	GetByIDs(ctx context.Context, ids []ulid.ULID) ([]*User, error)
-	UpdateLastLogin(ctx context.Context, userID ulid.ULID) error
+	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*User, error)
+	UpdateLastLogin(ctx context.Context, userID uuid.UUID) error
 
 	// Search and filtering
 	Search(ctx context.Context, query string, limit, offset int) ([]*User, int, error)
 	GetActiveUsers(ctx context.Context, limit, offset int) ([]*User, int, error)
 	GetVerifiedUsers(ctx context.Context, limit, offset int) ([]*User, int, error)
-	GetUsersByOrganization(ctx context.Context, organizationID ulid.ULID) ([]*User, error)
+	GetUsersByOrganization(ctx context.Context, organizationID uuid.UUID) ([]*User, error)
 
 	// User statistics
 	GetUserStats(ctx context.Context) (*UserStats, error)

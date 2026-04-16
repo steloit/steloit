@@ -7,10 +7,11 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/evaluation"
 	"brokle/internal/core/domain/observability"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
 )
 
 type scoreConfigService struct {
@@ -31,7 +32,7 @@ func NewScoreConfigService(
 	}
 }
 
-func (s *scoreConfigService) Create(ctx context.Context, projectID ulid.ULID, req *evaluation.CreateScoreConfigRequest) (*evaluation.ScoreConfig, error) {
+func (s *scoreConfigService) Create(ctx context.Context, projectID uuid.UUID, req *evaluation.CreateScoreConfigRequest) (*evaluation.ScoreConfig, error) {
 	config := evaluation.NewScoreConfig(projectID, req.Name, req.Type)
 	config.Description = req.Description
 	config.MinValue = req.MinValue
@@ -70,7 +71,7 @@ func (s *scoreConfigService) Create(ctx context.Context, projectID ulid.ULID, re
 	return config, nil
 }
 
-func (s *scoreConfigService) Update(ctx context.Context, id ulid.ULID, projectID ulid.ULID, req *evaluation.UpdateScoreConfigRequest) (*evaluation.ScoreConfig, error) {
+func (s *scoreConfigService) Update(ctx context.Context, id uuid.UUID, projectID uuid.UUID, req *evaluation.UpdateScoreConfigRequest) (*evaluation.ScoreConfig, error) {
 	config, err := s.repo.GetByID(ctx, id, projectID)
 	if err != nil {
 		if errors.Is(err, evaluation.ErrScoreConfigNotFound) {
@@ -145,7 +146,7 @@ func (s *scoreConfigService) Update(ctx context.Context, id ulid.ULID, projectID
 	return config, nil
 }
 
-func (s *scoreConfigService) Delete(ctx context.Context, id ulid.ULID, projectID ulid.ULID) error {
+func (s *scoreConfigService) Delete(ctx context.Context, id uuid.UUID, projectID uuid.UUID) error {
 	config, err := s.repo.GetByID(ctx, id, projectID)
 	if err != nil {
 		if errors.Is(err, evaluation.ErrScoreConfigNotFound) {
@@ -170,7 +171,7 @@ func (s *scoreConfigService) Delete(ctx context.Context, id ulid.ULID, projectID
 	return nil
 }
 
-func (s *scoreConfigService) GetByID(ctx context.Context, id ulid.ULID, projectID ulid.ULID) (*evaluation.ScoreConfig, error) {
+func (s *scoreConfigService) GetByID(ctx context.Context, id uuid.UUID, projectID uuid.UUID) (*evaluation.ScoreConfig, error) {
 	config, err := s.repo.GetByID(ctx, id, projectID)
 	if err != nil {
 		if errors.Is(err, evaluation.ErrScoreConfigNotFound) {
@@ -181,7 +182,7 @@ func (s *scoreConfigService) GetByID(ctx context.Context, id ulid.ULID, projectI
 	return config, nil
 }
 
-func (s *scoreConfigService) GetByName(ctx context.Context, projectID ulid.ULID, name string) (*evaluation.ScoreConfig, error) {
+func (s *scoreConfigService) GetByName(ctx context.Context, projectID uuid.UUID, name string) (*evaluation.ScoreConfig, error) {
 	config, err := s.repo.GetByName(ctx, projectID, name)
 	if err != nil {
 		return nil, appErrors.NewInternalError("failed to get score config", err)
@@ -192,7 +193,7 @@ func (s *scoreConfigService) GetByName(ctx context.Context, projectID ulid.ULID,
 	return config, nil
 }
 
-func (s *scoreConfigService) List(ctx context.Context, projectID ulid.ULID, page, limit int) ([]*evaluation.ScoreConfig, int64, error) {
+func (s *scoreConfigService) List(ctx context.Context, projectID uuid.UUID, page, limit int) ([]*evaluation.ScoreConfig, int64, error) {
 	offset := (page - 1) * limit
 	configs, total, err := s.repo.List(ctx, projectID, offset, limit)
 	if err != nil {

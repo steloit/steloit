@@ -3,11 +3,12 @@ package comment
 import (
 	"github.com/gin-gonic/gin"
 
+	"github.com/google/uuid"
+
 	commentDomain "brokle/internal/core/domain/comment"
 	"brokle/internal/transport/http/middleware"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 )
 
 type Handler struct {
@@ -45,13 +46,13 @@ func (h *Handler) CreateComment(c *gin.Context) {
 		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
 		return
 	}
-	projectID, err := ulid.Parse(projectIDStr)
+	projectID, err := uuid.Parse(projectIDStr)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid UUID"))
 		return
 	}
 
-	userID, exists := middleware.GetUserIDULID(c)
+	userID, exists := middleware.GetUserIDFromContext(c)
 	if !exists {
 		response.Error(c, appErrors.NewUnauthorizedError("authentication required"))
 		return
@@ -94,15 +95,15 @@ func (h *Handler) ListComments(c *gin.Context) {
 		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
 		return
 	}
-	projectID, err := ulid.Parse(projectIDStr)
+	projectID, err := uuid.Parse(projectIDStr)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid UUID"))
 		return
 	}
 
 	// Get current user ID if available (for reaction hasUser flag)
-	var currentUserID *ulid.ULID
-	if userID, exists := middleware.GetUserIDULID(c); exists {
+	var currentUserID *uuid.UUID
+	if userID, exists := middleware.GetUserIDFromContext(c); exists {
 		currentUserID = &userID
 	}
 
@@ -137,9 +138,9 @@ func (h *Handler) GetCommentCount(c *gin.Context) {
 		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
 		return
 	}
-	projectID, err := ulid.Parse(projectIDStr)
+	projectID, err := uuid.Parse(projectIDStr)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid UUID"))
 		return
 	}
 
@@ -174,9 +175,9 @@ func (h *Handler) UpdateComment(c *gin.Context) {
 		return
 	}
 
-	commentID, err := ulid.Parse(c.Param("comment_id"))
+	commentID, err := uuid.Parse(c.Param("comment_id"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid comment ID", "comment_id must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid comment ID", "comment_id must be a valid UUID"))
 		return
 	}
 
@@ -185,13 +186,13 @@ func (h *Handler) UpdateComment(c *gin.Context) {
 		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
 		return
 	}
-	projectID, err := ulid.Parse(projectIDStr)
+	projectID, err := uuid.Parse(projectIDStr)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid UUID"))
 		return
 	}
 
-	userID, exists := middleware.GetUserIDULID(c)
+	userID, exists := middleware.GetUserIDFromContext(c)
 	if !exists {
 		response.Error(c, appErrors.NewUnauthorizedError("authentication required"))
 		return
@@ -232,9 +233,9 @@ func (h *Handler) DeleteComment(c *gin.Context) {
 		return
 	}
 
-	commentID, err := ulid.Parse(c.Param("comment_id"))
+	commentID, err := uuid.Parse(c.Param("comment_id"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid comment ID", "comment_id must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid comment ID", "comment_id must be a valid UUID"))
 		return
 	}
 
@@ -243,13 +244,13 @@ func (h *Handler) DeleteComment(c *gin.Context) {
 		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
 		return
 	}
-	projectID, err := ulid.Parse(projectIDStr)
+	projectID, err := uuid.Parse(projectIDStr)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid UUID"))
 		return
 	}
 
-	userID, exists := middleware.GetUserIDULID(c)
+	userID, exists := middleware.GetUserIDFromContext(c)
 	if !exists {
 		response.Error(c, appErrors.NewUnauthorizedError("authentication required"))
 		return
@@ -284,9 +285,9 @@ func (h *Handler) ToggleReaction(c *gin.Context) {
 		return
 	}
 
-	commentID, err := ulid.Parse(c.Param("comment_id"))
+	commentID, err := uuid.Parse(c.Param("comment_id"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid comment ID", "comment_id must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid comment ID", "comment_id must be a valid UUID"))
 		return
 	}
 
@@ -295,13 +296,13 @@ func (h *Handler) ToggleReaction(c *gin.Context) {
 		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
 		return
 	}
-	projectID, err := ulid.Parse(projectIDStr)
+	projectID, err := uuid.Parse(projectIDStr)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid UUID"))
 		return
 	}
 
-	userID, exists := middleware.GetUserIDULID(c)
+	userID, exists := middleware.GetUserIDFromContext(c)
 	if !exists {
 		response.Error(c, appErrors.NewUnauthorizedError("authentication required"))
 		return
@@ -343,9 +344,9 @@ func (h *Handler) CreateReply(c *gin.Context) {
 		return
 	}
 
-	parentID, err := ulid.Parse(c.Param("comment_id"))
+	parentID, err := uuid.Parse(c.Param("comment_id"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid comment ID", "comment_id must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid comment ID", "comment_id must be a valid UUID"))
 		return
 	}
 
@@ -354,13 +355,13 @@ func (h *Handler) CreateReply(c *gin.Context) {
 		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
 		return
 	}
-	projectID, err := ulid.Parse(projectIDStr)
+	projectID, err := uuid.Parse(projectIDStr)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid UUID"))
 		return
 	}
 
-	userID, exists := middleware.GetUserIDULID(c)
+	userID, exists := middleware.GetUserIDFromContext(c)
 	if !exists {
 		response.Error(c, appErrors.NewUnauthorizedError("authentication required"))
 		return

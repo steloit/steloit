@@ -12,10 +12,12 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/config"
 	authDomain "brokle/internal/core/domain/auth"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 // jwtService implements the auth.JWTService interface with flexible signing methods
@@ -144,17 +146,17 @@ func (s *jwtService) loadRSAKeys() error {
 }
 
 // GenerateAccessToken generates an access token with custom claims
-func (s *jwtService) GenerateAccessToken(ctx context.Context, userID ulid.ULID, customClaims map[string]interface{}) (string, error) {
+func (s *jwtService) GenerateAccessToken(ctx context.Context, userID uuid.UUID, customClaims map[string]interface{}) (string, error) {
 	token, _, err := s.GenerateAccessTokenWithJTI(ctx, userID, customClaims)
 	return token, err
 }
 
 // GenerateAccessTokenWithJTI generates an access token and returns both token and JTI for session tracking
-func (s *jwtService) GenerateAccessTokenWithJTI(ctx context.Context, userID ulid.ULID, customClaims map[string]interface{}) (string, string, error) {
+func (s *jwtService) GenerateAccessTokenWithJTI(ctx context.Context, userID uuid.UUID, customClaims map[string]interface{}) (string, string, error) {
 	now := time.Now()
 
 	// Generate JTI for this token
-	jti := ulid.New().String()
+	jti := uid.New().String()
 
 	// Create JWT claims
 	claims := jwt.MapClaims{
@@ -194,7 +196,7 @@ func (s *jwtService) GenerateAccessTokenWithJTI(ctx context.Context, userID ulid
 }
 
 // GenerateRefreshToken generates a refresh token
-func (s *jwtService) GenerateRefreshToken(ctx context.Context, userID ulid.ULID) (string, error) {
+func (s *jwtService) GenerateRefreshToken(ctx context.Context, userID uuid.UUID) (string, error) {
 	now := time.Now()
 
 	// Create JWT claims for refresh token
@@ -204,7 +206,7 @@ func (s *jwtService) GenerateRefreshToken(ctx context.Context, userID ulid.ULID)
 		"iat":        now.Unix(),
 		"nbf":        now.Unix(),
 		"exp":        now.Add(s.config.RefreshTokenTTL).Unix(),
-		"jti":        ulid.New().String(),
+		"jti":        uid.New().String(),
 		"token_type": string(authDomain.TokenTypeRefresh),
 		"user_id":    userID.String(),
 	}
@@ -230,7 +232,7 @@ func (s *jwtService) GenerateRefreshToken(ctx context.Context, userID ulid.ULID)
 }
 
 // GenerateAPIKeyToken generates a token for API key authentication
-func (s *jwtService) GenerateAPIKeyToken(ctx context.Context, keyID ulid.ULID, scopes []string) (string, error) {
+func (s *jwtService) GenerateAPIKeyToken(ctx context.Context, keyID uuid.UUID, scopes []string) (string, error) {
 	now := time.Now()
 
 	// API key tokens use access token TTL for short-lived access
@@ -243,7 +245,7 @@ func (s *jwtService) GenerateAPIKeyToken(ctx context.Context, keyID ulid.ULID, s
 		"iat":        now.Unix(),
 		"nbf":        now.Unix(),
 		"exp":        now.Add(ttl).Unix(),
-		"jti":        ulid.New().String(),
+		"jti":        uid.New().String(),
 		"token_type": string(authDomain.TokenTypeAPIKey),
 		"api_key_id": keyID.String(),
 		"scopes":     scopes,
@@ -437,10 +439,10 @@ func (s *jwtService) mapClaimsToJWTClaims(claims jwt.MapClaims) (*authDomain.JWT
 		return 0
 	}
 
-	// Helper function to safely extract ULID claims
-	getULID := func(key string) *ulid.ULID {
+	// Helper function to safely extract UUID claims
+	getUUID := func(key string) *uuid.UUID {
 		if str := getString(key); str != "" {
-			if id, err := ulid.Parse(str); err == nil {
+			if id, err := uuid.Parse(str); err == nil {
 				return &id
 			}
 		}
@@ -462,7 +464,7 @@ func (s *jwtService) mapClaimsToJWTClaims(claims jwt.MapClaims) (*authDomain.JWT
 
 	// Parse UserID
 	if userIDStr := getString("user_id"); userIDStr != "" {
-		if userID, err := ulid.Parse(userIDStr); err == nil {
+		if userID, err := uuid.Parse(userIDStr); err == nil {
 			jwtClaims.UserID = userID
 		}
 	}
@@ -470,8 +472,8 @@ func (s *jwtService) mapClaimsToJWTClaims(claims jwt.MapClaims) (*authDomain.JWT
 	// Clean JWT structure - no context or permission claims stored in JWT
 
 	// API Key and session claims
-	jwtClaims.APIKeyID = getULID("api_key_id")
-	jwtClaims.SessionID = getULID("session_id")
+	jwtClaims.APIKeyID = getUUID("api_key_id")
+	jwtClaims.SessionID = getUUID("session_id")
 
 	// Clean JWT structure - no IP or UserAgent tracking
 

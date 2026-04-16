@@ -184,7 +184,7 @@ export const getProjectTraces = async (params: GetTracesParams): Promise<Paginat
  *
  * Backend endpoint: GET /api/v1/traces/:id
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @param traceId - Trace ID (32 hex characters)
  * @returns Single trace object
  */
@@ -204,7 +204,7 @@ export const getTraceById = async (
  * Backend endpoint: GET /api/v1/traces/:id/spans
  * Returns spans array directly (not wrapped in trace object)
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @param traceId - Trace ID
  * @returns Array of spans for the trace
  */
@@ -231,7 +231,7 @@ export const getTraceWithSpans = getSpansForTrace
  *
  * Backend endpoint: GET /api/v1/traces/:id/scores
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @param traceId - Trace ID
  * @returns Trace with quality scores
  * @deprecated Use getScoresForTrace instead - this function incorrectly transforms response
@@ -252,7 +252,7 @@ export const getTraceWithScores = async (
  * Backend endpoint: GET /api/v1/traces/:id/scores
  * Returns all scores for the trace (both trace-level and span-level)
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @param traceId - Trace ID
  * @returns Array of scores for the trace
  */
@@ -272,7 +272,7 @@ export const getScoresForTrace = async (
  *
  * Backend endpoint: PUT /api/v1/traces/:id
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @param traceId - Trace ID
  * @param data - Updated trace data
  * @returns Updated trace
@@ -294,7 +294,7 @@ export const updateTrace = async (
  *
  * Backend endpoint: DELETE /api/v1/traces/:id
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @param traceId - Trace ID (32 hex characters)
  */
 export const deleteTrace = async (
@@ -311,7 +311,7 @@ export const deleteTrace = async (
  *
  * Backend endpoint: PUT /api/v1/traces/:id/tags
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @param traceId - Trace ID (32 hex characters)
  * @param tags - Array of tag strings
  * @returns Updated tags array (normalized: lowercase, unique, sorted)
@@ -333,7 +333,7 @@ export const updateTraceTags = async (
  *
  * Backend endpoint: PUT /api/v1/traces/:id/bookmark
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @param traceId - Trace ID (32 hex characters)
  * @param bookmarked - Bookmark status
  * @returns Updated bookmark status
@@ -396,7 +396,7 @@ export const exportTraces = async (
  * Returns distinct values for filter dropdowns and min/max ranges for sliders.
  * Used to populate the advanced filter UI dynamically based on actual data.
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @returns Filter options with available values and ranges
  */
 export const getTraceFilterOptions = async (
@@ -658,7 +658,7 @@ export interface UpdateFilterPresetRequest {
  *
  * Backend endpoint: GET /api/v1/projects/{projectId}/filter-presets
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @param tableName - Filter by table name ('traces' or 'spans')
  * @param includePublic - Include public presets (default: true)
  * @returns Array of filter presets
@@ -687,7 +687,7 @@ export const getFilterPresets = async (
  *
  * Backend endpoint: GET /api/v1/projects/{projectId}/filter-presets/{id}
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @param presetId - Filter preset ID
  * @returns Filter preset object
  */
@@ -706,7 +706,7 @@ export const getFilterPresetById = async (
  *
  * Backend endpoint: POST /api/v1/projects/{projectId}/filter-presets
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @param data - Filter preset data
  * @returns Created filter preset
  */
@@ -725,7 +725,7 @@ export const createFilterPreset = async (
  *
  * Backend endpoint: PATCH /api/v1/projects/{projectId}/filter-presets/{id}
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @param presetId - Filter preset ID
  * @param data - Updated filter preset data
  * @returns Updated filter preset
@@ -746,7 +746,7 @@ export const updateFilterPreset = async (
  *
  * Backend endpoint: DELETE /api/v1/projects/{projectId}/filter-presets/{id}
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @param presetId - Filter preset ID
  */
 export const deleteFilterPreset = async (
@@ -761,7 +761,7 @@ export const deleteFilterPreset = async (
  *
  * Backend endpoint: GET /api/v1/traces/attributes
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @returns Array of attribute keys with metadata
  */
 export interface AttributeKey {

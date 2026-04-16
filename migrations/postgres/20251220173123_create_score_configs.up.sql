@@ -5,8 +5,8 @@
 -- Part of Phase 1: Production Scoring
 
 CREATE TABLE IF NOT EXISTS score_configs (
-    id              CHAR(26) PRIMARY KEY,  -- ULID
-    project_id      CHAR(26) NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    id              UUID PRIMARY KEY,  -- ULID
+    project_id      UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     name            VARCHAR(100) NOT NULL,
     description     TEXT,
     data_type       VARCHAR(20) NOT NULL DEFAULT 'NUMERIC'

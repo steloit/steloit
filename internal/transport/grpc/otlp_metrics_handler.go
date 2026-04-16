@@ -6,15 +6,15 @@ import (
 
 	"log/slog"
 
+	colmetricspb "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
+	metricspb "go.opentelemetry.io/proto/otlp/metrics/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	colmetricspb "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
-	metricspb "go.opentelemetry.io/proto/otlp/metrics/v1"
 
 	obsServices "brokle/internal/core/services/observability"
 	"brokle/internal/infrastructure/streams"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 // OTLPMetricsHandler implements OTLP MetricsService gRPC server
@@ -94,7 +94,7 @@ func (h *OTLPMetricsHandler) Export(
 		})
 	}
 
-	batchID := ulid.New()
+	batchID := uid.New()
 	h.logger.Info("Publishing gRPC OTLP metrics batch to Redis streams",
 		"batch_id", batchID.String(),
 		"events", len(eventData),

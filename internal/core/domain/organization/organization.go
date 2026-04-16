@@ -8,7 +8,9 @@ import (
 	"encoding/json"
 	"time"
 
-	"brokle/pkg/ulid"
+	"github.com/google/uuid"
+
+	"brokle/pkg/uid"
 
 	"gorm.io/gorm"
 )
@@ -27,7 +29,7 @@ type Organization struct {
 	Members            []Member               `json:"members,omitempty" gorm:"foreignKey:OrganizationID"`
 	Invitations        []Invitation           `json:"invitations,omitempty" gorm:"foreignKey:OrganizationID"`
 	Settings           []OrganizationSettings `json:"settings,omitempty" gorm:"foreignKey:OrganizationID"`
-	ID                 ulid.ULID              `json:"id" gorm:"type:char(26);primaryKey"`
+	ID                 uuid.UUID              `json:"id" gorm:"type:uuid;primaryKey"`
 }
 
 // Member represents the many-to-many relationship between users and organizations.
@@ -35,13 +37,13 @@ type Member struct {
 	JoinedAt       time.Time      `json:"joined_at"`
 	CreatedAt      time.Time      `json:"created_at"`
 	UpdatedAt      time.Time      `json:"updated_at"`
-	InvitedBy      *ulid.ULID     `json:"invited_by,omitempty" gorm:"type:char(26)"`
+	InvitedBy      *uuid.UUID     `json:"invited_by,omitempty" gorm:"type:uuid"`
 	DeletedAt      gorm.DeletedAt `json:"deleted_at,omitempty" gorm:"index"`
 	Status         string         `json:"status" gorm:"size:20;default:'active'"`
 	Organization   Organization   `json:"organization,omitempty" gorm:"foreignKey:OrganizationID"`
-	OrganizationID ulid.ULID      `json:"organization_id" gorm:"type:char(26);not null;primaryKey;priority:1"`
-	UserID         ulid.ULID      `json:"user_id" gorm:"type:char(26);not null;primaryKey;priority:2"`
-	RoleID         ulid.ULID      `json:"role_id" gorm:"type:char(26);not null"`
+	OrganizationID uuid.UUID      `json:"organization_id" gorm:"type:uuid;not null;primaryKey;priority:1"`
+	UserID         uuid.UUID      `json:"user_id" gorm:"type:uuid;not null;primaryKey;priority:2"`
+	RoleID         uuid.UUID      `json:"role_id" gorm:"type:uuid;not null"`
 }
 
 // Project represents a project within an organization.
@@ -53,8 +55,8 @@ type Project struct {
 	Description    string         `json:"description,omitempty" gorm:"text"`
 	Status         string         `json:"status" gorm:"size:20;not null;default:active;check:status IN ('active','archived')"`
 	Organization   Organization   `json:"organization,omitempty" gorm:"foreignKey:OrganizationID"`
-	ID             ulid.ULID      `json:"id" gorm:"type:char(26);primaryKey"`
-	OrganizationID ulid.ULID      `json:"organization_id" gorm:"type:char(26);not null"`
+	ID             uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey"`
+	OrganizationID uuid.UUID      `json:"organization_id" gorm:"type:uuid;not null"`
 }
 
 // Invitation represents an invitation to join an organization.
@@ -67,18 +69,18 @@ type Invitation struct {
 	ResentAt       *time.Time       `json:"resent_at,omitempty"`
 	DeletedAt      gorm.DeletedAt   `json:"deleted_at,omitempty" gorm:"index"`
 	Status         InvitationStatus `json:"status" gorm:"size:50;default:'pending'"`
-	TokenHash      string           `json:"-" gorm:"size:64;not null"`  // SHA-256 hash for secure storage
+	TokenHash      string           `json:"-" gorm:"size:64;not null"`              // SHA-256 hash for secure storage
 	TokenPreview   string           `json:"token_preview,omitempty" gorm:"size:16"` // First 12 chars for display: "inv_AbCd..."
 	Email          string           `json:"email" gorm:"size:255;not null"`
 	Message        *string          `json:"message,omitempty" gorm:"type:text"` // Personal message from inviter
 	Organization   Organization     `json:"organization,omitempty" gorm:"foreignKey:OrganizationID"`
-	ID             ulid.ULID        `json:"id" gorm:"type:char(26);primaryKey"`
-	InvitedByID    ulid.ULID        `json:"invited_by_id" gorm:"type:char(26);not null"`
-	RoleID         ulid.ULID        `json:"role_id" gorm:"type:char(26);not null"`
-	OrganizationID ulid.ULID        `json:"organization_id" gorm:"type:char(26);not null"`
-	AcceptedByID   *ulid.ULID       `json:"accepted_by_id,omitempty" gorm:"type:char(26)"` // User who accepted (for audit)
-	RevokedByID    *ulid.ULID       `json:"revoked_by_id,omitempty" gorm:"type:char(26)"` // User who revoked (for audit)
-	ResentCount    int              `json:"resent_count" gorm:"default:0"` // Track resend attempts
+	ID             uuid.UUID        `json:"id" gorm:"type:uuid;primaryKey"`
+	InvitedByID    uuid.UUID        `json:"invited_by_id" gorm:"type:uuid;not null"`
+	RoleID         uuid.UUID        `json:"role_id" gorm:"type:uuid;not null"`
+	OrganizationID uuid.UUID        `json:"organization_id" gorm:"type:uuid;not null"`
+	AcceptedByID   *uuid.UUID       `json:"accepted_by_id,omitempty" gorm:"type:uuid"` // User who accepted (for audit)
+	RevokedByID    *uuid.UUID       `json:"revoked_by_id,omitempty" gorm:"type:uuid"`  // User who revoked (for audit)
+	ResentCount    int              `json:"resent_count" gorm:"default:0"`             // Track resend attempts
 }
 
 // Request/Response DTOs
@@ -105,7 +107,7 @@ type UpdateProjectRequest struct {
 
 type InviteUserRequest struct {
 	Email   string    `json:"email" validate:"required,email"`
-	RoleID  ulid.ULID `json:"role_id" validate:"required"`
+	RoleID  uuid.UUID `json:"role_id" validate:"required"`
 	Message *string   `json:"message,omitempty" validate:"omitempty,max=500"` // Personal message for the invitee
 }
 
@@ -123,7 +125,7 @@ const (
 // Constructor functions
 func NewOrganization(name string) *Organization {
 	return &Organization{
-		ID:                 ulid.New(),
+		ID:                 uid.New(),
 		Name:               name,
 		Plan:               "free",
 		SubscriptionStatus: "active",
@@ -132,9 +134,9 @@ func NewOrganization(name string) *Organization {
 	}
 }
 
-func NewProject(orgID ulid.ULID, name, description string) *Project {
+func NewProject(orgID uuid.UUID, name, description string) *Project {
 	return &Project{
-		ID:             ulid.New(),
+		ID:             uid.New(),
 		OrganizationID: orgID,
 		Name:           name,
 		Description:    description,
@@ -144,7 +146,7 @@ func NewProject(orgID ulid.ULID, name, description string) *Project {
 	}
 }
 
-func NewMember(orgID, userID, roleID ulid.ULID) *Member {
+func NewMember(orgID, userID, roleID uuid.UUID) *Member {
 	now := time.Now()
 	return &Member{
 		OrganizationID: orgID,
@@ -160,9 +162,9 @@ func NewMember(orgID, userID, roleID ulid.ULID) *Member {
 // NewInvitation creates a new invitation with secure token handling
 // The tokenHash is the SHA-256 hash of the plaintext token
 // The tokenPreview is the first 12 characters of the plaintext token for display
-func NewInvitation(orgID, roleID, invitedByID ulid.ULID, email, tokenHash, tokenPreview string, expiresAt time.Time) *Invitation {
+func NewInvitation(orgID, roleID, invitedByID uuid.UUID, email, tokenHash, tokenPreview string, expiresAt time.Time) *Invitation {
 	return &Invitation{
-		ID:             ulid.New(),
+		ID:             uid.New(),
 		OrganizationID: orgID,
 		RoleID:         roleID,
 		InvitedByID:    invitedByID,
@@ -178,7 +180,7 @@ func NewInvitation(orgID, roleID, invitedByID ulid.ULID, email, tokenHash, token
 }
 
 // NewInvitationWithMessage creates a new invitation with an optional personal message
-func NewInvitationWithMessage(orgID, roleID, invitedByID ulid.ULID, email, tokenHash, tokenPreview string, message *string, expiresAt time.Time) *Invitation {
+func NewInvitationWithMessage(orgID, roleID, invitedByID uuid.UUID, email, tokenHash, tokenPreview string, message *string, expiresAt time.Time) *Invitation {
 	inv := NewInvitation(orgID, roleID, invitedByID, email, tokenHash, tokenPreview, expiresAt)
 	inv.Message = message
 	return inv
@@ -194,7 +196,7 @@ func (i *Invitation) IsValid() bool {
 }
 
 // Accept marks the invitation as accepted by the given user
-func (i *Invitation) Accept(acceptedByID ulid.ULID) {
+func (i *Invitation) Accept(acceptedByID uuid.UUID) {
 	now := time.Now()
 	i.Status = InvitationStatusAccepted
 	i.AcceptedAt = &now
@@ -203,7 +205,7 @@ func (i *Invitation) Accept(acceptedByID ulid.ULID) {
 }
 
 // Revoke marks the invitation as revoked by the given user
-func (i *Invitation) Revoke(revokedByID ulid.ULID) {
+func (i *Invitation) Revoke(revokedByID uuid.UUID) {
 	now := time.Now()
 	i.Status = InvitationStatusRevoked
 	i.RevokedAt = &now
@@ -257,8 +259,8 @@ type OrganizationSettings struct {
 	Key            string       `json:"key" gorm:"size:255;not null"`
 	Value          string       `json:"value" gorm:"type:jsonb;not null"`
 	Organization   Organization `json:"organization,omitempty" gorm:"foreignKey:OrganizationID"`
-	ID             ulid.ULID    `json:"id" gorm:"type:char(26);primaryKey"`
-	OrganizationID ulid.ULID    `json:"organization_id" gorm:"type:char(26);not null"`
+	ID             uuid.UUID    `json:"id" gorm:"type:uuid;primaryKey"`
+	OrganizationID uuid.UUID    `json:"organization_id" gorm:"type:uuid;not null"`
 }
 
 // Settings-related DTOs
@@ -276,7 +278,7 @@ type GetOrganizationSettingsResponse struct {
 }
 
 // OrganizationSetting utility methods
-func NewOrganizationSettings(orgID ulid.ULID, key string, value interface{}) (*OrganizationSettings, error) {
+func NewOrganizationSettings(orgID uuid.UUID, key string, value interface{}) (*OrganizationSettings, error) {
 	// Convert value to JSON string for storage
 	valueBytes, err := json.Marshal(value)
 	if err != nil {
@@ -284,7 +286,7 @@ func NewOrganizationSettings(orgID ulid.ULID, key string, value interface{}) (*O
 	}
 
 	return &OrganizationSettings{
-		ID:             ulid.New(),
+		ID:             uid.New(),
 		OrganizationID: orgID,
 		Key:            key,
 		Value:          string(valueBytes),
@@ -346,15 +348,15 @@ type InvitationAuditEvent struct {
 	Metadata     *string                  `json:"metadata,omitempty" gorm:"type:jsonb"` // JSON metadata
 	IPAddress    *string                  `json:"ip_address,omitempty" gorm:"type:inet"`
 	UserAgent    *string                  `json:"user_agent,omitempty" gorm:"type:text"`
-	ID           ulid.ULID                `json:"id" gorm:"type:char(26);primaryKey"`
-	InvitationID ulid.ULID                `json:"invitation_id" gorm:"type:char(26);not null"`
-	ActorID      *ulid.ULID               `json:"actor_id,omitempty" gorm:"type:char(26)"` // NULL for system events
+	ID           uuid.UUID                `json:"id" gorm:"type:uuid;primaryKey"`
+	InvitationID uuid.UUID                `json:"invitation_id" gorm:"type:uuid;not null"`
+	ActorID      *uuid.UUID               `json:"actor_id,omitempty" gorm:"type:uuid"` // NULL for system events
 }
 
 // NewInvitationAuditEvent creates a new audit event
-func NewInvitationAuditEvent(invitationID ulid.ULID, eventType InvitationAuditEventType, actorID *ulid.ULID, actorType InvitationAuditActorType) *InvitationAuditEvent {
+func NewInvitationAuditEvent(invitationID uuid.UUID, eventType InvitationAuditEventType, actorID *uuid.UUID, actorType InvitationAuditActorType) *InvitationAuditEvent {
 	return &InvitationAuditEvent{
-		ID:           ulid.New(),
+		ID:           uid.New(),
 		InvitationID: invitationID,
 		EventType:    eventType,
 		ActorID:      actorID,
@@ -390,6 +392,6 @@ func (e *InvitationAuditEvent) WithRequestInfo(ipAddress, userAgent string) *Inv
 func (Organization) TableName() string         { return "organizations" }
 func (Member) TableName() string               { return "organization_members" }
 func (Project) TableName() string              { return "projects" }
-func (Invitation) TableName() string            { return "user_invitations" }
-func (OrganizationSettings) TableName() string  { return "organization_settings" }
-func (InvitationAuditEvent) TableName() string  { return "invitation_audit_events" }
+func (Invitation) TableName() string           { return "user_invitations" }
+func (OrganizationSettings) TableName() string { return "organization_settings" }
+func (InvitationAuditEvent) TableName() string { return "invitation_audit_events" }

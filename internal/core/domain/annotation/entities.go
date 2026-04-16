@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"time"
 
-	"brokle/pkg/ulid"
+	"github.com/google/uuid"
+
+	"brokle/pkg/uid"
 )
 
 // ============================================================================
@@ -126,15 +128,15 @@ func (s QueueSettings) GetLockDuration() time.Duration {
 // AnnotationQueue represents a configuration for organizing annotation tasks.
 // Design informed by Langfuse (5-min leasing) and Opik (instructions field).
 type AnnotationQueue struct {
-	ID             ulid.ULID     `json:"id" gorm:"type:char(26);primaryKey"`
-	ProjectID      ulid.ULID     `json:"project_id" gorm:"type:char(26);not null;index"`
+	ID             uuid.UUID     `json:"id" gorm:"type:uuid;primaryKey"`
+	ProjectID      uuid.UUID     `json:"project_id" gorm:"type:uuid;not null;index"`
 	Name           string        `json:"name" gorm:"type:varchar(255);not null"`
 	Description    *string       `json:"description,omitempty" gorm:"type:text"`
-	Instructions   *string       `json:"instructions,omitempty" gorm:"type:text"` // Annotation guidelines (from Opik pattern)
+	Instructions   *string       `json:"instructions,omitempty" gorm:"type:text"`                         // Annotation guidelines (from Opik pattern)
 	ScoreConfigIDs []string      `json:"score_config_ids" gorm:"type:jsonb;serializer:json;default:'[]'"` // Which scores to collect
 	Status         QueueStatus   `json:"status" gorm:"type:varchar(20);not null;default:'active'"`
 	Settings       QueueSettings `json:"settings" gorm:"type:jsonb;serializer:json"` // Lock timeout, auto-assignment, etc.
-	CreatedBy      *ulid.ULID    `json:"created_by,omitempty" gorm:"type:char(26)"`
+	CreatedBy      *uuid.UUID    `json:"created_by,omitempty" gorm:"type:uuid"`
 	CreatedAt      time.Time     `json:"created_at" gorm:"not null;autoCreateTime"`
 	UpdatedAt      time.Time     `json:"updated_at" gorm:"not null;autoUpdateTime"`
 }
@@ -145,10 +147,10 @@ func (AnnotationQueue) TableName() string {
 }
 
 // NewAnnotationQueue creates a new annotation queue with default settings.
-func NewAnnotationQueue(projectID ulid.ULID, name string) *AnnotationQueue {
+func NewAnnotationQueue(projectID uuid.UUID, name string) *AnnotationQueue {
 	now := time.Now()
 	return &AnnotationQueue{
-		ID:             ulid.New(),
+		ID:             uid.New(),
 		ProjectID:      projectID,
 		Name:           name,
 		ScoreConfigIDs: []string{},
@@ -199,15 +201,15 @@ func (q *AnnotationQueue) GetLockDuration() time.Duration {
 // QueueItem represents an individual item pending human review in an annotation queue.
 // Design follows Langfuse pattern: dual-user tracking (locked_by vs annotator_user_id).
 type QueueItem struct {
-	ID              ulid.ULID              `json:"id" gorm:"type:char(26);primaryKey"`
-	QueueID         ulid.ULID              `json:"queue_id" gorm:"type:char(26);not null;index"`
+	ID              uuid.UUID              `json:"id" gorm:"type:uuid;primaryKey"`
+	QueueID         uuid.UUID              `json:"queue_id" gorm:"type:uuid;not null;index"`
 	ObjectID        string                 `json:"object_id" gorm:"type:varchar(32);not null"` // trace_id or span_id
 	ObjectType      ObjectType             `json:"object_type" gorm:"type:varchar(20);not null"`
 	Status          ItemStatus             `json:"status" gorm:"type:varchar(20);not null;default:'pending'"`
-	Priority        int                    `json:"priority" gorm:"not null;default:0"` // Higher = more urgent
-	LockedAt        *time.Time             `json:"locked_at,omitempty"`                // When item was locked for review
-	LockedByUserID  *ulid.ULID             `json:"locked_by_user_id,omitempty" gorm:"type:char(26)"` // Who currently holds the lock
-	AnnotatorUserID *ulid.ULID             `json:"annotator_user_id,omitempty" gorm:"type:char(26)"` // Who completed the annotation
+	Priority        int                    `json:"priority" gorm:"not null;default:0"`           // Higher = more urgent
+	LockedAt        *time.Time             `json:"locked_at,omitempty"`                          // When item was locked for review
+	LockedByUserID  *uuid.UUID             `json:"locked_by_user_id,omitempty" gorm:"type:uuid"` // Who currently holds the lock
+	AnnotatorUserID *uuid.UUID             `json:"annotator_user_id,omitempty" gorm:"type:uuid"` // Who completed the annotation
 	CompletedAt     *time.Time             `json:"completed_at,omitempty"`
 	Metadata        map[string]interface{} `json:"metadata,omitempty" gorm:"type:jsonb;serializer:json;default:'{}'"` // Source info, sampling reason, etc.
 	CreatedAt       time.Time              `json:"created_at" gorm:"not null;autoCreateTime"`
@@ -220,10 +222,10 @@ func (QueueItem) TableName() string {
 }
 
 // NewQueueItem creates a new queue item with default values.
-func NewQueueItem(queueID ulid.ULID, objectID string, objectType ObjectType) *QueueItem {
+func NewQueueItem(queueID uuid.UUID, objectID string, objectType ObjectType) *QueueItem {
 	now := time.Now()
 	return &QueueItem{
-		ID:         ulid.New(),
+		ID:         uid.New(),
 		QueueID:    queueID,
 		ObjectID:   objectID,
 		ObjectType: objectType,
@@ -267,7 +269,7 @@ func (i *QueueItem) IsLocked(lockTimeout time.Duration) bool {
 }
 
 // IsLockedBy checks if the item is locked by a specific user.
-func (i *QueueItem) IsLockedBy(userID ulid.ULID, lockTimeout time.Duration) bool {
+func (i *QueueItem) IsLockedBy(userID uuid.UUID, lockTimeout time.Duration) bool {
 	if !i.IsLocked(lockTimeout) {
 		return false
 	}
@@ -276,7 +278,7 @@ func (i *QueueItem) IsLockedBy(userID ulid.ULID, lockTimeout time.Duration) bool
 
 // CanBeClaimed checks if the item can be claimed by a user.
 // An item can be claimed if: never locked OR lock expired OR locked by current user.
-func (i *QueueItem) CanBeClaimed(userID ulid.ULID, lockTimeout time.Duration) bool {
+func (i *QueueItem) CanBeClaimed(userID uuid.UUID, lockTimeout time.Duration) bool {
 	// Already completed or skipped
 	if i.Status != ItemStatusPending {
 		return false
@@ -297,7 +299,7 @@ func (i *QueueItem) CanBeClaimed(userID ulid.ULID, lockTimeout time.Duration) bo
 }
 
 // Lock marks the item as locked by a user.
-func (i *QueueItem) Lock(userID ulid.ULID) {
+func (i *QueueItem) Lock(userID uuid.UUID) {
 	now := time.Now()
 	i.LockedAt = &now
 	i.LockedByUserID = &userID
@@ -312,7 +314,7 @@ func (i *QueueItem) ReleaseLock() {
 }
 
 // Complete marks the item as completed by the annotator.
-func (i *QueueItem) Complete(userID ulid.ULID) {
+func (i *QueueItem) Complete(userID uuid.UUID) {
 	now := time.Now()
 	i.Status = ItemStatusCompleted
 	i.AnnotatorUserID = &userID
@@ -321,7 +323,7 @@ func (i *QueueItem) Complete(userID ulid.ULID) {
 }
 
 // Skip marks the item as skipped by the annotator.
-func (i *QueueItem) Skip(userID ulid.ULID) {
+func (i *QueueItem) Skip(userID uuid.UUID) {
 	now := time.Now()
 	i.Status = ItemStatusSkipped
 	i.AnnotatorUserID = &userID
@@ -336,12 +338,12 @@ func (i *QueueItem) Skip(userID ulid.ULID) {
 // QueueAssignment represents a user's assignment to an annotation queue.
 // Defines who can annotate items in a queue and their role.
 type QueueAssignment struct {
-	ID         ulid.ULID      `json:"id" gorm:"type:char(26);primaryKey"`
-	QueueID    ulid.ULID      `json:"queue_id" gorm:"type:char(26);not null;index"`
-	UserID     ulid.ULID      `json:"user_id" gorm:"type:char(26);not null;index"`
+	ID         uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey"`
+	QueueID    uuid.UUID      `json:"queue_id" gorm:"type:uuid;not null;index"`
+	UserID     uuid.UUID      `json:"user_id" gorm:"type:uuid;not null;index"`
 	Role       AssignmentRole `json:"role" gorm:"type:varchar(20);not null;default:'annotator'"`
 	AssignedAt time.Time      `json:"assigned_at" gorm:"not null;autoCreateTime"`
-	AssignedBy *ulid.ULID     `json:"assigned_by,omitempty" gorm:"type:char(26)"`
+	AssignedBy *uuid.UUID     `json:"assigned_by,omitempty" gorm:"type:uuid"`
 }
 
 // TableName returns the database table name for GORM.
@@ -350,9 +352,9 @@ func (QueueAssignment) TableName() string {
 }
 
 // NewQueueAssignment creates a new queue assignment.
-func NewQueueAssignment(queueID, userID ulid.ULID, role AssignmentRole) *QueueAssignment {
+func NewQueueAssignment(queueID, userID uuid.UUID, role AssignmentRole) *QueueAssignment {
 	return &QueueAssignment{
-		ID:         ulid.New(),
+		ID:         uid.New(),
 		QueueID:    queueID,
 		UserID:     userID,
 		Role:       role,
@@ -432,18 +434,18 @@ type QueueFilter struct {
 
 // QueueResponse is the API response for an annotation queue.
 type QueueResponse struct {
-	ID             string                 `json:"id"`
-	ProjectID      string                 `json:"project_id"`
-	Name           string                 `json:"name"`
-	Description    *string                `json:"description,omitempty"`
-	Instructions   *string                `json:"instructions,omitempty"`
-	ScoreConfigIDs []string               `json:"score_config_ids"`
-	Status         QueueStatus            `json:"status"`
-	Settings       QueueSettings          `json:"settings"`
-	CreatedBy      *string                `json:"created_by,omitempty"`
-	CreatedAt      time.Time              `json:"created_at"`
-	UpdatedAt      time.Time              `json:"updated_at"`
-	Stats          *QueueStats            `json:"stats,omitempty"` // Optional stats when requested
+	ID             string        `json:"id"`
+	ProjectID      string        `json:"project_id"`
+	Name           string        `json:"name"`
+	Description    *string       `json:"description,omitempty"`
+	Instructions   *string       `json:"instructions,omitempty"`
+	ScoreConfigIDs []string      `json:"score_config_ids"`
+	Status         QueueStatus   `json:"status"`
+	Settings       QueueSettings `json:"settings"`
+	CreatedBy      *string       `json:"created_by,omitempty"`
+	CreatedAt      time.Time     `json:"created_at"`
+	UpdatedAt      time.Time     `json:"updated_at"`
+	Stats          *QueueStats   `json:"stats,omitempty"` // Optional stats when requested
 }
 
 // ToResponse converts an AnnotationQueue to a QueueResponse.

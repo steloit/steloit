@@ -8,16 +8,16 @@ import (
 	"encoding/hex"
 	"log/slog"
 
+	coltracepb "go.opentelemetry.io/proto/otlp/collector/trace/v1"
+	commonpb "go.opentelemetry.io/proto/otlp/common/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	coltracepb "go.opentelemetry.io/proto/otlp/collector/trace/v1"
-	commonpb "go.opentelemetry.io/proto/otlp/common/v1"
 
 	"brokle/internal/core/domain/observability"
 	obsServices "brokle/internal/core/services/observability"
 	"brokle/internal/infrastructure/streams"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 // TODO: Extract convertProtoToInternal to shared package internal/transport/otlp/converter.go
@@ -122,7 +122,7 @@ func (h *OTLPHandler) Export(
 	}
 
 	// Claim spans atomically (24h TTL)
-	batchID := ulid.New()
+	batchID := uid.New()
 	var claimedIDs, duplicateIDs []string
 
 	if len(dedupIDs) > 0 {

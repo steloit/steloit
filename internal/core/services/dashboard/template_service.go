@@ -5,9 +5,11 @@ import (
 	"errors"
 	"log/slog"
 
+	"github.com/google/uuid"
+
 	dashboardDomain "brokle/internal/core/domain/dashboard"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 type templateService struct {
@@ -36,7 +38,7 @@ func (s *templateService) ListTemplates(ctx context.Context) ([]*dashboardDomain
 	return templates, nil
 }
 
-func (s *templateService) GetTemplate(ctx context.Context, id ulid.ULID) (*dashboardDomain.Template, error) {
+func (s *templateService) GetTemplate(ctx context.Context, id uuid.UUID) (*dashboardDomain.Template, error) {
 	template, err := s.templateRepo.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, dashboardDomain.ErrTemplateNotFound) {
@@ -47,7 +49,7 @@ func (s *templateService) GetTemplate(ctx context.Context, id ulid.ULID) (*dashb
 	return template, nil
 }
 
-func (s *templateService) CreateFromTemplate(ctx context.Context, projectID ulid.ULID, userID *ulid.ULID, req *dashboardDomain.CreateFromTemplateRequest) (*dashboardDomain.Dashboard, error) {
+func (s *templateService) CreateFromTemplate(ctx context.Context, projectID uuid.UUID, userID *uuid.UUID, req *dashboardDomain.CreateFromTemplateRequest) (*dashboardDomain.Dashboard, error) {
 	if req.Name == "" {
 		return nil, appErrors.NewValidationError("name", "dashboard name is required")
 	}
@@ -74,7 +76,7 @@ func (s *templateService) CreateFromTemplate(ctx context.Context, projectID ulid
 	widgetIDMap := make(map[string]string)
 	for i := range config.Widgets {
 		oldID := config.Widgets[i].ID
-		newID := ulid.New().String()
+		newID := uid.New().String()
 		widgetIDMap[oldID] = newID
 		config.Widgets[i].ID = newID
 	}
@@ -86,7 +88,7 @@ func (s *templateService) CreateFromTemplate(ctx context.Context, projectID ulid
 	}
 
 	dashboard := &dashboardDomain.Dashboard{
-		ID:          ulid.New(),
+		ID:          uid.New(),
 		ProjectID:   projectID,
 		Name:        req.Name,
 		Description: template.Description,

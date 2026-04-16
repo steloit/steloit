@@ -5,9 +5,10 @@ import (
 	"errors"
 	"time"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/evaluation"
 	"brokle/pkg/pagination"
-	"brokle/pkg/ulid"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -55,7 +56,7 @@ func (r *EvaluatorExecutionRepository) Update(ctx context.Context, execution *ev
 	return nil
 }
 
-func (r *EvaluatorExecutionRepository) GetByID(ctx context.Context, id ulid.ULID, projectID ulid.ULID) (*evaluation.EvaluatorExecution, error) {
+func (r *EvaluatorExecutionRepository) GetByID(ctx context.Context, id uuid.UUID, projectID uuid.UUID) (*evaluation.EvaluatorExecution, error) {
 	var execution evaluation.EvaluatorExecution
 	result := r.db.WithContext(ctx).
 		Where("id = ? AND project_id = ?", id.String(), projectID.String()).
@@ -72,8 +73,8 @@ func (r *EvaluatorExecutionRepository) GetByID(ctx context.Context, id ulid.ULID
 
 func (r *EvaluatorExecutionRepository) GetByEvaluatorID(
 	ctx context.Context,
-	evaluatorID ulid.ULID,
-	projectID ulid.ULID,
+	evaluatorID uuid.UUID,
+	projectID uuid.UUID,
 	filter *evaluation.ExecutionFilter,
 	params pagination.Params,
 ) ([]*evaluation.EvaluatorExecution, int64, error) {
@@ -110,7 +111,7 @@ func (r *EvaluatorExecutionRepository) GetByEvaluatorID(
 	return executions, total, nil
 }
 
-func (r *EvaluatorExecutionRepository) GetLatestByEvaluatorID(ctx context.Context, evaluatorID ulid.ULID, projectID ulid.ULID) (*evaluation.EvaluatorExecution, error) {
+func (r *EvaluatorExecutionRepository) GetLatestByEvaluatorID(ctx context.Context, evaluatorID uuid.UUID, projectID uuid.UUID) (*evaluation.EvaluatorExecution, error) {
 	var execution evaluation.EvaluatorExecution
 	result := r.db.WithContext(ctx).
 		Where("evaluator_id = ? AND project_id = ?", evaluatorID.String(), projectID.String()).
@@ -128,8 +129,8 @@ func (r *EvaluatorExecutionRepository) GetLatestByEvaluatorID(ctx context.Contex
 
 func (r *EvaluatorExecutionRepository) IncrementCounters(
 	ctx context.Context,
-	id ulid.ULID,
-	projectID ulid.ULID,
+	id uuid.UUID,
+	projectID uuid.UUID,
 	spansScored, errorsCount int,
 ) error {
 	result := r.db.WithContext(ctx).
@@ -152,8 +153,8 @@ func (r *EvaluatorExecutionRepository) IncrementCounters(
 
 func (r *EvaluatorExecutionRepository) UpdateSpansMatched(
 	ctx context.Context,
-	id ulid.ULID,
-	projectID ulid.ULID,
+	id uuid.UUID,
+	projectID uuid.UUID,
 	spansMatched int,
 ) error {
 	result := r.db.WithContext(ctx).
@@ -172,8 +173,8 @@ func (r *EvaluatorExecutionRepository) UpdateSpansMatched(
 
 func (r *EvaluatorExecutionRepository) IncrementCountersAndComplete(
 	ctx context.Context,
-	id ulid.ULID,
-	projectID ulid.ULID,
+	id uuid.UUID,
+	projectID uuid.UUID,
 	spansScored, errorsCount int,
 ) (bool, error) {
 	var completed bool

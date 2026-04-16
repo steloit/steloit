@@ -5,12 +5,12 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"brokle/internal/core/domain/auth"
 	"brokle/internal/transport/http/middleware"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 )
 
 // TokenAdminHandler handles administrative token management endpoints
@@ -99,7 +99,7 @@ func (h *TokenAdminHandler) RevokeToken(c *gin.Context) {
 	}
 
 	// Parse admin user ID for audit logging
-	adminUserID, err := ulid.Parse(authContext.UserID.String())
+	adminUserID, err := uuid.Parse(authContext.UserID.String())
 	if err != nil {
 		h.logger.Error("Failed to parse admin user ID", "error", err)
 		response.InternalServerError(c, "Authentication error")
@@ -161,7 +161,7 @@ func (h *TokenAdminHandler) RevokeUserTokens(c *gin.Context) {
 		return
 	}
 
-	userID, err := ulid.Parse(userIDStr)
+	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
 		response.Error(c, appErrors.NewValidationError("Invalid user ID format", err.Error()))
 		return
@@ -239,7 +239,7 @@ func (h *TokenAdminHandler) ListBlacklistedTokens(c *gin.Context) {
 
 	// Filter by user ID if provided
 	if userIDStr != "" {
-		userID, parseErr := ulid.Parse(userIDStr)
+		userID, parseErr := uuid.Parse(userIDStr)
 		if parseErr != nil {
 			response.Error(c, appErrors.NewValidationError("Invalid user ID format", parseErr.Error()))
 			return

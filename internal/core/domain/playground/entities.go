@@ -10,17 +10,17 @@ import (
 
 	"github.com/lib/pq"
 
-	"brokle/pkg/ulid"
+	"github.com/google/uuid"
 )
 
 // Session represents a playground session with persistent storage.
 // Sessions are created when users explicitly save them from the playground UI.
 type Session struct {
 	// Primary key (shareable URL ID)
-	ID ulid.ULID `json:"id" gorm:"type:char(26);primaryKey"`
+	ID uuid.UUID `json:"id" gorm:"type:uuid;primaryKey"`
 
 	// Project scope
-	ProjectID ulid.ULID `json:"project_id" gorm:"type:char(26);not null;index"`
+	ProjectID uuid.UUID `json:"project_id" gorm:"type:uuid;not null;index"`
 
 	// Session metadata
 	Name        *string        `json:"name,omitempty" gorm:"size:200"`
@@ -34,7 +34,7 @@ type Session struct {
 	LastRun   JSON `json:"last_run,omitempty" gorm:"type:jsonb"`            // Last execution result
 
 	// Audit fields
-	CreatedBy  *ulid.ULID `json:"created_by,omitempty" gorm:"type:char(26)"`
+	CreatedBy  *uuid.UUID `json:"created_by,omitempty" gorm:"type:uuid"`
 	CreatedAt  time.Time  `json:"created_at"`
 	UpdatedAt  time.Time  `json:"updated_at"`
 	LastUsedAt time.Time  `json:"last_used_at"`
@@ -51,7 +51,7 @@ func (Session) TableName() string {
 
 // ChatMessage represents a single message in a chat template
 type ChatMessage struct {
-	Role    string `json:"role"`    // "system", "user", "assistant"
+	Role    string `json:"role"` // "system", "user", "assistant"
 	Content string `json:"content"`
 }
 
@@ -86,10 +86,10 @@ type SessionConfig struct {
 
 // LastRun represents the last execution result
 type LastRun struct {
-	Content   string       `json:"content"`
-	Metrics   *RunMetrics  `json:"metrics,omitempty"`
-	Timestamp time.Time    `json:"timestamp"`
-	Error     *string      `json:"error,omitempty"`
+	Content   string      `json:"content"`
+	Metrics   *RunMetrics `json:"metrics,omitempty"`
+	Timestamp time.Time   `json:"timestamp"`
+	Error     *string     `json:"error,omitempty"`
 }
 
 // RunMetrics represents execution metrics
@@ -121,8 +121,8 @@ type WindowState struct {
 
 // SessionResponse is the API response for a session
 type SessionResponse struct {
-	ID          ulid.ULID       `json:"id"`
-	ProjectID   ulid.ULID       `json:"project_id"`
+	ID          uuid.UUID       `json:"id"`
+	ProjectID   uuid.UUID       `json:"project_id"`
 	Name        *string         `json:"name,omitempty"`
 	Description *string         `json:"description,omitempty"`
 	Tags        []string        `json:"tags"`
@@ -137,7 +137,7 @@ type SessionResponse struct {
 
 // SessionSummary is a lightweight response for sidebar listing
 type SessionSummary struct {
-	ID          ulid.ULID `json:"id"`
+	ID          uuid.UUID `json:"id"`
 	Name        *string   `json:"name,omitempty"`
 	Description *string   `json:"description,omitempty"`
 	Tags        []string  `json:"tags"`

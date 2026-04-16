@@ -9,10 +9,11 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/evaluation"
 	"brokle/internal/core/domain/observability"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
 )
 
 type datasetItemService struct {
@@ -36,7 +37,7 @@ func NewDatasetItemService(
 	}
 }
 
-func (s *datasetItemService) Create(ctx context.Context, datasetID ulid.ULID, projectID ulid.ULID, req *evaluation.CreateDatasetItemRequest) (*evaluation.DatasetItem, error) {
+func (s *datasetItemService) Create(ctx context.Context, datasetID uuid.UUID, projectID uuid.UUID, req *evaluation.CreateDatasetItemRequest) (*evaluation.DatasetItem, error) {
 	if _, err := s.datasetRepo.GetByID(ctx, datasetID, projectID); err != nil {
 		if errors.Is(err, evaluation.ErrDatasetNotFound) {
 			return nil, appErrors.NewNotFoundError(fmt.Sprintf("dataset %s", datasetID))
@@ -69,7 +70,7 @@ func (s *datasetItemService) Create(ctx context.Context, datasetID ulid.ULID, pr
 	return item, nil
 }
 
-func (s *datasetItemService) CreateBatch(ctx context.Context, datasetID ulid.ULID, projectID ulid.ULID, req *evaluation.CreateDatasetItemsBatchRequest) (int, error) {
+func (s *datasetItemService) CreateBatch(ctx context.Context, datasetID uuid.UUID, projectID uuid.UUID, req *evaluation.CreateDatasetItemsBatchRequest) (int, error) {
 	if _, err := s.datasetRepo.GetByID(ctx, datasetID, projectID); err != nil {
 		if errors.Is(err, evaluation.ErrDatasetNotFound) {
 			return 0, appErrors.NewNotFoundError(fmt.Sprintf("dataset %s", datasetID))
@@ -157,7 +158,7 @@ func (s *datasetItemService) CreateBatch(ctx context.Context, datasetID ulid.ULI
 	return len(items), nil
 }
 
-func (s *datasetItemService) List(ctx context.Context, datasetID ulid.ULID, projectID ulid.ULID, limit, offset int) ([]*evaluation.DatasetItem, int64, error) {
+func (s *datasetItemService) List(ctx context.Context, datasetID uuid.UUID, projectID uuid.UUID, limit, offset int) ([]*evaluation.DatasetItem, int64, error) {
 	if _, err := s.datasetRepo.GetByID(ctx, datasetID, projectID); err != nil {
 		if errors.Is(err, evaluation.ErrDatasetNotFound) {
 			return nil, 0, appErrors.NewNotFoundError(fmt.Sprintf("dataset %s", datasetID))
@@ -172,7 +173,7 @@ func (s *datasetItemService) List(ctx context.Context, datasetID ulid.ULID, proj
 	return items, total, nil
 }
 
-func (s *datasetItemService) Delete(ctx context.Context, id ulid.ULID, datasetID ulid.ULID, projectID ulid.ULID) error {
+func (s *datasetItemService) Delete(ctx context.Context, id uuid.UUID, datasetID uuid.UUID, projectID uuid.UUID) error {
 	if _, err := s.datasetRepo.GetByID(ctx, datasetID, projectID); err != nil {
 		if errors.Is(err, evaluation.ErrDatasetNotFound) {
 			return appErrors.NewNotFoundError(fmt.Sprintf("dataset %s", datasetID))
@@ -196,7 +197,7 @@ func (s *datasetItemService) Delete(ctx context.Context, id ulid.ULID, datasetID
 }
 
 // ImportFromJSON imports dataset items from a JSON array with optional field mapping and deduplication.
-func (s *datasetItemService) ImportFromJSON(ctx context.Context, datasetID ulid.ULID, projectID ulid.ULID, req *evaluation.ImportDatasetItemsFromJSONRequest) (*evaluation.BulkImportResult, error) {
+func (s *datasetItemService) ImportFromJSON(ctx context.Context, datasetID uuid.UUID, projectID uuid.UUID, req *evaluation.ImportDatasetItemsFromJSONRequest) (*evaluation.BulkImportResult, error) {
 	if _, err := s.datasetRepo.GetByID(ctx, datasetID, projectID); err != nil {
 		if errors.Is(err, evaluation.ErrDatasetNotFound) {
 			return nil, appErrors.NewNotFoundError(fmt.Sprintf("dataset %s", datasetID))
@@ -291,7 +292,7 @@ func (s *datasetItemService) ImportFromJSON(ctx context.Context, datasetID ulid.
 }
 
 // ImportFromCSV imports dataset items from CSV content with column mapping.
-func (s *datasetItemService) ImportFromCSV(ctx context.Context, datasetID ulid.ULID, projectID ulid.ULID, req *evaluation.ImportDatasetItemsFromCSVRequest) (*evaluation.BulkImportResult, error) {
+func (s *datasetItemService) ImportFromCSV(ctx context.Context, datasetID uuid.UUID, projectID uuid.UUID, req *evaluation.ImportDatasetItemsFromCSVRequest) (*evaluation.BulkImportResult, error) {
 	if _, err := s.datasetRepo.GetByID(ctx, datasetID, projectID); err != nil {
 		if errors.Is(err, evaluation.ErrDatasetNotFound) {
 			return nil, appErrors.NewNotFoundError(fmt.Sprintf("dataset %s", datasetID))
@@ -485,7 +486,7 @@ func (s *datasetItemService) parseCSVValue(value string) interface{} {
 }
 
 // CreateFromTraces creates dataset items from existing trace data (OTEL-native import).
-func (s *datasetItemService) CreateFromTraces(ctx context.Context, datasetID ulid.ULID, projectID ulid.ULID, req *evaluation.CreateDatasetItemsFromTracesRequest) (*evaluation.BulkImportResult, error) {
+func (s *datasetItemService) CreateFromTraces(ctx context.Context, datasetID uuid.UUID, projectID uuid.UUID, req *evaluation.CreateDatasetItemsFromTracesRequest) (*evaluation.BulkImportResult, error) {
 	if _, err := s.datasetRepo.GetByID(ctx, datasetID, projectID); err != nil {
 		if errors.Is(err, evaluation.ErrDatasetNotFound) {
 			return nil, appErrors.NewNotFoundError(fmt.Sprintf("dataset %s", datasetID))
@@ -589,7 +590,7 @@ func (s *datasetItemService) CreateFromTraces(ctx context.Context, datasetID uli
 }
 
 // CreateFromSpans creates dataset items from existing span data.
-func (s *datasetItemService) CreateFromSpans(ctx context.Context, datasetID ulid.ULID, projectID ulid.ULID, req *evaluation.CreateDatasetItemsFromSpansRequest) (*evaluation.BulkImportResult, error) {
+func (s *datasetItemService) CreateFromSpans(ctx context.Context, datasetID uuid.UUID, projectID uuid.UUID, req *evaluation.CreateDatasetItemsFromSpansRequest) (*evaluation.BulkImportResult, error) {
 	if _, err := s.datasetRepo.GetByID(ctx, datasetID, projectID); err != nil {
 		if errors.Is(err, evaluation.ErrDatasetNotFound) {
 			return nil, appErrors.NewNotFoundError(fmt.Sprintf("dataset %s", datasetID))
@@ -695,7 +696,7 @@ func (s *datasetItemService) CreateFromSpans(ctx context.Context, datasetID ulid
 }
 
 // ExportItems exports all dataset items for a dataset.
-func (s *datasetItemService) ExportItems(ctx context.Context, datasetID ulid.ULID, projectID ulid.ULID) ([]*evaluation.DatasetItem, error) {
+func (s *datasetItemService) ExportItems(ctx context.Context, datasetID uuid.UUID, projectID uuid.UUID) ([]*evaluation.DatasetItem, error) {
 	if _, err := s.datasetRepo.GetByID(ctx, datasetID, projectID); err != nil {
 		if errors.Is(err, evaluation.ErrDatasetNotFound) {
 			return nil, appErrors.NewNotFoundError(fmt.Sprintf("dataset %s", datasetID))

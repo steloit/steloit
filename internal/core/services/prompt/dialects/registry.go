@@ -57,10 +57,10 @@ func (r *registry) SupportedDialects() []promptDomain.TemplateDialect {
 }
 
 var (
-	detectJinja2BlockPattern     = regexp.MustCompile(`\{%\s*\w+`)       // {% ... %} blocks
+	detectJinja2BlockPattern     = regexp.MustCompile(`\{%\s*\w+`)            // {% ... %} blocks
 	detectJinja2FilterPattern    = regexp.MustCompile(`\{\{[^}]+\|[^}]+\}\}`) // {{ ... | filter }}
-	detectJinja2DotPattern       = regexp.MustCompile(`\{\{\s*\w+\.\w+`) // {{ var.attr }}
-	detectMustacheSectionPattern = regexp.MustCompile(`\{\{[#^>/]`)      // {{#...}}, {{^...}}, {{>...}}, {{/...}}
+	detectJinja2DotPattern       = regexp.MustCompile(`\{\{\s*\w+\.\w+`)      // {{ var.attr }}
+	detectMustacheSectionPattern = regexp.MustCompile(`\{\{[#^>/]`)           // {{#...}}, {{^...}}, {{>...}}, {{/...}}
 )
 
 // DetectDialect auto-detects dialect: Jinja2 (most specific) → Mustache → Simple (default).

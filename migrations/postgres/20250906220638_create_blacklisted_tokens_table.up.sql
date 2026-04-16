@@ -6,8 +6,8 @@
 
 -- Create blacklisted_tokens table for immediate token revocation
 CREATE TABLE blacklisted_tokens (
-    jti CHAR(26) PRIMARY KEY,                                -- JWT ID (ULID format)
-    user_id CHAR(26) NOT NULL,                              -- Owner user
+    jti UUID PRIMARY KEY,                                -- JWT ID (ULID format)
+    user_id UUID NOT NULL,                              -- Owner user
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL,           -- Token expiry for cleanup
     revoked_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(), -- When revoked
     reason VARCHAR(100) NOT NULL,                           -- logout, suspicious_activity, etc.

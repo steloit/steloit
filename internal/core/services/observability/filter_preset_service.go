@@ -7,7 +7,7 @@ import (
 
 	"brokle/internal/core/domain/observability"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 
 	"gorm.io/gorm"
 )
@@ -49,7 +49,7 @@ func (s *FilterPresetService) Create(ctx context.Context, projectID string, user
 	}
 
 	preset := &observability.FilterPreset{
-		ID:               ulid.New().String(),
+		ID:               uid.New().String(),
 		ProjectID:        projectID,
 		Name:             req.Name,
 		Description:      req.Description,

@@ -12,8 +12,10 @@ import (
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	billingDomain "brokle/internal/core/domain/billing"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 // Ensure BillingRecordRepository implements the interface
@@ -71,7 +73,7 @@ func (r *BillingRecordRepository) InsertBillingRecord(ctx context.Context, recor
 }
 
 // UpdateBillingRecord updates an existing billing record
-func (r *BillingRecordRepository) UpdateBillingRecord(ctx context.Context, recordID ulid.ULID, record *billingDomain.BillingRecord) error {
+func (r *BillingRecordRepository) UpdateBillingRecord(ctx context.Context, recordID uuid.UUID, record *billingDomain.BillingRecord) error {
 	query := `
 		UPDATE billing_records
 		SET
@@ -107,7 +109,7 @@ func (r *BillingRecordRepository) UpdateBillingRecord(ctx context.Context, recor
 }
 
 // GetBillingRecord retrieves a billing record by ID
-func (r *BillingRecordRepository) GetBillingRecord(ctx context.Context, recordID ulid.ULID) (*billingDomain.BillingRecord, error) {
+func (r *BillingRecordRepository) GetBillingRecord(ctx context.Context, recordID uuid.UUID) (*billingDomain.BillingRecord, error) {
 	query := `
 		SELECT
 			id, organization_id, period, amount, currency,
@@ -129,7 +131,7 @@ func (r *BillingRecordRepository) GetBillingRecord(ctx context.Context, recordID
 }
 
 // GetBillingHistory retrieves billing history for an organization
-func (r *BillingRecordRepository) GetBillingHistory(ctx context.Context, orgID ulid.ULID, start, end time.Time) ([]*billingDomain.BillingRecord, error) {
+func (r *BillingRecordRepository) GetBillingHistory(ctx context.Context, orgID uuid.UUID, start, end time.Time) ([]*billingDomain.BillingRecord, error) {
 	query := `
 		SELECT
 			id, organization_id, period, amount, currency,
@@ -186,8 +188,8 @@ func (r *BillingRecordRepository) InsertBillingSummary(ctx context.Context, summ
 			generated_at = EXCLUDED.generated_at`
 
 	// Generate ID if not provided
-	if summary.ID.IsZero() {
-		summary.ID = ulid.New()
+	if summary.ID == uuid.Nil {
+		summary.ID = uid.New()
 	}
 
 	err = r.db.WithContext(ctx).Exec(query,
@@ -219,7 +221,7 @@ func (r *BillingRecordRepository) InsertBillingSummary(ctx context.Context, summ
 }
 
 // GetBillingSummary retrieves a billing summary for an organization and period
-func (r *BillingRecordRepository) GetBillingSummary(ctx context.Context, orgID ulid.ULID, period string) (*billingDomain.BillingSummary, error) {
+func (r *BillingRecordRepository) GetBillingSummary(ctx context.Context, orgID uuid.UUID, period string) (*billingDomain.BillingSummary, error) {
 	query := `
 		SELECT
 			id, organization_id, period, period_start, period_end,
@@ -245,8 +247,8 @@ func (r *BillingRecordRepository) GetBillingSummary(ctx context.Context, orgID u
 		Discounts            float64
 		NetCost              float64
 		TotalRequests        int64
-		ID                   ulid.ULID
-		OrganizationID       ulid.ULID
+		ID                   uuid.UUID
+		OrganizationID       uuid.UUID
 	}
 
 	var row BillingSummaryRow
@@ -260,7 +262,7 @@ func (r *BillingRecordRepository) GetBillingSummary(ctx context.Context, orgID u
 	}
 
 	// Check if we got empty result
-	if row.ID.IsZero() {
+	if row.ID == uuid.Nil {
 		return nil, fmt.Errorf("billing summary not found for organization %s and period %s", orgID, period)
 	}
 
@@ -293,7 +295,7 @@ func (r *BillingRecordRepository) GetBillingSummary(ctx context.Context, orgID u
 }
 
 // GetBillingSummaryHistory retrieves billing summary history for an organization
-func (r *BillingRecordRepository) GetBillingSummaryHistory(ctx context.Context, orgID ulid.ULID, start, end time.Time) ([]*billingDomain.BillingSummary, error) {
+func (r *BillingRecordRepository) GetBillingSummaryHistory(ctx context.Context, orgID uuid.UUID, start, end time.Time) ([]*billingDomain.BillingSummary, error) {
 	query := `
 		SELECT
 			id, organization_id, period, period_start, period_end,
@@ -320,8 +322,8 @@ func (r *BillingRecordRepository) GetBillingSummaryHistory(ctx context.Context, 
 		Discounts            float64
 		NetCost              float64
 		TotalRequests        int64
-		ID                   ulid.ULID
-		OrganizationID       ulid.ULID
+		ID                   uuid.UUID
+		OrganizationID       uuid.UUID
 	}
 
 	var rows []BillingSummaryRow

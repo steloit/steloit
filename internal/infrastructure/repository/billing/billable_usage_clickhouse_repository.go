@@ -8,8 +8,9 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/shopspring/decimal"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/billing"
-	"brokle/pkg/ulid"
 )
 
 type billableUsageRepository struct {
@@ -75,12 +76,12 @@ func (r *billableUsageRepository) GetUsage(ctx context.Context, filter *billing.
 			return nil, fmt.Errorf("scan billable usage row: %w", err)
 		}
 
-		orgULID, _ := ulid.Parse(orgID)
-		projULID, _ := ulid.Parse(projectID)
+		parsedOrgID, _ := uuid.Parse(orgID)
+		parsedProjID, _ := uuid.Parse(projectID)
 
 		result = append(result, &billing.BillableUsage{
-			OrganizationID: orgULID,
-			ProjectID:      projULID,
+			OrganizationID: parsedOrgID,
+			ProjectID:      parsedProjID,
 			BucketTime:     bucketTime,
 			SpanCount:      int64(spanCount),
 			BytesProcessed: int64(bytesProcessed),
@@ -145,7 +146,7 @@ func (r *billableUsageRepository) GetUsageSummary(ctx context.Context, filter *b
 	}, nil
 }
 
-func (r *billableUsageRepository) GetUsageByProject(ctx context.Context, orgID ulid.ULID, start, end time.Time) ([]*billing.BillableUsageSummary, error) {
+func (r *billableUsageRepository) GetUsageByProject(ctx context.Context, orgID uuid.UUID, start, end time.Time) ([]*billing.BillableUsageSummary, error) {
 	// Use daily table for longer periods
 	table := "billable_usage_hourly"
 	timeCol := "bucket_hour"
@@ -185,11 +186,11 @@ func (r *billableUsageRepository) GetUsageByProject(ctx context.Context, orgID u
 			return nil, fmt.Errorf("scan usage by project row: %w", err)
 		}
 
-		projULID, _ := ulid.Parse(projectID)
+		projID, _ := uuid.Parse(projectID)
 
 		result = append(result, &billing.BillableUsageSummary{
 			OrganizationID:      orgID,
-			ProjectID:           &projULID,
+			ProjectID:           &projID,
 			PeriodStart:         start,
 			PeriodEnd:           end,
 			TotalSpans:          int64(totalSpans),

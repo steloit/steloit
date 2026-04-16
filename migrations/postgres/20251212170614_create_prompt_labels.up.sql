@@ -6,11 +6,11 @@
 -- "latest" is auto-managed and always points to the highest version number
 
 CREATE TABLE prompt_labels (
-    id CHAR(26) PRIMARY KEY,
-    prompt_id CHAR(26) NOT NULL REFERENCES prompts(id) ON DELETE CASCADE,
-    version_id CHAR(26) NOT NULL REFERENCES prompt_versions(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    prompt_id UUID NOT NULL REFERENCES prompts(id) ON DELETE CASCADE,
+    version_id UUID NOT NULL REFERENCES prompt_versions(id) ON DELETE CASCADE,
     name VARCHAR(50) NOT NULL,
-    created_by CHAR(26) REFERENCES users(id) ON DELETE SET NULL,
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

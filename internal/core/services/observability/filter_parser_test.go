@@ -707,5 +707,5 @@ func containsError(err error, target error) bool {
 	}
 	return errors.Is(err, target) || (err.Error() != "" && target.Error() != "" &&
 		(err.Error() == target.Error() ||
-		 len(err.Error()) > 0 && len(target.Error()) > 0))
+			len(err.Error()) > 0 && len(target.Error()) > 0))
 }

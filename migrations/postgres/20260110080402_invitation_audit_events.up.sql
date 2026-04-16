@@ -4,10 +4,10 @@
 
 -- Create invitation audit events table
 CREATE TABLE IF NOT EXISTS invitation_audit_events (
-    id VARCHAR(26) PRIMARY KEY,
-    invitation_id VARCHAR(26) NOT NULL REFERENCES user_invitations(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    invitation_id UUID NOT NULL REFERENCES user_invitations(id) ON DELETE CASCADE,
     event_type VARCHAR(50) NOT NULL,
-    actor_id VARCHAR(26) REFERENCES users(id) ON DELETE SET NULL,
+    actor_id UUID REFERENCES users(id) ON DELETE SET NULL,
     actor_type VARCHAR(20) NOT NULL DEFAULT 'user',
     metadata JSONB,
     ip_address INET,

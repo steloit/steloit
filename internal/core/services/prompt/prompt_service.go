@@ -8,10 +8,11 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/common"
 	promptDomain "brokle/internal/core/domain/prompt"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
 )
 
 // Name validation pattern: starts with letter, alphanumeric + underscore + hyphen
@@ -24,14 +25,14 @@ var labelPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_.-]*$`)
 const defaultCacheTTL = 60 * time.Second
 
 type promptService struct {
-	transactor          common.Transactor
-	promptRepo          promptDomain.PromptRepository
-	versionRepo         promptDomain.VersionRepository
-	labelRepo           promptDomain.LabelRepository
-	protectedLabelRepo  promptDomain.ProtectedLabelRepository
-	cacheRepo           promptDomain.CacheRepository
-	compiler            promptDomain.CompilerService
-	logger              *slog.Logger
+	transactor         common.Transactor
+	promptRepo         promptDomain.PromptRepository
+	versionRepo        promptDomain.VersionRepository
+	labelRepo          promptDomain.LabelRepository
+	protectedLabelRepo promptDomain.ProtectedLabelRepository
+	cacheRepo          promptDomain.CacheRepository
+	compiler           promptDomain.CompilerService
+	logger             *slog.Logger
 }
 
 func NewPromptService(
@@ -56,7 +57,7 @@ func NewPromptService(
 	}
 }
 
-func (s *promptService) CreatePrompt(ctx context.Context, projectID ulid.ULID, userID *ulid.ULID, req *promptDomain.CreatePromptRequest) (*promptDomain.Prompt, *promptDomain.Version, []string, error) {
+func (s *promptService) CreatePrompt(ctx context.Context, projectID uuid.UUID, userID *uuid.UUID, req *promptDomain.CreatePromptRequest) (*promptDomain.Prompt, *promptDomain.Version, []string, error) {
 	if !namePattern.MatchString(req.Name) {
 		return nil, nil, nil, appErrors.NewValidationError("name", "must start with letter and contain only alphanumeric, underscore, and hyphen")
 	}
@@ -150,7 +151,7 @@ func (s *promptService) CreatePrompt(ctx context.Context, projectID ulid.ULID, u
 	return prompt, version, createdLabels, nil
 }
 
-func (s *promptService) GetPrompt(ctx context.Context, projectID ulid.ULID, name string, opts *promptDomain.GetPromptOptions) (*promptDomain.PromptResponse, error) {
+func (s *promptService) GetPrompt(ctx context.Context, projectID uuid.UUID, name string, opts *promptDomain.GetPromptOptions) (*promptDomain.PromptResponse, error) {
 	label := promptDomain.LabelLatest
 	if opts != nil && opts.Label != "" {
 		label = opts.Label
@@ -223,7 +224,7 @@ func (s *promptService) GetPrompt(ctx context.Context, projectID ulid.ULID, name
 	return response, nil
 }
 
-func (s *promptService) GetPromptByID(ctx context.Context, projectID, promptID ulid.ULID) (*promptDomain.Prompt, error) {
+func (s *promptService) GetPromptByID(ctx context.Context, projectID, promptID uuid.UUID) (*promptDomain.Prompt, error) {
 	prompt, err := s.promptRepo.GetByID(ctx, promptID)
 	if err != nil {
 		if promptDomain.IsNotFoundError(err) {
@@ -240,7 +241,7 @@ func (s *promptService) GetPromptByID(ctx context.Context, projectID, promptID u
 	return prompt, nil
 }
 
-func (s *promptService) UpdatePrompt(ctx context.Context, projectID, promptID ulid.ULID, req *promptDomain.UpdatePromptRequest) (*promptDomain.Prompt, error) {
+func (s *promptService) UpdatePrompt(ctx context.Context, projectID, promptID uuid.UUID, req *promptDomain.UpdatePromptRequest) (*promptDomain.Prompt, error) {
 	prompt, err := s.promptRepo.GetByID(ctx, promptID)
 	if err != nil {
 		if promptDomain.IsNotFoundError(err) {
@@ -295,7 +296,7 @@ func (s *promptService) UpdatePrompt(ctx context.Context, projectID, promptID ul
 	return prompt, nil
 }
 
-func (s *promptService) DeletePrompt(ctx context.Context, projectID, promptID ulid.ULID) error {
+func (s *promptService) DeletePrompt(ctx context.Context, projectID, promptID uuid.UUID) error {
 	prompt, err := s.promptRepo.GetByID(ctx, promptID)
 	if err != nil {
 		if promptDomain.IsNotFoundError(err) {
@@ -322,7 +323,7 @@ func (s *promptService) DeletePrompt(ctx context.Context, projectID, promptID ul
 	return nil
 }
 
-func (s *promptService) ListPrompts(ctx context.Context, projectID ulid.ULID, filters *promptDomain.PromptFilters) ([]*promptDomain.PromptListItem, int64, error) {
+func (s *promptService) ListPrompts(ctx context.Context, projectID uuid.UUID, filters *promptDomain.PromptFilters) ([]*promptDomain.PromptListItem, int64, error) {
 	prompts, total, err := s.promptRepo.ListByProject(ctx, projectID, filters)
 	if err != nil {
 		return nil, 0, appErrors.NewInternalError("failed to list prompts", err)
@@ -332,7 +333,7 @@ func (s *promptService) ListPrompts(ctx context.Context, projectID ulid.ULID, fi
 		return []*promptDomain.PromptListItem{}, total, nil
 	}
 
-	promptIDs := make([]ulid.ULID, len(prompts))
+	promptIDs := make([]uuid.UUID, len(prompts))
 	for i, p := range prompts {
 		promptIDs[i] = p.ID
 	}
@@ -341,7 +342,7 @@ func (s *promptService) ListPrompts(ctx context.Context, projectID ulid.ULID, fi
 	if err != nil {
 		s.logger.Warn("failed to batch fetch latest versions", "error", err)
 	}
-	versionMap := make(map[ulid.ULID]*promptDomain.Version)
+	versionMap := make(map[uuid.UUID]*promptDomain.Version)
 	for _, v := range latestVersions {
 		versionMap[v.PromptID] = v
 	}
@@ -350,24 +351,24 @@ func (s *promptService) ListPrompts(ctx context.Context, projectID ulid.ULID, fi
 	if err != nil {
 		s.logger.Warn("failed to batch fetch labels", "error", err)
 	}
-	labelMap := make(map[ulid.ULID][]*promptDomain.Label)
+	labelMap := make(map[uuid.UUID][]*promptDomain.Label)
 	for _, l := range allLabels {
 		labelMap[l.PromptID] = append(labelMap[l.PromptID], l)
 	}
 
-	versionIDsSet := make(map[ulid.ULID]bool)
+	versionIDsSet := make(map[uuid.UUID]bool)
 	for _, labelList := range labelMap {
 		for _, label := range labelList {
 			versionIDsSet[label.VersionID] = true
 		}
 	}
 
-	versionIDs := make([]ulid.ULID, 0, len(versionIDsSet))
+	versionIDs := make([]uuid.UUID, 0, len(versionIDsSet))
 	for versionID := range versionIDsSet {
 		versionIDs = append(versionIDs, versionID)
 	}
 
-	labelVersionMap := make(map[ulid.ULID]int)
+	labelVersionMap := make(map[uuid.UUID]int)
 	if len(versionIDs) > 0 {
 		labelVersions, err := s.versionRepo.GetByIDs(ctx, versionIDs)
 		if err != nil {
@@ -412,7 +413,7 @@ func (s *promptService) ListPrompts(ctx context.Context, projectID ulid.ULID, fi
 	return items, total, nil
 }
 
-func (s *promptService) UpsertPrompt(ctx context.Context, projectID ulid.ULID, userID *ulid.ULID, req *promptDomain.UpsertPromptRequest) (*promptDomain.UpsertResponse, error) {
+func (s *promptService) UpsertPrompt(ctx context.Context, projectID uuid.UUID, userID *uuid.UUID, req *promptDomain.UpsertPromptRequest) (*promptDomain.UpsertResponse, error) {
 	prompt, err := s.promptRepo.GetByName(ctx, projectID, req.Name)
 	if err != nil {
 		if !promptDomain.IsNotFoundError(err) {
@@ -469,7 +470,7 @@ func (s *promptService) UpsertPrompt(ctx context.Context, projectID ulid.ULID, u
 	}, nil
 }
 
-func (s *promptService) CreateVersion(ctx context.Context, projectID, promptID ulid.ULID, userID *ulid.ULID, req *promptDomain.CreateVersionRequest) (*promptDomain.Version, []string, error) {
+func (s *promptService) CreateVersion(ctx context.Context, projectID, promptID uuid.UUID, userID *uuid.UUID, req *promptDomain.CreateVersionRequest) (*promptDomain.Version, []string, error) {
 	prompt, err := s.promptRepo.GetByID(ctx, promptID)
 	if err != nil {
 		if promptDomain.IsNotFoundError(err) {
@@ -566,7 +567,7 @@ func (s *promptService) CreateVersion(ctx context.Context, projectID, promptID u
 	return version, createdLabels, nil
 }
 
-func (s *promptService) GetVersion(ctx context.Context, projectID, promptID ulid.ULID, version int) (*promptDomain.VersionResponse, error) {
+func (s *promptService) GetVersion(ctx context.Context, projectID, promptID uuid.UUID, version int) (*promptDomain.VersionResponse, error) {
 	prompt, err := s.promptRepo.GetByID(ctx, promptID)
 	if err != nil {
 		if promptDomain.IsNotFoundError(err) {
@@ -603,7 +604,7 @@ func (s *promptService) GetVersion(ctx context.Context, projectID, promptID ulid
 	return s.buildVersionResponseWithLabels(v, labelNames)
 }
 
-func (s *promptService) GetVersionEntity(ctx context.Context, projectID, promptID, versionID ulid.ULID) (*promptDomain.Version, error) {
+func (s *promptService) GetVersionEntity(ctx context.Context, projectID, promptID, versionID uuid.UUID) (*promptDomain.Version, error) {
 	prompt, err := s.promptRepo.GetByID(ctx, promptID)
 	if err != nil {
 		if promptDomain.IsNotFoundError(err) {
@@ -633,7 +634,7 @@ func (s *promptService) GetVersionEntity(ctx context.Context, projectID, promptI
 	return version, nil
 }
 
-func (s *promptService) GetVersionByID(ctx context.Context, projectID, promptID, versionID ulid.ULID) (*promptDomain.VersionResponse, error) {
+func (s *promptService) GetVersionByID(ctx context.Context, projectID, promptID, versionID uuid.UUID) (*promptDomain.VersionResponse, error) {
 	prompt, err := s.promptRepo.GetByID(ctx, promptID)
 	if err != nil {
 		if promptDomain.IsNotFoundError(err) {
@@ -674,7 +675,7 @@ func (s *promptService) GetVersionByID(ctx context.Context, projectID, promptID,
 	return s.buildVersionResponseWithLabels(version, labelNames)
 }
 
-func (s *promptService) ListVersions(ctx context.Context, projectID, promptID ulid.ULID) ([]*promptDomain.VersionResponse, error) {
+func (s *promptService) ListVersions(ctx context.Context, projectID, promptID uuid.UUID) ([]*promptDomain.VersionResponse, error) {
 	prompt, err := s.promptRepo.GetByID(ctx, promptID)
 	if err != nil {
 		if promptDomain.IsNotFoundError(err) {
@@ -697,7 +698,7 @@ func (s *promptService) ListVersions(ctx context.Context, projectID, promptID ul
 		return []*promptDomain.VersionResponse{}, nil
 	}
 
-	versionIDs := make([]ulid.ULID, len(versions))
+	versionIDs := make([]uuid.UUID, len(versions))
 	for i, v := range versions {
 		versionIDs[i] = v.ID
 	}
@@ -707,7 +708,7 @@ func (s *promptService) ListVersions(ctx context.Context, projectID, promptID ul
 		s.logger.Warn("failed to batch fetch version labels", "error", err)
 	}
 
-	labelMap := make(map[ulid.ULID][]string)
+	labelMap := make(map[uuid.UUID][]string)
 	for _, l := range allLabels {
 		labelMap[l.VersionID] = append(labelMap[l.VersionID], l.Name)
 	}
@@ -724,7 +725,7 @@ func (s *promptService) ListVersions(ctx context.Context, projectID, promptID ul
 	return responses, nil
 }
 
-func (s *promptService) GetVersionDiff(ctx context.Context, projectID, promptID ulid.ULID, fromVersion, toVersion int) (*promptDomain.VersionDiffResponse, error) {
+func (s *promptService) GetVersionDiff(ctx context.Context, projectID, promptID uuid.UUID, fromVersion, toVersion int) (*promptDomain.VersionDiffResponse, error) {
 	prompt, err := s.promptRepo.GetByID(ctx, promptID)
 	if err != nil {
 		if promptDomain.IsNotFoundError(err) {
@@ -784,7 +785,7 @@ func (s *promptService) GetVersionDiff(ctx context.Context, projectID, promptID 
 	}, nil
 }
 
-func (s *promptService) SetLabels(ctx context.Context, projectID, promptID, versionID ulid.ULID, userID *ulid.ULID, labels []string) ([]string, error) {
+func (s *promptService) SetLabels(ctx context.Context, projectID, promptID, versionID uuid.UUID, userID *uuid.UUID, labels []string) ([]string, error) {
 	prompt, err := s.promptRepo.GetByID(ctx, promptID)
 	if err != nil {
 		return nil, appErrors.NewNotFoundError(fmt.Sprintf("prompt %s", promptID))
@@ -867,7 +868,7 @@ func (s *promptService) SetLabels(ctx context.Context, projectID, promptID, vers
 	return labelNames, nil
 }
 
-func (s *promptService) RemoveLabel(ctx context.Context, projectID, promptID ulid.ULID, userID *ulid.ULID, labelName string) error {
+func (s *promptService) RemoveLabel(ctx context.Context, projectID, promptID uuid.UUID, userID *uuid.UUID, labelName string) error {
 	if labelName == promptDomain.LabelLatest {
 		return appErrors.NewValidationError("label", "'latest' label cannot be removed")
 	}
@@ -896,7 +897,7 @@ func (s *promptService) RemoveLabel(ctx context.Context, projectID, promptID uli
 	return nil
 }
 
-func (s *promptService) GetVersionByLabel(ctx context.Context, projectID, promptID ulid.ULID, label string) (*promptDomain.Version, error) {
+func (s *promptService) GetVersionByLabel(ctx context.Context, projectID, promptID uuid.UUID, label string) (*promptDomain.Version, error) {
 	prompt, err := s.promptRepo.GetByID(ctx, promptID)
 	if err != nil {
 		if promptDomain.IsNotFoundError(err) {
@@ -926,7 +927,7 @@ func (s *promptService) GetVersionByLabel(ctx context.Context, projectID, prompt
 	return version, nil
 }
 
-func (s *promptService) GetProtectedLabels(ctx context.Context, projectID ulid.ULID) ([]string, error) {
+func (s *promptService) GetProtectedLabels(ctx context.Context, projectID uuid.UUID) ([]string, error) {
 	labels, err := s.protectedLabelRepo.ListByProject(ctx, projectID)
 	if err != nil {
 		return nil, appErrors.NewInternalError("failed to get protected labels", err)
@@ -940,7 +941,7 @@ func (s *promptService) GetProtectedLabels(ctx context.Context, projectID ulid.U
 	return result, nil
 }
 
-func (s *promptService) SetProtectedLabels(ctx context.Context, projectID ulid.ULID, userID *ulid.ULID, labels []string) ([]string, error) {
+func (s *promptService) SetProtectedLabels(ctx context.Context, projectID uuid.UUID, userID *uuid.UUID, labels []string) ([]string, error) {
 	for _, labelName := range labels {
 		if !labelPattern.MatchString(labelName) {
 			return nil, appErrors.NewValidationError("protected_labels", fmt.Sprintf("invalid label name: %s", labelName))
@@ -954,11 +955,11 @@ func (s *promptService) SetProtectedLabels(ctx context.Context, projectID ulid.U
 	return labels, nil
 }
 
-func (s *promptService) IsLabelProtected(ctx context.Context, projectID ulid.ULID, labelName string) (bool, error) {
+func (s *promptService) IsLabelProtected(ctx context.Context, projectID uuid.UUID, labelName string) (bool, error) {
 	return s.protectedLabelRepo.IsProtected(ctx, projectID, labelName)
 }
 
-func (s *promptService) InvalidateCache(ctx context.Context, projectID ulid.ULID, promptName string) error {
+func (s *promptService) InvalidateCache(ctx context.Context, projectID uuid.UUID, promptName string) error {
 	pattern := fmt.Sprintf("prompt:%s:%s:*", projectID.String(), promptName)
 	return s.cacheRepo.DeleteByPattern(ctx, pattern)
 }
@@ -1093,8 +1094,8 @@ func (s *promptService) responseToCachedPrompt(resp *promptDomain.PromptResponse
 
 func isDuplicateKeyError(err error) bool {
 	return err != nil && (
-		// PostgreSQL duplicate key error
-		contains(err.Error(), "duplicate key") ||
+	// PostgreSQL duplicate key error
+	contains(err.Error(), "duplicate key") ||
 		contains(err.Error(), "UNIQUE constraint") ||
 		contains(err.Error(), "unique constraint"))
 }

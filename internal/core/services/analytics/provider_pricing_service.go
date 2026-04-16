@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/analytics"
-	"brokle/pkg/ulid"
 
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/shopspring/decimal"
@@ -33,7 +34,7 @@ func NewProviderPricingService(modelRepo analytics.ProviderModelRepository) anal
 // Implements 5-minute caching for performance (pricing doesn't change frequently)
 func (s *ProviderPricingServiceImpl) GetProviderPricingSnapshot(
 	ctx context.Context,
-	projectID *ulid.ULID,
+	projectID *uuid.UUID,
 	modelName string,
 	atTime time.Time,
 ) (*analytics.ProviderPricingSnapshot, error) {

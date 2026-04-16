@@ -3,9 +3,10 @@ package auth
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	authDomain "brokle/internal/core/domain/auth"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
 )
 
 // scopeService implements the authDomain.ScopeService interface
@@ -45,9 +46,9 @@ func NewScopeService(
 // - Admin role → automatically gets ALL scopes EXCEPT delete org/project
 func (s *scopeService) GetUserScopes(
 	ctx context.Context,
-	userID ulid.ULID,
-	orgID *ulid.ULID,
-	projectID *ulid.ULID,
+	userID uuid.UUID,
+	orgID *uuid.UUID,
+	projectID *uuid.UUID,
 ) (*authDomain.ScopeResolution, error) {
 
 	resolution := &authDomain.ScopeResolution{
@@ -128,22 +129,22 @@ func (s *scopeService) GetUserScopes(
 }
 
 // GetUserScopesInOrganization is a convenience method for org-only context
-func (s *scopeService) GetUserScopesInOrganization(ctx context.Context, userID, orgID ulid.ULID) (*authDomain.ScopeResolution, error) {
+func (s *scopeService) GetUserScopesInOrganization(ctx context.Context, userID, orgID uuid.UUID) (*authDomain.ScopeResolution, error) {
 	return s.GetUserScopes(ctx, userID, &orgID, nil)
 }
 
 // GetUserScopesInProject is a convenience method for project context
-func (s *scopeService) GetUserScopesInProject(ctx context.Context, userID, orgID, projectID ulid.ULID) (*authDomain.ScopeResolution, error) {
+func (s *scopeService) GetUserScopesInProject(ctx context.Context, userID, orgID, projectID uuid.UUID) (*authDomain.ScopeResolution, error) {
 	return s.GetUserScopes(ctx, userID, &orgID, &projectID)
 }
 
 // HasScope checks if user has a specific scope in the given context (O(1) lookup)
 func (s *scopeService) HasScope(
 	ctx context.Context,
-	userID ulid.ULID,
+	userID uuid.UUID,
 	scope string,
-	orgID *ulid.ULID,
-	projectID *ulid.ULID,
+	orgID *uuid.UUID,
+	projectID *uuid.UUID,
 ) (bool, error) {
 	resolution, err := s.GetUserScopes(ctx, userID, orgID, projectID)
 	if err != nil {
@@ -156,10 +157,10 @@ func (s *scopeService) HasScope(
 // HasAnyScope checks if user has at least one of the specified scopes
 func (s *scopeService) HasAnyScope(
 	ctx context.Context,
-	userID ulid.ULID,
+	userID uuid.UUID,
 	scopes []string,
-	orgID *ulid.ULID,
-	projectID *ulid.ULID,
+	orgID *uuid.UUID,
+	projectID *uuid.UUID,
 ) (bool, error) {
 	resolution, err := s.GetUserScopes(ctx, userID, orgID, projectID)
 	if err != nil {
@@ -172,10 +173,10 @@ func (s *scopeService) HasAnyScope(
 // HasAllScopes checks if user has all of the specified scopes
 func (s *scopeService) HasAllScopes(
 	ctx context.Context,
-	userID ulid.ULID,
+	userID uuid.UUID,
 	scopes []string,
-	orgID *ulid.ULID,
-	projectID *ulid.ULID,
+	orgID *uuid.UUID,
+	projectID *uuid.UUID,
 ) (bool, error) {
 	resolution, err := s.GetUserScopes(ctx, userID, orgID, projectID)
 	if err != nil {

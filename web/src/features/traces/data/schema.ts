@@ -119,7 +119,7 @@ export type Span = {
 export type Trace = {
   // OTEL Identifiers
   trace_id: string // 32 hex characters
-  project_id: string // ULID
+  project_id: string // UUID
 
   // Metadata
   name: string
@@ -301,7 +301,7 @@ export const traceSchema: z.ZodType<Trace> = z.lazy(() =>
   z.object({
     // OTEL Identifiers
     trace_id: z.string(), // 32 hex characters
-    project_id: z.string(), // ULID
+    project_id: z.string(), // UUID
 
     // Metadata
     name: z.string(),

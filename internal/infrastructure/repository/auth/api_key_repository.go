@@ -8,9 +8,10 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	authDomain "brokle/internal/core/domain/auth"
 	"brokle/pkg/pagination"
-	"brokle/pkg/ulid"
 )
 
 // apiKeyRepository implements authDomain.APIKeyRepository using GORM
@@ -31,7 +32,7 @@ func (r *apiKeyRepository) Create(ctx context.Context, apiKey *authDomain.APIKey
 }
 
 // GetByID retrieves an API key by ID
-func (r *apiKeyRepository) GetByID(ctx context.Context, id ulid.ULID) (*authDomain.APIKey, error) {
+func (r *apiKeyRepository) GetByID(ctx context.Context, id uuid.UUID) (*authDomain.APIKey, error) {
 	var apiKey authDomain.APIKey
 	err := r.db.WithContext(ctx).Where("id = ? AND deleted_at IS NULL", id).First(&apiKey).Error
 	if err != nil {
@@ -64,12 +65,12 @@ func (r *apiKeyRepository) Update(ctx context.Context, apiKey *authDomain.APIKey
 }
 
 // Delete soft deletes an API key
-func (r *apiKeyRepository) Delete(ctx context.Context, id ulid.ULID) error {
+func (r *apiKeyRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return r.db.WithContext(ctx).Model(&authDomain.APIKey{}).Where("id = ?", id).Update("deleted_at", time.Now()).Error
 }
 
 // UpdateLastUsed updates the last used timestamp
-func (r *apiKeyRepository) UpdateLastUsed(ctx context.Context, id ulid.ULID) error {
+func (r *apiKeyRepository) UpdateLastUsed(ctx context.Context, id uuid.UUID) error {
 	return r.db.WithContext(ctx).
 		Model(&authDomain.APIKey{}).
 		Where("id = ?", id).
@@ -77,7 +78,7 @@ func (r *apiKeyRepository) UpdateLastUsed(ctx context.Context, id ulid.ULID) err
 }
 
 // GetByUserID retrieves API keys for a user
-func (r *apiKeyRepository) GetByUserID(ctx context.Context, userID ulid.ULID) ([]*authDomain.APIKey, error) {
+func (r *apiKeyRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]*authDomain.APIKey, error) {
 	var apiKeys []*authDomain.APIKey
 	err := r.db.WithContext(ctx).
 		Where("user_id = ? AND deleted_at IS NULL", userID).
@@ -87,7 +88,7 @@ func (r *apiKeyRepository) GetByUserID(ctx context.Context, userID ulid.ULID) ([
 }
 
 // GetByOrganizationID retrieves API keys for an organization (via project JOIN)
-func (r *apiKeyRepository) GetByOrganizationID(ctx context.Context, orgID ulid.ULID) ([]*authDomain.APIKey, error) {
+func (r *apiKeyRepository) GetByOrganizationID(ctx context.Context, orgID uuid.UUID) ([]*authDomain.APIKey, error) {
 	var apiKeys []*authDomain.APIKey
 	err := r.db.WithContext(ctx).
 		Joins("JOIN projects ON api_keys.project_id = projects.id").
@@ -98,7 +99,7 @@ func (r *apiKeyRepository) GetByOrganizationID(ctx context.Context, orgID ulid.U
 }
 
 // GetByProjectID retrieves API keys for a project
-func (r *apiKeyRepository) GetByProjectID(ctx context.Context, projectID ulid.ULID) ([]*authDomain.APIKey, error) {
+func (r *apiKeyRepository) GetByProjectID(ctx context.Context, projectID uuid.UUID) ([]*authDomain.APIKey, error) {
 	var apiKeys []*authDomain.APIKey
 	err := r.db.WithContext(ctx).
 		Where("project_id = ? AND deleted_at IS NULL", projectID).
@@ -209,7 +210,7 @@ func (r *apiKeyRepository) CleanupExpiredAPIKeys(ctx context.Context) error {
 }
 
 // GetAPIKeyCount returns the total count of API keys for a user
-func (r *apiKeyRepository) GetAPIKeyCount(ctx context.Context, userID ulid.ULID) (int, error) {
+func (r *apiKeyRepository) GetAPIKeyCount(ctx context.Context, userID uuid.UUID) (int, error) {
 	var count int64
 	err := r.db.WithContext(ctx).
 		Model(&authDomain.APIKey{}).
@@ -219,7 +220,7 @@ func (r *apiKeyRepository) GetAPIKeyCount(ctx context.Context, userID ulid.ULID)
 }
 
 // GetActiveAPIKeyCount returns the count of active (non-expired, non-deleted) API keys for a user
-func (r *apiKeyRepository) GetActiveAPIKeyCount(ctx context.Context, userID ulid.ULID) (int, error) {
+func (r *apiKeyRepository) GetActiveAPIKeyCount(ctx context.Context, userID uuid.UUID) (int, error) {
 	var count int64
 	err := r.db.WithContext(ctx).
 		Model(&authDomain.APIKey{}).

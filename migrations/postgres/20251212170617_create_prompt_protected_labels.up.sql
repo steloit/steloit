@@ -6,10 +6,10 @@
 -- Provides governance for sensitive deployments (e.g., "production")
 
 CREATE TABLE prompt_protected_labels (
-    id CHAR(26) PRIMARY KEY,
-    project_id CHAR(26) NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     label_name VARCHAR(50) NOT NULL,
-    created_by CHAR(26) REFERENCES users(id) ON DELETE SET NULL,
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

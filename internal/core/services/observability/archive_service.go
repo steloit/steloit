@@ -1,17 +1,18 @@
 package observability
 
 import (
-	"log/slog"
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
 
 	"brokle/internal/config"
 	"brokle/internal/core/domain/observability"
 	storageDomain "brokle/internal/core/domain/storage"
 	infraStorage "brokle/internal/infrastructure/storage"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 // ArchiveService handles raw telemetry archival to S3 in Parquet format with ZSTD compression.
@@ -43,7 +44,7 @@ func NewArchiveService(
 func (s *ArchiveService) ArchiveBatch(
 	ctx context.Context,
 	projectID string,
-	batchID ulid.ULID,
+	batchID uuid.UUID,
 	records []observability.RawTelemetryRecord,
 ) (*observability.ArchiveBatchResult, error) {
 	if len(records) == 0 {
@@ -65,7 +66,7 @@ func (s *ArchiveService) ArchiveBatch(
 
 	now := time.Now()
 	blobRef := &storageDomain.BlobStorageFileLog{
-		ID:         ulid.New().String(),
+		ID:         uid.New().String(),
 		ProjectID:  projectID,
 		EntityType: observability.EntityTypeArchiveBatch,
 		EntityID:   batchID.String(),
@@ -101,7 +102,7 @@ func (s *ArchiveService) ArchiveBatch(
 }
 
 // GenerateS3Path creates Hive-style partition path: {prefix}/project_id={id}/signal={type}/year={y}/month={m}/day={d}/{batch_id}.parquet
-func (s *ArchiveService) GenerateS3Path(projectID, signalType string, timestamp time.Time, batchID ulid.ULID) string {
+func (s *ArchiveService) GenerateS3Path(projectID, signalType string, timestamp time.Time, batchID uuid.UUID) string {
 	return fmt.Sprintf(
 		"%sproject_id=%s/signal=%s/year=%04d/month=%02d/day=%02d/%s.parquet",
 		s.config.PathPrefix,

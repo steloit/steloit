@@ -12,8 +12,8 @@
 -- Queue configuration for organizing annotation tasks
 
 CREATE TABLE annotation_queues (
-    id                  CHAR(26) PRIMARY KEY,           -- ULID
-    project_id          CHAR(26) NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    id                  UUID PRIMARY KEY,           -- ULID
+    project_id          UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     name                VARCHAR(255) NOT NULL,
     description         TEXT,
     instructions        TEXT,                           -- Annotation guidelines (from Opik pattern)
@@ -21,7 +21,7 @@ CREATE TABLE annotation_queues (
     status              VARCHAR(20) NOT NULL DEFAULT 'active'
                         CHECK (status IN ('active', 'paused', 'archived')),
     settings            JSONB DEFAULT '{"lock_timeout_seconds": 300, "auto_assignment": false}'::jsonb,
-    created_by          CHAR(26) REFERENCES users(id),
+    created_by          UUID REFERENCES users(id),
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE(project_id, name)
@@ -37,8 +37,8 @@ CREATE INDEX idx_annotation_queues_project_created ON annotation_queues(project_
 -- Design: Dual-user tracking from Langfuse (locked_by vs annotator_user_id)
 
 CREATE TABLE annotation_queue_items (
-    id                  CHAR(26) PRIMARY KEY,           -- ULID
-    queue_id            CHAR(26) NOT NULL REFERENCES annotation_queues(id) ON DELETE CASCADE,
+    id                  UUID PRIMARY KEY,           -- ULID
+    queue_id            UUID NOT NULL REFERENCES annotation_queues(id) ON DELETE CASCADE,
     object_id           VARCHAR(32) NOT NULL,           -- trace_id or span_id
     object_type         VARCHAR(20) NOT NULL CHECK (object_type IN ('trace', 'span')),
     status              VARCHAR(20) NOT NULL DEFAULT 'pending'
@@ -46,9 +46,9 @@ CREATE TABLE annotation_queue_items (
     priority            INTEGER NOT NULL DEFAULT 0,     -- Higher = more urgent
     -- Locking (who claimed it)
     locked_at           TIMESTAMPTZ,                    -- When item was locked for review
-    locked_by_user_id   CHAR(26) REFERENCES users(id),  -- Who currently holds the lock
+    locked_by_user_id   UUID REFERENCES users(id),  -- Who currently holds the lock
     -- Completion (who finished it) - Langfuse pattern: separate from locker
-    annotator_user_id   CHAR(26) REFERENCES users(id),  -- Who completed the annotation
+    annotator_user_id   UUID REFERENCES users(id),  -- Who completed the annotation
     completed_at        TIMESTAMPTZ,
     metadata            JSONB DEFAULT '{}'::jsonb,      -- Source info, sampling reason, etc.
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -76,13 +76,13 @@ CREATE INDEX idx_annotation_queue_items_object ON annotation_queue_items(object_
 -- User assignments to queues (who can annotate what)
 
 CREATE TABLE annotation_queue_assignments (
-    id              CHAR(26) PRIMARY KEY,           -- ULID
-    queue_id        CHAR(26) NOT NULL REFERENCES annotation_queues(id) ON DELETE CASCADE,
-    user_id         CHAR(26) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    id              UUID PRIMARY KEY,           -- ULID
+    queue_id        UUID NOT NULL REFERENCES annotation_queues(id) ON DELETE CASCADE,
+    user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     role            VARCHAR(20) NOT NULL DEFAULT 'annotator'
                     CHECK (role IN ('annotator', 'reviewer', 'admin')),
     assigned_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    assigned_by     CHAR(26) REFERENCES users(id),
+    assigned_by     UUID REFERENCES users(id),
     UNIQUE(queue_id, user_id)
 );
 

@@ -4,7 +4,7 @@
 --          Required for billing aggregation by organization
 
 -- Add organization_id to otel_traces table
-ALTER TABLE otel_traces ADD COLUMN IF NOT EXISTS organization_id String DEFAULT '' AFTER project_id;
+ALTER TABLE otel_traces ADD COLUMN IF NOT EXISTS organization_id UUID AFTER project_id;
 
 -- Add organization_id to scores table
-ALTER TABLE scores ADD COLUMN IF NOT EXISTS organization_id String DEFAULT '' AFTER project_id;
+ALTER TABLE scores ADD COLUMN IF NOT EXISTS organization_id UUID AFTER project_id;

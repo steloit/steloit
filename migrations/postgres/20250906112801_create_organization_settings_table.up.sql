@@ -3,8 +3,8 @@
 
 -- Create organization_settings table for key-value settings storage
 CREATE TABLE organization_settings (
-    id CHAR(26) PRIMARY KEY,
-    organization_id CHAR(26) NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     key VARCHAR(255) NOT NULL,
     value JSONB NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

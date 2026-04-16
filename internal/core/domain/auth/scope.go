@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"brokle/pkg/ulid"
+	"github.com/google/uuid"
 )
 
 // Note: ScopeLevel type and constants (ScopeLevelGlobal, ScopeLevelOrganization, ScopeLevelProject)
@@ -33,14 +33,14 @@ import (
 //	→ Returns: GlobalScopes + OrgScopes + ProjectScopes
 //	→ All three levels combined
 type ScopeResolution struct {
-	OrganizationID     *ulid.ULID      `json:"organization_id,omitempty"`
-	ProjectID          *ulid.ULID      `json:"project_id,omitempty"`
+	OrganizationID     *uuid.UUID      `json:"organization_id,omitempty"`
+	ProjectID          *uuid.UUID      `json:"project_id,omitempty"`
 	EffectiveScopesSet map[string]bool `json:"-"`
 	GlobalScopes       []string        `json:"global_scopes"`
 	OrganizationScopes []string        `json:"organization_scopes"`
 	ProjectScopes      []string        `json:"project_scopes"`
 	EffectiveScopes    []string        `json:"effective_scopes"`
-	UserID             ulid.ULID       `json:"user_id"`
+	UserID             uuid.UUID       `json:"user_id"`
 }
 
 // HasScope checks if a specific scope exists in the resolution (O(1) lookup)

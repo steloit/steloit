@@ -5,9 +5,10 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/evaluation"
 	"brokle/internal/infrastructure/shared"
-	"brokle/pkg/ulid"
 
 	"gorm.io/gorm"
 )
@@ -36,7 +37,7 @@ func (r *DatasetVersionRepository) Create(ctx context.Context, version *evaluati
 	return nil
 }
 
-func (r *DatasetVersionRepository) GetByID(ctx context.Context, id ulid.ULID, datasetID ulid.ULID) (*evaluation.DatasetVersion, error) {
+func (r *DatasetVersionRepository) GetByID(ctx context.Context, id uuid.UUID, datasetID uuid.UUID) (*evaluation.DatasetVersion, error) {
 	var version evaluation.DatasetVersion
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("id = ? AND dataset_id = ?", id.String(), datasetID.String()).
@@ -51,7 +52,7 @@ func (r *DatasetVersionRepository) GetByID(ctx context.Context, id ulid.ULID, da
 	return &version, nil
 }
 
-func (r *DatasetVersionRepository) GetByVersionNumber(ctx context.Context, datasetID ulid.ULID, versionNum int) (*evaluation.DatasetVersion, error) {
+func (r *DatasetVersionRepository) GetByVersionNumber(ctx context.Context, datasetID uuid.UUID, versionNum int) (*evaluation.DatasetVersion, error) {
 	var version evaluation.DatasetVersion
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("dataset_id = ? AND version = ?", datasetID.String(), versionNum).
@@ -66,7 +67,7 @@ func (r *DatasetVersionRepository) GetByVersionNumber(ctx context.Context, datas
 	return &version, nil
 }
 
-func (r *DatasetVersionRepository) GetLatest(ctx context.Context, datasetID ulid.ULID) (*evaluation.DatasetVersion, error) {
+func (r *DatasetVersionRepository) GetLatest(ctx context.Context, datasetID uuid.UUID) (*evaluation.DatasetVersion, error) {
 	var version evaluation.DatasetVersion
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("dataset_id = ?", datasetID.String()).
@@ -82,7 +83,7 @@ func (r *DatasetVersionRepository) GetLatest(ctx context.Context, datasetID ulid
 	return &version, nil
 }
 
-func (r *DatasetVersionRepository) List(ctx context.Context, datasetID ulid.ULID) ([]*evaluation.DatasetVersion, error) {
+func (r *DatasetVersionRepository) List(ctx context.Context, datasetID uuid.UUID) ([]*evaluation.DatasetVersion, error) {
 	var versions []*evaluation.DatasetVersion
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("dataset_id = ?", datasetID.String()).
@@ -95,7 +96,7 @@ func (r *DatasetVersionRepository) List(ctx context.Context, datasetID ulid.ULID
 	return versions, nil
 }
 
-func (r *DatasetVersionRepository) GetNextVersionNumber(ctx context.Context, datasetID ulid.ULID) (int, error) {
+func (r *DatasetVersionRepository) GetNextVersionNumber(ctx context.Context, datasetID uuid.UUID) (int, error) {
 	var maxVersion *int
 	result := r.getDB(ctx).WithContext(ctx).
 		Model(&evaluation.DatasetVersion{}).
@@ -113,7 +114,7 @@ func (r *DatasetVersionRepository) GetNextVersionNumber(ctx context.Context, dat
 	return *maxVersion + 1, nil
 }
 
-func (r *DatasetVersionRepository) AddItems(ctx context.Context, versionID ulid.ULID, itemIDs []ulid.ULID) error {
+func (r *DatasetVersionRepository) AddItems(ctx context.Context, versionID uuid.UUID, itemIDs []uuid.UUID) error {
 	if len(itemIDs) == 0 {
 		return nil
 	}
@@ -131,7 +132,7 @@ func (r *DatasetVersionRepository) AddItems(ctx context.Context, versionID ulid.
 	return result.Error
 }
 
-func (r *DatasetVersionRepository) GetItemIDs(ctx context.Context, versionID ulid.ULID) ([]ulid.ULID, error) {
+func (r *DatasetVersionRepository) GetItemIDs(ctx context.Context, versionID uuid.UUID) ([]uuid.UUID, error) {
 	var associations []evaluation.DatasetItemVersion
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("dataset_version_id = ?", versionID.String()).
@@ -141,14 +142,14 @@ func (r *DatasetVersionRepository) GetItemIDs(ctx context.Context, versionID uli
 		return nil, result.Error
 	}
 
-	itemIDs := make([]ulid.ULID, len(associations))
+	itemIDs := make([]uuid.UUID, len(associations))
 	for i, assoc := range associations {
 		itemIDs[i] = assoc.DatasetItemID
 	}
 	return itemIDs, nil
 }
 
-func (r *DatasetVersionRepository) GetItems(ctx context.Context, versionID ulid.ULID, limit, offset int) ([]*evaluation.DatasetItem, int64, error) {
+func (r *DatasetVersionRepository) GetItems(ctx context.Context, versionID uuid.UUID, limit, offset int) ([]*evaluation.DatasetItem, int64, error) {
 	var total int64
 	// Count total items in version
 	if err := r.getDB(ctx).WithContext(ctx).

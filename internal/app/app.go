@@ -11,8 +11,8 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"brokle/internal/config"
-	"brokle/pkg/logging"
 	httpTransport "brokle/internal/transport/http"
+	"brokle/pkg/logging"
 )
 
 // App represents the main application

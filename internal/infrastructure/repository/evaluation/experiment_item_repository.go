@@ -3,9 +3,10 @@ package evaluation
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/evaluation"
 	"brokle/internal/infrastructure/shared"
-	"brokle/pkg/ulid"
 
 	"gorm.io/gorm"
 )
@@ -34,7 +35,7 @@ func (r *ExperimentItemRepository) CreateBatch(ctx context.Context, items []*eva
 	return r.getDB(ctx).WithContext(ctx).CreateInBatches(items, 100).Error
 }
 
-func (r *ExperimentItemRepository) List(ctx context.Context, experimentID ulid.ULID, limit, offset int) ([]*evaluation.ExperimentItem, int64, error) {
+func (r *ExperimentItemRepository) List(ctx context.Context, experimentID uuid.UUID, limit, offset int) ([]*evaluation.ExperimentItem, int64, error) {
 	var items []*evaluation.ExperimentItem
 	var total int64
 
@@ -59,7 +60,7 @@ func (r *ExperimentItemRepository) List(ctx context.Context, experimentID ulid.U
 	return items, total, nil
 }
 
-func (r *ExperimentItemRepository) CountByExperiment(ctx context.Context, experimentID ulid.ULID) (int64, error) {
+func (r *ExperimentItemRepository) CountByExperiment(ctx context.Context, experimentID uuid.UUID) (int64, error) {
 	var count int64
 	result := r.getDB(ctx).WithContext(ctx).
 		Model(&evaluation.ExperimentItem{}).

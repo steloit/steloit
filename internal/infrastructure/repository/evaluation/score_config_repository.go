@@ -5,8 +5,9 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/evaluation"
-	"brokle/pkg/ulid"
 
 	"gorm.io/gorm"
 )
@@ -30,7 +31,7 @@ func (r *ScoreConfigRepository) Create(ctx context.Context, config *evaluation.S
 	return nil
 }
 
-func (r *ScoreConfigRepository) GetByID(ctx context.Context, id ulid.ULID, projectID ulid.ULID) (*evaluation.ScoreConfig, error) {
+func (r *ScoreConfigRepository) GetByID(ctx context.Context, id uuid.UUID, projectID uuid.UUID) (*evaluation.ScoreConfig, error) {
 	var config evaluation.ScoreConfig
 	result := r.db.WithContext(ctx).
 		Where("id = ? AND project_id = ?", id.String(), projectID.String()).
@@ -46,7 +47,7 @@ func (r *ScoreConfigRepository) GetByID(ctx context.Context, id ulid.ULID, proje
 }
 
 // GetByName returns nil, nil if not found (for uniqueness checks).
-func (r *ScoreConfigRepository) GetByName(ctx context.Context, projectID ulid.ULID, name string) (*evaluation.ScoreConfig, error) {
+func (r *ScoreConfigRepository) GetByName(ctx context.Context, projectID uuid.UUID, name string) (*evaluation.ScoreConfig, error) {
 	var config evaluation.ScoreConfig
 	result := r.db.WithContext(ctx).
 		Where("project_id = ? AND name = ?", projectID.String(), name).
@@ -61,7 +62,7 @@ func (r *ScoreConfigRepository) GetByName(ctx context.Context, projectID ulid.UL
 	return &config, nil
 }
 
-func (r *ScoreConfigRepository) List(ctx context.Context, projectID ulid.ULID, offset, limit int) ([]*evaluation.ScoreConfig, int64, error) {
+func (r *ScoreConfigRepository) List(ctx context.Context, projectID uuid.UUID, offset, limit int) ([]*evaluation.ScoreConfig, int64, error) {
 	var configs []*evaluation.ScoreConfig
 	var total int64
 
@@ -85,7 +86,7 @@ func (r *ScoreConfigRepository) List(ctx context.Context, projectID ulid.ULID, o
 	return configs, total, nil
 }
 
-func (r *ScoreConfigRepository) Update(ctx context.Context, config *evaluation.ScoreConfig, projectID ulid.ULID) error {
+func (r *ScoreConfigRepository) Update(ctx context.Context, config *evaluation.ScoreConfig, projectID uuid.UUID) error {
 	result := r.db.WithContext(ctx).
 		Where("id = ? AND project_id = ?", config.ID.String(), projectID.String()).
 		Save(config)
@@ -103,7 +104,7 @@ func (r *ScoreConfigRepository) Update(ctx context.Context, config *evaluation.S
 	return nil
 }
 
-func (r *ScoreConfigRepository) Delete(ctx context.Context, id ulid.ULID, projectID ulid.ULID) error {
+func (r *ScoreConfigRepository) Delete(ctx context.Context, id uuid.UUID, projectID uuid.UUID) error {
 	result := r.db.WithContext(ctx).
 		Where("id = ? AND project_id = ?", id.String(), projectID.String()).
 		Delete(&evaluation.ScoreConfig{})
@@ -118,7 +119,7 @@ func (r *ScoreConfigRepository) Delete(ctx context.Context, id ulid.ULID, projec
 	return nil
 }
 
-func (r *ScoreConfigRepository) ExistsByName(ctx context.Context, projectID ulid.ULID, name string) (bool, error) {
+func (r *ScoreConfigRepository) ExistsByName(ctx context.Context, projectID uuid.UUID, name string) (bool, error) {
 	var count int64
 	result := r.db.WithContext(ctx).
 		Model(&evaluation.ScoreConfig{}).

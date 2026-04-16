@@ -13,17 +13,17 @@ import (
 
 func TestSpanQueryBuilder_BuildQuery(t *testing.T) {
 	tests := []struct {
-		name           string
-		node           obsDomain.FilterNode
-		projectID      string
-		startTime      *time.Time
-		endTime        *time.Time
-		limit          int
-		offset         int
-		wantContains   []string // SQL fragments that should be present
-		wantArgCount   int      // Expected number of arguments
-		wantFirstArgs  []interface{}
-		wantErr        bool
+		name          string
+		node          obsDomain.FilterNode
+		projectID     string
+		startTime     *time.Time
+		endTime       *time.Time
+		limit         int
+		offset        int
+		wantContains  []string // SQL fragments that should be present
+		wantArgCount  int      // Expected number of arguments
+		wantFirstArgs []interface{}
+		wantErr       bool
 	}{
 		{
 			name: "simple equality - materialized column",
@@ -324,7 +324,7 @@ func TestSpanQueryBuilder_BuildQuery(t *testing.T) {
 			wantErr:      false,
 		},
 		{
-			name: "nil node - no filter",
+			name:         "nil node - no filter",
 			node:         nil,
 			projectID:    "proj123",
 			limit:        100,
@@ -515,14 +515,14 @@ func TestSpanQueryBuilder_BuildQuery(t *testing.T) {
 
 func TestSpanQueryBuilder_BuildCountQuery(t *testing.T) {
 	tests := []struct {
-		name          string
-		node          obsDomain.FilterNode
-		projectID     string
-		startTime     *time.Time
-		endTime       *time.Time
-		wantContains  []string
-		wantArgCount  int
-		wantErr       bool
+		name         string
+		node         obsDomain.FilterNode
+		projectID    string
+		startTime    *time.Time
+		endTime      *time.Time
+		wantContains []string
+		wantArgCount int
+		wantErr      bool
 	}{
 		{
 			name: "simple count query",
@@ -551,12 +551,12 @@ func TestSpanQueryBuilder_BuildCountQuery(t *testing.T) {
 			wantErr:      false,
 		},
 		{
-			name:          "count with nil filter",
-			node:          nil,
-			projectID:     "proj123",
-			wantContains:  []string{"SELECT count(*) as total", "project_id = ?"},
-			wantArgCount:  1, // Just projectID
-			wantErr:       false,
+			name:         "count with nil filter",
+			node:         nil,
+			projectID:    "proj123",
+			wantContains: []string{"SELECT count(*) as total", "project_id = ?"},
+			wantArgCount: 1, // Just projectID
+			wantErr:      false,
 		},
 		{
 			name: "complex expression count",
@@ -653,10 +653,10 @@ func TestSpanQueryBuilder_GetColumn(t *testing.T) {
 func TestSpanQueryBuilder_SQLInjectionPrevention(t *testing.T) {
 	// All user input should be parameterized, not interpolated
 	tests := []struct {
-		name         string
-		node         obsDomain.FilterNode
-		checkQuery   func(t *testing.T, query string)
-		checkArgs    func(t *testing.T, args []interface{})
+		name       string
+		node       obsDomain.FilterNode
+		checkQuery func(t *testing.T, query string)
+		checkArgs  func(t *testing.T, args []interface{})
 	}{
 		{
 			name: "malicious value in equality",
@@ -1273,18 +1273,18 @@ func TestSpanQueryBuilder_BuildTextSearchCondition(t *testing.T) {
 
 func TestSpanQueryBuilder_BuildQueryWithSearch(t *testing.T) {
 	tests := []struct {
-		name          string
-		node          obsDomain.FilterNode
-		searchQuery   string
-		searchTypes   []obsDomain.SearchType
-		projectID     string
-		startTime     *time.Time
-		endTime       *time.Time
-		limit         int
-		offset        int
-		wantContains  []string
-		wantArgCount  int
-		wantErr       bool
+		name         string
+		node         obsDomain.FilterNode
+		searchQuery  string
+		searchTypes  []obsDomain.SearchType
+		projectID    string
+		startTime    *time.Time
+		endTime      *time.Time
+		limit        int
+		offset       int
+		wantContains []string
+		wantArgCount int
+		wantErr      bool
 	}{
 		{
 			name:        "search only - no filter",

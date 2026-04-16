@@ -13,13 +13,13 @@
 -- Dataset versions table
 -- Each version represents a snapshot of the dataset at a point in time
 CREATE TABLE IF NOT EXISTS dataset_versions (
-    id CHAR(26) PRIMARY KEY,
-    dataset_id CHAR(26) NOT NULL REFERENCES datasets(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    dataset_id UUID NOT NULL REFERENCES datasets(id) ON DELETE CASCADE,
     version INT NOT NULL,
     item_count INT NOT NULL DEFAULT 0,
     description TEXT,
     metadata JSONB DEFAULT '{}',
-    created_by CHAR(26),  -- User who created this version (nullable for auto-created)
+    created_by UUID,  -- User who created this version (nullable for auto-created)
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
 
     -- Ensure unique version numbers per dataset
@@ -33,8 +33,8 @@ CREATE INDEX idx_dataset_versions_created_at ON dataset_versions(created_at);
 -- Dataset item versions table (many-to-many join)
 -- Links dataset items to specific versions they belong to
 CREATE TABLE IF NOT EXISTS dataset_item_versions (
-    dataset_version_id CHAR(26) NOT NULL REFERENCES dataset_versions(id) ON DELETE CASCADE,
-    dataset_item_id CHAR(26) NOT NULL REFERENCES dataset_items(id) ON DELETE CASCADE,
+    dataset_version_id UUID NOT NULL REFERENCES dataset_versions(id) ON DELETE CASCADE,
+    dataset_item_id UUID NOT NULL REFERENCES dataset_items(id) ON DELETE CASCADE,
 
     -- Composite primary key
     PRIMARY KEY (dataset_version_id, dataset_item_id)
@@ -47,7 +47,7 @@ CREATE INDEX idx_dataset_item_versions_item_id ON dataset_item_versions(dataset_
 
 -- Add current_version_id to datasets table
 -- This tracks which version the dataset is currently pinned to (nullable = use latest)
-ALTER TABLE datasets ADD COLUMN IF NOT EXISTS current_version_id CHAR(26) REFERENCES dataset_versions(id);
+ALTER TABLE datasets ADD COLUMN IF NOT EXISTS current_version_id UUID REFERENCES dataset_versions(id);
 
 -- Index for quick lookup of pinned version
 CREATE INDEX IF NOT EXISTS idx_datasets_current_version_id ON datasets(current_version_id) WHERE current_version_id IS NOT NULL;

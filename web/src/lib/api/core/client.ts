@@ -190,8 +190,7 @@ export class BrokleAPIClient {
 
         // Add request ID for tracing if enabled
         if (this.config.enableRequestId && !config.headers['X-Request-Id']) {
-          const { ulid } = await import('ulid')
-          config.headers['X-Request-Id'] = ulid()
+          config.headers['X-Request-Id'] = crypto.randomUUID()
         }
 
         // Add custom headers from config

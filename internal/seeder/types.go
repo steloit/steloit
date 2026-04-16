@@ -3,7 +3,7 @@ package seeder
 import (
 	"encoding/json"
 
-	"brokle/pkg/ulid"
+	"github.com/google/uuid"
 )
 
 type PermissionsFile struct {
@@ -38,14 +38,14 @@ type Options struct {
 }
 
 type EntityMaps struct {
-	Permissions map[string]ulid.ULID // permission name -> permission ID
-	Roles       map[string]ulid.ULID // role_name -> role ID
+	Permissions map[string]uuid.UUID // permission name -> permission ID
+	Roles       map[string]uuid.UUID // role_name -> role ID
 }
 
 func NewEntityMaps() *EntityMaps {
 	return &EntityMaps{
-		Permissions: make(map[string]ulid.ULID),
-		Roles:       make(map[string]ulid.ULID),
+		Permissions: make(map[string]uuid.UUID),
+		Roles:       make(map[string]uuid.UUID),
 	}
 }
 
@@ -56,8 +56,8 @@ type ProviderPricingSeedData struct {
 
 type ProviderModelSeed struct {
 	ModelName       string                 `yaml:"model_name"`
-	Provider        string                 `yaml:"provider"`                  // "openai", "anthropic", "gemini"
-	DisplayName     string                 `yaml:"display_name,omitempty"`    // User-friendly name for UI
+	Provider        string                 `yaml:"provider"`               // "openai", "anthropic", "gemini"
+	DisplayName     string                 `yaml:"display_name,omitempty"` // User-friendly name for UI
 	MatchPattern    string                 `yaml:"match_pattern"`
 	StartDate       string                 `yaml:"start_date"` // Format: "2024-05-13"
 	Unit            string                 `yaml:"unit"`       // Default: "TOKENS"
@@ -115,15 +115,15 @@ type TemplatesFile struct {
 }
 
 type TemplateSeed struct {
-	Name        string              `yaml:"name"`
-	Description string              `yaml:"description"`
-	Category    string              `yaml:"category"`
-	Config      TemplateConfigSeed  `yaml:"config"`
+	Name        string               `yaml:"name"`
+	Description string               `yaml:"description"`
+	Category    string               `yaml:"category"`
+	Config      TemplateConfigSeed   `yaml:"config"`
 	Layout      []TemplateLayoutSeed `yaml:"layout"`
 }
 
 type TemplateConfigSeed struct {
-	RefreshRate int                `yaml:"refresh_rate"`
+	RefreshRate int                  `yaml:"refresh_rate"`
 	Widgets     []TemplateWidgetSeed `yaml:"widgets"`
 }
 
@@ -137,13 +137,13 @@ type TemplateWidgetSeed struct {
 }
 
 type TemplateQuerySeed struct {
-	View       string   `yaml:"view"`
-	Measures   []string `yaml:"measures"`
-	Dimensions []string `yaml:"dimensions"`
+	View       string               `yaml:"view"`
+	Measures   []string             `yaml:"measures"`
+	Dimensions []string             `yaml:"dimensions"`
 	Filters    []TemplateFilterSeed `yaml:"filters"`
-	Limit      int      `yaml:"limit,omitempty"`
-	OrderBy    string   `yaml:"order_by,omitempty"`
-	OrderDir   string   `yaml:"order_dir,omitempty"`
+	Limit      int                  `yaml:"limit,omitempty"`
+	OrderBy    string               `yaml:"order_by,omitempty"`
+	OrderDir   string               `yaml:"order_dir,omitempty"`
 }
 
 type TemplateFilterSeed struct {

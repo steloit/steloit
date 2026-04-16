@@ -3,8 +3,8 @@
 
 -- Datasets: collections of test cases for evaluation
 CREATE TABLE datasets (
-    id              CHAR(26) PRIMARY KEY,
-    project_id      CHAR(26) NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    id              UUID PRIMARY KEY,
+    project_id      UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     name            VARCHAR(255) NOT NULL,
     description     TEXT,
     metadata        JSONB DEFAULT '{}',
@@ -16,8 +16,8 @@ CREATE INDEX idx_datasets_project ON datasets(project_id);
 
 -- Dataset Items: individual test cases within a dataset
 CREATE TABLE dataset_items (
-    id              CHAR(26) PRIMARY KEY,
-    dataset_id      CHAR(26) NOT NULL REFERENCES datasets(id) ON DELETE CASCADE,
+    id              UUID PRIMARY KEY,
+    dataset_id      UUID NOT NULL REFERENCES datasets(id) ON DELETE CASCADE,
     input           JSONB NOT NULL,
     expected        JSONB,
     metadata        JSONB DEFAULT '{}',
@@ -27,9 +27,9 @@ CREATE INDEX idx_dataset_items_dataset ON dataset_items(dataset_id);
 
 -- Experiments: batch evaluation runs against datasets
 CREATE TABLE experiments (
-    id              CHAR(26) PRIMARY KEY,
-    project_id      CHAR(26) NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-    dataset_id      CHAR(26) REFERENCES datasets(id) ON DELETE SET NULL,
+    id              UUID PRIMARY KEY,
+    project_id      UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    dataset_id      UUID REFERENCES datasets(id) ON DELETE SET NULL,
     name            VARCHAR(255) NOT NULL,
     description     TEXT,
     status          VARCHAR(20) NOT NULL DEFAULT 'pending'
@@ -46,9 +46,9 @@ CREATE INDEX idx_experiments_status ON experiments(status);
 
 -- Experiment Items: individual results from experiment runs
 CREATE TABLE experiment_items (
-    id              CHAR(26) PRIMARY KEY,
-    experiment_id   CHAR(26) NOT NULL REFERENCES experiments(id) ON DELETE CASCADE,
-    dataset_item_id CHAR(26) REFERENCES dataset_items(id) ON DELETE SET NULL,
+    id              UUID PRIMARY KEY,
+    experiment_id   UUID NOT NULL REFERENCES experiments(id) ON DELETE CASCADE,
+    dataset_item_id UUID REFERENCES dataset_items(id) ON DELETE SET NULL,
     trace_id        VARCHAR(32),
     input           JSONB NOT NULL,
     output          JSONB,

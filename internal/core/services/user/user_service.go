@@ -8,10 +8,11 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/google/uuid"
+
 	authDomain "brokle/internal/core/domain/auth"
 	userDomain "brokle/internal/core/domain/user"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
 )
 
 // userService implements the user.UserService interface
@@ -35,7 +36,7 @@ func NewUserService(
 }
 
 // GetUser retrieves user by ID
-func (s *userService) GetUser(ctx context.Context, userID ulid.ULID) (*userDomain.User, error) {
+func (s *userService) GetUser(ctx context.Context, userID uuid.UUID) (*userDomain.User, error) {
 	return s.userRepo.GetByID(ctx, userID)
 }
 
@@ -50,7 +51,7 @@ func (s *userService) GetUserByEmailWithPassword(ctx context.Context, email stri
 }
 
 // UpdateUser updates user information
-func (s *userService) UpdateUser(ctx context.Context, userID ulid.ULID, req *userDomain.UpdateUserRequest) (*userDomain.User, error) {
+func (s *userService) UpdateUser(ctx context.Context, userID uuid.UUID, req *userDomain.UpdateUserRequest) (*userDomain.User, error) {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, userDomain.ErrNotFound) {
@@ -84,7 +85,7 @@ func (s *userService) UpdateUser(ctx context.Context, userID ulid.ULID, req *use
 }
 
 // DeactivateUser deactivates a user account
-func (s *userService) DeactivateUser(ctx context.Context, userID ulid.ULID) error {
+func (s *userService) DeactivateUser(ctx context.Context, userID uuid.UUID) error {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, userDomain.ErrNotFound) {
@@ -105,7 +106,7 @@ func (s *userService) DeactivateUser(ctx context.Context, userID ulid.ULID) erro
 }
 
 // ReactivateUser reactivates a deactivated user account
-func (s *userService) ReactivateUser(ctx context.Context, userID ulid.ULID) error {
+func (s *userService) ReactivateUser(ctx context.Context, userID uuid.UUID) error {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, userDomain.ErrNotFound) {
@@ -126,7 +127,7 @@ func (s *userService) ReactivateUser(ctx context.Context, userID ulid.ULID) erro
 }
 
 // DeleteUser soft deletes a user account
-func (s *userService) DeleteUser(ctx context.Context, userID ulid.ULID) error {
+func (s *userService) DeleteUser(ctx context.Context, userID uuid.UUID) error {
 	_, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, userDomain.ErrNotFound) {
@@ -175,7 +176,7 @@ func (s *userService) SearchUsers(ctx context.Context, query string, limit, offs
 }
 
 // GetUsersByIDs retrieves multiple users by their IDs
-func (s *userService) GetUsersByIDs(ctx context.Context, userIDs []ulid.ULID) ([]*userDomain.User, error) {
+func (s *userService) GetUsersByIDs(ctx context.Context, userIDs []uuid.UUID) ([]*userDomain.User, error) {
 	if len(userIDs) == 0 {
 		return []*userDomain.User{}, nil
 	}
@@ -184,7 +185,7 @@ func (s *userService) GetUsersByIDs(ctx context.Context, userIDs []ulid.ULID) ([
 }
 
 // GetPublicUsers retrieves public user information by IDs
-func (s *userService) GetPublicUsers(ctx context.Context, userIDs []ulid.ULID) ([]*userDomain.PublicUser, error) {
+func (s *userService) GetPublicUsers(ctx context.Context, userIDs []uuid.UUID) ([]*userDomain.PublicUser, error) {
 	users, err := s.GetUsersByIDs(ctx, userIDs)
 	if err != nil {
 		return nil, err
@@ -199,7 +200,7 @@ func (s *userService) GetPublicUsers(ctx context.Context, userIDs []ulid.ULID) (
 }
 
 // VerifyEmail verifies user's email with token
-func (s *userService) VerifyEmail(ctx context.Context, userID ulid.ULID, token string) error {
+func (s *userService) VerifyEmail(ctx context.Context, userID uuid.UUID, token string) error {
 	// This would typically validate the token and mark email as verified
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
@@ -223,7 +224,7 @@ func (s *userService) VerifyEmail(ctx context.Context, userID ulid.ULID, token s
 }
 
 // MarkEmailAsVerified directly marks user's email as verified
-func (s *userService) MarkEmailAsVerified(ctx context.Context, userID ulid.ULID) error {
+func (s *userService) MarkEmailAsVerified(ctx context.Context, userID uuid.UUID) error {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, userDomain.ErrNotFound) {
@@ -241,7 +242,7 @@ func (s *userService) MarkEmailAsVerified(ctx context.Context, userID ulid.ULID)
 }
 
 // SendVerificationEmail sends email verification email
-func (s *userService) SendVerificationEmail(ctx context.Context, userID ulid.ULID) error {
+func (s *userService) SendVerificationEmail(ctx context.Context, userID uuid.UUID) error {
 	// This would integrate with email service to send verification email
 	// Implementation would trigger email via notification service
 	return nil
@@ -268,7 +269,7 @@ func (s *userService) ResetPassword(ctx context.Context, token, newPassword stri
 }
 
 // ChangePassword changes user password
-func (s *userService) ChangePassword(ctx context.Context, userID ulid.ULID, currentPassword, newPassword string) error {
+func (s *userService) ChangePassword(ctx context.Context, userID uuid.UUID, currentPassword, newPassword string) error {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, userDomain.ErrNotFound) {
@@ -301,7 +302,7 @@ func (s *userService) ChangePassword(ctx context.Context, userID ulid.ULID, curr
 }
 
 // UpdateLastLogin updates user's last login time
-func (s *userService) UpdateLastLogin(ctx context.Context, userID ulid.ULID) error {
+func (s *userService) UpdateLastLogin(ctx context.Context, userID uuid.UUID) error {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, userDomain.ErrNotFound) {
@@ -319,7 +320,7 @@ func (s *userService) UpdateLastLogin(ctx context.Context, userID ulid.ULID) err
 }
 
 // GetUserActivity retrieves user activity metrics
-func (s *userService) GetUserActivity(ctx context.Context, userID ulid.ULID) (*userDomain.UserActivity, error) {
+func (s *userService) GetUserActivity(ctx context.Context, userID uuid.UUID) (*userDomain.UserActivity, error) {
 	// This would aggregate activity data from various sources
 	// For now, return basic activity
 	user, err := s.userRepo.GetByID(ctx, userID)
@@ -348,7 +349,7 @@ func (s *userService) GetUserActivity(ctx context.Context, userID ulid.ULID) (*u
 }
 
 // SetDefaultOrganization sets user's default organization
-func (s *userService) SetDefaultOrganization(ctx context.Context, userID, orgID ulid.ULID) error {
+func (s *userService) SetDefaultOrganization(ctx context.Context, userID, orgID uuid.UUID) error {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, userDomain.ErrNotFound) {
@@ -362,7 +363,7 @@ func (s *userService) SetDefaultOrganization(ctx context.Context, userID, orgID 
 }
 
 // GetDefaultOrganization gets user's default organization
-func (s *userService) GetDefaultOrganization(ctx context.Context, userID ulid.ULID) (*ulid.ULID, error) {
+func (s *userService) GetDefaultOrganization(ctx context.Context, userID uuid.UUID) (*uuid.UUID, error) {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, userDomain.ErrNotFound) {
@@ -375,7 +376,7 @@ func (s *userService) GetDefaultOrganization(ctx context.Context, userID ulid.UL
 }
 
 // ValidateUserOrgMembership checks if user is a member of the organization
-func (s *userService) ValidateUserOrgMembership(ctx context.Context, userID, orgID ulid.ULID) (bool, error) {
+func (s *userService) ValidateUserOrgMembership(ctx context.Context, userID, orgID uuid.UUID) (bool, error) {
 	// Use Exists method - returns (false, nil) when not found, no ErrRecordNotFound handling needed
 	return s.orgMemberRepo.Exists(ctx, userID, orgID)
 }

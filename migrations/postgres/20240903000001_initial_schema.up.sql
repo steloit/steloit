@@ -4,7 +4,7 @@
 
 -- Create users table with ULID (USER DOMAIN)
 CREATE TABLE users (
-    id CHAR(26) PRIMARY KEY,
+    id UUID PRIMARY KEY,
     email VARCHAR(255) NOT NULL UNIQUE,
     first_name VARCHAR(255) NOT NULL,
     last_name VARCHAR(255) NOT NULL,
@@ -19,7 +19,7 @@ CREATE TABLE users (
     last_login_at TIMESTAMP WITH TIME ZONE,
     login_count INTEGER DEFAULT 0,
     onboarding_completed BOOLEAN DEFAULT FALSE,
-    default_organization_id CHAR(26),
+    default_organization_id UUID,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     deleted_at TIMESTAMP WITH TIME ZONE
@@ -27,7 +27,7 @@ CREATE TABLE users (
 
 -- Create organizations table with ULID (ORGANIZATION DOMAIN)
 CREATE TABLE organizations (
-    id CHAR(26) PRIMARY KEY,
+    id UUID PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     slug VARCHAR(255) NOT NULL UNIQUE,
     billing_email VARCHAR(255),
@@ -45,10 +45,10 @@ ALTER TABLE users ADD CONSTRAINT fk_users_default_organization_id
 
 -- Create organization_members table with ULID (ORGANIZATION DOMAIN)
 CREATE TABLE organization_members (
-    id CHAR(26) PRIMARY KEY,
-    organization_id CHAR(26) NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    user_id CHAR(26) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    role_id CHAR(26) NOT NULL,
+    id UUID PRIMARY KEY,
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role_id UUID NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     deleted_at TIMESTAMP WITH TIME ZONE,
@@ -57,8 +57,8 @@ CREATE TABLE organization_members (
 
 -- Create projects table with ULID (ORGANIZATION DOMAIN)
 CREATE TABLE projects (
-    id CHAR(26) PRIMARY KEY,
-    organization_id CHAR(26) NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     slug VARCHAR(255) NOT NULL,
     description TEXT,
@@ -70,8 +70,8 @@ CREATE TABLE projects (
 
 -- Create environments table with ULID (ORGANIZATION DOMAIN)
 CREATE TABLE environments (
-    id CHAR(26) PRIMARY KEY,
-    project_id CHAR(26) NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     slug VARCHAR(255) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -82,11 +82,11 @@ CREATE TABLE environments (
 
 -- Create user_invitations table (ORGANIZATION DOMAIN)
 CREATE TABLE user_invitations (
-    id CHAR(26) PRIMARY KEY,
-    organization_id CHAR(26) NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    role_id CHAR(26) NOT NULL,
+    id UUID PRIMARY KEY,
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    role_id UUID NOT NULL,
     email VARCHAR(255) NOT NULL,
-    user_id CHAR(26) REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     token VARCHAR(255) NOT NULL UNIQUE,
     status VARCHAR(20) NOT NULL DEFAULT 'pending',
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -97,8 +97,8 @@ CREATE TABLE user_invitations (
 
 -- Create sessions table (AUTH DOMAIN)
 CREATE TABLE sessions (
-    id CHAR(26) PRIMARY KEY,
-    user_id CHAR(26) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     token VARCHAR(255) NOT NULL,
     refresh_token VARCHAR(255) NOT NULL UNIQUE,
     is_active BOOLEAN DEFAULT TRUE,
@@ -114,11 +114,11 @@ CREATE TABLE sessions (
 
 -- Create api_keys table with ULID (AUTH DOMAIN)
 CREATE TABLE api_keys (
-    id CHAR(26) PRIMARY KEY,
-    user_id CHAR(26) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    organization_id CHAR(26) REFERENCES organizations(id) ON DELETE CASCADE,
-    project_id CHAR(26) REFERENCES projects(id) ON DELETE CASCADE,
-    environment_id CHAR(26) REFERENCES environments(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+    environment_id UUID REFERENCES environments(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     key_hash VARCHAR(255) NOT NULL UNIQUE,
     key_prefix VARCHAR(8) NOT NULL,
@@ -134,8 +134,8 @@ CREATE TABLE api_keys (
 
 -- Create roles table (AUTH DOMAIN)
 CREATE TABLE roles (
-    id CHAR(26) PRIMARY KEY,
-    organization_id CHAR(26) REFERENCES organizations(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     display_name VARCHAR(255) NOT NULL,
     description TEXT,
@@ -156,7 +156,7 @@ ALTER TABLE user_invitations ADD CONSTRAINT fk_user_invitations_role_id
 
 -- Create permissions table (AUTH DOMAIN)
 CREATE TABLE permissions (
-    id CHAR(26) PRIMARY KEY,
+    id UUID PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
     display_name VARCHAR(255) NOT NULL,
     description TEXT,
@@ -168,17 +168,17 @@ CREATE TABLE permissions (
 
 -- Create role_permissions table (AUTH DOMAIN)
 CREATE TABLE role_permissions (
-    role_id CHAR(26) NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-    permission_id CHAR(26) NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
+    role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    permission_id UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     PRIMARY KEY (role_id, permission_id)
 );
 
 -- Create audit_logs table (AUTH DOMAIN)
 CREATE TABLE audit_logs (
-    id CHAR(26) PRIMARY KEY,
-    user_id CHAR(26) REFERENCES users(id) ON DELETE SET NULL,
-    organization_id CHAR(26) REFERENCES organizations(id) ON DELETE SET NULL,
+    id UUID PRIMARY KEY,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    organization_id UUID REFERENCES organizations(id) ON DELETE SET NULL,
     action VARCHAR(255) NOT NULL,
     resource VARCHAR(100) NOT NULL,
     resource_id VARCHAR(255),
@@ -190,8 +190,8 @@ CREATE TABLE audit_logs (
 
 -- Create password_reset_tokens table (AUTH DOMAIN)
 CREATE TABLE password_reset_tokens (
-    id CHAR(26) PRIMARY KEY,
-    user_id CHAR(26) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     token VARCHAR(255) NOT NULL UNIQUE,
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
     used BOOLEAN DEFAULT FALSE,
@@ -201,8 +201,8 @@ CREATE TABLE password_reset_tokens (
 
 -- Create email_verification_tokens table (AUTH DOMAIN)
 CREATE TABLE email_verification_tokens (
-    id CHAR(26) PRIMARY KEY,
-    user_id CHAR(26) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     token VARCHAR(255) NOT NULL UNIQUE,
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
     used BOOLEAN DEFAULT FALSE,
@@ -212,7 +212,7 @@ CREATE TABLE email_verification_tokens (
 
 -- Create user_profiles table (USER DOMAIN)
 CREATE TABLE user_profiles (
-    user_id CHAR(26) PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     bio TEXT,
     location VARCHAR(100),
     website VARCHAR(500),
@@ -228,7 +228,7 @@ CREATE TABLE user_profiles (
 
 -- Create user_preferences table (USER DOMAIN)
 CREATE TABLE user_preferences (
-    user_id CHAR(26) PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     email_notifications BOOLEAN DEFAULT true,
     push_notifications BOOLEAN DEFAULT true,
     marketing_emails BOOLEAN DEFAULT false,

@@ -3,9 +3,10 @@ package organization
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	orgDomain "brokle/internal/core/domain/organization"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
 )
 
 // organizationSettingsService implements orgDomain.OrganizationSettingsService
@@ -26,7 +27,7 @@ func NewOrganizationSettingsService(
 }
 
 // CreateSetting creates a new organization setting
-func (s *organizationSettingsService) CreateSetting(ctx context.Context, orgID ulid.ULID, userID ulid.ULID, req *orgDomain.CreateOrganizationSettingRequest) (*orgDomain.OrganizationSettings, error) {
+func (s *organizationSettingsService) CreateSetting(ctx context.Context, orgID uuid.UUID, userID uuid.UUID, req *orgDomain.CreateOrganizationSettingRequest) (*orgDomain.OrganizationSettings, error) {
 	// Validate user access
 	if err := s.ValidateSettingsAccess(ctx, userID, orgID, "create"); err != nil {
 		return nil, err
@@ -55,17 +56,17 @@ func (s *organizationSettingsService) CreateSetting(ctx context.Context, orgID u
 }
 
 // GetSetting retrieves a specific organization setting
-func (s *organizationSettingsService) GetSetting(ctx context.Context, orgID ulid.ULID, key string) (*orgDomain.OrganizationSettings, error) {
+func (s *organizationSettingsService) GetSetting(ctx context.Context, orgID uuid.UUID, key string) (*orgDomain.OrganizationSettings, error) {
 	return s.settingsRepo.GetByKey(ctx, orgID, key)
 }
 
 // GetAllSettings retrieves all settings for an organization as a map
-func (s *organizationSettingsService) GetAllSettings(ctx context.Context, orgID ulid.ULID) (map[string]interface{}, error) {
+func (s *organizationSettingsService) GetAllSettings(ctx context.Context, orgID uuid.UUID) (map[string]interface{}, error) {
 	return s.settingsRepo.GetSettingsMap(ctx, orgID)
 }
 
 // UpdateSetting updates an existing organization setting
-func (s *organizationSettingsService) UpdateSetting(ctx context.Context, orgID ulid.ULID, key string, userID ulid.ULID, req *orgDomain.UpdateOrganizationSettingRequest) (*orgDomain.OrganizationSettings, error) {
+func (s *organizationSettingsService) UpdateSetting(ctx context.Context, orgID uuid.UUID, key string, userID uuid.UUID, req *orgDomain.UpdateOrganizationSettingRequest) (*orgDomain.OrganizationSettings, error) {
 	// Validate user access
 	if err := s.ValidateSettingsAccess(ctx, userID, orgID, "update"); err != nil {
 		return nil, err
@@ -90,7 +91,7 @@ func (s *organizationSettingsService) UpdateSetting(ctx context.Context, orgID u
 }
 
 // DeleteSetting deletes an organization setting
-func (s *organizationSettingsService) DeleteSetting(ctx context.Context, orgID ulid.ULID, key string, userID ulid.ULID) error {
+func (s *organizationSettingsService) DeleteSetting(ctx context.Context, orgID uuid.UUID, key string, userID uuid.UUID) error {
 	// Validate user access
 	if err := s.ValidateSettingsAccess(ctx, userID, orgID, "delete"); err != nil {
 		return err
@@ -110,7 +111,7 @@ func (s *organizationSettingsService) DeleteSetting(ctx context.Context, orgID u
 }
 
 // UpsertSetting creates or updates a setting
-func (s *organizationSettingsService) UpsertSetting(ctx context.Context, orgID ulid.ULID, key string, value interface{}, userID ulid.ULID) (*orgDomain.OrganizationSettings, error) {
+func (s *organizationSettingsService) UpsertSetting(ctx context.Context, orgID uuid.UUID, key string, value interface{}, userID uuid.UUID) (*orgDomain.OrganizationSettings, error) {
 	// Validate user access
 	if err := s.ValidateSettingsAccess(ctx, userID, orgID, "upsert"); err != nil {
 		return nil, err
@@ -125,7 +126,7 @@ func (s *organizationSettingsService) UpsertSetting(ctx context.Context, orgID u
 }
 
 // CreateMultipleSettings creates multiple settings in bulk
-func (s *organizationSettingsService) CreateMultipleSettings(ctx context.Context, orgID ulid.ULID, userID ulid.ULID, settings map[string]interface{}) error {
+func (s *organizationSettingsService) CreateMultipleSettings(ctx context.Context, orgID uuid.UUID, userID uuid.UUID, settings map[string]interface{}) error {
 	// Validate user access
 	if err := s.ValidateSettingsAccess(ctx, userID, orgID, "bulk_create"); err != nil {
 		return err
@@ -148,7 +149,7 @@ func (s *organizationSettingsService) CreateMultipleSettings(ctx context.Context
 }
 
 // GetSettingsByKeys retrieves specific settings by keys
-func (s *organizationSettingsService) GetSettingsByKeys(ctx context.Context, orgID ulid.ULID, keys []string) (map[string]interface{}, error) {
+func (s *organizationSettingsService) GetSettingsByKeys(ctx context.Context, orgID uuid.UUID, keys []string) (map[string]interface{}, error) {
 	settings, err := s.settingsRepo.GetByKeys(ctx, orgID, keys)
 	if err != nil {
 		return nil, appErrors.NewInternalError("Failed to get settings by keys", err)
@@ -168,7 +169,7 @@ func (s *organizationSettingsService) GetSettingsByKeys(ctx context.Context, org
 }
 
 // DeleteMultipleSettings deletes multiple settings by keys
-func (s *organizationSettingsService) DeleteMultipleSettings(ctx context.Context, orgID ulid.ULID, keys []string, userID ulid.ULID) error {
+func (s *organizationSettingsService) DeleteMultipleSettings(ctx context.Context, orgID uuid.UUID, keys []string, userID uuid.UUID) error {
 	// Validate user access
 	if err := s.ValidateSettingsAccess(ctx, userID, orgID, "bulk_delete"); err != nil {
 		return err
@@ -182,7 +183,7 @@ func (s *organizationSettingsService) DeleteMultipleSettings(ctx context.Context
 }
 
 // ValidateSettingsAccess validates if user can perform settings operations
-func (s *organizationSettingsService) ValidateSettingsAccess(ctx context.Context, userID, orgID ulid.ULID, operation string) error {
+func (s *organizationSettingsService) ValidateSettingsAccess(ctx context.Context, userID, orgID uuid.UUID, operation string) error {
 	// Check if user is a member of the organization
 	isMember, err := s.memberRepo.IsMember(ctx, userID, orgID)
 	if err != nil {
@@ -198,13 +199,13 @@ func (s *organizationSettingsService) ValidateSettingsAccess(ctx context.Context
 }
 
 // CanUserManageSettings checks if user can manage organization settings
-func (s *organizationSettingsService) CanUserManageSettings(ctx context.Context, userID, orgID ulid.ULID) (bool, error) {
+func (s *organizationSettingsService) CanUserManageSettings(ctx context.Context, userID, orgID uuid.UUID) (bool, error) {
 	err := s.ValidateSettingsAccess(ctx, userID, orgID, "manage")
 	return err == nil, nil
 }
 
 // ResetToDefaults resets organization settings to default values
-func (s *organizationSettingsService) ResetToDefaults(ctx context.Context, orgID ulid.ULID, userID ulid.ULID) error {
+func (s *organizationSettingsService) ResetToDefaults(ctx context.Context, orgID uuid.UUID, userID uuid.UUID) error {
 	// Validate user access
 	if err := s.ValidateSettingsAccess(ctx, userID, orgID, "reset"); err != nil {
 		return err
@@ -231,7 +232,7 @@ func (s *organizationSettingsService) ResetToDefaults(ctx context.Context, orgID
 }
 
 // ExportSettings exports all organization settings
-func (s *organizationSettingsService) ExportSettings(ctx context.Context, orgID ulid.ULID, userID ulid.ULID) (map[string]interface{}, error) {
+func (s *organizationSettingsService) ExportSettings(ctx context.Context, orgID uuid.UUID, userID uuid.UUID) (map[string]interface{}, error) {
 	// Validate user access
 	if err := s.ValidateSettingsAccess(ctx, userID, orgID, "export"); err != nil {
 		return nil, err
@@ -246,7 +247,7 @@ func (s *organizationSettingsService) ExportSettings(ctx context.Context, orgID 
 }
 
 // ImportSettings imports organization settings
-func (s *organizationSettingsService) ImportSettings(ctx context.Context, orgID ulid.ULID, userID ulid.ULID, settings map[string]interface{}) error {
+func (s *organizationSettingsService) ImportSettings(ctx context.Context, orgID uuid.UUID, userID uuid.UUID, settings map[string]interface{}) error {
 	// Validate user access
 	if err := s.ValidateSettingsAccess(ctx, userID, orgID, "import"); err != nil {
 		return err

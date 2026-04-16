@@ -3,7 +3,9 @@ package comment
 import (
 	"time"
 
-	"brokle/pkg/ulid"
+	"github.com/google/uuid"
+
+	"brokle/pkg/uid"
 
 	"gorm.io/gorm"
 )
@@ -25,14 +27,14 @@ func (e EntityType) IsValid() bool {
 }
 
 type Comment struct {
-	ID         ulid.ULID      `json:"id" gorm:"type:char(26);primaryKey"`
+	ID         uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey"`
 	EntityType EntityType     `json:"entity_type" gorm:"type:comment_entity_type;not null;default:'trace'"`
 	EntityID   string         `json:"entity_id" gorm:"type:varchar(64);not null"` // trace_id or span_id
-	ProjectID  ulid.ULID      `json:"project_id" gorm:"type:char(26);not null"`
-	ParentID   *ulid.ULID     `json:"parent_id,omitempty" gorm:"type:char(26)"`   // For reply threading (one level deep)
+	ProjectID  uuid.UUID      `json:"project_id" gorm:"type:uuid;not null"`
+	ParentID   *uuid.UUID     `json:"parent_id,omitempty" gorm:"type:uuid"` // For reply threading (one level deep)
 	Content    string         `json:"content" gorm:"type:text;not null"`
-	CreatedBy  *ulid.ULID     `json:"created_by" gorm:"type:char(26)"`
-	UpdatedBy  *ulid.ULID     `json:"updated_by,omitempty" gorm:"type:char(26)"`
+	CreatedBy  *uuid.UUID     `json:"created_by" gorm:"type:uuid"`
+	UpdatedBy  *uuid.UUID     `json:"updated_by,omitempty" gorm:"type:uuid"`
 	CreatedAt  time.Time      `json:"created_at" gorm:"not null;autoCreateTime"`
 	UpdatedAt  time.Time      `json:"updated_at" gorm:"not null;autoUpdateTime"`
 	DeletedAt  gorm.DeletedAt `json:"-" gorm:"index"`
@@ -42,10 +44,10 @@ func (Comment) TableName() string {
 	return "trace_comments"
 }
 
-func NewComment(entityType EntityType, entityID string, projectID, createdBy ulid.ULID, content string) *Comment {
+func NewComment(entityType EntityType, entityID string, projectID, createdBy uuid.UUID, content string) *Comment {
 	now := time.Now()
 	return &Comment{
-		ID:         ulid.New(),
+		ID:         uid.New(),
 		EntityType: entityType,
 		EntityID:   entityID,
 		ProjectID:  projectID,
@@ -56,10 +58,10 @@ func NewComment(entityType EntityType, entityID string, projectID, createdBy uli
 	}
 }
 
-func NewReplyComment(entityType EntityType, entityID string, projectID, parentID, createdBy ulid.ULID, content string) *Comment {
+func NewReplyComment(entityType EntityType, entityID string, projectID, parentID, createdBy uuid.UUID, content string) *Comment {
 	now := time.Now()
 	return &Comment{
-		ID:         ulid.New(),
+		ID:         uid.New(),
 		EntityType: entityType,
 		EntityID:   entityID,
 		ProjectID:  projectID,
@@ -91,7 +93,7 @@ func (c *Comment) getCreatedByString() string {
 }
 
 type CommentUser struct {
-	ID        ulid.ULID `json:"id"`
+	ID        uuid.UUID `json:"id"`
 	Name      string    `json:"name"`
 	Email     string    `json:"email"`
 	AvatarURL *string   `json:"avatar_url,omitempty"`

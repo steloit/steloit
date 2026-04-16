@@ -6,10 +6,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/config"
 	"brokle/internal/core/domain/organization"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 )
 
 // SettingsHandler handles organization settings endpoints
@@ -82,7 +83,7 @@ type SettingsListResponse struct {
 // @Router /api/v1/organizations/{orgId}/settings [get]
 func (h *SettingsHandler) GetAllSettings(c *gin.Context) {
 	orgIDStr := c.Param("orgId")
-	orgID, err := ulid.Parse(orgIDStr)
+	orgID, err := uuid.Parse(orgIDStr)
 	if err != nil {
 		h.logger.Error("Invalid organization ID", "error", err)
 		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid_id", "Invalid organization ID", "")
@@ -97,7 +98,7 @@ func (h *SettingsHandler) GetAllSettings(c *gin.Context) {
 		return
 	}
 
-	_, ok := userIDValue.(ulid.ULID)
+	_, ok := userIDValue.(uuid.UUID)
 	if !ok {
 		h.logger.Error("Invalid user ID type in context")
 		response.ErrorWithStatus(c, http.StatusInternalServerError, "internal_error", "Internal error", "")
@@ -137,7 +138,7 @@ func (h *SettingsHandler) GetAllSettings(c *gin.Context) {
 // @Router /api/v1/organizations/{orgId}/settings/{key} [get]
 func (h *SettingsHandler) GetSetting(c *gin.Context) {
 	orgIDStr := c.Param("orgId")
-	orgID, err := ulid.Parse(orgIDStr)
+	orgID, err := uuid.Parse(orgIDStr)
 	if err != nil {
 		h.logger.Error("Invalid organization ID", "error", err)
 		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid_id", "Invalid organization ID", "")
@@ -190,7 +191,7 @@ func (h *SettingsHandler) GetSetting(c *gin.Context) {
 // @Router /api/v1/organizations/{orgId}/settings [post]
 func (h *SettingsHandler) CreateSetting(c *gin.Context) {
 	orgIDStr := c.Param("orgId")
-	orgID, err := ulid.Parse(orgIDStr)
+	orgID, err := uuid.Parse(orgIDStr)
 	if err != nil {
 		h.logger.Error("Invalid organization ID", "error", err)
 		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid_id", "Invalid organization ID", "")
@@ -211,7 +212,7 @@ func (h *SettingsHandler) CreateSetting(c *gin.Context) {
 		return
 	}
 
-	userID, ok := userIDValue.(ulid.ULID)
+	userID, ok := userIDValue.(uuid.UUID)
 	if !ok {
 		h.logger.Error("Invalid user ID type in context")
 		response.ErrorWithStatus(c, http.StatusInternalServerError, "internal_error", "Internal error", "")
@@ -264,7 +265,7 @@ func (h *SettingsHandler) CreateSetting(c *gin.Context) {
 // @Router /api/v1/organizations/{orgId}/settings/{key} [put]
 func (h *SettingsHandler) UpdateSetting(c *gin.Context) {
 	orgIDStr := c.Param("orgId")
-	orgID, err := ulid.Parse(orgIDStr)
+	orgID, err := uuid.Parse(orgIDStr)
 	if err != nil {
 		h.logger.Error("Invalid organization ID", "error", err)
 		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid_id", "Invalid organization ID", "")
@@ -291,7 +292,7 @@ func (h *SettingsHandler) UpdateSetting(c *gin.Context) {
 		return
 	}
 
-	userID, ok := userIDValue.(ulid.ULID)
+	userID, ok := userIDValue.(uuid.UUID)
 	if !ok {
 		h.logger.Error("Invalid user ID type in context")
 		response.ErrorWithStatus(c, http.StatusInternalServerError, "internal_error", "Internal error", "")
@@ -330,7 +331,7 @@ func (h *SettingsHandler) UpdateSetting(c *gin.Context) {
 // @Router /api/v1/organizations/{orgId}/settings/{key} [delete]
 func (h *SettingsHandler) DeleteSetting(c *gin.Context) {
 	orgIDStr := c.Param("orgId")
-	orgID, err := ulid.Parse(orgIDStr)
+	orgID, err := uuid.Parse(orgIDStr)
 	if err != nil {
 		h.logger.Error("Invalid organization ID", "error", err)
 		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid_id", "Invalid organization ID", "")
@@ -351,7 +352,7 @@ func (h *SettingsHandler) DeleteSetting(c *gin.Context) {
 		return
 	}
 
-	userID, ok := userIDValue.(ulid.ULID)
+	userID, ok := userIDValue.(uuid.UUID)
 	if !ok {
 		h.logger.Error("Invalid user ID type in context")
 		response.ErrorWithStatus(c, http.StatusInternalServerError, "internal_error", "Internal error", "")

@@ -4,7 +4,7 @@
 -- Restore organization_id column
 
 -- Add organization_id column back
-ALTER TABLE api_keys ADD COLUMN organization_id CHAR(26);
+ALTER TABLE api_keys ADD COLUMN organization_id UUID;
 
 -- Populate organization_id from projects table
 UPDATE api_keys

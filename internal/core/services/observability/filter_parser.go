@@ -452,13 +452,13 @@ const (
 	TokenContains
 	TokenIn
 	// New token types for extended operators
-	TokenStarts   // "STARTS" keyword
-	TokenEnds     // "ENDS" keyword
-	TokenWith     // "WITH" keyword
-	TokenRegex    // "REGEX" keyword
-	TokenIs       // "IS" keyword
-	TokenEmpty    // "EMPTY" keyword
-	TokenSearch   // "~" operator
+	TokenStarts // "STARTS" keyword
+	TokenEnds   // "ENDS" keyword
+	TokenWith   // "WITH" keyword
+	TokenRegex  // "REGEX" keyword
+	TokenIs     // "IS" keyword
+	TokenEmpty  // "EMPTY" keyword
+	TokenSearch // "~" operator
 )
 
 // Token represents a lexical token.

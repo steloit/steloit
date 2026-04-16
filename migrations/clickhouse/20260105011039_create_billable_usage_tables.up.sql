@@ -5,8 +5,8 @@
 -- Billable Usage Hourly: Tracks spans, bytes, evaluations per hour
 CREATE TABLE IF NOT EXISTS billable_usage_hourly (
     -- Dimensions
-    organization_id String CODEC(ZSTD(1)),
-    project_id String CODEC(ZSTD(1)),
+    organization_id UUID CODEC(ZSTD(1)),
+    project_id UUID CODEC(ZSTD(1)),
     bucket_hour DateTime CODEC(Delta(4), ZSTD(1)),
 
     -- Billable Dimensions
@@ -29,8 +29,8 @@ SETTINGS index_granularity = 8192;
 -- Billable Usage Daily: Daily rollups for historical queries
 CREATE TABLE IF NOT EXISTS billable_usage_daily (
     -- Dimensions
-    organization_id String CODEC(ZSTD(1)),
-    project_id String CODEC(ZSTD(1)),
+    organization_id UUID CODEC(ZSTD(1)),
+    project_id UUID CODEC(ZSTD(1)),
     bucket_date Date CODEC(ZSTD(1)),
 
     -- Billable Dimensions

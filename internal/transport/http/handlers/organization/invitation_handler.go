@@ -6,10 +6,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/organization"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 )
 
 // InviteMemberRequestV2 represents the enhanced request to invite a member
@@ -98,7 +99,7 @@ type UserInvitationsResponse struct {
 // @Router /api/v1/organizations/{orgId}/invitations [post]
 func (h *Handler) CreateInvitation(c *gin.Context) {
 	orgIDStr := c.Param("orgId")
-	orgID, err := ulid.Parse(orgIDStr)
+	orgID, err := uuid.Parse(orgIDStr)
 	if err != nil {
 		response.Error(c, appErrors.NewValidationError("Invalid organization ID format", err.Error()))
 		return
@@ -117,7 +118,7 @@ func (h *Handler) CreateInvitation(c *gin.Context) {
 	}
 
 	// Parse role ID
-	roleID, err := ulid.Parse(req.RoleID)
+	roleID, err := uuid.Parse(req.RoleID)
 	if err != nil {
 		response.Error(c, appErrors.NewValidationError("Invalid role ID format", err.Error()))
 		return
@@ -187,7 +188,7 @@ func (h *Handler) CreateInvitation(c *gin.Context) {
 // @Router /api/v1/organizations/{orgId}/invitations [get]
 func (h *Handler) GetPendingInvitations(c *gin.Context) {
 	orgIDStr := c.Param("orgId")
-	orgID, err := ulid.Parse(orgIDStr)
+	orgID, err := uuid.Parse(orgIDStr)
 	if err != nil {
 		response.Error(c, appErrors.NewValidationError("Invalid organization ID format", err.Error()))
 		return
@@ -279,7 +280,7 @@ func (h *Handler) GetPendingInvitations(c *gin.Context) {
 // @Router /api/v1/organizations/{orgId}/invitations/{invitationId}/resend [post]
 func (h *Handler) ResendInvitation(c *gin.Context) {
 	invitationIDStr := c.Param("invitationId")
-	invitationID, err := ulid.Parse(invitationIDStr)
+	invitationID, err := uuid.Parse(invitationIDStr)
 	if err != nil {
 		response.Error(c, appErrors.NewValidationError("Invalid invitation ID format", err.Error()))
 		return
@@ -349,7 +350,7 @@ func (h *Handler) ResendInvitation(c *gin.Context) {
 // @Router /api/v1/organizations/{orgId}/invitations/{invitationId} [delete]
 func (h *Handler) RevokeInvitation(c *gin.Context) {
 	invitationIDStr := c.Param("invitationId")
-	invitationID, err := ulid.Parse(invitationIDStr)
+	invitationID, err := uuid.Parse(invitationIDStr)
 	if err != nil {
 		response.Error(c, appErrors.NewValidationError("Invalid invitation ID format", err.Error()))
 		return
@@ -529,17 +530,17 @@ func (h *Handler) GetUserInvitations(c *gin.Context) {
 }
 
 // Helper function to get user ID from context
-func (h *Handler) getUserIDFromContext(c *gin.Context) (ulid.ULID, error) {
+func (h *Handler) getUserIDFromContext(c *gin.Context) (uuid.UUID, error) {
 	userIDValue, exists := c.Get("user_id")
 	if !exists {
 		response.Unauthorized(c, "Authentication required")
-		return ulid.ULID{}, errUnauthorized
+		return uuid.UUID{}, errUnauthorized
 	}
 
-	userID, ok := userIDValue.(ulid.ULID)
+	userID, ok := userIDValue.(uuid.UUID)
 	if !ok {
 		response.InternalServerError(c, "Internal error")
-		return ulid.ULID{}, errInternalServer
+		return uuid.UUID{}, errInternalServer
 	}
 
 	return userID, nil

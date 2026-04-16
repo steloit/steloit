@@ -3,7 +3,7 @@
 
 -- Dashboard templates for pre-defined dashboard configurations
 CREATE TABLE dashboard_templates (
-    id VARCHAR(26) PRIMARY KEY,
+    id UUID PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     description TEXT,
     category VARCHAR(100) NOT NULL,

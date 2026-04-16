@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/analytics"
 	"brokle/internal/core/domain/credentials"
 	"brokle/internal/core/domain/organization"
-	"brokle/pkg/ulid"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -185,7 +186,7 @@ func (s *overviewService) GetOverview(ctx context.Context, filter *analytics.Ove
 }
 
 // getChecklistStatus retrieves the onboarding checklist status for a project
-func (s *overviewService) getChecklistStatus(ctx context.Context, projectID ulid.ULID) (analytics.ChecklistStatus, error) {
+func (s *overviewService) getChecklistStatus(ctx context.Context, projectID uuid.UUID) (analytics.ChecklistStatus, error) {
 	status := analytics.ChecklistStatus{
 		HasProject: true, // Always true - they're viewing the page
 	}

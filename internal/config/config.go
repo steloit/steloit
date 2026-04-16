@@ -240,28 +240,28 @@ type ArchiveConfig struct {
 
 // WorkersConfig contains background worker configuration.
 type WorkersConfig struct {
-	AnalyticsWorkers         int              `mapstructure:"analytics_workers"`
-	NotificationWorkers      int              `mapstructure:"notification_workers"`
-	UsageSyncIntervalMinutes int              `mapstructure:"usage_sync_interval_minutes"` // Billing usage sync interval (default: 5)
-	AlertDeduplicationHours  int              `mapstructure:"alert_deduplication_hours"`   // Alert deduplication window (default: 24)
+	AnalyticsWorkers         int                   `mapstructure:"analytics_workers"`
+	NotificationWorkers      int                   `mapstructure:"notification_workers"`
+	UsageSyncIntervalMinutes int                   `mapstructure:"usage_sync_interval_minutes"` // Billing usage sync interval (default: 5)
+	AlertDeduplicationHours  int                   `mapstructure:"alert_deduplication_hours"`   // Alert deduplication window (default: 24)
 	EvaluatorWorker          EvaluatorWorkerConfig `mapstructure:"evaluator_worker"`
 }
 
 // EvaluatorWorkerConfig contains evaluator worker configuration.
 type EvaluatorWorkerConfig struct {
-	BatchSize          int    `mapstructure:"batch_size"`
-	BlockDurationMs    int    `mapstructure:"block_duration_ms"`
-	MaxRetries         int    `mapstructure:"max_retries"`
-	RetryBackoffMs     int    `mapstructure:"retry_backoff_ms"`
-	DiscoveryInterval  string `mapstructure:"discovery_interval"`
-	MaxStreamsPerRead  int    `mapstructure:"max_streams_per_read"`
-	EvaluatorCacheTTL  string `mapstructure:"evaluator_cache_ttl"`
+	BatchSize         int    `mapstructure:"batch_size"`
+	BlockDurationMs   int    `mapstructure:"block_duration_ms"`
+	MaxRetries        int    `mapstructure:"max_retries"`
+	RetryBackoffMs    int    `mapstructure:"retry_backoff_ms"`
+	DiscoveryInterval string `mapstructure:"discovery_interval"`
+	MaxStreamsPerRead int    `mapstructure:"max_streams_per_read"`
+	EvaluatorCacheTTL string `mapstructure:"evaluator_cache_ttl"`
 }
 
 // NotificationsConfig contains notification system configuration.
 type NotificationsConfig struct {
-	AlertWebhookURL            string `mapstructure:"alert_webhook_url"`
-	WebsiteNotificationEmail   string `mapstructure:"website_notification_email"`
+	AlertWebhookURL          string `mapstructure:"alert_webhook_url"`
+	WebsiteNotificationEmail string `mapstructure:"website_notification_email"`
 }
 
 // BlobStorageConfig contains blob storage configuration for large payload offloading

@@ -7,7 +7,7 @@ import (
 
 	"google.golang.org/grpc/metadata"
 
-	"brokle/pkg/ulid"
+	"github.com/google/uuid"
 )
 
 // Context keys for storing authentication data
@@ -56,13 +56,13 @@ func extractAPIKeyFromMetadata(ctx context.Context) (string, error) {
 
 // extractProjectIDFromContext retrieves project ID from authenticated context
 // Set by auth interceptor after successful API key validation
-func extractProjectIDFromContext(ctx context.Context) (*ulid.ULID, error) {
+func extractProjectIDFromContext(ctx context.Context) (*uuid.UUID, error) {
 	val := ctx.Value(contextKeyProjectID)
 	if val == nil {
 		return nil, fmt.Errorf("project_id not found in context (authentication may have failed)")
 	}
 
-	projectID, ok := val.(*ulid.ULID)
+	projectID, ok := val.(*uuid.UUID)
 	if !ok {
 		return nil, fmt.Errorf("project_id has invalid type in context")
 	}
@@ -71,13 +71,13 @@ func extractProjectIDFromContext(ctx context.Context) (*ulid.ULID, error) {
 }
 
 // extractAPIKeyIDFromContext retrieves API key ID from authenticated context
-func extractAPIKeyIDFromContext(ctx context.Context) (*ulid.ULID, error) {
+func extractAPIKeyIDFromContext(ctx context.Context) (*uuid.UUID, error) {
 	val := ctx.Value(contextKeyAPIKeyID)
 	if val == nil {
 		return nil, fmt.Errorf("api_key_id not found in context")
 	}
 
-	apiKeyID, ok := val.(*ulid.ULID)
+	apiKeyID, ok := val.(*uuid.UUID)
 	if !ok {
 		return nil, fmt.Errorf("api_key_id has invalid type in context")
 	}
@@ -87,7 +87,7 @@ func extractAPIKeyIDFromContext(ctx context.Context) (*ulid.ULID, error) {
 
 // storeAuthDataInContext stores authentication data in context
 // Used by auth interceptor after successful validation
-func storeAuthDataInContext(ctx context.Context, projectID, apiKeyID *ulid.ULID) context.Context {
+func storeAuthDataInContext(ctx context.Context, projectID, apiKeyID *uuid.UUID) context.Context {
 	ctx = context.WithValue(ctx, contextKeyProjectID, projectID)
 	ctx = context.WithValue(ctx, contextKeyAPIKeyID, apiKeyID)
 	return ctx

@@ -1,17 +1,19 @@
 package observability
 
 import (
-	"log/slog"
 	"context"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"time"
 
 	commonpb "go.opentelemetry.io/proto/otlp/common/v1"
 	metricspb "go.opentelemetry.io/proto/otlp/metrics/v1"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/observability"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 // OTLPMetricsConverterService handles conversion of OTLP metrics to Brokle domain entities
@@ -32,7 +34,7 @@ func NewOTLPMetricsConverterService(logger *slog.Logger) *OTLPMetricsConverterSe
 func (s *OTLPMetricsConverterService) ConvertMetricsRequest(
 	ctx context.Context,
 	metricsData *metricspb.MetricsData,
-	projectID ulid.ULID,
+	projectID uuid.UUID,
 ) ([]*observability.TelemetryEventRequest, error) {
 	var events []*observability.TelemetryEventRequest
 
@@ -144,7 +146,7 @@ func (s *OTLPMetricsConverterService) convertSum(
 	scopeName, scopeVersion string,
 	scopeAttrs map[string]string,
 	resourceSchemaURL, scopeSchemaURL string,
-	projectID ulid.ULID,
+	projectID uuid.UUID,
 ) []*observability.TelemetryEventRequest {
 	var events []*observability.TelemetryEventRequest
 
@@ -203,7 +205,7 @@ func (s *OTLPMetricsConverterService) convertSum(
 		timestamp := entity.TimeUnix
 		events = append(events, &observability.TelemetryEventRequest{
 			EventType: observability.TelemetryEventTypeMetricSum,
-			EventID:   ulid.New(),
+			EventID:   uid.New(),
 			Timestamp: &timestamp,
 			TraceID:   "", // Metrics don't have trace correlation by default
 			SpanID:    "", // Metrics don't have span correlation by default
@@ -222,7 +224,7 @@ func (s *OTLPMetricsConverterService) convertGauge(
 	scopeName, scopeVersion string,
 	scopeAttrs map[string]string,
 	resourceSchemaURL, scopeSchemaURL string,
-	projectID ulid.ULID,
+	projectID uuid.UUID,
 ) []*observability.TelemetryEventRequest {
 	var events []*observability.TelemetryEventRequest
 
@@ -280,7 +282,7 @@ func (s *OTLPMetricsConverterService) convertGauge(
 		timestamp := entity.TimeUnix
 		events = append(events, &observability.TelemetryEventRequest{
 			EventType: observability.TelemetryEventTypeMetricGauge,
-			EventID:   ulid.New(),
+			EventID:   uid.New(),
 			Timestamp: &timestamp,
 			TraceID:   "", // Metrics don't have trace correlation by default
 			SpanID:    "", // Metrics don't have span correlation by default
@@ -299,7 +301,7 @@ func (s *OTLPMetricsConverterService) convertHistogram(
 	scopeName, scopeVersion string,
 	scopeAttrs map[string]string,
 	resourceSchemaURL, scopeSchemaURL string,
-	projectID ulid.ULID,
+	projectID uuid.UUID,
 ) []*observability.TelemetryEventRequest {
 	var events []*observability.TelemetryEventRequest
 
@@ -378,7 +380,7 @@ func (s *OTLPMetricsConverterService) convertHistogram(
 		timestamp := entity.TimeUnix
 		events = append(events, &observability.TelemetryEventRequest{
 			EventType: observability.TelemetryEventTypeMetricHistogram,
-			EventID:   ulid.New(),
+			EventID:   uid.New(),
 			Timestamp: &timestamp,
 			TraceID:   "", // Metrics don't have trace correlation by default
 			SpanID:    "", // Metrics don't have span correlation by default
@@ -398,7 +400,7 @@ func (s *OTLPMetricsConverterService) convertExponentialHistogram(
 	scopeName, scopeVersion string,
 	scopeAttrs map[string]string,
 	resourceSchemaURL, scopeSchemaURL string,
-	projectID ulid.ULID,
+	projectID uuid.UUID,
 ) []*observability.TelemetryEventRequest {
 	var events []*observability.TelemetryEventRequest
 
@@ -499,7 +501,7 @@ func (s *OTLPMetricsConverterService) convertExponentialHistogram(
 		timestamp := entity.TimeUnix
 		events = append(events, &observability.TelemetryEventRequest{
 			EventType: observability.TelemetryEventTypeMetricExponentialHistogram,
-			EventID:   ulid.New(),
+			EventID:   uid.New(),
 			Timestamp: &timestamp,
 			TraceID:   "", // Metrics don't have trace correlation by default
 			SpanID:    "", // Metrics don't have span correlation by default

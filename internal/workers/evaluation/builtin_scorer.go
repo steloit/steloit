@@ -129,10 +129,10 @@ func (s *BuiltinScorer) executeContains(text string, config map[string]any) (*Sc
 	return &ScorerResult{
 		Scores: []ScoreOutput{
 			{
-				Name:     scoreName,
-				Value:    &value,
-				Type: "BOOLEAN",
-				Reason:   &reason,
+				Name:   scoreName,
+				Value:  &value,
+				Type:   "BOOLEAN",
+				Reason: &reason,
 			},
 		},
 	}, nil
@@ -177,10 +177,10 @@ func (s *BuiltinScorer) executeJSONValid(text string) (*ScorerResult, error) {
 	return &ScorerResult{
 		Scores: []ScoreOutput{
 			{
-				Name:     "json_valid",
-				Value:    &value,
-				Type: "BOOLEAN",
-				Reason:   &reason,
+				Name:   "json_valid",
+				Value:  &value,
+				Type:   "BOOLEAN",
+				Reason: &reason,
 			},
 		},
 	}, nil
@@ -217,10 +217,10 @@ func (s *BuiltinScorer) executeLengthCheck(text string, config map[string]any) (
 	return &ScorerResult{
 		Scores: []ScoreOutput{
 			{
-				Name:     scoreName,
-				Value:    &value,
-				Type: "BOOLEAN",
-				Reason:   &reason,
+				Name:   scoreName,
+				Value:  &value,
+				Type:   "BOOLEAN",
+				Reason: &reason,
 			},
 		},
 	}, nil
@@ -252,10 +252,10 @@ func (s *BuiltinScorer) executeStartsWith(text string, config map[string]any) (*
 	return &ScorerResult{
 		Scores: []ScoreOutput{
 			{
-				Name:     scoreName,
-				Value:    &value,
-				Type: "BOOLEAN",
-				Reason:   &reason,
+				Name:   scoreName,
+				Value:  &value,
+				Type:   "BOOLEAN",
+				Reason: &reason,
 			},
 		},
 	}, nil
@@ -287,10 +287,10 @@ func (s *BuiltinScorer) executeEndsWith(text string, config map[string]any) (*Sc
 	return &ScorerResult{
 		Scores: []ScoreOutput{
 			{
-				Name:     scoreName,
-				Value:    &value,
-				Type: "BOOLEAN",
-				Reason:   &reason,
+				Name:   scoreName,
+				Value:  &value,
+				Type:   "BOOLEAN",
+				Reason: &reason,
 			},
 		},
 	}, nil
@@ -331,10 +331,10 @@ func (s *BuiltinScorer) executeEquals(text string, config map[string]any) (*Scor
 	return &ScorerResult{
 		Scores: []ScoreOutput{
 			{
-				Name:     scoreName,
-				Value:    &value,
-				Type: "BOOLEAN",
-				Reason:   &reason,
+				Name:   scoreName,
+				Value:  &value,
+				Type:   "BOOLEAN",
+				Reason: &reason,
 			},
 		},
 	}, nil
@@ -355,10 +355,10 @@ func (s *BuiltinScorer) executeNotEmpty(text string) (*ScorerResult, error) {
 	return &ScorerResult{
 		Scores: []ScoreOutput{
 			{
-				Name:     "not_empty",
-				Value:    &value,
-				Type: "BOOLEAN",
-				Reason:   &reason,
+				Name:   "not_empty",
+				Value:  &value,
+				Type:   "BOOLEAN",
+				Reason: &reason,
 			},
 		},
 	}, nil

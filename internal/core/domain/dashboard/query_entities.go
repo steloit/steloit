@@ -4,13 +4,13 @@ import (
 	"context"
 	"time"
 
-	"brokle/pkg/ulid"
+	"github.com/google/uuid"
 )
 
 // QueryExecutionRequest represents a request to execute widget queries
 type QueryExecutionRequest struct {
-	ProjectID      ulid.ULID              `json:"project_id"`
-	DashboardID    ulid.ULID              `json:"dashboard_id"`
+	ProjectID      uuid.UUID              `json:"project_id"`
+	DashboardID    uuid.UUID              `json:"dashboard_id"`
 	WidgetID       *string                `json:"widget_id,omitempty"` // nil = all widgets
 	TimeRange      *TimeRange             `json:"time_range,omitempty"`
 	ForceRefresh   bool                   `json:"force_refresh,omitempty"`
@@ -19,10 +19,10 @@ type QueryExecutionRequest struct {
 
 // VariableOptionsRequest represents a request to get variable options
 type VariableOptionsRequest struct {
-	ProjectID ulid.ULID      `json:"project_id"`
-	View      ViewType `json:"view"`
-	Dimension string         `json:"dimension"`
-	Limit     int            `json:"limit,omitempty"`
+	ProjectID uuid.UUID `json:"project_id"`
+	View      ViewType  `json:"view"`
+	Dimension string    `json:"dimension"`
+	Limit     int       `json:"limit,omitempty"`
 }
 
 // VariableOptionsResponse represents the response for variable options
@@ -40,31 +40,31 @@ type QueryResult struct {
 
 // QueryMetadata contains metadata about the query execution
 type QueryMetadata struct {
-	ExecutedAt     time.Time `json:"executed_at"`
-	DurationMs     int64     `json:"duration_ms"`
-	RowCount       int       `json:"row_count"`
-	Cached         bool      `json:"cached"`
+	ExecutedAt     time.Time  `json:"executed_at"`
+	DurationMs     int64      `json:"duration_ms"`
+	RowCount       int        `json:"row_count"`
+	Cached         bool       `json:"cached"`
 	CacheExpiresAt *time.Time `json:"cache_expires_at,omitempty"`
 }
 
 // DashboardQueryResults contains results for all widgets in a dashboard
 type DashboardQueryResults struct {
-	DashboardID ulid.ULID               `json:"dashboard_id"`
+	DashboardID uuid.UUID               `json:"dashboard_id"`
 	Results     map[string]*QueryResult `json:"results"` // keyed by widget_id
 	ExecutedAt  time.Time               `json:"executed_at"`
 }
 
 // TraceListItem represents a single trace in trace_list widget
 type TraceListItem struct {
-	TraceID      string          `json:"trace_id"`
-	Name         string          `json:"name"`
-	StartTime    time.Time       `json:"start_time"`
-	DurationNano int64           `json:"duration_nano"`
-	StatusCode   int             `json:"status_code"`
-	TotalCost    *float64        `json:"total_cost,omitempty"`
-	ModelName    *string         `json:"model_name,omitempty"`
-	ProviderName *string         `json:"provider_name,omitempty"`
-	ServiceName  *string         `json:"service_name,omitempty"`
+	TraceID      string    `json:"trace_id"`
+	Name         string    `json:"name"`
+	StartTime    time.Time `json:"start_time"`
+	DurationNano int64     `json:"duration_nano"`
+	StatusCode   int       `json:"status_code"`
+	TotalCost    *float64  `json:"total_cost,omitempty"`
+	ModelName    *string   `json:"model_name,omitempty"`
+	ProviderName *string   `json:"provider_name,omitempty"`
+	ServiceName  *string   `json:"service_name,omitempty"`
 }
 
 // HistogramBucket represents a single bucket in a histogram
@@ -97,10 +97,10 @@ type ViewDefinitionResponse struct {
 
 // ViewDefinitionPublic is the public representation of a view definition
 type ViewDefinitionPublic struct {
-	Name        ViewType              `json:"name"`
-	Description string                `json:"description"`
-	Measures    []MeasurePublic       `json:"measures"`
-	Dimensions  []DimensionPublic     `json:"dimensions"`
+	Name        ViewType          `json:"name"`
+	Description string            `json:"description"`
+	Measures    []MeasurePublic   `json:"measures"`
+	Dimensions  []DimensionPublic `json:"dimensions"`
 }
 
 // MeasurePublic is the public representation of a measure
@@ -124,7 +124,7 @@ type DimensionPublic struct {
 // WidgetQueryService defines the interface for executing widget queries
 type WidgetQueryService interface {
 	// ExecuteWidgetQuery executes a single widget query
-	ExecuteWidgetQuery(ctx context.Context, projectID ulid.ULID, widget *Widget, timeRange *TimeRange) (*QueryResult, error)
+	ExecuteWidgetQuery(ctx context.Context, projectID uuid.UUID, widget *Widget, timeRange *TimeRange) (*QueryResult, error)
 
 	// ExecuteDashboardQueries executes all widget queries for a dashboard
 	ExecuteDashboardQueries(ctx context.Context, req *QueryExecutionRequest) (*DashboardQueryResults, error)

@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/evaluation"
 	"brokle/pkg/pagination"
-	"brokle/pkg/ulid"
 
 	"gorm.io/gorm"
 )
@@ -30,7 +31,7 @@ func (r *EvaluatorRepository) Create(ctx context.Context, evaluator *evaluation.
 	return nil
 }
 
-func (r *EvaluatorRepository) GetByID(ctx context.Context, id ulid.ULID, projectID ulid.ULID) (*evaluation.Evaluator, error) {
+func (r *EvaluatorRepository) GetByID(ctx context.Context, id uuid.UUID, projectID uuid.UUID) (*evaluation.Evaluator, error) {
 	var evaluator evaluation.Evaluator
 	result := r.db.WithContext(ctx).
 		Where("id = ? AND project_id = ?", id.String(), projectID.String()).
@@ -45,7 +46,7 @@ func (r *EvaluatorRepository) GetByID(ctx context.Context, id ulid.ULID, project
 	return &evaluator, nil
 }
 
-func (r *EvaluatorRepository) GetByProjectID(ctx context.Context, projectID ulid.ULID, filter *evaluation.EvaluatorFilter, params pagination.Params) ([]*evaluation.Evaluator, int64, error) {
+func (r *EvaluatorRepository) GetByProjectID(ctx context.Context, projectID uuid.UUID, filter *evaluation.EvaluatorFilter, params pagination.Params) ([]*evaluation.Evaluator, int64, error) {
 	var evaluators []*evaluation.Evaluator
 	var total int64
 
@@ -83,7 +84,7 @@ func (r *EvaluatorRepository) GetByProjectID(ctx context.Context, projectID ulid
 	return evaluators, total, nil
 }
 
-func (r *EvaluatorRepository) GetActiveByProjectID(ctx context.Context, projectID ulid.ULID) ([]*evaluation.Evaluator, error) {
+func (r *EvaluatorRepository) GetActiveByProjectID(ctx context.Context, projectID uuid.UUID) ([]*evaluation.Evaluator, error) {
 	var evaluators []*evaluation.Evaluator
 	result := r.db.WithContext(ctx).
 		Where("project_id = ? AND status = ?", projectID.String(), evaluation.EvaluatorStatusActive).
@@ -114,7 +115,7 @@ func (r *EvaluatorRepository) Update(ctx context.Context, evaluator *evaluation.
 	return nil
 }
 
-func (r *EvaluatorRepository) Delete(ctx context.Context, id ulid.ULID, projectID ulid.ULID) error {
+func (r *EvaluatorRepository) Delete(ctx context.Context, id uuid.UUID, projectID uuid.UUID) error {
 	result := r.db.WithContext(ctx).
 		Where("id = ? AND project_id = ?", id.String(), projectID.String()).
 		Delete(&evaluation.Evaluator{})
@@ -129,7 +130,7 @@ func (r *EvaluatorRepository) Delete(ctx context.Context, id ulid.ULID, projectI
 	return nil
 }
 
-func (r *EvaluatorRepository) ExistsByName(ctx context.Context, projectID ulid.ULID, name string) (bool, error) {
+func (r *EvaluatorRepository) ExistsByName(ctx context.Context, projectID uuid.UUID, name string) (bool, error) {
 	var count int64
 	result := r.db.WithContext(ctx).
 		Model(&evaluation.Evaluator{}).

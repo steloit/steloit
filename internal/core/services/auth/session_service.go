@@ -5,11 +5,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/config"
 	authDomain "brokle/internal/core/domain/auth"
 	userDomain "brokle/internal/core/domain/user"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
 )
 
 // sessionService implements the auth.SessionService interface
@@ -36,12 +37,12 @@ func NewSessionService(
 }
 
 // GetSession retrieves a session by ID
-func (s *sessionService) GetSession(ctx context.Context, sessionID ulid.ULID) (*authDomain.UserSession, error) {
+func (s *sessionService) GetSession(ctx context.Context, sessionID uuid.UUID) (*authDomain.UserSession, error) {
 	return s.sessionRepo.GetByID(ctx, sessionID)
 }
 
 // RevokeSession revokes a specific session
-func (s *sessionService) RevokeSession(ctx context.Context, sessionID ulid.ULID) error {
+func (s *sessionService) RevokeSession(ctx context.Context, sessionID uuid.UUID) error {
 	_, err := s.sessionRepo.GetByID(ctx, sessionID)
 	if err != nil {
 		return appErrors.NewNotFoundError("Session not found")
@@ -56,12 +57,12 @@ func (s *sessionService) RevokeSession(ctx context.Context, sessionID ulid.ULID)
 }
 
 // GetUserSessions retrieves all sessions for a user
-func (s *sessionService) GetUserSessions(ctx context.Context, userID ulid.ULID) ([]*authDomain.UserSession, error) {
+func (s *sessionService) GetUserSessions(ctx context.Context, userID uuid.UUID) ([]*authDomain.UserSession, error) {
 	return s.sessionRepo.GetByUserID(ctx, userID)
 }
 
 // RevokeUserSessions revokes all sessions for a user
-func (s *sessionService) RevokeUserSessions(ctx context.Context, userID ulid.ULID) error {
+func (s *sessionService) RevokeUserSessions(ctx context.Context, userID uuid.UUID) error {
 	err := s.sessionRepo.RevokeUserSessions(ctx, userID)
 	if err != nil {
 		return appErrors.NewInternalError("Failed to revoke user sessions", err)
@@ -76,7 +77,7 @@ func (s *sessionService) CleanupExpiredSessions(ctx context.Context) error {
 }
 
 // GetActiveSessions retrieves only active sessions for a user
-func (s *sessionService) GetActiveSessions(ctx context.Context, userID ulid.ULID) ([]*authDomain.UserSession, error) {
+func (s *sessionService) GetActiveSessions(ctx context.Context, userID uuid.UUID) ([]*authDomain.UserSession, error) {
 	return s.sessionRepo.GetActiveSessionsByUserID(ctx, userID)
 }
 

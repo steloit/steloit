@@ -3,10 +3,11 @@ package comment
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/comment"
 	"brokle/internal/core/domain/user"
 	"brokle/internal/infrastructure/shared"
-	"brokle/pkg/ulid"
 
 	"gorm.io/gorm"
 )
@@ -23,7 +24,7 @@ func (r *ReactionRepository) getDB(ctx context.Context) *gorm.DB {
 	return shared.GetDB(ctx, r.db)
 }
 
-func (r *ReactionRepository) Toggle(ctx context.Context, commentID, userID ulid.ULID, emoji string) (bool, error) {
+func (r *ReactionRepository) Toggle(ctx context.Context, commentID, userID uuid.UUID, emoji string) (bool, error) {
 	// Check if reaction already exists
 	var existing comment.Reaction
 	result := r.getDB(ctx).WithContext(ctx).
@@ -52,7 +53,7 @@ func (r *ReactionRepository) Toggle(ctx context.Context, commentID, userID ulid.
 	return true, nil // Added
 }
 
-func (r *ReactionRepository) GetByComments(ctx context.Context, commentIDs []ulid.ULID, currentUserID *ulid.ULID) (map[string][]comment.ReactionSummary, error) {
+func (r *ReactionRepository) GetByComments(ctx context.Context, commentIDs []uuid.UUID, currentUserID *uuid.UUID) (map[string][]comment.ReactionSummary, error) {
 	if len(commentIDs) == 0 {
 		return make(map[string][]comment.ReactionSummary), nil
 	}
@@ -144,8 +145,8 @@ func (r *ReactionRepository) GetByComments(ctx context.Context, commentIDs []uli
 	return result, nil
 }
 
-func (r *ReactionRepository) GetByComment(ctx context.Context, commentID ulid.ULID, currentUserID *ulid.ULID) ([]comment.ReactionSummary, error) {
-	result, err := r.GetByComments(ctx, []ulid.ULID{commentID}, currentUserID)
+func (r *ReactionRepository) GetByComment(ctx context.Context, commentID uuid.UUID, currentUserID *uuid.UUID) ([]comment.ReactionSummary, error) {
+	result, err := r.GetByComments(ctx, []uuid.UUID{commentID}, currentUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +158,7 @@ func (r *ReactionRepository) GetByComment(ctx context.Context, commentID ulid.UL
 	return summaries, nil
 }
 
-func (r *ReactionRepository) CountUniqueEmojis(ctx context.Context, commentID ulid.ULID) (int, error) {
+func (r *ReactionRepository) CountUniqueEmojis(ctx context.Context, commentID uuid.UUID) (int, error) {
 	var count int64
 	if err := r.getDB(ctx).WithContext(ctx).
 		Model(&comment.Reaction{}).
@@ -169,7 +170,7 @@ func (r *ReactionRepository) CountUniqueEmojis(ctx context.Context, commentID ul
 	return int(count), nil
 }
 
-func (r *ReactionRepository) UserHasReacted(ctx context.Context, commentID, userID ulid.ULID, emoji string) (bool, error) {
+func (r *ReactionRepository) UserHasReacted(ctx context.Context, commentID, userID uuid.UUID, emoji string) (bool, error) {
 	var count int64
 	if err := r.getDB(ctx).WithContext(ctx).
 		Model(&comment.Reaction{}).

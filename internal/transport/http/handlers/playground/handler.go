@@ -8,13 +8,13 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"brokle/internal/config"
 	"brokle/internal/core/domain/organization"
 	playgroundDomain "brokle/internal/core/domain/playground"
 	"brokle/internal/transport/http/middleware"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
 )
 
 // Handler provides HTTP handlers for playground operations.
@@ -49,12 +49,12 @@ func (h *Handler) validateProjectAccess(c *gin.Context, projectIDStr *string) er
 		return appErrors.NewValidationError("project_id is required", "playground execution requires project_id")
 	}
 
-	projectID, err := ulid.Parse(*projectIDStr)
+	projectID, err := uuid.Parse(*projectIDStr)
 	if err != nil {
-		return appErrors.NewValidationError("Invalid project_id", "project_id must be a valid ULID")
+		return appErrors.NewValidationError("Invalid project_id", "project_id must be a valid UUID")
 	}
 
-	userID, exists := middleware.GetUserIDULID(c)
+	userID, exists := middleware.GetUserIDFromContext(c)
 	if !exists {
 		return appErrors.NewUnauthorizedError("User not authenticated")
 	}
@@ -83,9 +83,9 @@ func (h *Handler) validateSessionAccess(c *gin.Context, sessionIDStr *string) er
 		return nil
 	}
 
-	sessionID, err := ulid.Parse(*sessionIDStr)
+	sessionID, err := uuid.Parse(*sessionIDStr)
 	if err != nil {
-		return appErrors.NewValidationError("Invalid session_id", "session_id must be a valid ULID")
+		return appErrors.NewValidationError("Invalid session_id", "session_id must be a valid UUID")
 	}
 
 	session, err := h.playgroundService.GetSession(c.Request.Context(), sessionID)
@@ -93,7 +93,7 @@ func (h *Handler) validateSessionAccess(c *gin.Context, sessionIDStr *string) er
 		return appErrors.NewNotFoundError("Session not found")
 	}
 
-	userID, exists := middleware.GetUserIDULID(c)
+	userID, exists := middleware.GetUserIDFromContext(c)
 	if !exists {
 		return appErrors.NewUnauthorizedError("User not authenticated")
 	}

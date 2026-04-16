@@ -8,13 +8,15 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/annotation"
 	"brokle/internal/core/domain/common"
 	"brokle/internal/core/domain/evaluation"
 	"brokle/internal/core/domain/observability"
 	"brokle/internal/core/domain/organization"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 type itemService struct {
@@ -53,7 +55,7 @@ func NewItemService(
 
 // AddItems adds items to a queue.
 // Returns the count of items actually created (excluding duplicates).
-func (s *itemService) AddItems(ctx context.Context, queueID, projectID ulid.ULID, req *annotation.AddItemsBatchRequest) (int, error) {
+func (s *itemService) AddItems(ctx context.Context, queueID, projectID uuid.UUID, req *annotation.AddItemsBatchRequest) (int, error) {
 	// Verify queue exists and belongs to project
 	queue, err := s.queueRepo.GetByID(ctx, queueID, projectID)
 	if err != nil {
@@ -101,7 +103,7 @@ func (s *itemService) AddItems(ctx context.Context, queueID, projectID ulid.ULID
 }
 
 // ListItems retrieves items in a queue with optional filtering and pagination.
-func (s *itemService) ListItems(ctx context.Context, queueID, projectID ulid.ULID, filter *annotation.ItemFilter) ([]*annotation.QueueItem, int64, error) {
+func (s *itemService) ListItems(ctx context.Context, queueID, projectID uuid.UUID, filter *annotation.ItemFilter) ([]*annotation.QueueItem, int64, error) {
 	// Verify queue exists and belongs to project
 	_, err := s.queueRepo.GetByID(ctx, queueID, projectID)
 	if err != nil {
@@ -121,7 +123,7 @@ func (s *itemService) ListItems(ctx context.Context, queueID, projectID ulid.ULI
 
 // ClaimNext claims the next available item for the user to annotate.
 // Follows Langfuse pattern: finds first pending item where lock is available or reclaimable.
-func (s *itemService) ClaimNext(ctx context.Context, queueID, projectID, userID ulid.ULID, seenItemIDs []ulid.ULID) (*annotation.QueueItem, error) {
+func (s *itemService) ClaimNext(ctx context.Context, queueID, projectID, userID uuid.UUID, seenItemIDs []uuid.UUID) (*annotation.QueueItem, error) {
 	// Verify queue exists and belongs to project
 	queue, err := s.queueRepo.GetByID(ctx, queueID, projectID)
 	if err != nil {
@@ -165,7 +167,7 @@ func (s *itemService) ClaimNext(ctx context.Context, queueID, projectID, userID 
 }
 
 // Complete marks an item as completed and submits the scores.
-func (s *itemService) Complete(ctx context.Context, itemID, queueID, projectID, userID ulid.ULID, req *annotation.CompleteItemRequest) error {
+func (s *itemService) Complete(ctx context.Context, itemID, queueID, projectID, userID uuid.UUID, req *annotation.CompleteItemRequest) error {
 	// Verify queue exists and belongs to project
 	queue, err := s.queueRepo.GetByID(ctx, queueID, projectID)
 	if err != nil {
@@ -232,7 +234,7 @@ func (s *itemService) submitScores(
 	ctx context.Context,
 	item *annotation.QueueItem,
 	queue *annotation.AnnotationQueue,
-	projectID, userID ulid.ULID,
+	projectID, userID uuid.UUID,
 	submissions []annotation.ScoreSubmission,
 ) error {
 	// Get project to retrieve organization ID
@@ -247,7 +249,7 @@ func (s *itemService) submitScores(
 
 	for _, sub := range submissions {
 		// Look up the score config to get the name and data type
-		scoreConfigID, err := ulid.Parse(sub.ScoreConfigID)
+		scoreConfigID, err := uuid.Parse(sub.ScoreConfigID)
 		if err != nil {
 			s.logger.Warn("invalid score config ID, skipping",
 				"score_config_id", sub.ScoreConfigID,
@@ -267,7 +269,7 @@ func (s *itemService) submitScores(
 
 		// Create the score entity
 		score := &observability.Score{
-			ID:             ulid.New().String(),
+			ID:             uid.New().String(),
 			ProjectID:      projectID.String(),
 			OrganizationID: project.OrganizationID.String(),
 			Name:           scoreConfig.Name,
@@ -347,7 +349,7 @@ func (s *itemService) submitScores(
 func (s *itemService) buildScoreMetadata(
 	queue *annotation.AnnotationQueue,
 	item *annotation.QueueItem,
-	userID ulid.ULID,
+	userID uuid.UUID,
 	comment *string,
 ) json.RawMessage {
 	metadata := map[string]interface{}{
@@ -370,7 +372,7 @@ func (s *itemService) buildScoreMetadata(
 }
 
 // Skip marks an item as skipped by the user.
-func (s *itemService) Skip(ctx context.Context, itemID, queueID, projectID, userID ulid.ULID, req *annotation.SkipItemRequest) error {
+func (s *itemService) Skip(ctx context.Context, itemID, queueID, projectID, userID uuid.UUID, req *annotation.SkipItemRequest) error {
 	// Verify queue exists and belongs to project
 	queue, err := s.queueRepo.GetByID(ctx, queueID, projectID)
 	if err != nil {
@@ -424,7 +426,7 @@ func (s *itemService) Skip(ctx context.Context, itemID, queueID, projectID, user
 }
 
 // ReleaseLock releases the lock on an item, returning it to the pending pool.
-func (s *itemService) ReleaseLock(ctx context.Context, itemID, queueID, projectID, userID ulid.ULID) error {
+func (s *itemService) ReleaseLock(ctx context.Context, itemID, queueID, projectID, userID uuid.UUID) error {
 	// Verify queue exists and belongs to project
 	queue, err := s.queueRepo.GetByID(ctx, queueID, projectID)
 	if err != nil {
@@ -473,7 +475,7 @@ func (s *itemService) ReleaseLock(ctx context.Context, itemID, queueID, projectI
 }
 
 // DeleteItem removes an item from the queue.
-func (s *itemService) DeleteItem(ctx context.Context, itemID, queueID, projectID ulid.ULID) error {
+func (s *itemService) DeleteItem(ctx context.Context, itemID, queueID, projectID uuid.UUID) error {
 	// Verify queue exists and belongs to project
 	_, err := s.queueRepo.GetByID(ctx, queueID, projectID)
 	if err != nil {
@@ -501,7 +503,7 @@ func (s *itemService) DeleteItem(ctx context.Context, itemID, queueID, projectID
 }
 
 // GetStats retrieves statistics for a queue.
-func (s *itemService) GetStats(ctx context.Context, queueID, projectID ulid.ULID) (*annotation.QueueStats, error) {
+func (s *itemService) GetStats(ctx context.Context, queueID, projectID uuid.UUID) (*annotation.QueueStats, error) {
 	// Verify queue exists and belongs to project
 	queue, err := s.queueRepo.GetByID(ctx, queueID, projectID)
 	if err != nil {

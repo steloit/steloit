@@ -44,7 +44,7 @@ type SMTPConfig struct {
 	Password  string
 	FromEmail string
 	FromName  string
-	UseTLS    bool           // Use STARTTLS
+	UseTLS    bool // Use STARTTLS
 	Timeout   time.Duration
 }
 

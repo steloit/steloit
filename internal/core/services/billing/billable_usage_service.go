@@ -8,9 +8,10 @@ import (
 
 	"github.com/shopspring/decimal"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/billing"
 	pkgErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
 	"brokle/pkg/units"
 )
 
@@ -38,7 +39,7 @@ func NewBillableUsageService(
 	}
 }
 
-func (s *billableUsageService) GetUsageOverview(ctx context.Context, orgID ulid.ULID) (*billing.UsageOverview, error) {
+func (s *billableUsageService) GetUsageOverview(ctx context.Context, orgID uuid.UUID) (*billing.UsageOverview, error) {
 	// 1. Get billing metadata from PostgreSQL (pricing config, free tier, period dates)
 	orgBilling, err := s.billingRepo.GetByOrgID(ctx, orgID)
 	if err != nil {
@@ -121,7 +122,7 @@ func (s *billableUsageService) GetUsageOverview(ctx context.Context, orgID ulid.
 	}, nil
 }
 
-func (s *billableUsageService) GetUsageTimeSeries(ctx context.Context, orgID ulid.ULID, start, end time.Time, granularity string) ([]*billing.BillableUsage, error) {
+func (s *billableUsageService) GetUsageTimeSeries(ctx context.Context, orgID uuid.UUID, start, end time.Time, granularity string) ([]*billing.BillableUsage, error) {
 	filter := &billing.BillableUsageFilter{
 		OrganizationID: orgID,
 		Start:          start,
@@ -141,7 +142,7 @@ func (s *billableUsageService) GetUsageTimeSeries(ctx context.Context, orgID uli
 	return usage, nil
 }
 
-func (s *billableUsageService) GetUsageByProject(ctx context.Context, orgID ulid.ULID, start, end time.Time) ([]*billing.BillableUsageSummary, error) {
+func (s *billableUsageService) GetUsageByProject(ctx context.Context, orgID uuid.UUID, start, end time.Time) ([]*billing.BillableUsageSummary, error) {
 	summaries, err := s.usageRepo.GetUsageByProject(ctx, orgID, start, end)
 	if err != nil {
 		s.logger.Error("failed to get usage by project",
@@ -207,7 +208,7 @@ func (s *billableUsageService) calculatePeriodEnd(cycleStart time.Time, anchorDa
 	return time.Date(year, month, day, 0, 0, 0, 0, loc)
 }
 
-func (s *billableUsageService) ProvisionOrganizationBilling(ctx context.Context, orgID ulid.ULID) error {
+func (s *billableUsageService) ProvisionOrganizationBilling(ctx context.Context, orgID uuid.UUID) error {
 	// Get default plan
 	defaultPlan, err := s.planRepo.GetDefault(ctx)
 	if err != nil {

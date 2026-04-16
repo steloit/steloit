@@ -45,8 +45,8 @@ func (r *logsRepository) CreateLogBatch(ctx context.Context, logs []*observabili
 		err = batch.Append(
 			log.Timestamp,
 			log.ObservedTimestamp,
-			log.TraceID,   // Hex string (32 chars) - may be empty if no trace correlation
-			log.SpanID,    // Hex string (16 chars) - may be empty if no span correlation
+			log.TraceID, // Hex string (32 chars) - may be empty if no trace correlation
+			log.SpanID,  // Hex string (16 chars) - may be empty if no span correlation
 			log.TraceFlags,
 			log.SeverityText,
 			log.SeverityNumber,

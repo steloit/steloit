@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/config"
 	"brokle/internal/core/domain/analytics"
 	"brokle/internal/core/domain/billing"
@@ -12,7 +14,6 @@ import (
 	"brokle/internal/transport/http/middleware"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 	"brokle/pkg/units"
 
 	"github.com/gin-gonic/gin"
@@ -39,8 +40,8 @@ func NewUsageHandler(
 // UsageTimeSeriesRequest represents query params for time series
 type UsageTimeSeriesRequest struct {
 	TimeRange   string `form:"time_range" binding:"omitempty,oneof=15m 30m 1h 3h 6h 12h 24h 7d 14d 30d"`
-	From        string `form:"from" binding:"omitempty"`        // ISO 8601 (RFC3339) for custom range
-	To          string `form:"to" binding:"omitempty"`          // ISO 8601 (RFC3339) for custom range
+	From        string `form:"from" binding:"omitempty"`                           // ISO 8601 (RFC3339) for custom range
+	To          string `form:"to" binding:"omitempty"`                             // ISO 8601 (RFC3339) for custom range
 	Granularity string `form:"granularity" binding:"omitempty,oneof=hourly daily"` // hourly or daily
 }
 
@@ -187,9 +188,9 @@ func (h *UsageHandler) GetUsageByProject(c *gin.Context) {
 // ExportUsageRequest represents query params for export
 type ExportUsageRequest struct {
 	TimeRange   string `form:"time_range" binding:"omitempty,oneof=15m 30m 1h 3h 6h 12h 24h 7d 14d 30d"`
-	From        string `form:"from" binding:"omitempty"`        // ISO 8601 (RFC3339) for custom range
-	To          string `form:"to" binding:"omitempty"`          // ISO 8601 (RFC3339) for custom range
-	Format      string `form:"format" binding:"omitempty,oneof=csv json"` // csv or json
+	From        string `form:"from" binding:"omitempty"`                           // ISO 8601 (RFC3339) for custom range
+	To          string `form:"to" binding:"omitempty"`                             // ISO 8601 (RFC3339) for custom range
+	Format      string `form:"format" binding:"omitempty,oneof=csv json"`          // csv or json
 	Granularity string `form:"granularity" binding:"omitempty,oneof=hourly daily"` // hourly or daily
 }
 
@@ -300,8 +301,8 @@ func (h *UsageHandler) exportJSON(c *gin.Context, usage []*billing.BillableUsage
 			"from": from.Format(time.RFC3339),
 			"to":   to.Format(time.RFC3339),
 		},
-		"time_series": usage,
-		"by_project":  projectUsage,
+		"time_series":  usage,
+		"by_project":   projectUsage,
 		"generated_at": time.Now().Format(time.RFC3339),
 	}
 
@@ -350,18 +351,18 @@ func formatFloat64(f float64, decimals int) string {
 	return strconv.FormatFloat(f, 'f', decimals, 64)
 }
 
-func (h *UsageHandler) parseOrgID(c *gin.Context) (ulid.ULID, bool) {
-	orgID, err := ulid.Parse(c.Param("orgId"))
+func (h *UsageHandler) parseOrgID(c *gin.Context) (uuid.UUID, bool) {
+	orgID, err := uuid.Parse(c.Param("orgId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid ULID"))
-		return ulid.ULID{}, false
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid UUID"))
+		return uuid.UUID{}, false
 	}
 	return orgID, true
 }
 
-func (h *UsageHandler) verifyOrgAccess(c *gin.Context, orgID ulid.ULID) error {
+func (h *UsageHandler) verifyOrgAccess(c *gin.Context, orgID uuid.UUID) error {
 	userOrgID := middleware.ResolveOrganizationID(c)
-	if userOrgID == nil || userOrgID.IsZero() {
+	if userOrgID == nil || *userOrgID == uuid.Nil {
 		return appErrors.NewUnauthorizedError("Organization context required")
 	}
 

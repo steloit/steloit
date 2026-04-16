@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+
 	userDomain "brokle/internal/core/domain/user"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
 )
 
 // profileService implements the user.ProfileService interface
@@ -25,7 +26,7 @@ func NewProfileService(
 }
 
 // GetProfile retrieves user profile
-func (s *profileService) GetProfile(ctx context.Context, userID ulid.ULID) (*userDomain.UserProfile, error) {
+func (s *profileService) GetProfile(ctx context.Context, userID uuid.UUID) (*userDomain.UserProfile, error) {
 	profile, err := s.userRepo.GetProfile(ctx, userID)
 	if err != nil {
 		return nil, appErrors.NewNotFoundError("Profile not found")
@@ -35,7 +36,7 @@ func (s *profileService) GetProfile(ctx context.Context, userID ulid.ULID) (*use
 }
 
 // UpdateProfile updates user profile information
-func (s *profileService) UpdateProfile(ctx context.Context, userID ulid.ULID, req *userDomain.UpdateProfileRequest) (*userDomain.UserProfile, error) {
+func (s *profileService) UpdateProfile(ctx context.Context, userID uuid.UUID, req *userDomain.UpdateProfileRequest) (*userDomain.UserProfile, error) {
 	profile, err := s.userRepo.GetProfile(ctx, userID)
 	if err != nil {
 		return nil, appErrors.NewNotFoundError("Profile not found")
@@ -81,7 +82,7 @@ func (s *profileService) UpdateProfile(ctx context.Context, userID ulid.ULID, re
 }
 
 // UploadAvatar uploads and sets user avatar
-func (s *profileService) UploadAvatar(ctx context.Context, userID ulid.ULID, imageData []byte, contentType string) (*userDomain.UserProfile, error) {
+func (s *profileService) UploadAvatar(ctx context.Context, userID uuid.UUID, imageData []byte, contentType string) (*userDomain.UserProfile, error) {
 	profile, err := s.userRepo.GetProfile(ctx, userID)
 	if err != nil {
 		return nil, appErrors.NewNotFoundError("Profile not found")
@@ -103,7 +104,7 @@ func (s *profileService) UploadAvatar(ctx context.Context, userID ulid.ULID, ima
 }
 
 // RemoveAvatar removes user avatar
-func (s *profileService) RemoveAvatar(ctx context.Context, userID ulid.ULID) error {
+func (s *profileService) RemoveAvatar(ctx context.Context, userID uuid.UUID) error {
 	profile, err := s.userRepo.GetProfile(ctx, userID)
 	if err != nil {
 		return appErrors.NewNotFoundError("Profile not found")
@@ -122,7 +123,7 @@ func (s *profileService) RemoveAvatar(ctx context.Context, userID ulid.ULID) err
 }
 
 // UpdateProfileVisibility updates profile visibility settings
-func (s *profileService) UpdateProfileVisibility(ctx context.Context, userID ulid.ULID, visibility userDomain.ProfileVisibility) error {
+func (s *profileService) UpdateProfileVisibility(ctx context.Context, userID uuid.UUID, visibility userDomain.ProfileVisibility) error {
 	// TODO: Add ProfileVisibility field to User model
 	// Implementation would update profile visibility in database
 	_ = visibility // Use visibility parameter when implemented
@@ -130,7 +131,7 @@ func (s *profileService) UpdateProfileVisibility(ctx context.Context, userID uli
 }
 
 // GetPublicProfile retrieves public view of user profile
-func (s *profileService) GetPublicProfile(ctx context.Context, userID ulid.ULID) (*userDomain.PublicProfile, error) {
+func (s *profileService) GetPublicProfile(ctx context.Context, userID uuid.UUID) (*userDomain.PublicProfile, error) {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, appErrors.NewNotFoundError("User not found")
@@ -159,7 +160,7 @@ func (s *profileService) GetPublicProfile(ctx context.Context, userID ulid.ULID)
 }
 
 // GetProfileCompleteness calculates profile completion status
-func (s *profileService) GetProfileCompleteness(ctx context.Context, userID ulid.ULID) (*userDomain.ProfileCompleteness, error) {
+func (s *profileService) GetProfileCompleteness(ctx context.Context, userID uuid.UUID) (*userDomain.ProfileCompleteness, error) {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, appErrors.NewNotFoundError("User not found")
@@ -238,7 +239,7 @@ func (s *profileService) GetProfileCompleteness(ctx context.Context, userID ulid
 }
 
 // ValidateProfile validates profile data
-func (s *profileService) ValidateProfile(ctx context.Context, userID ulid.ULID) (*userDomain.ProfileValidation, error) {
+func (s *profileService) ValidateProfile(ctx context.Context, userID uuid.UUID) (*userDomain.ProfileValidation, error) {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, appErrors.NewNotFoundError("User not found")
@@ -289,7 +290,7 @@ func (s *profileService) ValidateProfile(ctx context.Context, userID ulid.ULID) 
 }
 
 // GetNotificationPreferences retrieves user notification preferences from profile
-func (s *profileService) GetNotificationPreferences(ctx context.Context, userID ulid.ULID) (*userDomain.NotificationPreferences, error) {
+func (s *profileService) GetNotificationPreferences(ctx context.Context, userID uuid.UUID) (*userDomain.NotificationPreferences, error) {
 	profile, err := s.userRepo.GetProfile(ctx, userID)
 	if err != nil {
 		return nil, appErrors.NewNotFoundError("Profile not found")
@@ -308,7 +309,7 @@ func (s *profileService) GetNotificationPreferences(ctx context.Context, userID 
 }
 
 // UpdateNotificationPreferences updates user notification preferences in profile
-func (s *profileService) UpdateNotificationPreferences(ctx context.Context, userID ulid.ULID, req *userDomain.UpdateNotificationPreferencesRequest) (*userDomain.NotificationPreferences, error) {
+func (s *profileService) UpdateNotificationPreferences(ctx context.Context, userID uuid.UUID, req *userDomain.UpdateNotificationPreferencesRequest) (*userDomain.NotificationPreferences, error) {
 	profile, err := s.userRepo.GetProfile(ctx, userID)
 	if err != nil {
 		return nil, appErrors.NewNotFoundError("Profile not found")
@@ -340,7 +341,7 @@ func (s *profileService) UpdateNotificationPreferences(ctx context.Context, user
 }
 
 // GetThemePreferences retrieves user theme preferences from profile and user
-func (s *profileService) GetThemePreferences(ctx context.Context, userID ulid.ULID) (*userDomain.ThemePreferences, error) {
+func (s *profileService) GetThemePreferences(ctx context.Context, userID uuid.UUID) (*userDomain.ThemePreferences, error) {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, appErrors.NewNotFoundError("User not found")
@@ -365,7 +366,7 @@ func (s *profileService) GetThemePreferences(ctx context.Context, userID ulid.UL
 }
 
 // UpdateThemePreferences updates user theme preferences in both user and profile
-func (s *profileService) UpdateThemePreferences(ctx context.Context, userID ulid.ULID, req *userDomain.UpdateThemePreferencesRequest) (*userDomain.ThemePreferences, error) {
+func (s *profileService) UpdateThemePreferences(ctx context.Context, userID uuid.UUID, req *userDomain.UpdateThemePreferencesRequest) (*userDomain.ThemePreferences, error) {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, appErrors.NewNotFoundError("User not found")
@@ -409,7 +410,7 @@ func (s *profileService) UpdateThemePreferences(ctx context.Context, userID ulid
 }
 
 // GetPrivacyPreferences retrieves user privacy preferences (stub implementation)
-func (s *profileService) GetPrivacyPreferences(ctx context.Context, userID ulid.ULID) (*userDomain.PrivacyPreferences, error) {
+func (s *profileService) GetPrivacyPreferences(ctx context.Context, userID uuid.UUID) (*userDomain.PrivacyPreferences, error) {
 	// Return default privacy preferences since they're not in the current model
 	return &userDomain.PrivacyPreferences{
 		ProfileVisibility:      userDomain.ProfileVisibilityPublic, // Default
@@ -423,7 +424,7 @@ func (s *profileService) GetPrivacyPreferences(ctx context.Context, userID ulid.
 }
 
 // UpdatePrivacyPreferences updates user privacy preferences (stub implementation)
-func (s *profileService) UpdatePrivacyPreferences(ctx context.Context, userID ulid.ULID, req *userDomain.UpdatePrivacyPreferencesRequest) (*userDomain.PrivacyPreferences, error) {
+func (s *profileService) UpdatePrivacyPreferences(ctx context.Context, userID uuid.UUID, req *userDomain.UpdatePrivacyPreferencesRequest) (*userDomain.PrivacyPreferences, error) {
 	// For now, just ignore request since privacy preferences aren't fully implemented
 	_ = req // Use req parameter when implemented
 

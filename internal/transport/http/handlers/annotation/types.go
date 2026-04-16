@@ -7,22 +7,22 @@ import "time"
 // CreateQueueRequest represents the request body for creating an annotation queue.
 // @Description Create annotation queue request
 type CreateQueueRequest struct {
-	Name           string          `json:"name" binding:"required,min=1,max=255"`
-	Description    *string         `json:"description,omitempty"`
-	Instructions   *string         `json:"instructions,omitempty"`
-	ScoreConfigIDs []string        `json:"score_config_ids,omitempty"`
-	Settings       *QueueSettings  `json:"settings,omitempty"`
+	Name           string         `json:"name" binding:"required,min=1,max=255"`
+	Description    *string        `json:"description,omitempty"`
+	Instructions   *string        `json:"instructions,omitempty"`
+	ScoreConfigIDs []string       `json:"score_config_ids,omitempty"`
+	Settings       *QueueSettings `json:"settings,omitempty"`
 }
 
 // UpdateQueueRequest represents the request body for updating an annotation queue.
 // @Description Update annotation queue request
 type UpdateQueueRequest struct {
-	Name           *string         `json:"name,omitempty" binding:"omitempty,min=1,max=255"`
-	Description    *string         `json:"description,omitempty"`
-	Instructions   *string         `json:"instructions,omitempty"`
-	ScoreConfigIDs *[]string       `json:"score_config_ids,omitempty"` // Pointer to distinguish nil (no change) from empty (clear all)
-	Status         *string         `json:"status,omitempty" binding:"omitempty,oneof=active paused archived"`
-	Settings       *QueueSettings  `json:"settings,omitempty"`
+	Name           *string        `json:"name,omitempty" binding:"omitempty,min=1,max=255"`
+	Description    *string        `json:"description,omitempty"`
+	Instructions   *string        `json:"instructions,omitempty"`
+	ScoreConfigIDs *[]string      `json:"score_config_ids,omitempty"` // Pointer to distinguish nil (no change) from empty (clear all)
+	Status         *string        `json:"status,omitempty" binding:"omitempty,oneof=active paused archived"`
+	Settings       *QueueSettings `json:"settings,omitempty"`
 }
 
 // QueueSettings represents configurable settings for an annotation queue.
@@ -35,17 +35,17 @@ type QueueSettings struct {
 // QueueResponse represents an annotation queue in API responses.
 // @Description Annotation queue data
 type QueueResponse struct {
-	ID             string          `json:"id"`
-	ProjectID      string          `json:"project_id"`
-	Name           string          `json:"name"`
-	Description    *string         `json:"description,omitempty"`
-	Instructions   *string         `json:"instructions,omitempty"`
-	ScoreConfigIDs []string        `json:"score_config_ids"`
-	Status         string          `json:"status"`
-	Settings       *QueueSettings  `json:"settings"`
-	CreatedBy      *string         `json:"created_by,omitempty"`
-	CreatedAt      time.Time       `json:"created_at"`
-	UpdatedAt      time.Time       `json:"updated_at"`
+	ID             string         `json:"id"`
+	ProjectID      string         `json:"project_id"`
+	Name           string         `json:"name"`
+	Description    *string        `json:"description,omitempty"`
+	Instructions   *string        `json:"instructions,omitempty"`
+	ScoreConfigIDs []string       `json:"score_config_ids"`
+	Status         string         `json:"status"`
+	Settings       *QueueSettings `json:"settings"`
+	CreatedBy      *string        `json:"created_by,omitempty"`
+	CreatedAt      time.Time      `json:"created_at"`
+	UpdatedAt      time.Time      `json:"updated_at"`
 }
 
 // QueueWithStatsResponse represents an annotation queue with statistics.
@@ -144,10 +144,10 @@ type AssignUserRequest struct {
 // AssignmentResponse represents a queue assignment in API responses.
 // @Description Queue assignment data
 type AssignmentResponse struct {
-	ID         string     `json:"id"`
-	QueueID    string     `json:"queue_id"`
-	UserID     string     `json:"user_id"`
-	Role       string     `json:"role"`
-	AssignedAt time.Time  `json:"assigned_at"`
-	AssignedBy *string    `json:"assigned_by,omitempty"`
+	ID         string    `json:"id"`
+	QueueID    string    `json:"queue_id"`
+	UserID     string    `json:"user_id"`
+	Role       string    `json:"role"`
+	AssignedAt time.Time `json:"assigned_at"`
+	AssignedBy *string   `json:"assigned_by,omitempty"`
 }

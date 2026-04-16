@@ -14,11 +14,13 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/evaluation"
 	"brokle/internal/core/domain/observability"
 	"brokle/internal/infrastructure/database"
 	"brokle/pkg/pagination"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 const (
@@ -76,7 +78,7 @@ func NewManualTriggerWorker(
 	if config == nil {
 		config = &ManualTriggerWorkerConfig{
 			ConsumerGroup:  "manual-trigger-workers",
-			ConsumerID:     "manual-trigger-" + ulid.New().String(),
+			ConsumerID:     "manual-trigger-" + uid.New().String(),
 			BlockDuration:  time.Second,
 			MaxRetries:     3,
 			RetryBackoff:   500 * time.Millisecond,
@@ -781,7 +783,7 @@ func (w *ManualTriggerWorker) createEvaluationJob(trigger *ManualTriggerMessageD
 	variables := extractVariablesFromSpan(trigger.VariableMapping, span)
 
 	return &EvaluationJob{
-		JobID:        ulid.New(),
+		JobID:        uid.New(),
 		EvaluatorID:  trigger.EvaluatorID,
 		ProjectID:    trigger.ProjectID,
 		ExecutionID:  &trigger.ExecutionID,
@@ -828,9 +830,9 @@ func (w *ManualTriggerWorker) GetStats() map[string]int64 {
 
 // ManualTriggerMessageData is the internal struct for parsing trigger messages
 type ManualTriggerMessageData struct {
-	ExecutionID     ulid.ULID                 `json:"execution_id"`
-	EvaluatorID     ulid.ULID                 `json:"evaluator_id"`
-	ProjectID       ulid.ULID                 `json:"project_id"`
+	ExecutionID     uuid.UUID                 `json:"execution_id"`
+	EvaluatorID     uuid.UUID                 `json:"evaluator_id"`
+	ProjectID       uuid.UUID                 `json:"project_id"`
 	ScorerType      evaluation.ScorerType     `json:"scorer_type"`
 	ScorerConfig    map[string]any            `json:"scorer_config"`
 	TargetScope     evaluation.TargetScope    `json:"target_scope"`

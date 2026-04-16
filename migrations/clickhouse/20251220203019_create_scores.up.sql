@@ -3,10 +3,10 @@
 
 CREATE TABLE IF NOT EXISTS scores (
     -- Identity
-    score_id String CODEC(ZSTD(1)),
+    score_id UUID CODEC(ZSTD(1)),
 
     -- Links
-    project_id String CODEC(ZSTD(1)),
+    project_id UUID CODEC(ZSTD(1)),
     trace_id String CODEC(ZSTD(1)),
     span_id String CODEC(ZSTD(1)),
 
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS scores (
     metadata String DEFAULT '{}' CODEC(ZSTD(1)),
 
     -- Experiment tracking
-    experiment_id Nullable(String) CODEC(ZSTD(1)),
+    experiment_id Nullable(UUID) CODEC(ZSTD(1)),
     experiment_item_id Nullable(String) CODEC(ZSTD(1)),
 
     -- Timestamp

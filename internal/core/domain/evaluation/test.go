@@ -19,9 +19,9 @@ type TestSampleInput struct {
 
 // TestEvaluatorResponse is the response from testing an evaluator.
 type TestEvaluatorResponse struct {
-	Summary          TestSummary       `json:"summary"`
-	Executions       []TestExecution   `json:"executions"`
-	EvaluatorPreview EvaluatorPreview  `json:"evaluator_preview"`
+	Summary          TestSummary      `json:"summary"`
+	Executions       []TestExecution  `json:"executions"`
+	EvaluatorPreview EvaluatorPreview `json:"evaluator_preview"`
 }
 
 // TestSummary provides aggregated statistics from test execution.

@@ -9,9 +9,9 @@ import (
 	"brokle/internal/transport/http/middleware"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type Handler struct {
@@ -36,8 +36,8 @@ func NewHandler(
 
 // APIKey represents an API key entity for response
 type APIKey struct {
-	ID         string    `json:"id" example:"key_01234567890123456789012345" description:"Unique API key identifier"`
-	Name       string    `json:"name" example:"Production API Key" description:"Human-readable name for the API key"`
+	ID         string     `json:"id" example:"key_01234567890123456789012345" description:"Unique API key identifier"`
+	Name       string     `json:"name" example:"Production API Key" description:"Human-readable name for the API key"`
 	Key        string     `json:"key,omitempty" example:"bk_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCd" description:"The actual API key (only shown on creation)"`
 	KeyPreview string     `json:"key_preview" example:"bk_AbCd...AbCd" description:"Truncated version of the key for display"`
 	ProjectID  string     `json:"project_id" example:"proj_01234567890123456789012345" description:"Project ID this key belongs to"`
@@ -84,9 +84,9 @@ type ListAPIKeysResponse struct {
 // @Router /api/v1/projects/{projectId}/api-keys [get]
 func (h *Handler) List(c *gin.Context) {
 	// Get project ID from URL path
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
@@ -145,9 +145,9 @@ func (h *Handler) List(c *gin.Context) {
 			KeyPreview: key.KeyPreview, // Use stored preview
 			ProjectID:  key.ProjectID.String(),
 			Status:     getKeyStatus(*key),
-			LastUsed:   key.LastUsedAt,  // Pointer, will be null if nil
+			LastUsed:   key.LastUsedAt, // Pointer, will be null if nil
 			CreatedAt:  key.CreatedAt,
-			ExpiresAt:  key.ExpiresAt,   // Pointer, will be null if nil
+			ExpiresAt:  key.ExpiresAt, // Pointer, will be null if nil
 			CreatedBy:  key.UserID.String(),
 		}
 	}
@@ -201,9 +201,9 @@ func getKeyStatus(key auth.APIKey) string {
 // @Router /api/v1/projects/{projectId}/api-keys [post]
 func (h *Handler) Create(c *gin.Context) {
 	// Get project ID from URL path
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
@@ -222,7 +222,7 @@ func (h *Handler) Create(c *gin.Context) {
 		return
 	}
 
-	userIDParsed, err := ulid.Parse(userID)
+	userIDParsed, err := uuid.Parse(userID)
 	if err != nil {
 		h.logger.Error("Invalid user ID format", "error", err)
 		response.InternalServerError(c, "Authentication error")
@@ -299,16 +299,16 @@ func (h *Handler) Create(c *gin.Context) {
 // @Router /api/v1/projects/{projectId}/api-keys/{keyId} [delete]
 func (h *Handler) Delete(c *gin.Context) {
 	// Get project ID from URL path
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
 	// Get API key ID from URL path
-	keyID, err := ulid.Parse(c.Param("keyId"))
+	keyID, err := uuid.Parse(c.Param("keyId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid API key ID", "keyId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid API key ID", "keyId must be a valid UUID"))
 		return
 	}
 
@@ -335,4 +335,3 @@ func (h *Handler) Delete(c *gin.Context) {
 
 	response.NoContent(c)
 }
-

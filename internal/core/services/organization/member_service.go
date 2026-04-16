@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+
 	authDomain "brokle/internal/core/domain/auth"
 	orgDomain "brokle/internal/core/domain/organization"
 	userDomain "brokle/internal/core/domain/user"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
 )
 
 // memberService implements the orgDomain.MemberService interface
@@ -36,7 +37,7 @@ func NewMemberService(
 }
 
 // AddMember adds a user to an organization with specified role
-func (s *memberService) AddMember(ctx context.Context, orgID, userID, roleID ulid.ULID, addedByID ulid.ULID) error {
+func (s *memberService) AddMember(ctx context.Context, orgID, userID, roleID uuid.UUID, addedByID uuid.UUID) error {
 	// Verify organization exists
 	_, err := s.orgRepo.GetByID(ctx, orgID)
 	if err != nil {
@@ -75,7 +76,7 @@ func (s *memberService) AddMember(ctx context.Context, orgID, userID, roleID uli
 }
 
 // RemoveMember removes a user from an organization
-func (s *memberService) RemoveMember(ctx context.Context, orgID, userID ulid.ULID, removedByID ulid.ULID) error {
+func (s *memberService) RemoveMember(ctx context.Context, orgID, userID uuid.UUID, removedByID uuid.UUID) error {
 	// Verify membership exists
 	member, err := s.memberRepo.GetByUserAndOrganization(ctx, userID, orgID)
 	if err != nil {
@@ -107,7 +108,7 @@ func (s *memberService) RemoveMember(ctx context.Context, orgID, userID ulid.ULI
 	// If this was their default organization, clear it
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err == nil && user.DefaultOrganizationID != nil && *user.DefaultOrganizationID == orgID {
-		err = s.userRepo.SetDefaultOrganization(ctx, userID, ulid.ULID{})
+		err = s.userRepo.SetDefaultOrganization(ctx, userID, uuid.UUID{})
 		if err != nil {
 			fmt.Printf("Failed to clear default organization: %v\n", err)
 		}
@@ -117,7 +118,7 @@ func (s *memberService) RemoveMember(ctx context.Context, orgID, userID ulid.ULI
 }
 
 // UpdateMemberRole updates a member's role in an organization
-func (s *memberService) UpdateMemberRole(ctx context.Context, orgID, userID, newRoleID ulid.ULID, updatedByID ulid.ULID) error {
+func (s *memberService) UpdateMemberRole(ctx context.Context, orgID, userID, newRoleID uuid.UUID, updatedByID uuid.UUID) error {
 	// Verify membership exists
 	member, err := s.memberRepo.GetByUserAndOrganization(ctx, userID, orgID)
 	if err != nil {
@@ -158,37 +159,37 @@ func (s *memberService) UpdateMemberRole(ctx context.Context, orgID, userID, new
 }
 
 // GetMember retrieves a specific member
-func (s *memberService) GetMember(ctx context.Context, orgID, userID ulid.ULID) (*orgDomain.Member, error) {
+func (s *memberService) GetMember(ctx context.Context, orgID, userID uuid.UUID) (*orgDomain.Member, error) {
 	return s.memberRepo.GetByUserAndOrganization(ctx, userID, orgID)
 }
 
 // GetMembers retrieves all members of an organization
-func (s *memberService) GetMembers(ctx context.Context, orgID ulid.ULID) ([]*orgDomain.Member, error) {
+func (s *memberService) GetMembers(ctx context.Context, orgID uuid.UUID) ([]*orgDomain.Member, error) {
 	return s.memberRepo.GetByOrganizationID(ctx, orgID)
 }
 
 // IsMember checks if a user is a member of an organization
-func (s *memberService) IsMember(ctx context.Context, userID, orgID ulid.ULID) (bool, error) {
+func (s *memberService) IsMember(ctx context.Context, userID, orgID uuid.UUID) (bool, error) {
 	return s.memberRepo.IsMember(ctx, userID, orgID)
 }
 
 // CanUserAccessOrganization checks if user can access organization
-func (s *memberService) CanUserAccessOrganization(ctx context.Context, userID, orgID ulid.ULID) (bool, error) {
+func (s *memberService) CanUserAccessOrganization(ctx context.Context, userID, orgID uuid.UUID) (bool, error) {
 	return s.memberRepo.IsMember(ctx, userID, orgID)
 }
 
 // GetUserRole returns a user's role ID in an organization
-func (s *memberService) GetUserRole(ctx context.Context, userID, orgID ulid.ULID) (ulid.ULID, error) {
+func (s *memberService) GetUserRole(ctx context.Context, userID, orgID uuid.UUID) (uuid.UUID, error) {
 	member, err := s.memberRepo.GetByUserAndOrganization(ctx, userID, orgID)
 	if err != nil {
-		return ulid.ULID{}, appErrors.NewNotFoundError("Member not found")
+		return uuid.UUID{}, appErrors.NewNotFoundError("Member not found")
 	}
 
 	return member.RoleID, nil
 }
 
 // GetMemberCount returns the number of members in an organization
-func (s *memberService) GetMemberCount(ctx context.Context, orgID ulid.ULID) (int, error) {
+func (s *memberService) GetMemberCount(ctx context.Context, orgID uuid.UUID) (int, error) {
 	members, err := s.memberRepo.GetByOrganizationID(ctx, orgID)
 	if err != nil {
 		return 0, appErrors.NewInternalError("Failed to get members", err)
@@ -197,7 +198,7 @@ func (s *memberService) GetMemberCount(ctx context.Context, orgID ulid.ULID) (in
 }
 
 // GetMembersByRole returns all members with a specific role
-func (s *memberService) GetMembersByRole(ctx context.Context, orgID, roleID ulid.ULID) ([]*orgDomain.Member, error) {
+func (s *memberService) GetMembersByRole(ctx context.Context, orgID, roleID uuid.UUID) ([]*orgDomain.Member, error) {
 	allMembers, err := s.memberRepo.GetByOrganizationID(ctx, orgID)
 	if err != nil {
 		return nil, appErrors.NewInternalError("Failed to get members", err)

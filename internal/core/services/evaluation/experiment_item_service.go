@@ -8,10 +8,12 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/evaluation"
 	"brokle/internal/core/domain/observability"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 type experimentItemService struct {
@@ -24,7 +26,7 @@ type experimentItemService struct {
 
 // itemScoreData holds scores associated with an experiment item
 type itemScoreData struct {
-	itemID ulid.ULID
+	itemID uuid.UUID
 	scores []evaluation.ExperimentItemScore
 }
 
@@ -44,7 +46,7 @@ func NewExperimentItemService(
 	}
 }
 
-func (s *experimentItemService) CreateBatch(ctx context.Context, experimentID ulid.ULID, projectID ulid.ULID, req *evaluation.CreateExperimentItemsBatchRequest) (int, error) {
+func (s *experimentItemService) CreateBatch(ctx context.Context, experimentID uuid.UUID, projectID uuid.UUID, req *evaluation.CreateExperimentItemsBatchRequest) (int, error) {
 	experiment, err := s.experimentRepo.GetByID(ctx, experimentID, projectID)
 	if err != nil {
 		if errors.Is(err, evaluation.ErrExperimentNotFound) {
@@ -82,11 +84,11 @@ func (s *experimentItemService) CreateBatch(ctx context.Context, experimentID ul
 				)
 			}
 
-			datasetItemID, err := ulid.Parse(*itemReq.DatasetItemID)
+			datasetItemID, err := uuid.Parse(*itemReq.DatasetItemID)
 			if err != nil {
 				return 0, appErrors.NewValidationError(
 					fmt.Sprintf("items[%d].dataset_item_id", i),
-					"must be a valid ULID",
+					"must be a valid UUID",
 				)
 			}
 
@@ -146,8 +148,8 @@ func (s *experimentItemService) CreateBatch(ctx context.Context, experimentID ul
 // createExperimentScores creates scores for experiment items using the ScoreService
 func (s *experimentItemService) createExperimentScores(
 	ctx context.Context,
-	experimentID ulid.ULID,
-	projectID ulid.ULID,
+	experimentID uuid.UUID,
+	projectID uuid.UUID,
 	itemScores []itemScoreData,
 ) error {
 	var scores []*observability.Score
@@ -176,7 +178,7 @@ func (s *experimentItemService) createExperimentScores(
 			itemID := itemData.itemID.String()
 
 			score := &observability.Score{
-				ID:               ulid.New().String(),
+				ID:               uid.New().String(),
 				ProjectID:        projectID.String(),
 				TraceID:          nil, // No trace for experiment-only scores
 				SpanID:           nil,
@@ -202,7 +204,7 @@ func (s *experimentItemService) createExperimentScores(
 	return s.scoreService.CreateScoreBatch(ctx, scores)
 }
 
-func (s *experimentItemService) List(ctx context.Context, experimentID ulid.ULID, projectID ulid.ULID, limit, offset int) ([]*evaluation.ExperimentItem, int64, error) {
+func (s *experimentItemService) List(ctx context.Context, experimentID uuid.UUID, projectID uuid.UUID, limit, offset int) ([]*evaluation.ExperimentItem, int64, error) {
 	if _, err := s.experimentRepo.GetByID(ctx, experimentID, projectID); err != nil {
 		if errors.Is(err, evaluation.ErrExperimentNotFound) {
 			return nil, 0, appErrors.NewNotFoundError(fmt.Sprintf("experiment %s", experimentID))

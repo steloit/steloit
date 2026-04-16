@@ -3,7 +3,7 @@ package credentials
 import (
 	"time"
 
-	"brokle/pkg/ulid"
+	"github.com/google/uuid"
 
 	"github.com/lib/pq"
 )
@@ -53,8 +53,8 @@ func (p Provider) String() string {
 // Multiple configurations per adapter (provider type) are supported.
 // Each configuration has a unique Name within an organization.
 type ProviderCredential struct {
-	ID             ulid.ULID `json:"id" gorm:"type:char(26);primaryKey"`
-	OrganizationID ulid.ULID `json:"organization_id" gorm:"type:char(26);not null;index"`
+	ID             uuid.UUID `json:"id" gorm:"type:uuid;primaryKey"`
+	OrganizationID uuid.UUID `json:"organization_id" gorm:"type:uuid;not null;index"`
 
 	// User-defined name for this configuration (unique per organization)
 	// e.g., "OpenAI Production", "Claude Development", "My Custom Provider"
@@ -90,7 +90,7 @@ type ProviderCredential struct {
 	CustomModels pq.StringArray `json:"custom_models" gorm:"type:text[];default:'{}'"`
 
 	// Audit fields
-	CreatedBy *ulid.ULID `json:"created_by,omitempty" gorm:"type:char(26)"`
+	CreatedBy *uuid.UUID `json:"created_by,omitempty" gorm:"type:uuid"`
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at"`
 }
@@ -102,8 +102,8 @@ func (ProviderCredential) TableName() string {
 // ProviderCredentialResponse is the safe response DTO (no encrypted data).
 // This is what gets returned to the frontend.
 type ProviderCredentialResponse struct {
-	ID             ulid.ULID         `json:"id"`
-	OrganizationID ulid.ULID         `json:"organization_id"`
+	ID             uuid.UUID         `json:"id"`
+	OrganizationID uuid.UUID         `json:"organization_id"`
 	Name           string            `json:"name"`
 	Adapter        Provider          `json:"adapter"`
 	KeyPreview     string            `json:"key_preview"` // e.g., "sk-***abcd"

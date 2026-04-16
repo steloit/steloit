@@ -8,8 +8,9 @@ import (
 
 	"github.com/shopspring/decimal"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/billing"
-	"brokle/pkg/ulid"
 
 	"github.com/stretchr/testify/mock"
 )
@@ -25,7 +26,7 @@ func (m *MockOrganizationBillingRepository) Create(ctx context.Context, orgBilli
 	return args.Error(0)
 }
 
-func (m *MockOrganizationBillingRepository) GetByOrgID(ctx context.Context, orgID ulid.ULID) (*billing.OrganizationBilling, error) {
+func (m *MockOrganizationBillingRepository) GetByOrgID(ctx context.Context, orgID uuid.UUID) (*billing.OrganizationBilling, error) {
 	args := m.Called(ctx, orgID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -38,12 +39,12 @@ func (m *MockOrganizationBillingRepository) Update(ctx context.Context, orgBilli
 	return args.Error(0)
 }
 
-func (m *MockOrganizationBillingRepository) SetUsage(ctx context.Context, orgID ulid.ULID, spans, bytes, scores int64, cost decimal.Decimal, freeSpansRemaining, freeBytesRemaining, freeScoresRemaining int64) error {
+func (m *MockOrganizationBillingRepository) SetUsage(ctx context.Context, orgID uuid.UUID, spans, bytes, scores int64, cost decimal.Decimal, freeSpansRemaining, freeBytesRemaining, freeScoresRemaining int64) error {
 	args := m.Called(ctx, orgID, spans, bytes, scores, cost, freeSpansRemaining, freeBytesRemaining, freeScoresRemaining)
 	return args.Error(0)
 }
 
-func (m *MockOrganizationBillingRepository) ResetPeriod(ctx context.Context, orgID ulid.ULID, newCycleStart time.Time) error {
+func (m *MockOrganizationBillingRepository) ResetPeriod(ctx context.Context, orgID uuid.UUID, newCycleStart time.Time) error {
 	args := m.Called(ctx, orgID, newCycleStart)
 	return args.Error(0)
 }
@@ -52,7 +53,7 @@ type MockPlanRepository struct {
 	mock.Mock
 }
 
-func (m *MockPlanRepository) GetByID(ctx context.Context, id ulid.ULID) (*billing.Plan, error) {
+func (m *MockPlanRepository) GetByID(ctx context.Context, id uuid.UUID) (*billing.Plan, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -103,7 +104,7 @@ func (m *MockContractRepository) Create(ctx context.Context, contract *billing.C
 	return args.Error(0)
 }
 
-func (m *MockContractRepository) GetByID(ctx context.Context, id ulid.ULID) (*billing.Contract, error) {
+func (m *MockContractRepository) GetByID(ctx context.Context, id uuid.UUID) (*billing.Contract, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -111,7 +112,7 @@ func (m *MockContractRepository) GetByID(ctx context.Context, id ulid.ULID) (*bi
 	return args.Get(0).(*billing.Contract), args.Error(1)
 }
 
-func (m *MockContractRepository) GetActiveByOrgID(ctx context.Context, orgID ulid.ULID) (*billing.Contract, error) {
+func (m *MockContractRepository) GetActiveByOrgID(ctx context.Context, orgID uuid.UUID) (*billing.Contract, error) {
 	args := m.Called(ctx, orgID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -119,7 +120,7 @@ func (m *MockContractRepository) GetActiveByOrgID(ctx context.Context, orgID uli
 	return args.Get(0).(*billing.Contract), args.Error(1)
 }
 
-func (m *MockContractRepository) GetByOrgID(ctx context.Context, orgID ulid.ULID) ([]*billing.Contract, error) {
+func (m *MockContractRepository) GetByOrgID(ctx context.Context, orgID uuid.UUID) ([]*billing.Contract, error) {
 	args := m.Called(ctx, orgID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -132,12 +133,12 @@ func (m *MockContractRepository) Update(ctx context.Context, contract *billing.C
 	return args.Error(0)
 }
 
-func (m *MockContractRepository) Expire(ctx context.Context, contractID ulid.ULID) error {
+func (m *MockContractRepository) Expire(ctx context.Context, contractID uuid.UUID) error {
 	args := m.Called(ctx, contractID)
 	return args.Error(0)
 }
 
-func (m *MockContractRepository) Cancel(ctx context.Context, contractID ulid.ULID) error {
+func (m *MockContractRepository) Cancel(ctx context.Context, contractID uuid.UUID) error {
 	args := m.Called(ctx, contractID)
 	return args.Error(0)
 }
@@ -164,7 +165,7 @@ func (m *MockVolumeDiscountTierRepository) CreateBatch(ctx context.Context, tier
 	return args.Error(0)
 }
 
-func (m *MockVolumeDiscountTierRepository) GetByContractID(ctx context.Context, contractID ulid.ULID) ([]*billing.VolumeDiscountTier, error) {
+func (m *MockVolumeDiscountTierRepository) GetByContractID(ctx context.Context, contractID uuid.UUID) ([]*billing.VolumeDiscountTier, error) {
 	args := m.Called(ctx, contractID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -172,7 +173,7 @@ func (m *MockVolumeDiscountTierRepository) GetByContractID(ctx context.Context, 
 	return args.Get(0).([]*billing.VolumeDiscountTier), args.Error(1)
 }
 
-func (m *MockVolumeDiscountTierRepository) DeleteByContractID(ctx context.Context, contractID ulid.ULID) error {
+func (m *MockVolumeDiscountTierRepository) DeleteByContractID(ctx context.Context, contractID uuid.UUID) error {
 	args := m.Called(ctx, contractID)
 	return args.Error(0)
 }
@@ -186,7 +187,7 @@ func (m *MockContractHistoryRepository) Log(ctx context.Context, history *billin
 	return args.Error(0)
 }
 
-func (m *MockContractHistoryRepository) GetByContractID(ctx context.Context, contractID ulid.ULID) ([]*billing.ContractHistory, error) {
+func (m *MockContractHistoryRepository) GetByContractID(ctx context.Context, contractID uuid.UUID) ([]*billing.ContractHistory, error) {
 	args := m.Called(ctx, contractID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)

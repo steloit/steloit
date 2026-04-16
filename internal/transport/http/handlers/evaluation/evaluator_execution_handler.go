@@ -4,12 +4,12 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	evaluationDomain "brokle/internal/core/domain/evaluation"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/pagination"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 )
 
 type EvaluatorExecutionHandler struct {
@@ -47,15 +47,15 @@ type ExecutionListResponse struct {
 // @Failure 401 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/evaluators/{evaluatorId}/executions [get]
 func (h *EvaluatorExecutionHandler) List(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	evaluatorID, err := ulid.Parse(c.Param("evaluatorId"))
+	evaluatorID, err := uuid.Parse(c.Param("evaluatorId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid evaluator ID", "evaluatorId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid evaluator ID", "evaluatorId must be a valid UUID"))
 		return
 	}
 
@@ -114,22 +114,22 @@ func (h *EvaluatorExecutionHandler) List(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/evaluators/{evaluatorId}/executions/{executionId} [get]
 func (h *EvaluatorExecutionHandler) Get(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
 	// Parse evaluatorId for validation (we don't use it in the query since execution ID is unique)
-	_, err = ulid.Parse(c.Param("evaluatorId"))
+	_, err = uuid.Parse(c.Param("evaluatorId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid evaluator ID", "evaluatorId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid evaluator ID", "evaluatorId must be a valid UUID"))
 		return
 	}
 
-	executionID, err := ulid.Parse(c.Param("executionId"))
+	executionID, err := uuid.Parse(c.Param("executionId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid execution ID", "executionId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid execution ID", "executionId must be a valid UUID"))
 		return
 	}
 
@@ -154,15 +154,15 @@ func (h *EvaluatorExecutionHandler) Get(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse "No executions found"
 // @Router /api/v1/projects/{projectId}/evaluators/{evaluatorId}/executions/latest [get]
 func (h *EvaluatorExecutionHandler) GetLatest(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	evaluatorID, err := ulid.Parse(c.Param("evaluatorId"))
+	evaluatorID, err := uuid.Parse(c.Param("evaluatorId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid evaluator ID", "evaluatorId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid evaluator ID", "evaluatorId must be a valid UUID"))
 		return
 	}
 
@@ -193,21 +193,21 @@ func (h *EvaluatorExecutionHandler) GetLatest(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/evaluators/{evaluatorId}/executions/{executionId}/detail [get]
 func (h *EvaluatorExecutionHandler) GetDetail(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	evaluatorID, err := ulid.Parse(c.Param("evaluatorId"))
+	evaluatorID, err := uuid.Parse(c.Param("evaluatorId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid evaluator ID", "evaluatorId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid evaluator ID", "evaluatorId must be a valid UUID"))
 		return
 	}
 
-	executionID, err := ulid.Parse(c.Param("executionId"))
+	executionID, err := uuid.Parse(c.Param("executionId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid execution ID", "executionId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid execution ID", "executionId must be a valid UUID"))
 		return
 	}
 

@@ -8,8 +8,10 @@ import (
 
 	"github.com/shopspring/decimal"
 
+	"github.com/google/uuid"
+
 	billingDomain "brokle/internal/core/domain/billing"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 // DiscountCalculator handles discount calculations for billing
@@ -35,7 +37,7 @@ type AppliedDiscount struct {
 	Description string                     `json:"description"`
 	Value       float64                    `json:"value"`
 	Amount      float64                    `json:"amount"`
-	RuleID      ulid.ULID                  `json:"rule_id"`
+	RuleID      uuid.UUID                  `json:"rule_id"`
 }
 
 // DiscountContext provides context for discount calculation
@@ -43,10 +45,10 @@ type DiscountContext struct {
 	Timestamp       time.Time  `json:"timestamp"`
 	UsageSummary    *UsageData `json:"usage_summary"`
 	RequestType     *string    `json:"request_type,omitempty"`
-	ProviderID      *ulid.ULID `json:"provider_id,omitempty"`
-	ModelID         *ulid.ULID `json:"model_id,omitempty"`
+	ProviderID      *uuid.UUID `json:"provider_id,omitempty"`
+	ModelID         *uuid.UUID `json:"model_id,omitempty"`
 	BillingTier     string     `json:"billing_tier"`
-	OrganizationID  ulid.ULID  `json:"organization_id"`
+	OrganizationID  uuid.UUID  `json:"organization_id"`
 	IsFirstCustomer bool       `json:"is_first_customer"`
 }
 
@@ -130,7 +132,7 @@ func (c *DiscountCalculator) CalculateDiscounts(
 // GetOrganizationDiscountRate gets the default discount rate for an organization
 func (c *DiscountCalculator) GetOrganizationDiscountRate(
 	ctx context.Context,
-	orgID ulid.ULID,
+	orgID uuid.UUID,
 	billingTier string,
 ) (float64, error) {
 	// Default discount rates by billing tier
@@ -150,7 +152,7 @@ func (c *DiscountCalculator) GetOrganizationDiscountRate(
 
 // CreateVolumeDiscountRule creates a volume-based discount rule
 func (c *DiscountCalculator) CreateVolumeDiscountRule(
-	orgID *ulid.ULID,
+	orgID *uuid.UUID,
 	name string,
 	description string,
 	tiers []billingDomain.VolumeTier,
@@ -158,7 +160,7 @@ func (c *DiscountCalculator) CreateVolumeDiscountRule(
 	validUntil *time.Time,
 ) *billingDomain.DiscountRule {
 	return &billingDomain.DiscountRule{
-		ID:              ulid.New(),
+		ID:              uid.New(),
 		OrganizationID:  orgID,
 		Name:            name,
 		Description:     description,
@@ -189,7 +191,7 @@ func (c *DiscountCalculator) CreateFirstTimeCustomerDiscount(
 	validUntil := time.Now().Add(validFor)
 
 	return &billingDomain.DiscountRule{
-		ID:              ulid.New(),
+		ID:              uid.New(),
 		OrganizationID:  nil, // Global rule
 		Name:            "First Time Customer Discount",
 		Description:     fmt.Sprintf("%.0f%% discount for first-time customers", percentage*100),

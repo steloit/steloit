@@ -1,17 +1,18 @@
 package streams
 
 import (
-	"log/slog"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/infrastructure/database"
-	"brokle/pkg/ulid"
 )
 
 // TelemetryStreamMessage represents a telemetry batch message in Redis Stream
@@ -21,9 +22,9 @@ type TelemetryStreamMessage struct {
 	Events           []TelemetryEventData   `json:"events"`
 	ClaimedSpanIDs   []string               `json:"claimed_span_ids"`
 	DuplicateSpanIDs []string               `json:"duplicate_span_ids,omitempty"`
-	BatchID          ulid.ULID              `json:"batch_id"`
-	ProjectID        ulid.ULID              `json:"project_id"`
-	OrganizationID   ulid.ULID              `json:"organization_id"`
+	BatchID          uuid.UUID              `json:"batch_id"`
+	ProjectID        uuid.UUID              `json:"project_id"`
+	OrganizationID   uuid.UUID              `json:"organization_id"`
 }
 
 // TelemetryEventData represents individual event data in the stream message
@@ -32,7 +33,7 @@ type TelemetryEventData struct {
 	SpanID       string                 `json:"span_id"`
 	TraceID      string                 `json:"trace_id"`
 	EventType    string                 `json:"event_type"`
-	EventID      ulid.ULID              `json:"event_id"`
+	EventID      uuid.UUID              `json:"event_id"`
 }
 
 // TelemetryStreamProducer handles publishing telemetry data to Redis Streams
@@ -56,11 +57,11 @@ func (p *TelemetryStreamProducer) PublishBatch(ctx context.Context, batch *Telem
 		return "", errors.New("batch cannot be nil")
 	}
 
-	if batch.BatchID.IsZero() {
+	if batch.BatchID == uuid.Nil {
 		return "", errors.New("batch ID is required")
 	}
 
-	if batch.ProjectID.IsZero() {
+	if batch.ProjectID == uuid.Nil {
 		return "", errors.New("project ID is required")
 	}
 
@@ -104,7 +105,7 @@ func (p *TelemetryStreamProducer) PublishBatch(ctx context.Context, batch *Telem
 }
 
 // GetStreamInfo retrieves information about a stream
-func (p *TelemetryStreamProducer) GetStreamInfo(ctx context.Context, projectID ulid.ULID) (*redis.XInfoStream, error) {
+func (p *TelemetryStreamProducer) GetStreamInfo(ctx context.Context, projectID uuid.UUID) (*redis.XInfoStream, error) {
 	streamKey := "telemetry:batches:" + projectID.String()
 
 	info, err := p.redis.Client.XInfoStream(ctx, streamKey).Result()
@@ -119,7 +120,7 @@ func (p *TelemetryStreamProducer) GetStreamInfo(ctx context.Context, projectID u
 }
 
 // GetStreamLength returns the number of messages in a stream
-func (p *TelemetryStreamProducer) GetStreamLength(ctx context.Context, projectID ulid.ULID) (int64, error) {
+func (p *TelemetryStreamProducer) GetStreamLength(ctx context.Context, projectID uuid.UUID) (int64, error) {
 	streamKey := "telemetry:batches:" + projectID.String()
 
 	length, err := p.redis.Client.XLen(ctx, streamKey).Result()
@@ -132,7 +133,7 @@ func (p *TelemetryStreamProducer) GetStreamLength(ctx context.Context, projectID
 
 // SetStreamTTL sets a TTL on the stream for automatic expiration (GDPR compliance)
 // Default: 30 days (720 hours) for GDPR Article 17 compliance (right to erasure)
-func (p *TelemetryStreamProducer) SetStreamTTL(ctx context.Context, projectID ulid.ULID, ttl time.Duration) error {
+func (p *TelemetryStreamProducer) SetStreamTTL(ctx context.Context, projectID uuid.UUID, ttl time.Duration) error {
 	streamKey := "telemetry:batches:" + projectID.String()
 
 	// Set TTL on stream key
@@ -147,7 +148,7 @@ func (p *TelemetryStreamProducer) SetStreamTTL(ctx context.Context, projectID ul
 }
 
 // DeleteStream removes a stream (use with caution)
-func (p *TelemetryStreamProducer) DeleteStream(ctx context.Context, projectID ulid.ULID) error {
+func (p *TelemetryStreamProducer) DeleteStream(ctx context.Context, projectID uuid.UUID) error {
 	streamKey := "telemetry:batches:" + projectID.String()
 
 	err := p.redis.Client.Del(ctx, streamKey).Err()

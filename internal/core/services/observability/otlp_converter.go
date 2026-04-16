@@ -11,10 +11,12 @@ import (
 
 	"github.com/shopspring/decimal"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/config"
 	"brokle/internal/core/domain/analytics"
 	"brokle/internal/core/domain/observability"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 // MaxAttributeValueSize defines the maximum size for input/output attribute values
@@ -35,9 +37,9 @@ const (
 	AttrVercelResultToolCalls   = "ai.result.toolCalls"
 
 	// OTEL GenAI
-	AttrGenAIInputMessages       = "gen_ai.input.messages"
-	AttrGenAIOutputMessages      = "gen_ai.output.messages"
-	AttrGenAISystemInstructions  = "gen_ai.system_instructions"
+	AttrGenAIInputMessages      = "gen_ai.input.messages"
+	AttrGenAIOutputMessages     = "gen_ai.output.messages"
+	AttrGenAISystemInstructions = "gen_ai.system_instructions"
 
 	// OpenInference
 	AttrInputValue     = "input.value"
@@ -585,7 +587,7 @@ func (s *OTLPConverterService) createSpanEvent(ctx context.Context, span observa
 	}
 
 	event := &brokleEvent{
-		EventID:   ulid.New().String(),
+		EventID:   uid.New().String(),
 		SpanID:    spanID,
 		TraceID:   traceID,
 		EventType: "span",
@@ -891,7 +893,7 @@ func bytesToHex(data []interface{}) string {
 func convertToDomainEvents(events []*brokleEvent) []*observability.TelemetryEventRequest {
 	result := make([]*observability.TelemetryEventRequest, 0, len(events))
 	for _, e := range events {
-		eventID, err := ulid.Parse(e.EventID)
+		eventID, err := uuid.Parse(e.EventID)
 		if err != nil {
 			continue
 		}
@@ -987,9 +989,9 @@ func (s *OTLPConverterService) calculateProviderCostsAtIngestion(
 		return
 	}
 
-	projectIDPtr := (*ulid.ULID)(nil)
+	projectIDPtr := (*uuid.UUID)(nil)
 	if projectID != "" {
-		if pid, err := ulid.Parse(projectID); err == nil {
+		if pid, err := uuid.Parse(projectID); err == nil {
 			projectIDPtr = &pid
 		}
 	}

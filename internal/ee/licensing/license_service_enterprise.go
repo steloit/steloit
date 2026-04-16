@@ -4,11 +4,11 @@
 package license
 
 import (
-	"log/slog"
 	"context"
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"

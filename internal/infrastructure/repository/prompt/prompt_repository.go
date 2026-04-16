@@ -8,8 +8,9 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	promptDomain "brokle/internal/core/domain/prompt"
-	"brokle/pkg/ulid"
 	"brokle/internal/infrastructure/shared"
 )
 
@@ -36,7 +37,7 @@ func (r *promptRepository) Create(ctx context.Context, prompt *promptDomain.Prom
 }
 
 // GetByID retrieves a prompt by ID
-func (r *promptRepository) GetByID(ctx context.Context, id ulid.ULID) (*promptDomain.Prompt, error) {
+func (r *promptRepository) GetByID(ctx context.Context, id uuid.UUID) (*promptDomain.Prompt, error) {
 	var prompt promptDomain.Prompt
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("id = ? AND deleted_at IS NULL", id).
@@ -51,7 +52,7 @@ func (r *promptRepository) GetByID(ctx context.Context, id ulid.ULID) (*promptDo
 }
 
 // GetByName retrieves a prompt by project and name
-func (r *promptRepository) GetByName(ctx context.Context, projectID ulid.ULID, name string) (*promptDomain.Prompt, error) {
+func (r *promptRepository) GetByName(ctx context.Context, projectID uuid.UUID, name string) (*promptDomain.Prompt, error) {
 	var prompt promptDomain.Prompt
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("project_id = ? AND name = ? AND deleted_at IS NULL", projectID, name).
@@ -72,12 +73,12 @@ func (r *promptRepository) Update(ctx context.Context, prompt *promptDomain.Prom
 }
 
 // Delete hard deletes a prompt
-func (r *promptRepository) Delete(ctx context.Context, id ulid.ULID) error {
+func (r *promptRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).Where("id = ?", id).Delete(&promptDomain.Prompt{}).Error
 }
 
 // ListByProject retrieves all prompts in a project with optional filters
-func (r *promptRepository) ListByProject(ctx context.Context, projectID ulid.ULID, filters *promptDomain.PromptFilters) ([]*promptDomain.Prompt, int64, error) {
+func (r *promptRepository) ListByProject(ctx context.Context, projectID uuid.UUID, filters *promptDomain.PromptFilters) ([]*promptDomain.Prompt, int64, error) {
 	var prompts []*promptDomain.Prompt
 	var total int64
 
@@ -120,7 +121,7 @@ func (r *promptRepository) ListByProject(ctx context.Context, projectID ulid.ULI
 }
 
 // CountByProject counts prompts in a project
-func (r *promptRepository) CountByProject(ctx context.Context, projectID ulid.ULID) (int64, error) {
+func (r *promptRepository) CountByProject(ctx context.Context, projectID uuid.UUID) (int64, error) {
 	var count int64
 	err := r.getDB(ctx).WithContext(ctx).
 		Model(&promptDomain.Prompt{}).
@@ -130,7 +131,7 @@ func (r *promptRepository) CountByProject(ctx context.Context, projectID ulid.UL
 }
 
 // SoftDelete soft deletes a prompt
-func (r *promptRepository) SoftDelete(ctx context.Context, id ulid.ULID) error {
+func (r *promptRepository) SoftDelete(ctx context.Context, id uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).
 		Model(&promptDomain.Prompt{}).
 		Where("id = ?", id).
@@ -138,7 +139,7 @@ func (r *promptRepository) SoftDelete(ctx context.Context, id ulid.ULID) error {
 }
 
 // Restore restores a soft-deleted prompt
-func (r *promptRepository) Restore(ctx context.Context, id ulid.ULID) error {
+func (r *promptRepository) Restore(ctx context.Context, id uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).
 		Model(&promptDomain.Prompt{}).
 		Where("id = ?", id).

@@ -6,9 +6,10 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/billing"
 	"brokle/internal/infrastructure/shared"
-	"brokle/pkg/ulid"
 )
 
 type volumeDiscountTierRepository struct {
@@ -36,7 +37,7 @@ func (r *volumeDiscountTierRepository) CreateBatch(ctx context.Context, tiers []
 	return r.getDB(ctx).WithContext(ctx).Create(&tiers).Error
 }
 
-func (r *volumeDiscountTierRepository) GetByContractID(ctx context.Context, contractID ulid.ULID) ([]*billing.VolumeDiscountTier, error) {
+func (r *volumeDiscountTierRepository) GetByContractID(ctx context.Context, contractID uuid.UUID) ([]*billing.VolumeDiscountTier, error) {
 	var tiers []*billing.VolumeDiscountTier
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("contract_id = ?", contractID).
@@ -50,7 +51,7 @@ func (r *volumeDiscountTierRepository) GetByContractID(ctx context.Context, cont
 	return tiers, nil
 }
 
-func (r *volumeDiscountTierRepository) DeleteByContractID(ctx context.Context, contractID ulid.ULID) error {
+func (r *volumeDiscountTierRepository) DeleteByContractID(ctx context.Context, contractID uuid.UUID) error {
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("contract_id = ?", contractID).
 		Delete(&billing.VolumeDiscountTier{})

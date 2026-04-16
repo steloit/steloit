@@ -53,7 +53,7 @@ import (
 // @description CSRF protection for mutations (POST/PUT/PATCH/DELETE). Value must match csrf_token cookie. Required for all non-idempotent operations.
 //
 // Custom type definitions for Swagger
-// @x-extension-openapi {"definitions": {"ULID": {"type": "string", "description": "ULID (Universally Unique Lexicographically Sortable Identifier)", "example": "01ARZ3NDEKTSV4RRFFQ69G5FAV", "pattern": "^[0-9A-Z]{26}$"}}}
+// @x-extension-openapi {"definitions": {"UUID": {"type": "string", "format": "uuid", "description": "UUIDv7 (RFC 9562)", "example": "018f6b6a-1234-7abc-8def-0123456789ab", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"}}}
 func main() {
 	// Load configuration
 	cfg, err := config.Load()

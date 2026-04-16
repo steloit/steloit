@@ -18,12 +18,12 @@ type EmailSender interface {
 
 // SendEmailParams contains all parameters for sending an email
 type SendEmailParams struct {
-	To       []string          // Recipient email addresses
-	Subject  string            // Email subject
-	HTML     string            // HTML content
-	Text     string            // Plain text content (optional fallback)
-	ReplyTo  string            // Reply-to address (optional)
-	Tags     map[string]string // Email tags for analytics (optional)
+	To      []string          // Recipient email addresses
+	Subject string            // Email subject
+	HTML    string            // HTML content
+	Text    string            // Plain text content (optional fallback)
+	ReplyTo string            // Reply-to address (optional)
+	Tags    map[string]string // Email tags for analytics (optional)
 }
 
 // ResendClient implements EmailSender using the Resend API
@@ -63,13 +63,13 @@ func NewResendClient(cfg ResendConfig) *ResendClient {
 
 // resendRequest is the request body for Resend API
 type resendRequest struct {
-	From    string            `json:"from"`
-	To      []string          `json:"to"`
-	Subject string            `json:"subject"`
-	HTML    string            `json:"html,omitempty"`
-	Text    string            `json:"text,omitempty"`
-	ReplyTo string            `json:"reply_to,omitempty"`
-	Tags    []resendTag       `json:"tags,omitempty"`
+	From    string      `json:"from"`
+	To      []string    `json:"to"`
+	Subject string      `json:"subject"`
+	HTML    string      `json:"html,omitempty"`
+	Text    string      `json:"text,omitempty"`
+	ReplyTo string      `json:"reply_to,omitempty"`
+	Tags    []resendTag `json:"tags,omitempty"`
 }
 
 type resendTag struct {

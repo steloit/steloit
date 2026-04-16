@@ -1,12 +1,12 @@
 package observability
 
 import (
-	"log/slog"
 	"bytes"
 	"compress/gzip"
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -22,7 +22,7 @@ import (
 	"brokle/internal/infrastructure/streams"
 	"brokle/internal/transport/http/middleware"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 // OTLPHandler handles OTLP HTTP requests
@@ -140,7 +140,7 @@ func (h *OTLPHandler) HandleTraces(c *gin.Context) {
 			return
 		}
 
-		h.logger.Info("Gzip decompression successful", "original_size", originalSize, "decompressed_size", len(body), "compression_ratio", float64(originalSize) / float64(len(body)))
+		h.logger.Info("Gzip decompression successful", "original_size", originalSize, "decompressed_size", len(body), "compression_ratio", float64(originalSize)/float64(len(body)))
 	}
 
 	// Parse request based on content type (already validated above)
@@ -228,7 +228,7 @@ func (h *OTLPHandler) HandleTraces(c *gin.Context) {
 	}
 
 	// 2. Claim spans atomically (24h TTL, prevents duplicates)
-	batchID := ulid.New()
+	batchID := uid.New()
 	var claimedIDs, duplicateIDs []string
 
 	if len(dedupIDs) > 0 {

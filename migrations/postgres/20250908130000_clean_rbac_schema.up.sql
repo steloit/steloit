@@ -23,7 +23,7 @@ ALTER TABLE roles
 -- Add clean scoped design columns
 ALTER TABLE roles 
     ADD COLUMN scope_type VARCHAR(50) NOT NULL DEFAULT 'system',
-    ADD COLUMN scope_id CHAR(26);
+    ADD COLUMN scope_id UUID;
 
 -- Remove default after adding column
 ALTER TABLE roles ALTER COLUMN scope_type DROP DEFAULT;
@@ -49,8 +49,8 @@ CREATE INDEX idx_roles_deleted_at ON roles(deleted_at);
 
 -- Create clean user_roles table
 CREATE TABLE user_roles (
-    user_id CHAR(26) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    role_id CHAR(26) NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     PRIMARY KEY (user_id, role_id)
 );
@@ -61,8 +61,8 @@ CREATE INDEX idx_user_roles_role_id ON user_roles(role_id);
 
 -- Recreate role_permissions table with clean design
 CREATE TABLE role_permissions (
-    role_id CHAR(26) NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-    permission_id CHAR(26) NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
+    role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    permission_id UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     PRIMARY KEY (role_id, permission_id)
 );

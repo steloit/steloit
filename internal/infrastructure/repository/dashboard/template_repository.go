@@ -8,8 +8,9 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	"github.com/google/uuid"
+
 	dashboardDomain "brokle/internal/core/domain/dashboard"
-	"brokle/pkg/ulid"
 )
 
 // templateRepository implements dashboardDomain.TemplateRepository using GORM
@@ -51,7 +52,7 @@ func (r *templateRepository) List(ctx context.Context, filter *dashboardDomain.T
 }
 
 // GetByID retrieves a template by its ID
-func (r *templateRepository) GetByID(ctx context.Context, id ulid.ULID) (*dashboardDomain.Template, error) {
+func (r *templateRepository) GetByID(ctx context.Context, id uuid.UUID) (*dashboardDomain.Template, error) {
 	var template dashboardDomain.Template
 	err := r.db.WithContext(ctx).
 		Where("id = ?", id).
@@ -112,7 +113,7 @@ func (r *templateRepository) Update(ctx context.Context, template *dashboardDoma
 }
 
 // Delete removes a template by its ID
-func (r *templateRepository) Delete(ctx context.Context, id ulid.ULID) error {
+func (r *templateRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	result := r.db.WithContext(ctx).Delete(&dashboardDomain.Template{}, "id = ?", id)
 	if result.Error != nil {
 		return fmt.Errorf("delete template: %w", result.Error)

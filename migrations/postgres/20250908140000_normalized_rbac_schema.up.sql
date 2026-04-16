@@ -8,7 +8,7 @@ DROP TABLE IF EXISTS organization_members CASCADE;
 
 -- 1. Template Roles (Global, Reusable)
 CREATE TABLE roles (
-    id CHAR(26) PRIMARY KEY,
+    id UUID PRIMARY KEY,
     name VARCHAR(50) NOT NULL,
     scope_type VARCHAR(20) NOT NULL, -- 'organization', 'project', 'environment'
     description TEXT,
@@ -19,7 +19,7 @@ CREATE TABLE roles (
 
 -- 2. Individual Permissions (Normalized)
 CREATE TABLE permissions (
-    id CHAR(26) PRIMARY KEY,
+    id UUID PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE, -- 'users:create', 'projects:read'
     description TEXT,
     resource VARCHAR(50) NOT NULL,     -- 'users', 'projects', 'billing'
@@ -34,10 +34,10 @@ CREATE INDEX idx_permissions_resource_action ON permissions(resource, action);
 
 -- 3. Role-Permission Assignments (Many-to-Many)
 CREATE TABLE role_permissions (
-    role_id CHAR(26) NOT NULL,
-    permission_id CHAR(26) NOT NULL,
+    role_id UUID NOT NULL,
+    permission_id UUID NOT NULL,
     granted_at TIMESTAMP DEFAULT NOW(),
-    granted_by CHAR(26), -- audit trail
+    granted_by UUID, -- audit trail
     PRIMARY KEY (role_id, permission_id),
     FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
     FOREIGN KEY (permission_id) REFERENCES permissions(id) ON DELETE CASCADE
@@ -45,12 +45,12 @@ CREATE TABLE role_permissions (
 
 -- 4. Organization Membership (Single Role per Member)
 CREATE TABLE organization_members (
-    user_id CHAR(26) NOT NULL,
-    organization_id CHAR(26) NOT NULL,
-    role_id CHAR(26) NOT NULL,
+    user_id UUID NOT NULL,
+    organization_id UUID NOT NULL,
+    role_id UUID NOT NULL,
     status VARCHAR(20) DEFAULT 'active', -- 'active', 'invited', 'suspended'
     joined_at TIMESTAMP DEFAULT NOW(),
-    invited_by CHAR(26),
+    invited_by UUID,
     PRIMARY KEY (user_id, organization_id),
     FOREIGN KEY (role_id) REFERENCES roles(id),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -65,9 +65,9 @@ CREATE INDEX idx_org_members_status ON organization_members(status);
 
 -- 5. Future: Project Membership (Extensible Pattern)
 CREATE TABLE project_members (
-    user_id CHAR(26) NOT NULL,
-    project_id CHAR(26) NOT NULL,
-    role_id CHAR(26) NOT NULL,
+    user_id UUID NOT NULL,
+    project_id UUID NOT NULL,
+    role_id UUID NOT NULL,
     status VARCHAR(20) DEFAULT 'active',
     joined_at TIMESTAMP DEFAULT NOW(),
     PRIMARY KEY (user_id, project_id),
@@ -83,9 +83,9 @@ CREATE INDEX idx_project_members_role ON project_members(role_id);
 
 -- 6. Future: Environment Membership (Extensible Pattern)
 CREATE TABLE environment_members (
-    user_id CHAR(26) NOT NULL,
-    environment_id CHAR(26) NOT NULL,
-    role_id CHAR(26) NOT NULL,
+    user_id UUID NOT NULL,
+    environment_id UUID NOT NULL,
+    role_id UUID NOT NULL,
     status VARCHAR(20) DEFAULT 'active',
     joined_at TIMESTAMP DEFAULT NOW(),
     PRIMARY KEY (user_id, environment_id),

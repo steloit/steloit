@@ -3,12 +3,12 @@ package credentials
 import (
 	"context"
 
-	"brokle/pkg/ulid"
+	"github.com/google/uuid"
 )
 
 type CreateCredentialRequest struct {
 	// OrganizationID is set from the URL path parameter
-	OrganizationID ulid.ULID `json:"-"`
+	OrganizationID uuid.UUID `json:"-"`
 
 	// Name is the user-defined unique identifier for this configuration
 	// e.g., "OpenAI Production", "Claude Development"
@@ -39,7 +39,7 @@ type CreateCredentialRequest struct {
 	Headers map[string]string `json:"headers,omitempty"`
 
 	// CreatedBy is set from the auth context
-	CreatedBy *ulid.ULID `json:"-"`
+	CreatedBy *uuid.UUID `json:"-"`
 }
 
 type UpdateCredentialRequest struct {
@@ -67,11 +67,11 @@ type UpdateCredentialRequest struct {
 }
 
 type TestConnectionRequest struct {
-	Adapter  Provider          `json:"adapter" validate:"required"`
-	APIKey   string            `json:"api_key" validate:"required"`
-	BaseURL  *string           `json:"base_url,omitempty"`
-	Config   map[string]any    `json:"config,omitempty"`
-	Headers  map[string]string `json:"headers,omitempty"`
+	Adapter Provider          `json:"adapter" validate:"required"`
+	APIKey  string            `json:"api_key" validate:"required"`
+	BaseURL *string           `json:"base_url,omitempty"`
+	Config  map[string]any    `json:"config,omitempty"`
+	Headers map[string]string `json:"headers,omitempty"`
 }
 
 type TestConnectionResponse struct {
@@ -86,35 +86,35 @@ type ProviderCredentialService interface {
 
 	// Update updates an existing credential by ID within a specific organization.
 	// Returns error if the credential doesn't exist or belongs to different organization.
-	Update(ctx context.Context, id ulid.ULID, orgID ulid.ULID, req *UpdateCredentialRequest) (*ProviderCredentialResponse, error)
+	Update(ctx context.Context, id uuid.UUID, orgID uuid.UUID, req *UpdateCredentialRequest) (*ProviderCredentialResponse, error)
 
 	// GetByID retrieves a credential by ID within a specific organization.
 	// Returns the safe response (no encrypted data, only masked key preview).
 	// Returns error if the credential doesn't exist or belongs to different organization.
-	GetByID(ctx context.Context, id ulid.ULID, orgID ulid.ULID) (*ProviderCredentialResponse, error)
+	GetByID(ctx context.Context, id uuid.UUID, orgID uuid.UUID) (*ProviderCredentialResponse, error)
 
 	// GetByName retrieves a credential by organization and name.
 	// Returns the safe response (no encrypted data, only masked key preview).
-	GetByName(ctx context.Context, orgID ulid.ULID, name string) (*ProviderCredentialResponse, error)
+	GetByName(ctx context.Context, orgID uuid.UUID, name string) (*ProviderCredentialResponse, error)
 
 	// List retrieves all credentials for an organization.
 	// Returns safe responses (no encrypted data).
-	List(ctx context.Context, orgID ulid.ULID) ([]*ProviderCredentialResponse, error)
+	List(ctx context.Context, orgID uuid.UUID) ([]*ProviderCredentialResponse, error)
 
 	// Delete removes a credential by ID within a specific organization.
 	// Returns error if the credential doesn't exist or belongs to different organization.
-	Delete(ctx context.Context, id ulid.ULID, orgID ulid.ULID) error
+	Delete(ctx context.Context, id uuid.UUID, orgID uuid.UUID) error
 
 	// GetDecryptedByID retrieves the decrypted key configuration by credential ID within a specific organization.
 	// This is ONLY for internal use during prompt execution.
 	// Returns ErrCredentialNotFound if no credential exists or belongs to different organization.
-	GetDecryptedByID(ctx context.Context, credentialID ulid.ULID, orgID ulid.ULID) (*DecryptedKeyConfig, error)
+	GetDecryptedByID(ctx context.Context, credentialID uuid.UUID, orgID uuid.UUID) (*DecryptedKeyConfig, error)
 
 	// GetExecutionConfig returns the key configuration for AI execution.
 	// Requires credential_id and validates that the credential's adapter matches.
 	// Returns ErrAdapterMismatch if the credential's adapter doesn't match the expected adapter.
 	// Returns ErrCredentialNotFound if the credential doesn't exist.
-	GetExecutionConfig(ctx context.Context, orgID ulid.ULID, credentialID ulid.ULID, adapter Provider) (*DecryptedKeyConfig, error)
+	GetExecutionConfig(ctx context.Context, orgID uuid.UUID, credentialID uuid.UUID, adapter Provider) (*DecryptedKeyConfig, error)
 
 	// ValidateKey validates an API key with the provider without storing it.
 	// Makes a lightweight API call to verify the key works.

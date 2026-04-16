@@ -7,10 +7,11 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/evaluation"
 	"brokle/internal/core/domain/observability"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
 )
 
 type experimentService struct {
@@ -34,7 +35,7 @@ func NewExperimentService(
 	}
 }
 
-func (s *experimentService) Create(ctx context.Context, projectID ulid.ULID, req *evaluation.CreateExperimentRequest) (*evaluation.Experiment, error) {
+func (s *experimentService) Create(ctx context.Context, projectID uuid.UUID, req *evaluation.CreateExperimentRequest) (*evaluation.Experiment, error) {
 	experiment := evaluation.NewExperiment(projectID, req.Name)
 	experiment.Description = req.Description
 	if req.Metadata != nil {
@@ -42,9 +43,9 @@ func (s *experimentService) Create(ctx context.Context, projectID ulid.ULID, req
 	}
 
 	if req.DatasetID != nil {
-		datasetID, err := ulid.Parse(*req.DatasetID)
+		datasetID, err := uuid.Parse(*req.DatasetID)
 		if err != nil {
-			return nil, appErrors.NewValidationError("dataset_id", "must be a valid ULID")
+			return nil, appErrors.NewValidationError("dataset_id", "must be a valid UUID")
 		}
 		if _, err := s.datasetRepo.GetByID(ctx, datasetID, projectID); err != nil {
 			if errors.Is(err, evaluation.ErrDatasetNotFound) {
@@ -72,7 +73,7 @@ func (s *experimentService) Create(ctx context.Context, projectID ulid.ULID, req
 	return experiment, nil
 }
 
-func (s *experimentService) Update(ctx context.Context, id ulid.ULID, projectID ulid.ULID, req *evaluation.UpdateExperimentRequest) (*evaluation.Experiment, error) {
+func (s *experimentService) Update(ctx context.Context, id uuid.UUID, projectID uuid.UUID, req *evaluation.UpdateExperimentRequest) (*evaluation.Experiment, error) {
 	experiment, err := s.repo.GetByID(ctx, id, projectID)
 	if err != nil {
 		if errors.Is(err, evaluation.ErrExperimentNotFound) {
@@ -130,7 +131,7 @@ func (s *experimentService) Update(ctx context.Context, id ulid.ULID, projectID 
 	return experiment, nil
 }
 
-func (s *experimentService) Delete(ctx context.Context, id ulid.ULID, projectID ulid.ULID) error {
+func (s *experimentService) Delete(ctx context.Context, id uuid.UUID, projectID uuid.UUID) error {
 	experiment, err := s.repo.GetByID(ctx, id, projectID)
 	if err != nil {
 		if errors.Is(err, evaluation.ErrExperimentNotFound) {
@@ -155,7 +156,7 @@ func (s *experimentService) Delete(ctx context.Context, id ulid.ULID, projectID 
 	return nil
 }
 
-func (s *experimentService) GetByID(ctx context.Context, id ulid.ULID, projectID ulid.ULID) (*evaluation.Experiment, error) {
+func (s *experimentService) GetByID(ctx context.Context, id uuid.UUID, projectID uuid.UUID) (*evaluation.Experiment, error) {
 	experiment, err := s.repo.GetByID(ctx, id, projectID)
 	if err != nil {
 		if errors.Is(err, evaluation.ErrExperimentNotFound) {
@@ -166,7 +167,7 @@ func (s *experimentService) GetByID(ctx context.Context, id ulid.ULID, projectID
 	return experiment, nil
 }
 
-func (s *experimentService) List(ctx context.Context, projectID ulid.ULID, filter *evaluation.ExperimentFilter, page, limit int) ([]*evaluation.Experiment, int64, error) {
+func (s *experimentService) List(ctx context.Context, projectID uuid.UUID, filter *evaluation.ExperimentFilter, page, limit int) ([]*evaluation.Experiment, int64, error) {
 	offset := (page - 1) * limit
 	experiments, total, err := s.repo.List(ctx, projectID, filter, offset, limit)
 	if err != nil {
@@ -176,7 +177,7 @@ func (s *experimentService) List(ctx context.Context, projectID ulid.ULID, filte
 }
 
 // Rerun creates a new experiment based on an existing one, using the same dataset.
-func (s *experimentService) Rerun(ctx context.Context, sourceID ulid.ULID, projectID ulid.ULID, req *evaluation.RerunExperimentRequest) (*evaluation.Experiment, error) {
+func (s *experimentService) Rerun(ctx context.Context, sourceID uuid.UUID, projectID uuid.UUID, req *evaluation.RerunExperimentRequest) (*evaluation.Experiment, error) {
 	// Get the source experiment
 	sourceExp, err := s.repo.GetByID(ctx, sourceID, projectID)
 	if err != nil {
@@ -235,9 +236,9 @@ func (s *experimentService) Rerun(ctx context.Context, sourceID ulid.ULID, proje
 // CompareExperiments compares score metrics across multiple experiments
 func (s *experimentService) CompareExperiments(
 	ctx context.Context,
-	projectID ulid.ULID,
-	experimentIDs []ulid.ULID,
-	baselineID *ulid.ULID,
+	projectID uuid.UUID,
+	experimentIDs []uuid.UUID,
+	baselineID *uuid.UUID,
 ) (*evaluation.CompareExperimentsResponse, error) {
 	if len(experimentIDs) < 2 {
 		return nil, appErrors.NewValidationError("experiment_ids", "at least 2 experiments required for comparison")
@@ -334,7 +335,7 @@ func (s *experimentService) CompareExperiments(
 }
 
 // GetProgress returns the current progress for an experiment.
-func (s *experimentService) GetProgress(ctx context.Context, id ulid.ULID, projectID ulid.ULID) (*evaluation.ExperimentProgressResponse, error) {
+func (s *experimentService) GetProgress(ctx context.Context, id uuid.UUID, projectID uuid.UUID) (*evaluation.ExperimentProgressResponse, error) {
 	exp, err := s.repo.GetProgress(ctx, id, projectID)
 	if err != nil {
 		if errors.Is(err, evaluation.ErrExperimentNotFound) {
@@ -347,7 +348,7 @@ func (s *experimentService) GetProgress(ctx context.Context, id ulid.ULID, proje
 }
 
 // SetTotalItems sets the total number of items for an experiment.
-func (s *experimentService) SetTotalItems(ctx context.Context, id ulid.ULID, projectID ulid.ULID, total int) error {
+func (s *experimentService) SetTotalItems(ctx context.Context, id uuid.UUID, projectID uuid.UUID, total int) error {
 	if total < 0 {
 		return appErrors.NewValidationError("total_items", "must be non-negative")
 	}
@@ -363,7 +364,7 @@ func (s *experimentService) SetTotalItems(ctx context.Context, id ulid.ULID, pro
 }
 
 // IncrementProgress atomically increments completed and/or failed counters.
-func (s *experimentService) IncrementProgress(ctx context.Context, id ulid.ULID, projectID ulid.ULID, completed, failed int) error {
+func (s *experimentService) IncrementProgress(ctx context.Context, id uuid.UUID, projectID uuid.UUID, completed, failed int) error {
 	if err := s.repo.IncrementCounters(ctx, id, projectID, completed, failed); err != nil {
 		if errors.Is(err, evaluation.ErrExperimentNotFound) {
 			return appErrors.NewNotFoundError(fmt.Sprintf("experiment %s", id))
@@ -375,7 +376,7 @@ func (s *experimentService) IncrementProgress(ctx context.Context, id ulid.ULID,
 }
 
 // IncrementAndCheckCompletion atomically increments counters and checks if experiment is complete.
-func (s *experimentService) IncrementAndCheckCompletion(ctx context.Context, id ulid.ULID, projectID ulid.ULID, completed, failed int) (bool, error) {
+func (s *experimentService) IncrementAndCheckCompletion(ctx context.Context, id uuid.UUID, projectID uuid.UUID, completed, failed int) (bool, error) {
 	isComplete, err := s.repo.IncrementCountersAndUpdateStatus(ctx, id, projectID, completed, failed)
 	if err != nil {
 		if errors.Is(err, evaluation.ErrExperimentNotFound) {
@@ -396,7 +397,7 @@ func (s *experimentService) IncrementAndCheckCompletion(ctx context.Context, id 
 
 // GetMetrics returns comprehensive metrics for an experiment including progress,
 // performance, and score aggregations from ClickHouse.
-func (s *experimentService) GetMetrics(ctx context.Context, projectID, experimentID ulid.ULID) (*evaluation.ExperimentMetricsResponse, error) {
+func (s *experimentService) GetMetrics(ctx context.Context, projectID, experimentID uuid.UUID) (*evaluation.ExperimentMetricsResponse, error) {
 	// 1. Get experiment (validates existence and project ownership)
 	exp, err := s.repo.GetByID(ctx, experimentID, projectID)
 	if err != nil {

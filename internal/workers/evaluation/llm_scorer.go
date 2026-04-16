@@ -7,10 +7,11 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/credentials"
 	"brokle/internal/core/domain/evaluation"
 	"brokle/internal/core/domain/prompt"
-	"brokle/pkg/ulid"
 )
 
 // LLMScorer implements LLM-as-a-judge scoring using project credentials
@@ -45,7 +46,7 @@ func (s *LLMScorer) Execute(ctx context.Context, job *EvaluationJob) (*ScorerRes
 	}
 
 	// Resolve credentials
-	credentialID, err := ulid.Parse(config.CredentialID)
+	credentialID, err := uuid.Parse(config.CredentialID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid credential_id: %w", err)
 	}
@@ -117,7 +118,7 @@ func (s *LLMScorer) Execute(ctx context.Context, job *EvaluationJob) (*ScorerRes
 				{
 					Name:        "llm_response",
 					StringValue: &execResp.Response.Content,
-					Type:    "CATEGORICAL",
+					Type:        "CATEGORICAL",
 					Reason:      &reason,
 				},
 			},

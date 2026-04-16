@@ -1,13 +1,15 @@
 package organization
 
 import (
-	"log/slog"
 	"fmt"
+	"log/slog"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/google/uuid"
 
 	"brokle/internal/config"
 	"brokle/internal/core/domain/auth"
@@ -15,7 +17,7 @@ import (
 	"brokle/internal/core/domain/user"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 // Handler handles organization endpoints
@@ -161,7 +163,7 @@ func (h *Handler) List(c *gin.Context) {
 		return
 	}
 
-	userID, ok := userIDValue.(ulid.ULID)
+	userID, ok := userIDValue.(uuid.UUID)
 	if !ok {
 		h.logger.Error("Invalid user ID type in context")
 		response.InternalServerError(c, "Internal error")
@@ -268,7 +270,7 @@ func (h *Handler) Create(c *gin.Context) {
 		return
 	}
 
-	userID, ok := userIDValue.(ulid.ULID)
+	userID, ok := userIDValue.(uuid.UUID)
 	if !ok {
 		h.logger.Error("Invalid user ID type in context")
 		response.InternalServerError(c, "Internal error")
@@ -344,7 +346,7 @@ func (h *Handler) Get(c *gin.Context) {
 		return
 	}
 
-	userID, ok := userIDValue.(ulid.ULID)
+	userID, ok := userIDValue.(uuid.UUID)
 	if !ok {
 		h.logger.Error("Invalid user ID type in context")
 		response.InternalServerError(c, "Internal error")
@@ -352,7 +354,7 @@ func (h *Handler) Get(c *gin.Context) {
 	}
 
 	// Parse organization ID
-	orgID, err := ulid.Parse(req.OrgID)
+	orgID, err := uuid.Parse(req.OrgID)
 	if err != nil {
 		h.logger.Error("Invalid organization ID format", "error", err, "org_id", req.OrgID)
 		response.Error(c, appErrors.NewValidationError("Invalid organization ID format", err.Error()))
@@ -438,7 +440,7 @@ func (h *Handler) Update(c *gin.Context) {
 		return
 	}
 
-	userID, ok := userIDValue.(ulid.ULID)
+	userID, ok := userIDValue.(uuid.UUID)
 	if !ok {
 		h.logger.Error("Invalid user ID type in context")
 		response.InternalServerError(c, "Internal error")
@@ -446,7 +448,7 @@ func (h *Handler) Update(c *gin.Context) {
 	}
 
 	// Parse organization ID
-	orgID, err := ulid.Parse(uriReq.OrgID)
+	orgID, err := uuid.Parse(uriReq.OrgID)
 	if err != nil {
 		h.logger.Error("Invalid organization ID format", "error", err, "org_id", uriReq.OrgID)
 		response.Error(c, appErrors.NewValidationError("Invalid organization ID format", err.Error()))
@@ -539,7 +541,7 @@ func (h *Handler) Delete(c *gin.Context) {
 		return
 	}
 
-	userID, ok := userIDValue.(ulid.ULID)
+	userID, ok := userIDValue.(uuid.UUID)
 	if !ok {
 		h.logger.Error("Invalid user ID type in context")
 		response.InternalServerError(c, "Internal error")
@@ -547,7 +549,7 @@ func (h *Handler) Delete(c *gin.Context) {
 	}
 
 	// Parse organization ID
-	orgID, err := ulid.Parse(req.OrgID)
+	orgID, err := uuid.Parse(req.OrgID)
 	if err != nil {
 		h.logger.Error("Invalid organization ID format", "error", err, "org_id", req.OrgID)
 		response.Error(c, appErrors.NewValidationError("Invalid organization ID format", err.Error()))
@@ -626,7 +628,7 @@ func (h *Handler) ListMembers(c *gin.Context) {
 		return
 	}
 
-	userID, ok := userIDValue.(ulid.ULID)
+	userID, ok := userIDValue.(uuid.UUID)
 	if !ok {
 		h.logger.Error("Invalid user ID type in context")
 		response.InternalServerError(c, "Internal error")
@@ -634,7 +636,7 @@ func (h *Handler) ListMembers(c *gin.Context) {
 	}
 
 	// Parse organization ID
-	orgID, err := ulid.Parse(req.OrgID)
+	orgID, err := uuid.Parse(req.OrgID)
 	if err != nil {
 		h.logger.Error("Invalid organization ID format", "error", err, "org_id", req.OrgID)
 		response.Error(c, appErrors.NewValidationError("Invalid organization ID format", err.Error()))
@@ -793,7 +795,7 @@ func (h *Handler) InviteMember(c *gin.Context) {
 		return
 	}
 
-	userID, ok := userIDValue.(ulid.ULID)
+	userID, ok := userIDValue.(uuid.UUID)
 	if !ok {
 		h.logger.Error("Invalid user ID type in context")
 		response.InternalServerError(c, "Internal error")
@@ -801,7 +803,7 @@ func (h *Handler) InviteMember(c *gin.Context) {
 	}
 
 	// Parse organization ID
-	orgID, err := ulid.Parse(req.OrgID)
+	orgID, err := uuid.Parse(req.OrgID)
 	if err != nil {
 		h.logger.Error("Invalid organization ID format", "error", err, "org_id", req.OrgID)
 		response.Error(c, appErrors.NewValidationError("Invalid organization ID format", err.Error()))
@@ -824,7 +826,7 @@ func (h *Handler) InviteMember(c *gin.Context) {
 
 	// For now, we'll create a basic invitation request
 	// TODO: Need to get actual role ID based on role name
-	roleID := ulid.New() // This should be resolved from role name
+	roleID := uid.New() // This should be resolved from role name
 
 	inviteReq := &organization.InviteUserRequest{
 		Email:  req.Email,
@@ -901,7 +903,7 @@ func (h *Handler) RemoveMember(c *gin.Context) {
 		return
 	}
 
-	currentUserID, ok := currentUserIDValue.(ulid.ULID)
+	currentUserID, ok := currentUserIDValue.(uuid.UUID)
 	if !ok {
 		h.logger.Error("Invalid user ID type in context")
 		response.InternalServerError(c, "Internal error")
@@ -909,7 +911,7 @@ func (h *Handler) RemoveMember(c *gin.Context) {
 	}
 
 	// Parse organization ID
-	orgID, err := ulid.Parse(req.OrgID)
+	orgID, err := uuid.Parse(req.OrgID)
 	if err != nil {
 		h.logger.Error("Invalid organization ID format", "error", err, "org_id", req.OrgID)
 		response.Error(c, appErrors.NewValidationError("Invalid organization ID format", err.Error()))
@@ -917,7 +919,7 @@ func (h *Handler) RemoveMember(c *gin.Context) {
 	}
 
 	// Parse user ID to remove
-	userToRemoveID, err := ulid.Parse(req.UserID)
+	userToRemoveID, err := uuid.Parse(req.UserID)
 	if err != nil {
 		h.logger.Error("Invalid user ID format", "error", err, "user_id", req.UserID)
 		response.Error(c, appErrors.NewValidationError("Invalid user ID format", err.Error()))

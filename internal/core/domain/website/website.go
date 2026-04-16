@@ -3,12 +3,14 @@ package website
 import (
 	"time"
 
-	"brokle/pkg/ulid"
+	"github.com/google/uuid"
+
+	"brokle/pkg/uid"
 )
 
 // ContactSubmission represents a contact form submission from the marketing website.
 type ContactSubmission struct {
-	ID          ulid.ULID `gorm:"type:char(26);primaryKey"`
+	ID          uuid.UUID `gorm:"type:uuid;primaryKey"`
 	Name        string    `gorm:"type:varchar(255);not null"`
 	Email       string    `gorm:"type:varchar(255);not null"`
 	Company     string    `gorm:"type:varchar(255)"`
@@ -37,7 +39,7 @@ type CreateContactSubmissionRequest struct {
 // NewContactSubmission creates a new ContactSubmission from the request.
 func NewContactSubmission(req *CreateContactSubmissionRequest, ipAddress, userAgent string) *ContactSubmission {
 	return &ContactSubmission{
-		ID:          ulid.New(),
+		ID:          uid.New(),
 		Name:        req.Name,
 		Email:       req.Email,
 		Company:     req.Company,

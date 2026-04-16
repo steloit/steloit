@@ -6,12 +6,14 @@ import (
 
 	"github.com/shopspring/decimal"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/config"
 	"brokle/internal/core/domain/billing"
 	"brokle/internal/transport/http/middleware"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 
 	"github.com/gin-gonic/gin"
 )
@@ -54,35 +56,35 @@ func NewContractHandler(
 // Request/Response DTOs
 
 type CreateContractRequest struct {
-	OrganizationID          string                      `json:"organization_id" binding:"required"`
-	ContractName            string                      `json:"contract_name" binding:"required"`
-	ContractNumber          string                      `json:"contract_number" binding:"required"`
-	StartsAt                time.Time                   `json:"starts_at" binding:"required"` // RFC3339: 2026-01-08T10:15:00Z
-	ExpiresAt               *time.Time                  `json:"expires_at,omitempty"`         // RFC3339: 2026-02-08T10:15:00Z
-	MinimumCommitAmount     *float64                    `json:"minimum_commit_amount,omitempty"`
-	Currency                string                      `json:"currency,omitempty"`
-	AccountOwner            string                      `json:"account_owner,omitempty"`
-	SalesRepEmail           string                      `json:"sales_rep_email,omitempty"`
-	CustomFreeSpans         *int64                      `json:"custom_free_spans,omitempty"`
-	CustomPricePer100KSpans *float64                    `json:"custom_price_per_100k_spans,omitempty"`
-	CustomFreeGB            *float64                    `json:"custom_free_gb,omitempty"`
-	CustomPricePerGB        *float64                    `json:"custom_price_per_gb,omitempty"`
-	CustomFreeScores        *int64                      `json:"custom_free_scores,omitempty"`
-	CustomPricePer1KScores  *float64                    `json:"custom_price_per_1k_scores,omitempty"`
-	Notes                   string                      `json:"notes,omitempty"`
-	VolumeTiers             []CreateVolumeTierRequest   `json:"volume_tiers,omitempty"`
+	OrganizationID          string                    `json:"organization_id" binding:"required"`
+	ContractName            string                    `json:"contract_name" binding:"required"`
+	ContractNumber          string                    `json:"contract_number" binding:"required"`
+	StartsAt                time.Time                 `json:"starts_at" binding:"required"` // RFC3339: 2026-01-08T10:15:00Z
+	ExpiresAt               *time.Time                `json:"expires_at,omitempty"`         // RFC3339: 2026-02-08T10:15:00Z
+	MinimumCommitAmount     *float64                  `json:"minimum_commit_amount,omitempty"`
+	Currency                string                    `json:"currency,omitempty"`
+	AccountOwner            string                    `json:"account_owner,omitempty"`
+	SalesRepEmail           string                    `json:"sales_rep_email,omitempty"`
+	CustomFreeSpans         *int64                    `json:"custom_free_spans,omitempty"`
+	CustomPricePer100KSpans *float64                  `json:"custom_price_per_100k_spans,omitempty"`
+	CustomFreeGB            *float64                  `json:"custom_free_gb,omitempty"`
+	CustomPricePerGB        *float64                  `json:"custom_price_per_gb,omitempty"`
+	CustomFreeScores        *int64                    `json:"custom_free_scores,omitempty"`
+	CustomPricePer1KScores  *float64                  `json:"custom_price_per_1k_scores,omitempty"`
+	Notes                   string                    `json:"notes,omitempty"`
+	VolumeTiers             []CreateVolumeTierRequest `json:"volume_tiers,omitempty"`
 }
 
 type CreateVolumeTierRequest struct {
-	Dimension    string   `json:"dimension" binding:"required,oneof=spans bytes scores"`
-	TierMin      int64    `json:"tier_min" binding:"required,min=0"`
-	TierMax      *int64   `json:"tier_max,omitempty"`
-	PricePerUnit float64  `json:"price_per_unit" binding:"required,min=0"`
+	Dimension    string  `json:"dimension" binding:"required,oneof=spans bytes scores"`
+	TierMin      int64   `json:"tier_min" binding:"required,min=0"`
+	TierMax      *int64  `json:"tier_max,omitempty"`
+	PricePerUnit float64 `json:"price_per_unit" binding:"required,min=0"`
 }
 
 type UpdateContractRequest struct {
 	ContractName            *string    `json:"contract_name,omitempty"`
-	StartsAt                *time.Time `json:"starts_at,omitempty"` // RFC3339: 2026-01-08T10:15:00Z
+	StartsAt                *time.Time `json:"starts_at,omitempty"`  // RFC3339: 2026-01-08T10:15:00Z
 	ExpiresAt               *time.Time `json:"expires_at,omitempty"` // RFC3339: 2026-02-08T10:15:00Z
 	MinimumCommitAmount     *float64   `json:"minimum_commit_amount,omitempty"`
 	AccountOwner            *string    `json:"account_owner,omitempty"`
@@ -125,9 +127,9 @@ func (h *ContractHandler) CreateContract(c *gin.Context) {
 		return
 	}
 
-	orgID, err := ulid.Parse(req.OrganizationID)
+	orgID, err := uuid.Parse(req.OrganizationID)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "organization_id must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "organization_id must be a valid UUID"))
 		return
 	}
 
@@ -136,7 +138,7 @@ func (h *ContractHandler) CreateContract(c *gin.Context) {
 		return
 	}
 
-	userID, ok := middleware.GetUserIDULID(c)
+	userID, ok := middleware.GetUserIDFromContext(c)
 	if !ok {
 		response.Error(c, appErrors.NewUnauthorizedError("User context required"))
 		return
@@ -144,7 +146,7 @@ func (h *ContractHandler) CreateContract(c *gin.Context) {
 
 	// Build contract entity
 	contract := &billing.Contract{
-		ID:                      ulid.New(),
+		ID:                      uid.New(),
 		OrganizationID:          orgID,
 		ContractName:            req.ContractName,
 		ContractNumber:          req.ContractNumber,
@@ -186,7 +188,7 @@ func (h *ContractHandler) CreateContract(c *gin.Context) {
 		tiers := make([]*billing.VolumeDiscountTier, len(req.VolumeTiers))
 		for i, tierReq := range req.VolumeTiers {
 			tiers[i] = &billing.VolumeDiscountTier{
-				ID:           ulid.New(),
+				ID:           uid.New(),
 				ContractID:   contract.ID,
 				Dimension:    billing.TierDimension(tierReq.Dimension),
 				TierMin:      tierReq.TierMin,
@@ -413,7 +415,7 @@ func (h *ContractHandler) ActivateContract(c *gin.Context) {
 		return
 	}
 
-	userID, ok := middleware.GetUserIDULID(c)
+	userID, ok := middleware.GetUserIDFromContext(c)
 	if !ok {
 		response.Error(c, appErrors.NewUnauthorizedError("User context required"))
 		return
@@ -472,7 +474,7 @@ func (h *ContractHandler) CancelContract(c *gin.Context) {
 		return
 	}
 
-	userID, ok := middleware.GetUserIDULID(c)
+	userID, ok := middleware.GetUserIDFromContext(c)
 	if !ok {
 		response.Error(c, appErrors.NewUnauthorizedError("User context required"))
 		return
@@ -535,7 +537,7 @@ func (h *ContractHandler) UpdateVolumeTiers(c *gin.Context) {
 	tiers := make([]*billing.VolumeDiscountTier, len(req.Tiers))
 	for i, tierReq := range req.Tiers {
 		tiers[i] = &billing.VolumeDiscountTier{
-			ID:           ulid.New(),
+			ID:           uid.New(),
 			ContractID:   contractID,
 			Dimension:    billing.TierDimension(tierReq.Dimension),
 			TierMin:      tierReq.TierMin,
@@ -645,27 +647,27 @@ func (h *ContractHandler) GetEffectivePricing(c *gin.Context) {
 
 // Helper methods
 
-func (h *ContractHandler) parseContractID(c *gin.Context) (ulid.ULID, bool) {
-	contractID, err := ulid.Parse(c.Param("contractId"))
+func (h *ContractHandler) parseContractID(c *gin.Context) (uuid.UUID, bool) {
+	contractID, err := uuid.Parse(c.Param("contractId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid contract ID", "contractId must be a valid ULID"))
-		return ulid.ULID{}, false
+		response.Error(c, appErrors.NewValidationError("Invalid contract ID", "contractId must be a valid UUID"))
+		return uuid.UUID{}, false
 	}
 	return contractID, true
 }
 
-func (h *ContractHandler) parseOrgID(c *gin.Context) (ulid.ULID, bool) {
-	orgID, err := ulid.Parse(c.Param("orgId"))
+func (h *ContractHandler) parseOrgID(c *gin.Context) (uuid.UUID, bool) {
+	orgID, err := uuid.Parse(c.Param("orgId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid ULID"))
-		return ulid.ULID{}, false
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid UUID"))
+		return uuid.UUID{}, false
 	}
 	return orgID, true
 }
 
-func (h *ContractHandler) verifyOrgAccess(c *gin.Context, orgID ulid.ULID) error {
+func (h *ContractHandler) verifyOrgAccess(c *gin.Context, orgID uuid.UUID) error {
 	userOrgID := middleware.ResolveOrganizationID(c)
-	if userOrgID == nil || userOrgID.IsZero() {
+	if userOrgID == nil || *userOrgID == uuid.Nil {
 		return appErrors.NewUnauthorizedError("Organization context required")
 	}
 

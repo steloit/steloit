@@ -4,9 +4,10 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
+
 	authDomain "brokle/internal/core/domain/auth"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
 )
 
 // blacklistedTokenService implements the auth.BlacklistedTokenService interface
@@ -24,7 +25,7 @@ func NewBlacklistedTokenService(
 }
 
 // BlacklistToken adds a token to the blacklist for immediate revocation
-func (s *blacklistedTokenService) BlacklistToken(ctx context.Context, jti string, userID ulid.ULID, expiresAt time.Time, reason string) error {
+func (s *blacklistedTokenService) BlacklistToken(ctx context.Context, jti string, userID uuid.UUID, expiresAt time.Time, reason string) error {
 	// Check if token is already blacklisted
 	isBlacklisted, err := s.blacklistedTokenRepo.IsTokenBlacklisted(ctx, jti)
 	if err != nil {
@@ -59,7 +60,7 @@ func (s *blacklistedTokenService) GetBlacklistedToken(ctx context.Context, jti s
 }
 
 // CreateUserTimestampBlacklist creates a user-wide timestamp blacklist for GDPR/SOC2 compliance
-func (s *blacklistedTokenService) CreateUserTimestampBlacklist(ctx context.Context, userID ulid.ULID, reason string) error {
+func (s *blacklistedTokenService) CreateUserTimestampBlacklist(ctx context.Context, userID uuid.UUID, reason string) error {
 	blacklistTimestamp := time.Now().Unix()
 
 	err := s.blacklistedTokenRepo.CreateUserTimestampBlacklist(ctx, userID, blacklistTimestamp, reason)
@@ -71,17 +72,17 @@ func (s *blacklistedTokenService) CreateUserTimestampBlacklist(ctx context.Conte
 }
 
 // IsUserBlacklistedAfterTimestamp checks if a user is blacklisted after a specific timestamp
-func (s *blacklistedTokenService) IsUserBlacklistedAfterTimestamp(ctx context.Context, userID ulid.ULID, tokenIssuedAt int64) (bool, error) {
+func (s *blacklistedTokenService) IsUserBlacklistedAfterTimestamp(ctx context.Context, userID uuid.UUID, tokenIssuedAt int64) (bool, error) {
 	return s.blacklistedTokenRepo.IsUserBlacklistedAfterTimestamp(ctx, userID, tokenIssuedAt)
 }
 
 // GetUserBlacklistTimestamp gets the latest blacklist timestamp for a user
-func (s *blacklistedTokenService) GetUserBlacklistTimestamp(ctx context.Context, userID ulid.ULID) (*int64, error) {
+func (s *blacklistedTokenService) GetUserBlacklistTimestamp(ctx context.Context, userID uuid.UUID) (*int64, error) {
 	return s.blacklistedTokenRepo.GetUserBlacklistTimestamp(ctx, userID)
 }
 
 // BlacklistUserTokens blacklists all active tokens for a user (now uses timestamp approach for GDPR/SOC2 compliance)
-func (s *blacklistedTokenService) BlacklistUserTokens(ctx context.Context, userID ulid.ULID, reason string) error {
+func (s *blacklistedTokenService) BlacklistUserTokens(ctx context.Context, userID uuid.UUID, reason string) error {
 	// Use the new timestamp approach for comprehensive GDPR/SOC2 compliance
 	return s.CreateUserTimestampBlacklist(ctx, userID, reason)
 }

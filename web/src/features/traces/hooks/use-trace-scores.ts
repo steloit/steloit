@@ -13,7 +13,7 @@ import { traceQueryKeys } from './trace-query-keys'
  * - Error handling
  * - Background refetching
  *
- * @param projectId - Project ULID (optional, query disabled if not provided)
+ * @param projectId - Project UUID (optional, query disabled if not provided)
  * @param traceId - Trace ID (optional, query disabled if not provided)
  * @returns Query result with scores array
  */

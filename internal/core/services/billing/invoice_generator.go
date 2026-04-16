@@ -10,8 +10,10 @@ import (
 
 	"github.com/shopspring/decimal"
 
+	"github.com/google/uuid"
+
 	billingDomain "brokle/internal/core/domain/billing"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 // InvoiceGenerator handles invoice generation and management
@@ -43,7 +45,7 @@ func (g *InvoiceGenerator) GenerateInvoice(
 	}
 
 	invoice := &billingDomain.Invoice{
-		ID:               ulid.New(),
+		ID:               uid.New(),
 		InvoiceNumber:    g.generateInvoiceNumber(summary.OrganizationID, summary.PeriodStart),
 		OrganizationID:   summary.OrganizationID,
 		OrganizationName: organizationName,
@@ -339,7 +341,7 @@ type InvoiceSummary struct {
 
 // Internal methods
 
-func (g *InvoiceGenerator) generateInvoiceNumber(orgID ulid.ULID, periodStart time.Time) string {
+func (g *InvoiceGenerator) generateInvoiceNumber(orgID uuid.UUID, periodStart time.Time) string {
 	// Format: BRKL-YYYY-MM-{ORG_SHORT}-{SEQUENCE}
 	orgShort := orgID.String()[:8] // First 8 characters of org ID
 	yearMonth := periodStart.Format("2006-01")
@@ -361,7 +363,7 @@ func (g *InvoiceGenerator) generateLineItems(summary *billingDomain.BillingSumma
 		}
 		if amount.GreaterThan(decimal.Zero) {
 			lineItem := billingDomain.InvoiceLineItem{
-				ID:          ulid.New(),
+				ID:          uid.New(),
 				Description: "AI API Usage - Provider " + providerKey,
 				Quantity:    decimal.NewFromInt(1),
 				UnitPrice:   amount,
@@ -383,7 +385,7 @@ func (g *InvoiceGenerator) generateLineItems(summary *billingDomain.BillingSumma
 			unitPrice = summary.TotalCost.Div(quantity)
 		}
 		lineItems = append(lineItems, billingDomain.InvoiceLineItem{
-			ID:          ulid.New(),
+			ID:          uid.New(),
 			Description: "AI API Usage - " + summary.Period,
 			Quantity:    quantity,
 			UnitPrice:   unitPrice,

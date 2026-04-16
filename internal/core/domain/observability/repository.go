@@ -4,8 +4,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
+
 	"brokle/pkg/pagination"
-	"brokle/pkg/ulid"
 )
 
 type TraceRepository interface {
@@ -218,9 +219,9 @@ type TraceFilter struct {
 	Tags      []string
 
 	// Text search
-	Search     *string  // Text search query
-	SearchType *string  // Search type: "id", "content", "all"
-	Statuses   []string // Status filter: "ok", "error", "unset" (inclusion)
+	Search      *string  // Text search query
+	SearchType  *string  // Search type: "id", "content", "all"
+	Statuses    []string // Status filter: "ok", "error", "unset" (inclusion)
 	StatusesNot []string // Status exclusion filter: "ok", "error", "unset"
 }
 
@@ -232,8 +233,8 @@ type SpanFilter struct {
 	Type         *string
 	SpanKind     *string
 	Model        *string
-	ServiceName  *string   // OTLP: service.name (materialized column for fast filtering)
-	SpanNames    []string  // Filter by one or more span names (OR logic)
+	ServiceName  *string  // OTLP: service.name (materialized column for fast filtering)
+	SpanNames    []string // Filter by one or more span names (OR logic)
 	StartTime    *time.Time
 	EndTime      *time.Time
 	MinLatencyMs *uint32
@@ -285,11 +286,11 @@ type Range struct {
 
 type TelemetryDeduplicationRepository interface {
 	// Atomic claim for deduplication - returns which IDs were successfully claimed vs already processed.
-	ClaimEvents(ctx context.Context, projectID ulid.ULID, batchID ulid.ULID, dedupIDs []string, ttl time.Duration) (claimed []string, duplicates []string, err error)
+	ClaimEvents(ctx context.Context, projectID uuid.UUID, batchID uuid.UUID, dedupIDs []string, ttl time.Duration) (claimed []string, duplicates []string, err error)
 	ReleaseEvents(ctx context.Context, dedupIDs []string) error
 
 	CheckDuplicate(ctx context.Context, dedupID string) (bool, error)
-	RegisterEvent(ctx context.Context, dedupID string, batchID ulid.ULID, projectID ulid.ULID, ttl time.Duration) error
+	RegisterEvent(ctx context.Context, dedupID string, batchID uuid.UUID, projectID uuid.UUID, ttl time.Duration) error
 	Exists(ctx context.Context, dedupID string) (bool, error)
 	Create(ctx context.Context, dedup *TelemetryEventDeduplication) error
 	Delete(ctx context.Context, dedupID string) error
@@ -297,7 +298,7 @@ type TelemetryDeduplicationRepository interface {
 	CheckBatchDuplicates(ctx context.Context, dedupIDs []string) ([]string, error)
 	CreateBatch(ctx context.Context, dedups []*TelemetryEventDeduplication) error
 
-	CountByProjectID(ctx context.Context, projectID ulid.ULID) (int64, error)
+	CountByProjectID(ctx context.Context, projectID uuid.UUID) (int64, error)
 }
 
 type MetricsRepository interface {

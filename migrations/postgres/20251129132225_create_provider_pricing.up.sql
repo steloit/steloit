@@ -8,12 +8,12 @@
 
 -- Provider models table (AI model definitions)
 CREATE TABLE IF NOT EXISTS provider_models (
-    id CHAR(26) PRIMARY KEY,
+    id UUID PRIMARY KEY,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 
     -- Project association (NULL = global, non-NULL = project-specific override)
-    project_id CHAR(26),
+    project_id UUID,
 
     -- Model identification
     model_name VARCHAR(255) NOT NULL,
@@ -36,12 +36,12 @@ CREATE TABLE IF NOT EXISTS provider_models (
 
 -- Provider prices table (flexible usage-based pricing)
 CREATE TABLE IF NOT EXISTS provider_prices (
-    id CHAR(26) PRIMARY KEY,
+    id UUID PRIMARY KEY,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 
-    provider_model_id CHAR(26) NOT NULL,
-    project_id CHAR(26),
+    provider_model_id UUID NOT NULL,
+    project_id UUID,
 
     -- Flexible usage type (arbitrary string - no schema changes needed)
     usage_type VARCHAR(100) NOT NULL,

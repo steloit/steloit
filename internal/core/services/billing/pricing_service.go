@@ -7,9 +7,10 @@ import (
 
 	"github.com/shopspring/decimal"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/billing"
 	"brokle/pkg/pointers"
-	"brokle/pkg/ulid"
 	"brokle/pkg/units"
 )
 
@@ -38,7 +39,7 @@ func NewPricingService(
 }
 
 // GetEffectivePricing resolves pricing: contract overrides > plan defaults
-func (s *pricingService) GetEffectivePricing(ctx context.Context, orgID ulid.ULID) (*billing.EffectivePricing, error) {
+func (s *pricingService) GetEffectivePricing(ctx context.Context, orgID uuid.UUID) (*billing.EffectivePricing, error) {
 	// Get organization's billing state
 	orgBilling, err := s.billingRepo.GetByOrgID(ctx, orgID)
 	if err != nil {
@@ -50,7 +51,7 @@ func (s *pricingService) GetEffectivePricing(ctx context.Context, orgID ulid.ULI
 
 // GetEffectivePricingWithBilling resolves pricing using pre-fetched orgBilling
 // Use this when orgBilling is already available to avoid redundant DB query
-func (s *pricingService) GetEffectivePricingWithBilling(ctx context.Context, orgID ulid.ULID, orgBilling *billing.OrganizationBilling) (*billing.EffectivePricing, error) {
+func (s *pricingService) GetEffectivePricingWithBilling(ctx context.Context, orgID uuid.UUID, orgBilling *billing.OrganizationBilling) (*billing.EffectivePricing, error) {
 	// 1. Get organization's base plan
 	plan, err := s.planRepo.GetByID(ctx, orgBilling.PlanID)
 	if err != nil {
@@ -103,7 +104,7 @@ func (s *pricingService) GetEffectivePricingWithBilling(ctx context.Context, org
 }
 
 // CalculateCostWithTiers calculates cost with volume tier support
-func (s *pricingService) CalculateCostWithTiers(ctx context.Context, orgID ulid.ULID, usage *billing.BillableUsageSummary) (decimal.Decimal, error) {
+func (s *pricingService) CalculateCostWithTiers(ctx context.Context, orgID uuid.UUID, usage *billing.BillableUsageSummary) (decimal.Decimal, error) {
 	effective, err := s.GetEffectivePricing(ctx, orgID)
 	if err != nil {
 		return decimal.Zero, err
@@ -118,7 +119,7 @@ func (s *pricingService) CalculateCostWithTiers(ctx context.Context, orgID ulid.
 
 // CalculateCostWithTiersNoFreeTier calculates cost with tier support but without free tier deductions
 // Used for project-level budgets where free tier is org-level only
-func (s *pricingService) CalculateCostWithTiersNoFreeTier(ctx context.Context, orgID ulid.ULID, usage *billing.BillableUsageSummary) (decimal.Decimal, error) {
+func (s *pricingService) CalculateCostWithTiersNoFreeTier(ctx context.Context, orgID uuid.UUID, usage *billing.BillableUsageSummary) (decimal.Decimal, error) {
 	effective, err := s.GetEffectivePricing(ctx, orgID)
 	if err != nil {
 		return decimal.Zero, err
@@ -310,4 +311,3 @@ func (s *pricingService) calculateFlatDimension(billableUsage int64, dimension b
 		return decimal.Zero
 	}
 }
-

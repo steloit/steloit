@@ -6,10 +6,12 @@ import (
 	"os"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/evaluation"
 	"brokle/internal/core/domain/observability"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -25,7 +27,7 @@ func (m *MockExperimentRepository) Create(ctx context.Context, experiment *evalu
 	return args.Error(0)
 }
 
-func (m *MockExperimentRepository) GetByID(ctx context.Context, id ulid.ULID, projectID ulid.ULID) (*evaluation.Experiment, error) {
+func (m *MockExperimentRepository) GetByID(ctx context.Context, id uuid.UUID, projectID uuid.UUID) (*evaluation.Experiment, error) {
 	args := m.Called(ctx, id, projectID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -33,7 +35,7 @@ func (m *MockExperimentRepository) GetByID(ctx context.Context, id ulid.ULID, pr
 	return args.Get(0).(*evaluation.Experiment), args.Error(1)
 }
 
-func (m *MockExperimentRepository) List(ctx context.Context, projectID ulid.ULID, filter *evaluation.ExperimentFilter, offset, limit int) ([]*evaluation.Experiment, int64, error) {
+func (m *MockExperimentRepository) List(ctx context.Context, projectID uuid.UUID, filter *evaluation.ExperimentFilter, offset, limit int) ([]*evaluation.Experiment, int64, error) {
 	args := m.Called(ctx, projectID, filter, offset, limit)
 	if args.Get(0) == nil {
 		return nil, 0, args.Error(2)
@@ -41,32 +43,32 @@ func (m *MockExperimentRepository) List(ctx context.Context, projectID ulid.ULID
 	return args.Get(0).([]*evaluation.Experiment), args.Get(1).(int64), args.Error(2)
 }
 
-func (m *MockExperimentRepository) Update(ctx context.Context, experiment *evaluation.Experiment, projectID ulid.ULID) error {
+func (m *MockExperimentRepository) Update(ctx context.Context, experiment *evaluation.Experiment, projectID uuid.UUID) error {
 	args := m.Called(ctx, experiment, projectID)
 	return args.Error(0)
 }
 
-func (m *MockExperimentRepository) Delete(ctx context.Context, id ulid.ULID, projectID ulid.ULID) error {
+func (m *MockExperimentRepository) Delete(ctx context.Context, id uuid.UUID, projectID uuid.UUID) error {
 	args := m.Called(ctx, id, projectID)
 	return args.Error(0)
 }
 
-func (m *MockExperimentRepository) SetTotalItems(ctx context.Context, id, projectID ulid.ULID, total int) error {
+func (m *MockExperimentRepository) SetTotalItems(ctx context.Context, id, projectID uuid.UUID, total int) error {
 	args := m.Called(ctx, id, projectID, total)
 	return args.Error(0)
 }
 
-func (m *MockExperimentRepository) IncrementCounters(ctx context.Context, id, projectID ulid.ULID, completed, failed int) error {
+func (m *MockExperimentRepository) IncrementCounters(ctx context.Context, id, projectID uuid.UUID, completed, failed int) error {
 	args := m.Called(ctx, id, projectID, completed, failed)
 	return args.Error(0)
 }
 
-func (m *MockExperimentRepository) IncrementCountersAndUpdateStatus(ctx context.Context, id, projectID ulid.ULID, completed, failed int) (bool, error) {
+func (m *MockExperimentRepository) IncrementCountersAndUpdateStatus(ctx context.Context, id, projectID uuid.UUID, completed, failed int) (bool, error) {
 	args := m.Called(ctx, id, projectID, completed, failed)
 	return args.Bool(0), args.Error(1)
 }
 
-func (m *MockExperimentRepository) GetProgress(ctx context.Context, id, projectID ulid.ULID) (*evaluation.Experiment, error) {
+func (m *MockExperimentRepository) GetProgress(ctx context.Context, id, projectID uuid.UUID) (*evaluation.Experiment, error) {
 	args := m.Called(ctx, id, projectID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -88,7 +90,7 @@ func (m *MockExperimentItemRepository) CreateBatch(ctx context.Context, items []
 	return args.Error(0)
 }
 
-func (m *MockExperimentItemRepository) List(ctx context.Context, experimentID ulid.ULID, limit, offset int) ([]*evaluation.ExperimentItem, int64, error) {
+func (m *MockExperimentItemRepository) List(ctx context.Context, experimentID uuid.UUID, limit, offset int) ([]*evaluation.ExperimentItem, int64, error) {
 	args := m.Called(ctx, experimentID, limit, offset)
 	if args.Get(0) == nil {
 		return nil, 0, args.Error(2)
@@ -96,7 +98,7 @@ func (m *MockExperimentItemRepository) List(ctx context.Context, experimentID ul
 	return args.Get(0).([]*evaluation.ExperimentItem), args.Get(1).(int64), args.Error(2)
 }
 
-func (m *MockExperimentItemRepository) CountByExperiment(ctx context.Context, experimentID ulid.ULID) (int64, error) {
+func (m *MockExperimentItemRepository) CountByExperiment(ctx context.Context, experimentID uuid.UUID) (int64, error) {
 	args := m.Called(ctx, experimentID)
 	return args.Get(0).(int64), args.Error(1)
 }
@@ -115,7 +117,7 @@ func (m *MockDatasetItemRepository) CreateBatch(ctx context.Context, items []*ev
 	return args.Error(0)
 }
 
-func (m *MockDatasetItemRepository) GetByID(ctx context.Context, id ulid.ULID, datasetID ulid.ULID) (*evaluation.DatasetItem, error) {
+func (m *MockDatasetItemRepository) GetByID(ctx context.Context, id uuid.UUID, datasetID uuid.UUID) (*evaluation.DatasetItem, error) {
 	args := m.Called(ctx, id, datasetID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -123,7 +125,7 @@ func (m *MockDatasetItemRepository) GetByID(ctx context.Context, id ulid.ULID, d
 	return args.Get(0).(*evaluation.DatasetItem), args.Error(1)
 }
 
-func (m *MockDatasetItemRepository) GetByIDForProject(ctx context.Context, id ulid.ULID, projectID ulid.ULID) (*evaluation.DatasetItem, error) {
+func (m *MockDatasetItemRepository) GetByIDForProject(ctx context.Context, id uuid.UUID, projectID uuid.UUID) (*evaluation.DatasetItem, error) {
 	args := m.Called(ctx, id, projectID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -131,7 +133,7 @@ func (m *MockDatasetItemRepository) GetByIDForProject(ctx context.Context, id ul
 	return args.Get(0).(*evaluation.DatasetItem), args.Error(1)
 }
 
-func (m *MockDatasetItemRepository) List(ctx context.Context, datasetID ulid.ULID, limit, offset int) ([]*evaluation.DatasetItem, int64, error) {
+func (m *MockDatasetItemRepository) List(ctx context.Context, datasetID uuid.UUID, limit, offset int) ([]*evaluation.DatasetItem, int64, error) {
 	args := m.Called(ctx, datasetID, limit, offset)
 	if args.Get(0) == nil {
 		return nil, 0, args.Error(2)
@@ -139,7 +141,7 @@ func (m *MockDatasetItemRepository) List(ctx context.Context, datasetID ulid.ULI
 	return args.Get(0).([]*evaluation.DatasetItem), args.Get(1).(int64), args.Error(2)
 }
 
-func (m *MockDatasetItemRepository) ListAll(ctx context.Context, datasetID ulid.ULID) ([]*evaluation.DatasetItem, error) {
+func (m *MockDatasetItemRepository) ListAll(ctx context.Context, datasetID uuid.UUID) ([]*evaluation.DatasetItem, error) {
 	args := m.Called(ctx, datasetID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -147,17 +149,17 @@ func (m *MockDatasetItemRepository) ListAll(ctx context.Context, datasetID ulid.
 	return args.Get(0).([]*evaluation.DatasetItem), args.Error(1)
 }
 
-func (m *MockDatasetItemRepository) Delete(ctx context.Context, id ulid.ULID, datasetID ulid.ULID) error {
+func (m *MockDatasetItemRepository) Delete(ctx context.Context, id uuid.UUID, datasetID uuid.UUID) error {
 	args := m.Called(ctx, id, datasetID)
 	return args.Error(0)
 }
 
-func (m *MockDatasetItemRepository) CountByDataset(ctx context.Context, datasetID ulid.ULID) (int64, error) {
+func (m *MockDatasetItemRepository) CountByDataset(ctx context.Context, datasetID uuid.UUID) (int64, error) {
 	args := m.Called(ctx, datasetID)
 	return args.Get(0).(int64), args.Error(1)
 }
 
-func (m *MockDatasetItemRepository) FindByContentHash(ctx context.Context, datasetID ulid.ULID, contentHash string) (*evaluation.DatasetItem, error) {
+func (m *MockDatasetItemRepository) FindByContentHash(ctx context.Context, datasetID uuid.UUID, contentHash string) (*evaluation.DatasetItem, error) {
 	args := m.Called(ctx, datasetID, contentHash)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -165,7 +167,7 @@ func (m *MockDatasetItemRepository) FindByContentHash(ctx context.Context, datas
 	return args.Get(0).(*evaluation.DatasetItem), args.Error(1)
 }
 
-func (m *MockDatasetItemRepository) FindByContentHashes(ctx context.Context, datasetID ulid.ULID, contentHashes []string) (map[string]bool, error) {
+func (m *MockDatasetItemRepository) FindByContentHashes(ctx context.Context, datasetID uuid.UUID, contentHashes []string) (map[string]bool, error) {
 	args := m.Called(ctx, datasetID, contentHashes)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -239,10 +241,10 @@ func TestExperimentItemService_CreateBatch(t *testing.T) {
 	ctx := context.Background()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 
-	projectID := ulid.New()
-	experimentID := ulid.New()
-	datasetID := ulid.New()
-	datasetItemID := ulid.New()
+	projectID := uid.New()
+	experimentID := uid.New()
+	datasetID := uid.New()
+	datasetItemID := uid.New()
 
 	t.Run("success with valid dataset item from experiment's dataset", func(t *testing.T) {
 		experimentRepo := new(MockExperimentRepository)
@@ -305,7 +307,7 @@ func TestExperimentItemService_CreateBatch(t *testing.T) {
 			Status:    evaluation.ExperimentStatusRunning,
 		}
 
-		differentDatasetItemID := ulid.New()
+		differentDatasetItemID := uid.New()
 		differentDatasetItemIDStr := differentDatasetItemID.String()
 
 		req := &evaluation.CreateExperimentItemsBatchRequest{
@@ -464,7 +466,7 @@ func TestExperimentItemService_CreateBatch(t *testing.T) {
 			Status:    evaluation.ExperimentStatusRunning,
 		}
 
-		nonExistentItemID := ulid.New()
+		nonExistentItemID := uid.New()
 		nonExistentItemIDStr := nonExistentItemID.String()
 		req := &evaluation.CreateExperimentItemsBatchRequest{
 			Items: []evaluation.CreateExperimentItemRequest{
@@ -526,7 +528,7 @@ func TestExperimentItemService_CreateBatch(t *testing.T) {
 		var appErr *appErrors.AppError
 		require.ErrorAs(t, err, &appErr)
 		assert.Equal(t, appErrors.ValidationError, appErr.Type)
-		assert.Contains(t, appErr.Details, "must be a valid ULID")
+		assert.Contains(t, appErr.Details, "must be a valid UUID")
 		experimentRepo.AssertExpectations(t)
 		datasetItemRepo.AssertNotCalled(t, "GetByID")
 		itemRepo.AssertNotCalled(t, "CreateBatch")

@@ -10,7 +10,7 @@ import (
 
 	"brokle/internal/core/domain/billing"
 	billingService "brokle/internal/core/services/billing"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 // createTestPricingService creates a real PricingService for testing
@@ -93,7 +93,7 @@ func TestUsageAggregationWorker_CalculateCost_WithProgressiveTiers(t *testing.T)
 	// Progressive tiers for spans only
 	tiers := []*billing.VolumeDiscountTier{
 		{
-			ID:           ulid.New(),
+			ID:           uid.New(),
 			Dimension:    billing.TierDimensionSpans,
 			TierMin:      0,
 			TierMax:      ptrInt64(100000000), // 0-100M
@@ -101,7 +101,7 @@ func TestUsageAggregationWorker_CalculateCost_WithProgressiveTiers(t *testing.T)
 			Priority:     0,
 		},
 		{
-			ID:           ulid.New(),
+			ID:           uid.New(),
 			Dimension:    billing.TierDimensionSpans,
 			TierMin:      100000000, // 100M+
 			TierMax:      nil,
@@ -111,7 +111,7 @@ func TestUsageAggregationWorker_CalculateCost_WithProgressiveTiers(t *testing.T)
 	}
 
 	pricing := &billing.EffectivePricing{
-		FreeSpans:         50000000, // 50M free
+		FreeSpans:         50000000,                   // 50M free
 		PricePer100KSpans: decimal.NewFromFloat(0.50), // Fallback for non-tiered dimensions
 		FreeGB:            decimal.NewFromFloat(10.0),
 		PricePerGB:        decimal.NewFromFloat(2.00),
@@ -168,7 +168,7 @@ func TestUsageAggregationWorker_CalculateRawCost_WithProgressiveTiers(t *testing
 	// Progressive tiers for spans only
 	tiers := []*billing.VolumeDiscountTier{
 		{
-			ID:           ulid.New(),
+			ID:           uid.New(),
 			Dimension:    billing.TierDimensionSpans,
 			TierMin:      0,
 			TierMax:      ptrInt64(100000000),
@@ -176,7 +176,7 @@ func TestUsageAggregationWorker_CalculateRawCost_WithProgressiveTiers(t *testing
 			Priority:     0,
 		},
 		{
-			ID:           ulid.New(),
+			ID:           uid.New(),
 			Dimension:    billing.TierDimensionSpans,
 			TierMin:      100000000,
 			TierMax:      nil,

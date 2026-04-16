@@ -8,9 +8,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	playgroundDomain "brokle/internal/core/domain/playground"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -29,7 +31,7 @@ func (m *MockSessionRepository) Create(ctx context.Context, session *playgroundD
 	return args.Error(0)
 }
 
-func (m *MockSessionRepository) GetByID(ctx context.Context, id ulid.ULID) (*playgroundDomain.Session, error) {
+func (m *MockSessionRepository) GetByID(ctx context.Context, id uuid.UUID) (*playgroundDomain.Session, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -37,7 +39,7 @@ func (m *MockSessionRepository) GetByID(ctx context.Context, id ulid.ULID) (*pla
 	return args.Get(0).(*playgroundDomain.Session), args.Error(1)
 }
 
-func (m *MockSessionRepository) List(ctx context.Context, projectID ulid.ULID, limit int) ([]*playgroundDomain.Session, error) {
+func (m *MockSessionRepository) List(ctx context.Context, projectID uuid.UUID, limit int) ([]*playgroundDomain.Session, error) {
 	args := m.Called(ctx, projectID, limit)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -45,7 +47,7 @@ func (m *MockSessionRepository) List(ctx context.Context, projectID ulid.ULID, l
 	return args.Get(0).([]*playgroundDomain.Session), args.Error(1)
 }
 
-func (m *MockSessionRepository) ListByTags(ctx context.Context, projectID ulid.ULID, tags []string, limit int) ([]*playgroundDomain.Session, error) {
+func (m *MockSessionRepository) ListByTags(ctx context.Context, projectID uuid.UUID, tags []string, limit int) ([]*playgroundDomain.Session, error) {
 	args := m.Called(ctx, projectID, tags, limit)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -58,27 +60,27 @@ func (m *MockSessionRepository) Update(ctx context.Context, session *playgroundD
 	return args.Error(0)
 }
 
-func (m *MockSessionRepository) Delete(ctx context.Context, id ulid.ULID) error {
+func (m *MockSessionRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	args := m.Called(ctx, id)
 	return args.Error(0)
 }
 
-func (m *MockSessionRepository) UpdateLastRun(ctx context.Context, id ulid.ULID, lastRun playgroundDomain.JSON) error {
+func (m *MockSessionRepository) UpdateLastRun(ctx context.Context, id uuid.UUID, lastRun playgroundDomain.JSON) error {
 	args := m.Called(ctx, id, lastRun)
 	return args.Error(0)
 }
 
-func (m *MockSessionRepository) UpdateWindows(ctx context.Context, id ulid.ULID, windows playgroundDomain.JSON) error {
+func (m *MockSessionRepository) UpdateWindows(ctx context.Context, id uuid.UUID, windows playgroundDomain.JSON) error {
 	args := m.Called(ctx, id, windows)
 	return args.Error(0)
 }
 
-func (m *MockSessionRepository) Exists(ctx context.Context, id ulid.ULID) (bool, error) {
+func (m *MockSessionRepository) Exists(ctx context.Context, id uuid.UUID) (bool, error) {
 	args := m.Called(ctx, id)
 	return args.Bool(0), args.Error(1)
 }
 
-func (m *MockSessionRepository) ExistsByProjectID(ctx context.Context, sessionID ulid.ULID, projectID ulid.ULID) (bool, error) {
+func (m *MockSessionRepository) ExistsByProjectID(ctx context.Context, sessionID uuid.UUID, projectID uuid.UUID) (bool, error) {
 	args := m.Called(ctx, sessionID, projectID)
 	return args.Bool(0), args.Error(1)
 }
@@ -105,17 +107,17 @@ func stringPtr(s string) *string {
 // ============================================================================
 
 func TestPlaygroundService_CreateSession(t *testing.T) {
-	projectID := ulid.New()
-	userID := ulid.New()
+	projectID := uid.New()
+	userID := uid.New()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 
 	tests := []struct {
-		name             string
-		request          *playgroundDomain.CreateSessionRequest
-		mockSetup        func(*MockSessionRepository)
-		expectErr        bool
-		expectedErrType  appErrors.AppErrorType
-		checkResult      func(*testing.T, *playgroundDomain.SessionResponse)
+		name            string
+		request         *playgroundDomain.CreateSessionRequest
+		mockSetup       func(*MockSessionRepository)
+		expectErr       bool
+		expectedErrType appErrors.AppErrorType
+		checkResult     func(*testing.T, *playgroundDomain.SessionResponse)
 	}{
 		{
 			name: "success - creates session with name and windows",
@@ -209,17 +211,17 @@ func TestPlaygroundService_CreateSession(t *testing.T) {
 // ============================================================================
 
 func TestPlaygroundService_UpdateSession(t *testing.T) {
-	projectID := ulid.New()
-	sessionID := ulid.New()
+	projectID := uid.New()
+	sessionID := uid.New()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 
 	tests := []struct {
-		name             string
-		request          *playgroundDomain.UpdateSessionRequest
-		mockSetup        func(*MockSessionRepository)
-		expectErr        bool
-		expectedErrType  appErrors.AppErrorType
-		checkResult      func(*testing.T, *playgroundDomain.SessionResponse)
+		name            string
+		request         *playgroundDomain.UpdateSessionRequest
+		mockSetup       func(*MockSessionRepository)
+		expectErr       bool
+		expectedErrType appErrors.AppErrorType
+		checkResult     func(*testing.T, *playgroundDomain.SessionResponse)
 	}{
 		{
 			name: "success - updates session metadata",
@@ -232,13 +234,13 @@ func TestPlaygroundService_UpdateSession(t *testing.T) {
 			mockSetup: func(repo *MockSessionRepository) {
 				sessionName := "Original Name"
 				session := &playgroundDomain.Session{
-					ID:          sessionID,
-					ProjectID:   projectID,
-					Name:        &sessionName,
-					Windows:     playgroundDomain.JSON(`[{"template":{"messages":[]}}]`),
-					CreatedAt:   time.Now(),
-					UpdatedAt:   time.Now(),
-					LastUsedAt:  time.Now(),
+					ID:         sessionID,
+					ProjectID:  projectID,
+					Name:       &sessionName,
+					Windows:    playgroundDomain.JSON(`[{"template":{"messages":[]}}]`),
+					CreatedAt:  time.Now(),
+					UpdatedAt:  time.Now(),
+					LastUsedAt: time.Now(),
 				}
 				repo.On("GetByID", mock.Anything, sessionID).Return(session, nil)
 				repo.On("Update", mock.Anything, mock.MatchedBy(func(s *playgroundDomain.Session) bool {
@@ -274,13 +276,13 @@ func TestPlaygroundService_UpdateSession(t *testing.T) {
 			mockSetup: func(repo *MockSessionRepository) {
 				sessionName := "Original Name"
 				session := &playgroundDomain.Session{
-					ID:          sessionID,
-					ProjectID:   projectID,
-					Name:        &sessionName,
-					Windows:     playgroundDomain.JSON(`[{"template":{"messages":[]}}]`),
-					CreatedAt:   time.Now(),
-					UpdatedAt:   time.Now(),
-					LastUsedAt:  time.Now(),
+					ID:         sessionID,
+					ProjectID:  projectID,
+					Name:       &sessionName,
+					Windows:    playgroundDomain.JSON(`[{"template":{"messages":[]}}]`),
+					CreatedAt:  time.Now(),
+					UpdatedAt:  time.Now(),
+					LastUsedAt: time.Now(),
 				}
 				repo.On("GetByID", mock.Anything, sessionID).Return(session, nil)
 			},
@@ -319,7 +321,7 @@ func TestPlaygroundService_UpdateSession(t *testing.T) {
 // ============================================================================
 
 func TestPlaygroundService_ListSessions_LimitClamping(t *testing.T) {
-	projectID := ulid.New()
+	projectID := uid.New()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 
 	tests := []struct {

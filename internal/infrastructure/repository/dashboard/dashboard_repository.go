@@ -8,8 +8,9 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	dashboardDomain "brokle/internal/core/domain/dashboard"
-	"brokle/pkg/ulid"
 )
 
 type dashboardRepository struct {
@@ -26,7 +27,7 @@ func (r *dashboardRepository) Create(ctx context.Context, dashboard *dashboardDo
 	return r.db.WithContext(ctx).Create(dashboard).Error
 }
 
-func (r *dashboardRepository) GetByID(ctx context.Context, id ulid.ULID) (*dashboardDomain.Dashboard, error) {
+func (r *dashboardRepository) GetByID(ctx context.Context, id uuid.UUID) (*dashboardDomain.Dashboard, error) {
 	var dashboard dashboardDomain.Dashboard
 	err := r.db.WithContext(ctx).
 		Where("id = ? AND deleted_at IS NULL", id).
@@ -45,11 +46,11 @@ func (r *dashboardRepository) Update(ctx context.Context, dashboard *dashboardDo
 	return r.db.WithContext(ctx).Save(dashboard).Error
 }
 
-func (r *dashboardRepository) Delete(ctx context.Context, id ulid.ULID) error {
+func (r *dashboardRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return r.db.WithContext(ctx).Where("id = ?", id).Delete(&dashboardDomain.Dashboard{}).Error
 }
 
-func (r *dashboardRepository) GetByProjectID(ctx context.Context, projectID ulid.ULID, filter *dashboardDomain.DashboardFilter) (*dashboardDomain.DashboardListResponse, error) {
+func (r *dashboardRepository) GetByProjectID(ctx context.Context, projectID uuid.UUID, filter *dashboardDomain.DashboardFilter) (*dashboardDomain.DashboardListResponse, error) {
 	var dashboards []*dashboardDomain.Dashboard
 	var total int64
 
@@ -93,7 +94,7 @@ func (r *dashboardRepository) GetByProjectID(ctx context.Context, projectID ulid
 	}, nil
 }
 
-func (r *dashboardRepository) GetByNameAndProject(ctx context.Context, projectID ulid.ULID, name string) (*dashboardDomain.Dashboard, error) {
+func (r *dashboardRepository) GetByNameAndProject(ctx context.Context, projectID uuid.UUID, name string) (*dashboardDomain.Dashboard, error) {
 	var dashboard dashboardDomain.Dashboard
 	err := r.db.WithContext(ctx).
 		Where("project_id = ? AND name = ? AND deleted_at IS NULL", projectID, name).
@@ -107,14 +108,14 @@ func (r *dashboardRepository) GetByNameAndProject(ctx context.Context, projectID
 	return &dashboard, nil
 }
 
-func (r *dashboardRepository) SoftDelete(ctx context.Context, id ulid.ULID) error {
+func (r *dashboardRepository) SoftDelete(ctx context.Context, id uuid.UUID) error {
 	return r.db.WithContext(ctx).
 		Model(&dashboardDomain.Dashboard{}).
 		Where("id = ?", id).
 		Update("deleted_at", time.Now()).Error
 }
 
-func (r *dashboardRepository) CountByProject(ctx context.Context, projectID ulid.ULID) (int64, error) {
+func (r *dashboardRepository) CountByProject(ctx context.Context, projectID uuid.UUID) (int64, error) {
 	var count int64
 	err := r.db.WithContext(ctx).
 		Model(&dashboardDomain.Dashboard{}).

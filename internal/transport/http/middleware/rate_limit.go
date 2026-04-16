@@ -1,18 +1,19 @@
 package middleware
 
 import (
-	"log/slog"
 	"context"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/config"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 )
 
 // RateLimitMiddleware handles Redis-based rate limiting
@@ -125,8 +126,8 @@ func (m *RateLimitMiddleware) RateLimitByAPIKey() gin.HandlerFunc {
 
 		// Try new SDK auth context first (preferred)
 		if keyID, exists := c.Get(APIKeyIDKey); exists {
-			if ulidKey, ok := keyID.(*ulid.ULID); ok {
-				apiKeyID = ulidKey.String()
+			if uuidKey, ok := keyID.(*uuid.UUID); ok {
+				apiKeyID = uuidKey.String()
 			}
 		} else if oldKey, exists := c.Get("api_key"); exists {
 			// Fallback for any remaining old usage (temporary compatibility)

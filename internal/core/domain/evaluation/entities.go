@@ -4,7 +4,9 @@ package evaluation
 import (
 	"time"
 
-	"brokle/pkg/ulid"
+	"github.com/google/uuid"
+
+	"brokle/pkg/uid"
 )
 
 type ScoreType string
@@ -18,8 +20,8 @@ const (
 // ScoreConfig defines metadata and validation rules for a score type.
 // Stored in PostgreSQL for transactional consistency.
 type ScoreConfig struct {
-	ID          ulid.ULID              `json:"id" gorm:"type:char(26);primaryKey"`
-	ProjectID   ulid.ULID              `json:"project_id" gorm:"type:char(26);not null;index"`
+	ID          uuid.UUID              `json:"id" gorm:"type:uuid;primaryKey"`
+	ProjectID   uuid.UUID              `json:"project_id" gorm:"type:uuid;not null;index"`
 	Name        string                 `json:"name" gorm:"type:varchar(100);not null"`
 	Description *string                `json:"description,omitempty" gorm:"type:text"`
 	Type        ScoreType              `json:"type" gorm:"column:type;type:varchar(20);not null;default:'NUMERIC'"`
@@ -35,10 +37,10 @@ func (ScoreConfig) TableName() string {
 	return "score_configs"
 }
 
-func NewScoreConfig(projectID ulid.ULID, name string, scoreType ScoreType) *ScoreConfig {
+func NewScoreConfig(projectID uuid.UUID, name string, scoreType ScoreType) *ScoreConfig {
 	now := time.Now()
 	return &ScoreConfig{
-		ID:        ulid.New(),
+		ID:        uid.New(),
 		ProjectID: projectID,
 		Name:      name,
 		Type:      scoreType,
@@ -132,12 +134,12 @@ func (sc *ScoreConfig) ToResponse() *ScoreConfigResponse {
 
 // Dataset represents a collection of test cases for evaluation.
 type Dataset struct {
-	ID               ulid.ULID              `json:"id" gorm:"type:char(26);primaryKey"`
-	ProjectID        ulid.ULID              `json:"project_id" gorm:"type:char(26);not null;index"`
+	ID               uuid.UUID              `json:"id" gorm:"type:uuid;primaryKey"`
+	ProjectID        uuid.UUID              `json:"project_id" gorm:"type:uuid;not null;index"`
 	Name             string                 `json:"name" gorm:"type:varchar(255);not null"`
 	Description      *string                `json:"description,omitempty" gorm:"type:text"`
 	Metadata         map[string]interface{} `json:"metadata,omitempty" gorm:"type:jsonb;serializer:json;default:'{}'"`
-	CurrentVersionID *ulid.ULID             `json:"current_version_id,omitempty" gorm:"type:char(26);index"` // Pinned version (nil = use latest)
+	CurrentVersionID *uuid.UUID             `json:"current_version_id,omitempty" gorm:"type:uuid;index"` // Pinned version (nil = use latest)
 	CreatedAt        time.Time              `json:"created_at" gorm:"not null;autoCreateTime"`
 	UpdatedAt        time.Time              `json:"updated_at" gorm:"not null;autoUpdateTime"`
 }
@@ -146,10 +148,10 @@ func (Dataset) TableName() string {
 	return "datasets"
 }
 
-func NewDataset(projectID ulid.ULID, name string) *Dataset {
+func NewDataset(projectID uuid.UUID, name string) *Dataset {
 	now := time.Now()
 	return &Dataset{
-		ID:        ulid.New(),
+		ID:        uid.New(),
 		ProjectID: projectID,
 		Name:      name,
 		Metadata:  make(map[string]interface{}),
@@ -237,8 +239,8 @@ func (s DatasetItemSource) IsValid() bool {
 
 // DatasetItem represents an individual test case within a dataset.
 type DatasetItem struct {
-	ID            ulid.ULID              `json:"id" gorm:"type:char(26);primaryKey"`
-	DatasetID     ulid.ULID              `json:"dataset_id" gorm:"type:char(26);not null;index"`
+	ID            uuid.UUID              `json:"id" gorm:"type:uuid;primaryKey"`
+	DatasetID     uuid.UUID              `json:"dataset_id" gorm:"type:uuid;not null;index"`
 	Input         map[string]interface{} `json:"input" gorm:"type:jsonb;serializer:json;not null"`
 	Expected      map[string]interface{} `json:"expected,omitempty" gorm:"type:jsonb;serializer:json"`
 	Metadata      map[string]interface{} `json:"metadata,omitempty" gorm:"type:jsonb;serializer:json;default:'{}'"`
@@ -253,9 +255,9 @@ func (DatasetItem) TableName() string {
 	return "dataset_items"
 }
 
-func NewDatasetItem(datasetID ulid.ULID, input map[string]interface{}) *DatasetItem {
+func NewDatasetItem(datasetID uuid.UUID, input map[string]interface{}) *DatasetItem {
 	return &DatasetItem{
-		ID:        ulid.New(),
+		ID:        uid.New(),
 		DatasetID: datasetID,
 		Input:     input,
 		Metadata:  make(map[string]interface{}),
@@ -265,9 +267,9 @@ func NewDatasetItem(datasetID ulid.ULID, input map[string]interface{}) *DatasetI
 }
 
 // NewDatasetItemWithSource creates a new dataset item with explicit source tracking.
-func NewDatasetItemWithSource(datasetID ulid.ULID, input map[string]interface{}, source DatasetItemSource) *DatasetItem {
+func NewDatasetItemWithSource(datasetID uuid.UUID, input map[string]interface{}, source DatasetItemSource) *DatasetItem {
 	return &DatasetItem{
-		ID:        ulid.New(),
+		ID:        uid.New(),
 		DatasetID: datasetID,
 		Input:     input,
 		Metadata:  make(map[string]interface{}),
@@ -399,29 +401,29 @@ const (
 	ExperimentStatusRunning   ExperimentStatus = "running"
 	ExperimentStatusCompleted ExperimentStatus = "completed"
 	ExperimentStatusFailed    ExperimentStatus = "failed"
-	ExperimentStatusPartial   ExperimentStatus = "partial"    // Some items completed, some failed
-	ExperimentStatusCancelled ExperimentStatus = "cancelled"  // User cancelled the experiment
+	ExperimentStatusPartial   ExperimentStatus = "partial"   // Some items completed, some failed
+	ExperimentStatusCancelled ExperimentStatus = "cancelled" // User cancelled the experiment
 )
 
 // Experiment represents a batch evaluation run.
 type Experiment struct {
-	ID          ulid.ULID              `json:"id" gorm:"type:char(26);primaryKey"`
-	ProjectID   ulid.ULID              `json:"project_id" gorm:"type:char(26);not null;index"`
-	DatasetID   *ulid.ULID             `json:"dataset_id,omitempty" gorm:"type:char(26);index"`
+	ID          uuid.UUID              `json:"id" gorm:"type:uuid;primaryKey"`
+	ProjectID   uuid.UUID              `json:"project_id" gorm:"type:uuid;not null;index"`
+	DatasetID   *uuid.UUID             `json:"dataset_id,omitempty" gorm:"type:uuid;index"`
 	Name        string                 `json:"name" gorm:"type:varchar(255);not null"`
 	Description *string                `json:"description,omitempty" gorm:"type:text"`
 	Status      ExperimentStatus       `json:"status" gorm:"type:varchar(20);not null;default:'pending'"`
 	Source      ExperimentSource       `json:"source" gorm:"type:varchar(20);not null;default:'sdk'"`
-	ConfigID    *ulid.ULID             `json:"config_id,omitempty" gorm:"type:char(26)"`
+	ConfigID    *uuid.UUID             `json:"config_id,omitempty" gorm:"type:uuid"`
 	Metadata    map[string]interface{} `json:"metadata,omitempty" gorm:"type:jsonb;serializer:json;default:'{}'"`
 	// Progress tracking fields
-	TotalItems     int `json:"total_items" gorm:"not null;default:0"`
-	CompletedItems int `json:"completed_items" gorm:"not null;default:0"`
-	FailedItems    int `json:"failed_items" gorm:"not null;default:0"`
-	StartedAt      *time.Time             `json:"started_at,omitempty"`
-	CompletedAt    *time.Time             `json:"completed_at,omitempty"`
-	CreatedAt      time.Time              `json:"created_at" gorm:"not null;autoCreateTime"`
-	UpdatedAt      time.Time              `json:"updated_at" gorm:"not null;autoUpdateTime"`
+	TotalItems     int        `json:"total_items" gorm:"not null;default:0"`
+	CompletedItems int        `json:"completed_items" gorm:"not null;default:0"`
+	FailedItems    int        `json:"failed_items" gorm:"not null;default:0"`
+	StartedAt      *time.Time `json:"started_at,omitempty"`
+	CompletedAt    *time.Time `json:"completed_at,omitempty"`
+	CreatedAt      time.Time  `json:"created_at" gorm:"not null;autoCreateTime"`
+	UpdatedAt      time.Time  `json:"updated_at" gorm:"not null;autoUpdateTime"`
 
 	// Relationships (optional, loaded when needed)
 	Config *ExperimentConfig `json:"config,omitempty" gorm:"foreignKey:ConfigID"`
@@ -431,10 +433,10 @@ func (Experiment) TableName() string {
 	return "experiments"
 }
 
-func NewExperiment(projectID ulid.ULID, name string) *Experiment {
+func NewExperiment(projectID uuid.UUID, name string) *Experiment {
 	now := time.Now()
 	return &Experiment{
-		ID:        ulid.New(),
+		ID:        uid.New(),
 		ProjectID: projectID,
 		Name:      name,
 		Status:    ExperimentStatusPending,
@@ -446,10 +448,10 @@ func NewExperiment(projectID ulid.ULID, name string) *Experiment {
 }
 
 // NewExperimentFromDashboard creates a new experiment from the dashboard wizard.
-func NewExperimentFromDashboard(projectID ulid.ULID, name string) *Experiment {
+func NewExperimentFromDashboard(projectID uuid.UUID, name string) *Experiment {
 	now := time.Now()
 	return &Experiment{
-		ID:        ulid.New(),
+		ID:        uid.New(),
 		ProjectID: projectID,
 		Name:      name,
 		Status:    ExperimentStatusPending,
@@ -502,10 +504,10 @@ type UpdateExperimentRequest struct {
 }
 
 type ExperimentFilter struct {
-	DatasetID *ulid.ULID
+	DatasetID *uuid.UUID
 	Status    *ExperimentStatus
 	Search    *string
-	IDs       []ulid.ULID // Filter by specific experiment IDs
+	IDs       []uuid.UUID // Filter by specific experiment IDs
 }
 
 // DatasetFilter defines filter criteria for listing datasets.
@@ -632,9 +634,9 @@ func (e *Experiment) ToProgressResponse() *ExperimentProgressResponse {
 
 // ExperimentItem represents an individual result from an experiment run.
 type ExperimentItem struct {
-	ID            ulid.ULID              `json:"id" gorm:"type:char(26);primaryKey"`
-	ExperimentID  ulid.ULID              `json:"experiment_id" gorm:"type:char(26);not null;index"`
-	DatasetItemID *ulid.ULID             `json:"dataset_item_id,omitempty" gorm:"type:char(26)"`
+	ID            uuid.UUID              `json:"id" gorm:"type:uuid;primaryKey"`
+	ExperimentID  uuid.UUID              `json:"experiment_id" gorm:"type:uuid;not null;index"`
+	DatasetItemID *uuid.UUID             `json:"dataset_item_id,omitempty" gorm:"type:uuid"`
 	TraceID       *string                `json:"trace_id,omitempty" gorm:"type:varchar(32);index"`
 	Input         map[string]interface{} `json:"input" gorm:"type:jsonb;serializer:json;not null"`
 	Output        interface{}            `json:"output,omitempty" gorm:"type:jsonb;serializer:json"`
@@ -649,9 +651,9 @@ func (ExperimentItem) TableName() string {
 	return "experiment_items"
 }
 
-func NewExperimentItem(experimentID ulid.ULID, input map[string]interface{}) *ExperimentItem {
+func NewExperimentItem(experimentID uuid.UUID, input map[string]interface{}) *ExperimentItem {
 	return &ExperimentItem{
-		ID:           ulid.New(),
+		ID:           uid.New(),
 		ExperimentID: experimentID,
 		Input:        input,
 		TrialNumber:  1,
@@ -762,8 +764,8 @@ const (
 // ScoreDiff represents the difference between a score and its baseline.
 type ScoreDiff struct {
 	Type        ScoreDiffType `json:"type"`
-	Difference  float64       `json:"difference,omitempty"`  // Absolute difference for NUMERIC
-	Direction   string        `json:"direction,omitempty"`   // "+" or "-" for NUMERIC
+	Difference  float64       `json:"difference,omitempty"`   // Absolute difference for NUMERIC
+	Direction   string        `json:"direction,omitempty"`    // "+" or "-" for NUMERIC
 	IsDifferent bool          `json:"is_different,omitempty"` // For CATEGORICAL
 }
 
@@ -782,9 +784,9 @@ type CompareExperimentsRequest struct {
 
 // CompareExperimentsResponse contains the comparison results.
 type CompareExperimentsResponse struct {
-	Experiments map[string]*ExperimentSummary              `json:"experiments"`
-	Scores      map[string]map[string]*ScoreAggregation    `json:"scores"`      // scoreName -> experimentID -> aggregation
-	Diffs       map[string]map[string]*ScoreDiff           `json:"diffs,omitempty"` // scoreName -> experimentID -> diff (vs baseline)
+	Experiments map[string]*ExperimentSummary           `json:"experiments"`
+	Scores      map[string]map[string]*ScoreAggregation `json:"scores"`          // scoreName -> experimentID -> aggregation
+	Diffs       map[string]map[string]*ScoreDiff        `json:"diffs,omitempty"` // scoreName -> experimentID -> diff (vs baseline)
 }
 
 // CalculateDiff computes the difference between two score aggregations.
@@ -820,13 +822,13 @@ func abs(x float64) float64 {
 // DatasetVersion represents a snapshot of a dataset at a point in time.
 // Versions are created automatically when items are added or removed.
 type DatasetVersion struct {
-	ID          ulid.ULID              `json:"id" gorm:"type:char(26);primaryKey"`
-	DatasetID   ulid.ULID              `json:"dataset_id" gorm:"type:char(26);not null;index"`
+	ID          uuid.UUID              `json:"id" gorm:"type:uuid;primaryKey"`
+	DatasetID   uuid.UUID              `json:"dataset_id" gorm:"type:uuid;not null;index"`
 	Version     int                    `json:"version" gorm:"not null"`
 	ItemCount   int                    `json:"item_count" gorm:"not null;default:0"`
 	Description *string                `json:"description,omitempty" gorm:"type:text"`
 	Metadata    map[string]interface{} `json:"metadata,omitempty" gorm:"type:jsonb;serializer:json;default:'{}'"`
-	CreatedBy   *ulid.ULID             `json:"created_by,omitempty" gorm:"type:char(26)"`
+	CreatedBy   *uuid.UUID             `json:"created_by,omitempty" gorm:"type:uuid"`
 	CreatedAt   time.Time              `json:"created_at" gorm:"not null;autoCreateTime"`
 }
 
@@ -835,9 +837,9 @@ func (DatasetVersion) TableName() string {
 }
 
 // NewDatasetVersion creates a new dataset version.
-func NewDatasetVersion(datasetID ulid.ULID, version int, itemCount int) *DatasetVersion {
+func NewDatasetVersion(datasetID uuid.UUID, version int, itemCount int) *DatasetVersion {
 	return &DatasetVersion{
-		ID:        ulid.New(),
+		ID:        uid.New(),
 		DatasetID: datasetID,
 		Version:   version,
 		ItemCount: itemCount,
@@ -891,8 +893,8 @@ func (dv *DatasetVersion) ToResponse() *DatasetVersionResponse {
 
 // DatasetItemVersion is the join table linking items to versions.
 type DatasetItemVersion struct {
-	DatasetVersionID ulid.ULID `json:"dataset_version_id" gorm:"type:char(26);primaryKey"`
-	DatasetItemID    ulid.ULID `json:"dataset_item_id" gorm:"type:char(26);primaryKey"`
+	DatasetVersionID uuid.UUID `json:"dataset_version_id" gorm:"type:uuid;primaryKey"`
+	DatasetItemID    uuid.UUID `json:"dataset_item_id" gorm:"type:uuid;primaryKey"`
 }
 
 func (DatasetItemVersion) TableName() string {
@@ -912,7 +914,7 @@ type PinDatasetVersionRequest struct {
 
 // DatasetVersionFilter is used for filtering versions.
 type DatasetVersionFilter struct {
-	DatasetID *ulid.ULID
+	DatasetID *uuid.UUID
 }
 
 // DatasetWithVersion extends Dataset to include version info in responses.

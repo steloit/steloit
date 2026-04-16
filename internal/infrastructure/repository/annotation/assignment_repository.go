@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/annotation"
 	"brokle/internal/infrastructure/shared"
-	"brokle/pkg/ulid"
 
 	"gorm.io/gorm"
 )
@@ -39,7 +40,7 @@ func (r *AssignmentRepository) Create(ctx context.Context, assignment *annotatio
 }
 
 // Delete removes a queue assignment by queue and user ID.
-func (r *AssignmentRepository) Delete(ctx context.Context, queueID, userID ulid.ULID) error {
+func (r *AssignmentRepository) Delete(ctx context.Context, queueID, userID uuid.UUID) error {
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("queue_id = ? AND user_id = ?", queueID.String(), userID.String()).
 		Delete(&annotation.QueueAssignment{})
@@ -55,7 +56,7 @@ func (r *AssignmentRepository) Delete(ctx context.Context, queueID, userID ulid.
 }
 
 // GetByQueueAndUser retrieves an assignment by queue and user ID.
-func (r *AssignmentRepository) GetByQueueAndUser(ctx context.Context, queueID, userID ulid.ULID) (*annotation.QueueAssignment, error) {
+func (r *AssignmentRepository) GetByQueueAndUser(ctx context.Context, queueID, userID uuid.UUID) (*annotation.QueueAssignment, error) {
 	var assignment annotation.QueueAssignment
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("queue_id = ? AND user_id = ?", queueID.String(), userID.String()).
@@ -71,7 +72,7 @@ func (r *AssignmentRepository) GetByQueueAndUser(ctx context.Context, queueID, u
 }
 
 // List retrieves all assignments for a queue.
-func (r *AssignmentRepository) List(ctx context.Context, queueID ulid.ULID) ([]*annotation.QueueAssignment, error) {
+func (r *AssignmentRepository) List(ctx context.Context, queueID uuid.UUID) ([]*annotation.QueueAssignment, error) {
 	var assignments []*annotation.QueueAssignment
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("queue_id = ?", queueID.String()).
@@ -85,7 +86,7 @@ func (r *AssignmentRepository) List(ctx context.Context, queueID ulid.ULID) ([]*
 }
 
 // ListByUser retrieves all queue assignments for a user.
-func (r *AssignmentRepository) ListByUser(ctx context.Context, userID ulid.ULID) ([]*annotation.QueueAssignment, error) {
+func (r *AssignmentRepository) ListByUser(ctx context.Context, userID uuid.UUID) ([]*annotation.QueueAssignment, error) {
 	var assignments []*annotation.QueueAssignment
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("user_id = ?", userID.String()).
@@ -99,7 +100,7 @@ func (r *AssignmentRepository) ListByUser(ctx context.Context, userID ulid.ULID)
 }
 
 // IsAssigned checks if a user is assigned to a queue.
-func (r *AssignmentRepository) IsAssigned(ctx context.Context, queueID, userID ulid.ULID) (bool, error) {
+func (r *AssignmentRepository) IsAssigned(ctx context.Context, queueID, userID uuid.UUID) (bool, error) {
 	var count int64
 	result := r.getDB(ctx).WithContext(ctx).
 		Model(&annotation.QueueAssignment{}).
@@ -114,7 +115,7 @@ func (r *AssignmentRepository) IsAssigned(ctx context.Context, queueID, userID u
 
 // HasRole checks if a user has a specific role (or higher) for a queue.
 // Role hierarchy: admin > reviewer > annotator
-func (r *AssignmentRepository) HasRole(ctx context.Context, queueID, userID ulid.ULID, minRole annotation.AssignmentRole) (bool, error) {
+func (r *AssignmentRepository) HasRole(ctx context.Context, queueID, userID uuid.UUID, minRole annotation.AssignmentRole) (bool, error) {
 	var assignment annotation.QueueAssignment
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("queue_id = ? AND user_id = ?", queueID.String(), userID.String()).

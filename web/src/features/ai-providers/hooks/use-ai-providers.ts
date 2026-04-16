@@ -40,7 +40,7 @@ export const aiProviderQueryKeys = {
 /**
  * Query hook to list all AI provider credentials for an organization
  *
- * @param orgId - Organization ULID
+ * @param orgId - Organization UUID
  * @param options - React Query options
  *
  * @example
@@ -73,7 +73,7 @@ export function useAIProvidersQuery(
  *
  * Automatically invalidates the credentials list cache on success.
  *
- * @param orgId - Organization ULID
+ * @param orgId - Organization UUID
  *
  * @example
  * ```tsx
@@ -124,7 +124,7 @@ export function useCreateProviderMutation(orgId: string) {
  *
  * Automatically invalidates the credentials list cache on success.
  *
- * @param orgId - Organization ULID
+ * @param orgId - Organization UUID
  *
  * @example
  * ```tsx
@@ -177,7 +177,7 @@ export function useUpdateProviderMutation(orgId: string) {
  *
  * Supports optimistic updates. Deletes by credential ID.
  *
- * @param orgId - Organization ULID
+ * @param orgId - Organization UUID
  *
  * @example
  * ```tsx
@@ -259,7 +259,7 @@ export function useDeleteProviderMutation(orgId: string) {
  *
  * Use this before saving credentials to validate the API key.
  *
- * @param orgId - Organization ULID
+ * @param orgId - Organization UUID
  *
  * @example
  * ```tsx
@@ -308,7 +308,7 @@ export function useTestConnectionMutation(orgId: string) {
  * - Standard providers (openai, anthropic, etc.): default models + custom_models
  * - Custom provider: only custom_models
  *
- * @param orgId - Organization ULID
+ * @param orgId - Organization UUID
  * @param options - React Query options
  *
  * @example
@@ -339,7 +339,7 @@ export function useAvailableModelsQuery(
 /**
  * Hook to get available models grouped by provider
  *
- * @param orgId - Organization ULID
+ * @param orgId - Organization UUID
  *
  * @example
  * ```tsx

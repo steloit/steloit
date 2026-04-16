@@ -5,11 +5,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/google/uuid"
+
 	dashboardDomain "brokle/internal/core/domain/dashboard"
 	"brokle/internal/transport/http/middleware"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 )
 
 // ListDashboards handles GET /api/v1/projects/:projectId/dashboards
@@ -29,9 +30,9 @@ import (
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/projects/{projectId}/dashboards [get]
 func (h *Handler) ListDashboards(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
@@ -85,9 +86,9 @@ func (h *Handler) ListDashboards(c *gin.Context) {
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/projects/{projectId}/dashboards [post]
 func (h *Handler) CreateDashboard(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
@@ -102,8 +103,8 @@ func (h *Handler) CreateDashboard(c *gin.Context) {
 		return
 	}
 
-	var userID *ulid.ULID
-	if uid, ok := middleware.GetUserIDULID(c); ok {
+	var userID *uuid.UUID
+	if uid, ok := middleware.GetUserIDFromContext(c); ok {
 		userID = &uid
 	}
 
@@ -133,15 +134,15 @@ func (h *Handler) CreateDashboard(c *gin.Context) {
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/projects/{projectId}/dashboards/{dashboardId} [get]
 func (h *Handler) GetDashboard(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	dashboardID, err := ulid.Parse(c.Param("dashboardId"))
+	dashboardID, err := uuid.Parse(c.Param("dashboardId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid dashboard ID", "dashboardId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dashboard ID", "dashboardId must be a valid UUID"))
 		return
 	}
 
@@ -173,15 +174,15 @@ func (h *Handler) GetDashboard(c *gin.Context) {
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/projects/{projectId}/dashboards/{dashboardId} [put]
 func (h *Handler) UpdateDashboard(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	dashboardID, err := ulid.Parse(c.Param("dashboardId"))
+	dashboardID, err := uuid.Parse(c.Param("dashboardId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid dashboard ID", "dashboardId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dashboard ID", "dashboardId must be a valid UUID"))
 		return
 	}
 
@@ -217,15 +218,15 @@ func (h *Handler) UpdateDashboard(c *gin.Context) {
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/projects/{projectId}/dashboards/{dashboardId} [delete]
 func (h *Handler) DeleteDashboard(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	dashboardID, err := ulid.Parse(c.Param("dashboardId"))
+	dashboardID, err := uuid.Parse(c.Param("dashboardId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid dashboard ID", "dashboardId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dashboard ID", "dashboardId must be a valid UUID"))
 		return
 	}
 
@@ -256,15 +257,15 @@ func (h *Handler) DeleteDashboard(c *gin.Context) {
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/projects/{projectId}/dashboards/{dashboardId}/duplicate [post]
 func (h *Handler) DuplicateDashboard(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	dashboardID, err := ulid.Parse(c.Param("dashboardId"))
+	dashboardID, err := uuid.Parse(c.Param("dashboardId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid dashboard ID", "dashboardId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dashboard ID", "dashboardId must be a valid UUID"))
 		return
 	}
 
@@ -305,15 +306,15 @@ func (h *Handler) DuplicateDashboard(c *gin.Context) {
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/projects/{projectId}/dashboards/{dashboardId}/lock [post]
 func (h *Handler) LockDashboard(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	dashboardID, err := ulid.Parse(c.Param("dashboardId"))
+	dashboardID, err := uuid.Parse(c.Param("dashboardId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid dashboard ID", "dashboardId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dashboard ID", "dashboardId must be a valid UUID"))
 		return
 	}
 
@@ -343,15 +344,15 @@ func (h *Handler) LockDashboard(c *gin.Context) {
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/projects/{projectId}/dashboards/{dashboardId}/unlock [post]
 func (h *Handler) UnlockDashboard(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	dashboardID, err := ulid.Parse(c.Param("dashboardId"))
+	dashboardID, err := uuid.Parse(c.Param("dashboardId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid dashboard ID", "dashboardId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dashboard ID", "dashboardId must be a valid UUID"))
 		return
 	}
 
@@ -381,15 +382,15 @@ func (h *Handler) UnlockDashboard(c *gin.Context) {
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/projects/{projectId}/dashboards/{dashboardId}/export [get]
 func (h *Handler) ExportDashboard(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	dashboardID, err := ulid.Parse(c.Param("dashboardId"))
+	dashboardID, err := uuid.Parse(c.Param("dashboardId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid dashboard ID", "dashboardId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dashboard ID", "dashboardId must be a valid UUID"))
 		return
 	}
 
@@ -419,9 +420,9 @@ func (h *Handler) ExportDashboard(c *gin.Context) {
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/projects/{projectId}/dashboards/import [post]
 func (h *Handler) ImportDashboard(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
@@ -431,8 +432,8 @@ func (h *Handler) ImportDashboard(c *gin.Context) {
 		return
 	}
 
-	var userID *ulid.ULID
-	if uid, ok := middleware.GetUserIDULID(c); ok {
+	var userID *uuid.UUID
+	if uid, ok := middleware.GetUserIDFromContext(c); ok {
 		userID = &uid
 	}
 

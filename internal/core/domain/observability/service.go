@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"brokle/pkg/ulid"
+	"github.com/google/uuid"
 )
 
 type TraceService interface {
@@ -68,14 +68,14 @@ type GenAIEventsService interface {
 }
 
 type TelemetryDeduplicationService interface {
-	ClaimEvents(ctx context.Context, projectID ulid.ULID, batchID ulid.ULID, dedupIDs []string, ttl time.Duration) (claimedIDs, duplicateIDs []string, err error)
+	ClaimEvents(ctx context.Context, projectID uuid.UUID, batchID uuid.UUID, dedupIDs []string, ttl time.Duration) (claimedIDs, duplicateIDs []string, err error)
 	ReleaseEvents(ctx context.Context, dedupIDs []string) error
 
 	// Deprecated: Use ClaimEvents instead.
 	CheckDuplicate(ctx context.Context, dedupID string) (bool, error)
 	CheckBatchDuplicates(ctx context.Context, dedupIDs []string) ([]string, error)
-	RegisterEvent(ctx context.Context, dedupID string, batchID ulid.ULID, projectID ulid.ULID, ttl time.Duration) error
-	RegisterProcessedEventsBatch(ctx context.Context, projectID ulid.ULID, batchID ulid.ULID, dedupIDs []string) error
+	RegisterEvent(ctx context.Context, dedupID string, batchID uuid.UUID, projectID uuid.UUID, ttl time.Duration) error
+	RegisterProcessedEventsBatch(ctx context.Context, projectID uuid.UUID, batchID uuid.UUID, dedupIDs []string) error
 
 	// TTL management (string-based for composite IDs)
 	CalculateOptimalTTL(ctx context.Context, dedupID string, defaultTTL time.Duration) (time.Duration, error)
@@ -83,13 +83,13 @@ type TelemetryDeduplicationService interface {
 
 	// Cleanup operations
 	CleanupExpired(ctx context.Context) (int64, error)
-	CleanupByProject(ctx context.Context, projectID ulid.ULID, olderThan time.Time) (int64, error)
+	CleanupByProject(ctx context.Context, projectID uuid.UUID, olderThan time.Time) (int64, error)
 	BatchCleanup(ctx context.Context, olderThan time.Time, batchSize int) (int64, error)
 
 	// Redis fallback management
 	SyncToRedis(ctx context.Context, entries []*TelemetryEventDeduplication) error
 	ValidateRedisHealth(ctx context.Context) (*RedisHealthStatus, error)
-	GetDeduplicationStats(ctx context.Context, projectID ulid.ULID) (*DeduplicationStats, error)
+	GetDeduplicationStats(ctx context.Context, projectID uuid.UUID) (*DeduplicationStats, error)
 
 	// Performance monitoring
 	GetCacheHitRate(ctx context.Context, timeWindow time.Duration) (float64, error)
@@ -141,7 +141,7 @@ type CostCalculation struct {
 // Uses Span as traces are virtual in OTLP (root spans = traces)
 type BatchIngestRequest struct {
 	Spans     []*Span   `json:"spans"`
-	ProjectID ulid.ULID `json:"project_id"`
+	ProjectID uuid.UUID `json:"project_id"`
 	Async     bool      `json:"async"`
 }
 
@@ -156,7 +156,7 @@ type BatchIngestResult struct {
 type TelemetryBatchRequest struct {
 	Metadata  map[string]any           `json:"metadata"`
 	Events    []*TelemetryEventRequest `json:"events"`
-	ProjectID ulid.ULID                `json:"project_id"`
+	ProjectID uuid.UUID                `json:"project_id"`
 	Async     bool                     `json:"async"`
 }
 
@@ -166,7 +166,7 @@ type TelemetryEventRequest struct {
 	SpanID    string             `json:"span_id"`
 	TraceID   string             `json:"trace_id"`
 	EventType TelemetryEventType `json:"event_type"`
-	EventID   ulid.ULID          `json:"event_id"`
+	EventID   uuid.UUID          `json:"event_id"`
 }
 
 func (e *TelemetryEventRequest) Validate() error {
@@ -182,19 +182,19 @@ func (e *TelemetryEventRequest) Validate() error {
 type TelemetryBatchResponse struct {
 	JobID             *string               `json:"job_id,omitempty"`
 	Errors            []TelemetryEventError `json:"errors,omitempty"`
-	DuplicateEventIDs []ulid.ULID           `json:"duplicate_event_ids,omitempty"`
+	DuplicateEventIDs []uuid.UUID           `json:"duplicate_event_ids,omitempty"`
 	ProcessedEvents   int                   `json:"processed_events"`
 	DuplicateEvents   int                   `json:"duplicate_events"`
 	FailedEvents      int                   `json:"failed_events"`
 	ProcessingTimeMs  int                   `json:"processing_time_ms"`
-	BatchID           ulid.ULID             `json:"batch_id"`
+	BatchID           uuid.UUID             `json:"batch_id"`
 }
 
 type TelemetryEventError struct {
 	EventType    TelemetryEventType `json:"event_type"`
 	ErrorCode    string             `json:"error_code"`
 	ErrorMessage string             `json:"error_message"`
-	EventID      ulid.ULID          `json:"event_id"`
+	EventID      uuid.UUID          `json:"event_id"`
 	Retryable    bool               `json:"retryable"`
 }
 
@@ -207,12 +207,12 @@ type BatchProcessingResult struct {
 	ProcessingTimeMs int                   `json:"processing_time_ms"`
 	ThroughputPerSec float64               `json:"throughput_per_sec"`
 	SuccessRate      float64               `json:"success_rate"`
-	BatchID          ulid.ULID             `json:"batch_id"`
+	BatchID          uuid.UUID             `json:"batch_id"`
 }
 
 type EventProcessingResult struct {
-	ProcessedEventIDs []ulid.ULID           `json:"processed_event_ids"`
-	NotProcessedIDs   []ulid.ULID           `json:"not_processed_ids"`
+	ProcessedEventIDs []uuid.UUID           `json:"processed_event_ids"`
+	NotProcessedIDs   []uuid.UUID           `json:"not_processed_ids"`
 	Errors            []TelemetryEventError `json:"errors,omitempty"`
 	ProcessedCount    int                   `json:"processed_count"`
 	FailedCount       int                   `json:"failed_count"`
@@ -232,7 +232,7 @@ type RedisHealthStatus struct {
 }
 
 type DeduplicationStats struct {
-	ProjectID         ulid.ULID `json:"project_id"`
+	ProjectID         uuid.UUID `json:"project_id"`
 	TotalChecks       int64     `json:"total_checks"`
 	CacheHits         int64     `json:"cache_hits"`
 	CacheMisses       int64     `json:"cache_misses"`
@@ -300,13 +300,13 @@ type TelemetryPerformanceStats struct {
 
 type SpanBatchRequest struct {
 	Spans     []*Span   `json:"spans"`
-	ProjectID ulid.ULID `json:"project_id"`
+	ProjectID uuid.UUID `json:"project_id"`
 	Async     bool      `json:"async"`
 }
 
 type QualityScoreBatchRequest struct {
 	QualityScores []*Score  `json:"quality_scores"`
-	ProjectID     ulid.ULID `json:"project_id"`
+	ProjectID     uuid.UUID `json:"project_id"`
 	Async         bool      `json:"async"`
 }
 
@@ -329,8 +329,8 @@ type AnalyticsFilter struct {
 
 type BulkEvaluationRequest struct {
 	Filter         *AnalyticsFilter `json:"filter,omitempty"`
-	TraceIDs       []ulid.ULID      `json:"trace_ids,omitempty"`
-	SpanIDs        []ulid.ULID      `json:"span_ids,omitempty"`
+	TraceIDs       []uuid.UUID      `json:"trace_ids,omitempty"`
+	SpanIDs        []uuid.UUID      `json:"span_ids,omitempty"`
 	EvaluatorNames []string         `json:"evaluator_names"`
 	Async          bool             `json:"async"`
 }
@@ -346,15 +346,15 @@ type BulkEvaluationResult struct {
 type BulkEvaluationError struct {
 	Details any       `json:"details,omitempty"`
 	Error   string    `json:"error"`
-	ItemID  ulid.ULID `json:"item_id"`
+	ItemID  uuid.UUID `json:"item_id"`
 }
 
 // Uses TraceSummary as traces are virtual in OTLP.
 type EvaluationInput struct {
-	TraceID      *ulid.ULID    `json:"trace_id,omitempty"`
-	SpanID       *ulid.ULID    `json:"span_id,omitempty"`
-	TraceSummary *TraceSummary `json:"trace_summary,omitempty"`
-	Span         *Span         `json:"span,omitempty"`
+	TraceID      *uuid.UUID     `json:"trace_id,omitempty"`
+	SpanID       *uuid.UUID     `json:"span_id,omitempty"`
+	TraceSummary *TraceSummary  `json:"trace_summary,omitempty"`
+	Span         *Span          `json:"span,omitempty"`
 	Context      map[string]any `json:"context,omitempty"`
 }
 
@@ -503,7 +503,7 @@ type Report struct {
 	Description string         `json:"description"`
 	Format      ExportFormat   `json:"format"`
 	DownloadURL string         `json:"download_url,omitempty"`
-	ID          ulid.ULID      `json:"id"`
+	ID          uuid.UUID      `json:"id"`
 }
 
 // Note: Analytics types (TimeSeriesPoint, ScoreStatistics, etc.) are defined in repository.go

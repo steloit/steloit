@@ -320,21 +320,7 @@ func (v *Validator) Date(field string, value string, format string, message ...s
 	return v
 }
 
-// ULID validates ULID format (replacing UUID)
-func (v *Validator) ULID(field string, value string, message ...string) *Validator {
-	msg := "must be a valid ULID"
-	if len(message) > 0 {
-		msg = message[0]
-	}
-
-	if !IsValidULID(value) {
-		v.errors.Add(field, msg, value)
-	}
-
-	return v
-}
-
-// UUID validates UUID format (deprecated, use ULID)
+// UUID validates UUID format
 func (v *Validator) UUID(field string, value string, message ...string) *Validator {
 	msg := "must be a valid UUID"
 	if len(message) > 0 {
@@ -465,18 +451,9 @@ func IsNumeric(s string) bool {
 	return err == nil
 }
 
-// IsValidUUID validates UUID format
+// IsValidUUID validates UUID format (all versions including v7)
 func IsValidUUID(s string) bool {
-	re := regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$`)
-	return re.MatchString(s)
-}
-
-// IsValidULID validates ULID format
-func IsValidULID(s string) bool {
-	if len(s) != 26 {
-		return false
-	}
-	re := regexp.MustCompile(`^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]+$`)
+	re := regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 	return re.MatchString(s)
 }
 

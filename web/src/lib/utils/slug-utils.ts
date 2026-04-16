@@ -3,21 +3,23 @@
  * Enables cross-organization access with user-friendly URLs
  */
 
+const UUID_LENGTH = 36
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+
 /**
  * Generate a composite slug from name and ID
- * @param name - Human readable name (e.g., "Brokle Technologies")
- * @param id - ULID identifier (e.g., "01K4MZR3ZEXW0QE66DF8DKBEZ3")
- * @returns Composite slug (e.g., "brokle-technologies-01k4mzr3zexw0qe66df8dkbez3")
+ * @param name - Human readable name (e.g., "Steloit Technologies")
+ * @param id - UUID identifier (e.g., "018f6b6a-1234-7abc-8def-0123456789ab")
+ * @returns Composite slug (e.g., "steloit-technologies-018f6b6a-1234-7abc-8def-0123456789ab")
  * @throws Error if name is empty or ID is invalid
  */
 export function generateCompositeSlug(name: string, id: string): string {
-  // Validate inputs
   if (!name || !name.trim()) {
     throw new Error('Organization/Project name cannot be empty')
   }
 
-  if (!id || id.length !== 26) {
-    throw new Error(`Invalid ULID format: expected 26 characters, got ${id?.length || 0}`)
+  if (!id || !UUID_PATTERN.test(id)) {
+    throw new Error(`Invalid UUID format: ${id}`)
   }
 
   // Convert name to slug format
@@ -38,37 +40,36 @@ export function generateCompositeSlug(name: string, id: string): string {
     nameSlug = nameSlug.substring(0, 50).replace(/-+$/, '')
   }
 
-  // Convert ID to lowercase for URL
-  const lowercaseId = id.toLowerCase()
-
-  return `${nameSlug}-${lowercaseId}`
+  return `${nameSlug}-${id}`
 }
 
 /**
  * Extract the original ID from a composite slug
- * @param compositeSlug - Composite slug (e.g., "brokle-technologies-01k4mzr3zexw0qe66df8dkbez3")
- * @returns Original ULID (e.g., "01K4MZR3ZEXW0QE66DF8DKBEZ3")
+ * @param compositeSlug - Composite slug (e.g., "steloit-technologies-018f6b6a-1234-7abc-8def-0123456789ab")
+ * @returns Original UUID (e.g., "018f6b6a-1234-7abc-8def-0123456789ab")
  */
 export function extractIdFromCompositeSlug(compositeSlug: string): string {
-  // ULID format: 26 characters, alphanumeric
-  // Extract last 26 characters and convert back to uppercase
-  const urlId = compositeSlug.slice(-26)
-  
-  if (urlId.length !== 26) {
+  if (compositeSlug.length < UUID_LENGTH) {
     throw new Error(`Invalid composite slug format: ${compositeSlug}`)
   }
 
-  return urlId.toUpperCase()
+  const urlId = compositeSlug.slice(-UUID_LENGTH)
+
+  if (!UUID_PATTERN.test(urlId)) {
+    throw new Error(`Invalid composite slug format: ${compositeSlug}`)
+  }
+
+  return urlId
 }
 
 /**
  * Extract the name slug portion from a composite slug
- * @param compositeSlug - Composite slug (e.g., "brokle-technologies-01k4mzr3zexw0qe66df8dkbez3")
- * @returns Name slug portion (e.g., "brokle-technologies")
+ * @param compositeSlug - Composite slug (e.g., "steloit-technologies-018f6b6a-1234-7abc-8def-0123456789ab")
+ * @returns Name slug portion (e.g., "steloit-technologies")
  */
 export function extractNameSlugFromCompositeSlug(compositeSlug: string): string {
-  // Remove the last 27 characters (26 for ID + 1 for hyphen)
-  return compositeSlug.slice(0, -27)
+  // Remove the last 37 characters (36 for UUID + 1 for hyphen)
+  return compositeSlug.slice(0, -(UUID_LENGTH + 1))
 }
 
 /**
@@ -77,9 +78,9 @@ export function extractNameSlugFromCompositeSlug(compositeSlug: string): string 
  * @returns True if it appears to be a valid composite slug
  */
 export function isValidCompositeSlug(slug: string): boolean {
-  // Should end with hyphen + 26 character ULID
-  const pattern = /^.+-[0-9A-Za-z]{26}$/
-  return pattern.test(slug)
+  if (slug.length < UUID_LENGTH + 2) return false // min: "x-" + UUID
+  const uuidPart = slug.slice(-UUID_LENGTH)
+  return slug[slug.length - UUID_LENGTH - 1] === '-' && UUID_PATTERN.test(uuidPart)
 }
 
 /**
@@ -94,16 +95,16 @@ export function isLegacySlug(slug: string): boolean {
 /**
  * Build URL for organization with composite slug
  * @param name - Organization name
- * @param id - Organization ID  
+ * @param id - Organization ID
  * @param path - Optional sub-path
- * @returns Organization URL (e.g., "/organizations/brokle-tech-01k4mzr3zexw0qe66df8dkbez3")
+ * @returns Organization URL (e.g., "/organizations/steloit-tech-018f6b6a-1234-7abc-8def-0123456789ab")
  */
 export function buildOrgUrl(name: string, id: string, path: string = ''): string {
   const compositeSlug = generateCompositeSlug(name, id)
   const basePath = `/organizations/${compositeSlug}`
-  
+
   if (!path || path === '/') return basePath
-  
+
   // Ensure path starts with /
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
   return `${basePath}${normalizedPath}`
@@ -114,7 +115,7 @@ export function buildOrgUrl(name: string, id: string, path: string = ''): string
  * @param name - Project name
  * @param id - Project ID
  * @param path - Optional sub-path
- * @returns Project URL (e.g., "/projects/analytics-platform-01k4mzr4f36gmrf5r21v5fkxvj")
+ * @returns Project URL (e.g., "/projects/analytics-platform-018f6b6a-1234-7abc-8def-0123456789ab")
  */
 export function buildProjectUrl(name: string, id: string, path: string = ''): string {
   const compositeSlug = generateCompositeSlug(name, id)
@@ -129,15 +130,8 @@ export function buildProjectUrl(name: string, id: string, path: string = ''): st
 
 /**
  * Parse pathname to extract organization and project composite slugs
- * @param pathname - URL pathname (e.g., "/organizations/acme-corp-01jcxyz/projects/my-project-01abc")
+ * @param pathname - URL pathname
  * @returns Object with orgSlug and projectSlug (null if not found)
- *
- * @example
- * parsePathContext('/organizations/acme-corp-01jcxyz123abc')
- * // Returns: { orgSlug: 'acme-corp-01jcxyz123abc', projectSlug: null }
- *
- * parsePathContext('/organizations/acme-01jcxyz/projects/api-01abc/settings')
- * // Returns: { orgSlug: 'acme-01jcxyz', projectSlug: 'api-01abc' }
  */
 export function parsePathContext(pathname: string): {
   orgSlug: string | null
@@ -145,13 +139,11 @@ export function parsePathContext(pathname: string): {
 } {
   const segments = pathname.split('/').filter(Boolean)
 
-  // Pattern: /organizations/[compositeSlug]
   const orgIndex = segments.indexOf('organizations')
   const orgSlug = (orgIndex !== -1 && segments[orgIndex + 1])
     ? segments[orgIndex + 1]
     : null
 
-  // Pattern: /projects/[compositeSlug]
   const projectIndex = segments.indexOf('projects')
   const projectSlug = (projectIndex !== -1 && segments[projectIndex + 1])
     ? segments[projectIndex + 1]
@@ -177,4 +169,3 @@ export function getOrgSlug(org: { name: string; id: string; slug?: string }): st
 export function getProjectSlug(project: { name: string; id: string; slug?: string }): string {
   return project.slug || generateCompositeSlug(project.name, project.id)
 }
-

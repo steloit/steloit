@@ -5,7 +5,7 @@
 -- Only top-level comments (parent_id IS NULL) can have replies
 
 ALTER TABLE trace_comments
-ADD COLUMN parent_id CHAR(26);
+ADD COLUMN parent_id UUID;
 
 -- Foreign key constraint (replies reference parent comment)
 ALTER TABLE trace_comments

@@ -9,8 +9,8 @@ DROP TABLE IF EXISTS user_sessions CASCADE;
 
 -- Recreate the user_sessions table as it was after the rename migration
 CREATE TABLE user_sessions (
-    id CHAR(26) PRIMARY KEY,
-    user_id CHAR(26) NOT NULL,
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL,
     token VARCHAR(255) NOT NULL,
     refresh_token VARCHAR(255) NOT NULL UNIQUE,
     is_active BOOLEAN DEFAULT TRUE,

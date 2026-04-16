@@ -7,8 +7,9 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	promptDomain "brokle/internal/core/domain/prompt"
-	"brokle/pkg/ulid"
 	"brokle/internal/infrastructure/shared"
 )
 
@@ -35,12 +36,12 @@ func (r *protectedLabelRepository) Create(ctx context.Context, label *promptDoma
 }
 
 // Delete deletes a protected label
-func (r *protectedLabelRepository) Delete(ctx context.Context, id ulid.ULID) error {
+func (r *protectedLabelRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).Where("id = ?", id).Delete(&promptDomain.ProtectedLabel{}).Error
 }
 
 // GetByProjectAndLabel retrieves a protected label by project and label name
-func (r *protectedLabelRepository) GetByProjectAndLabel(ctx context.Context, projectID ulid.ULID, labelName string) (*promptDomain.ProtectedLabel, error) {
+func (r *protectedLabelRepository) GetByProjectAndLabel(ctx context.Context, projectID uuid.UUID, labelName string) (*promptDomain.ProtectedLabel, error) {
 	var label promptDomain.ProtectedLabel
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("project_id = ? AND label_name = ?", projectID, labelName).
@@ -55,7 +56,7 @@ func (r *protectedLabelRepository) GetByProjectAndLabel(ctx context.Context, pro
 }
 
 // ListByProject retrieves all protected labels for a project
-func (r *protectedLabelRepository) ListByProject(ctx context.Context, projectID ulid.ULID) ([]*promptDomain.ProtectedLabel, error) {
+func (r *protectedLabelRepository) ListByProject(ctx context.Context, projectID uuid.UUID) ([]*promptDomain.ProtectedLabel, error) {
 	var labels []*promptDomain.ProtectedLabel
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("project_id = ?", projectID).
@@ -65,7 +66,7 @@ func (r *protectedLabelRepository) ListByProject(ctx context.Context, projectID 
 }
 
 // IsProtected checks if a label is protected in a project
-func (r *protectedLabelRepository) IsProtected(ctx context.Context, projectID ulid.ULID, labelName string) (bool, error) {
+func (r *protectedLabelRepository) IsProtected(ctx context.Context, projectID uuid.UUID, labelName string) (bool, error) {
 	var count int64
 	err := r.getDB(ctx).WithContext(ctx).
 		Model(&promptDomain.ProtectedLabel{}).
@@ -75,7 +76,7 @@ func (r *protectedLabelRepository) IsProtected(ctx context.Context, projectID ul
 }
 
 // SetProtectedLabels replaces all protected labels for a project
-func (r *protectedLabelRepository) SetProtectedLabels(ctx context.Context, projectID ulid.ULID, labels []string, createdBy *ulid.ULID) error {
+func (r *protectedLabelRepository) SetProtectedLabels(ctx context.Context, projectID uuid.UUID, labels []string, createdBy *uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("project_id = ?", projectID).Delete(&promptDomain.ProtectedLabel{}).Error; err != nil {
 			return err
@@ -93,7 +94,7 @@ func (r *protectedLabelRepository) SetProtectedLabels(ctx context.Context, proje
 }
 
 // DeleteByProject deletes all protected labels for a project
-func (r *protectedLabelRepository) DeleteByProject(ctx context.Context, projectID ulid.ULID) error {
+func (r *protectedLabelRepository) DeleteByProject(ctx context.Context, projectID uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).
 		Where("project_id = ?", projectID).
 		Delete(&promptDomain.ProtectedLabel{}).Error

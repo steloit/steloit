@@ -1,11 +1,11 @@
 package workers
 
 import (
-	"log/slog"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sort"
 	"strings"
 	"sync"
@@ -14,12 +14,14 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/config"
 	"brokle/internal/core/domain/observability"
 	observabilitySvc "brokle/internal/core/services/observability"
 	"brokle/internal/infrastructure/database"
 	"brokle/internal/infrastructure/streams"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 var (
@@ -97,7 +99,7 @@ func NewTelemetryStreamConsumer(
 	if consumerConfig == nil {
 		consumerConfig = &TelemetryStreamConsumerConfig{
 			ConsumerGroup:     "telemetry-workers",
-			ConsumerID:        "worker-" + ulid.New().String(),
+			ConsumerID:        "worker-" + uid.New().String(),
 			BatchSize:         50,
 			BlockDuration:     time.Second,
 			MaxRetries:        3,
@@ -561,7 +563,7 @@ func mapToStruct(input map[string]interface{}, output interface{}) error {
 // processBatch processes a batch of telemetry events by routing to appropriate services based on event type
 // This is the main orchestration method that decides how to handle each event
 func (c *TelemetryStreamConsumer) processBatch(ctx context.Context, batch *streams.TelemetryStreamMessage) error {
-	// batch.ProjectID is already ulid.ULID type
+	// batch.ProjectID is already uuid.UUID type
 	projectID := batch.ProjectID
 
 	// Track processing stats
@@ -720,7 +722,7 @@ func (c *TelemetryStreamConsumer) processBatch(ctx context.Context, batch *strea
 
 	// Bulk insert metric gauges (1 DB call for all metric gauges)
 	if len(metricsGauges) > 0 {
-		if err := c.metricsService.CreateMetricGaugeBatch(ctx, metricsGauges); err != nil{
+		if err := c.metricsService.CreateMetricGaugeBatch(ctx, metricsGauges); err != nil {
 			c.logger.Error("Failed to create metric gauge batch", "error", err, "batch_id", batch.BatchID.String(), "metric_gauge_count", len(metricsGauges))
 			failedCount += len(metricsGauges)
 			lastError = err
@@ -901,7 +903,7 @@ func (c *TelemetryStreamConsumer) GetStats() map[string]int64 {
 }
 
 // GetDLQMessages retrieves messages from the Dead Letter Queue for a project
-func (c *TelemetryStreamConsumer) GetDLQMessages(ctx context.Context, projectID ulid.ULID, count int64) ([]redis.XMessage, error) {
+func (c *TelemetryStreamConsumer) GetDLQMessages(ctx context.Context, projectID uuid.UUID, count int64) ([]redis.XMessage, error) {
 	dlqKey := fmt.Sprintf("%s:%s", dlqStreamPrefix, projectID.String())
 
 	// Read messages from DLQ
@@ -922,7 +924,7 @@ func (c *TelemetryStreamConsumer) GetDLQMessages(ctx context.Context, projectID 
 }
 
 // RetryDLQMessage attempts to reprocess a message from the DLQ
-func (c *TelemetryStreamConsumer) RetryDLQMessage(ctx context.Context, projectID ulid.ULID, messageID string) error {
+func (c *TelemetryStreamConsumer) RetryDLQMessage(ctx context.Context, projectID uuid.UUID, messageID string) error {
 	dlqKey := fmt.Sprintf("%s:%s", dlqStreamPrefix, projectID.String())
 
 	// Read the message
@@ -1088,7 +1090,7 @@ func (c *TelemetryStreamConsumer) archiveBatchToS3(parentCtx context.Context, ba
 		for _, dayRecords := range dayGroups {
 			// Generate a unique batch ID for each signal+day group
 			// This ensures each Parquet file has a unique name
-			signalBatchID := ulid.New()
+			signalBatchID := uid.New()
 
 			c.archiveSignalGroup(ctx, batch, signalType, signalBatchID, dayRecords)
 		}
@@ -1100,7 +1102,7 @@ func (c *TelemetryStreamConsumer) archiveSignalGroup(
 	ctx context.Context,
 	batch *streams.TelemetryStreamMessage,
 	signalType string,
-	signalBatchID ulid.ULID,
+	signalBatchID uuid.UUID,
 	records []observability.RawTelemetryRecord,
 ) {
 	// Retry logic with exponential backoff
@@ -1111,7 +1113,7 @@ func (c *TelemetryStreamConsumer) archiveSignalGroup(
 			backoff := archiveBaseBackoff * time.Duration(1<<uint(attempt-1)) //nolint:gosec // attempt is always small (0-2)
 			time.Sleep(backoff)
 
-			c.logger.Debug("Retrying S3 archive", "batch_id", signalBatchID.String(), "signal_type", signalType, "attempt", attempt + 1, "backoff", backoff)
+			c.logger.Debug("Retrying S3 archive", "batch_id", signalBatchID.String(), "signal_type", signalType, "attempt", attempt+1, "backoff", backoff)
 		}
 
 		result, err := c.archiveService.ArchiveBatch(ctx, batch.ProjectID.String(), signalBatchID, records)

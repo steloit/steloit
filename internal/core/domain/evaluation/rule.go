@@ -3,7 +3,9 @@ package evaluation
 import (
 	"time"
 
-	"brokle/pkg/ulid"
+	"github.com/google/uuid"
+
+	"brokle/pkg/uid"
 
 	"github.com/lib/pq"
 )
@@ -57,8 +59,8 @@ type VariableMap struct {
 
 // Evaluator defines an automated evaluator for scoring spans.
 type Evaluator struct {
-	ID              ulid.ULID        `json:"id" gorm:"type:char(26);primaryKey"`
-	ProjectID       ulid.ULID        `json:"project_id" gorm:"type:char(26);not null;index"`
+	ID              uuid.UUID        `json:"id" gorm:"type:uuid;primaryKey"`
+	ProjectID       uuid.UUID        `json:"project_id" gorm:"type:uuid;not null;index"`
 	Name            string           `json:"name" gorm:"type:varchar(100);not null"`
 	Description     *string          `json:"description,omitempty" gorm:"type:text"`
 	Status          EvaluatorStatus  `json:"status" gorm:"type:varchar(20);not null;default:'inactive'"`
@@ -70,7 +72,7 @@ type Evaluator struct {
 	ScorerType      ScorerType       `json:"scorer_type" gorm:"type:varchar(20);not null"`
 	ScorerConfig    map[string]any   `json:"scorer_config" gorm:"type:jsonb;serializer:json;not null"`
 	VariableMapping []VariableMap    `json:"variable_mapping" gorm:"type:jsonb;serializer:json;not null;default:'[]'"`
-	CreatedBy       *string          `json:"created_by,omitempty" gorm:"type:char(26)"`
+	CreatedBy       *string          `json:"created_by,omitempty" gorm:"type:uuid"`
 	CreatedAt       time.Time        `json:"created_at" gorm:"not null;autoCreateTime"`
 	UpdatedAt       time.Time        `json:"updated_at" gorm:"not null;autoUpdateTime"`
 }
@@ -79,10 +81,10 @@ func (Evaluator) TableName() string {
 	return "evaluators"
 }
 
-func NewEvaluator(projectID ulid.ULID, name string, scorerType ScorerType, scorerConfig map[string]any) *Evaluator {
+func NewEvaluator(projectID uuid.UUID, name string, scorerType ScorerType, scorerConfig map[string]any) *Evaluator {
 	now := time.Now()
 	return &Evaluator{
-		ID:              ulid.New(),
+		ID:              uid.New(),
 		ProjectID:       projectID,
 		Name:            name,
 		Status:          EvaluatorStatusInactive,
@@ -147,31 +149,31 @@ func (e *Evaluator) Validate() []ValidationError {
 // Request/Response types
 
 type CreateEvaluatorRequest struct {
-	Name            string           `json:"name" binding:"required,min=1,max=100"`
-	Description     *string          `json:"description,omitempty"`
-	Status          *EvaluatorStatus `json:"status,omitempty"`
+	Name            string            `json:"name" binding:"required,min=1,max=100"`
+	Description     *string           `json:"description,omitempty"`
+	Status          *EvaluatorStatus  `json:"status,omitempty"`
 	TriggerType     *EvaluatorTrigger `json:"trigger_type,omitempty"`
-	TargetScope     *TargetScope     `json:"target_scope,omitempty"`
-	Filter          []FilterClause   `json:"filter,omitempty"`
-	SpanNames       []string         `json:"span_names,omitempty"`
-	SamplingRate    *float64         `json:"sampling_rate,omitempty"`
-	ScorerType      ScorerType       `json:"scorer_type" binding:"required,oneof=llm builtin regex"`
-	ScorerConfig    map[string]any   `json:"scorer_config" binding:"required"`
-	VariableMapping []VariableMap    `json:"variable_mapping,omitempty"`
+	TargetScope     *TargetScope      `json:"target_scope,omitempty"`
+	Filter          []FilterClause    `json:"filter,omitempty"`
+	SpanNames       []string          `json:"span_names,omitempty"`
+	SamplingRate    *float64          `json:"sampling_rate,omitempty"`
+	ScorerType      ScorerType        `json:"scorer_type" binding:"required,oneof=llm builtin regex"`
+	ScorerConfig    map[string]any    `json:"scorer_config" binding:"required"`
+	VariableMapping []VariableMap     `json:"variable_mapping,omitempty"`
 }
 
 type UpdateEvaluatorRequest struct {
-	Name            *string          `json:"name,omitempty" binding:"omitempty,min=1,max=100"`
-	Description     *string          `json:"description,omitempty"`
-	Status          *EvaluatorStatus `json:"status,omitempty" binding:"omitempty,oneof=active inactive paused"`
+	Name            *string           `json:"name,omitempty" binding:"omitempty,min=1,max=100"`
+	Description     *string           `json:"description,omitempty"`
+	Status          *EvaluatorStatus  `json:"status,omitempty" binding:"omitempty,oneof=active inactive paused"`
 	TriggerType     *EvaluatorTrigger `json:"trigger_type,omitempty"`
-	TargetScope     *TargetScope     `json:"target_scope,omitempty" binding:"omitempty,oneof=span trace"`
-	Filter          []FilterClause   `json:"filter,omitempty"`
-	SpanNames       []string         `json:"span_names,omitempty"`
-	SamplingRate    *float64         `json:"sampling_rate,omitempty"`
-	ScorerType      *ScorerType      `json:"scorer_type,omitempty" binding:"omitempty,oneof=llm builtin regex"`
-	ScorerConfig    map[string]any   `json:"scorer_config,omitempty"`
-	VariableMapping []VariableMap    `json:"variable_mapping,omitempty"`
+	TargetScope     *TargetScope      `json:"target_scope,omitempty" binding:"omitempty,oneof=span trace"`
+	Filter          []FilterClause    `json:"filter,omitempty"`
+	SpanNames       []string          `json:"span_names,omitempty"`
+	SamplingRate    *float64          `json:"sampling_rate,omitempty"`
+	ScorerType      *ScorerType       `json:"scorer_type,omitempty" binding:"omitempty,oneof=llm builtin regex"`
+	ScorerConfig    map[string]any    `json:"scorer_config,omitempty"`
+	VariableMapping []VariableMap     `json:"variable_mapping,omitempty"`
 }
 
 type EvaluatorResponse struct {

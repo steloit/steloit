@@ -1,9 +1,9 @@
 package database
 
 import (
-	"log/slog"
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2"

@@ -22,7 +22,7 @@ const client = new BrokleAPIClient('/api')
 /**
  * List all AI provider credentials for an organization
  *
- * @param orgId - Organization ULID
+ * @param orgId - Organization UUID
  * @returns List of configured provider credentials
  *
  * @example
@@ -40,8 +40,8 @@ export async function listProviderCredentials(
 /**
  * Get a specific AI provider credential by ID
  *
- * @param orgId - Organization ULID
- * @param credentialId - Credential ULID
+ * @param orgId - Organization UUID
+ * @param credentialId - Credential UUID
  * @returns Provider credential details
  *
  * @example
@@ -63,7 +63,7 @@ export async function getProviderCredential(
  * IMPORTANT: The API key is encrypted at rest. Only the key_preview
  * (masked version) is returned in responses.
  *
- * @param orgId - Organization ULID
+ * @param orgId - Organization UUID
  * @param data - Provider credential data including name and adapter type
  * @returns Created credential
  *
@@ -87,8 +87,8 @@ export async function createProviderCredential(
 /**
  * Update an existing AI provider credential
  *
- * @param orgId - Organization ULID
- * @param credentialId - Credential ULID to update
+ * @param orgId - Organization UUID
+ * @param credentialId - Credential UUID to update
  * @param data - Fields to update
  * @returns Updated credential
  *
@@ -112,8 +112,8 @@ export async function updateProviderCredential(
 /**
  * Delete an AI provider credential by ID
  *
- * @param orgId - Organization ULID
- * @param credentialId - Credential ULID to delete
+ * @param orgId - Organization UUID
+ * @param credentialId - Credential UUID to delete
  *
  * @example
  * ```ts
@@ -133,7 +133,7 @@ export async function deleteProviderCredential(
  *
  * Use this to validate API keys before storing them.
  *
- * @param orgId - Organization ULID
+ * @param orgId - Organization UUID
  * @param data - Connection details to test
  * @returns Success status and optional error message
  *
@@ -184,7 +184,7 @@ export function createKeyPreview(apiKey: string): string {
  * - Standard providers (openai, anthropic, etc.): default models + custom_models
  * - Custom provider: only custom_models
  *
- * @param orgId - Organization ULID
+ * @param orgId - Organization UUID
  * @returns List of available models
  *
  * @example

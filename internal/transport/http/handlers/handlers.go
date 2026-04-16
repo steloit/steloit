@@ -9,7 +9,6 @@ import (
 	"brokle/internal/core/domain/auth"
 	billingDomain "brokle/internal/core/domain/billing"
 	commentDomain "brokle/internal/core/domain/comment"
-	websiteDomain "brokle/internal/core/domain/website"
 	credentialsDomain "brokle/internal/core/domain/credentials"
 	dashboardDomain "brokle/internal/core/domain/dashboard"
 	evaluationDomain "brokle/internal/core/domain/evaluation"
@@ -17,6 +16,7 @@ import (
 	playgroundDomain "brokle/internal/core/domain/playground"
 	promptDomain "brokle/internal/core/domain/prompt"
 	"brokle/internal/core/domain/user"
+	websiteDomain "brokle/internal/core/domain/website"
 	authService "brokle/internal/core/services/auth"
 	credentialsService "brokle/internal/core/services/credentials"
 	obsServices "brokle/internal/core/services/observability"
@@ -42,46 +42,46 @@ import (
 	"brokle/internal/transport/http/handlers/prompt"
 	"brokle/internal/transport/http/handlers/rbac"
 	userHandler "brokle/internal/transport/http/handlers/user"
-	"brokle/internal/transport/http/handlers/websocket"
 	websiteHandler "brokle/internal/transport/http/handlers/website"
+	"brokle/internal/transport/http/handlers/websocket"
 )
 
 type Handlers struct {
-	Health        *health.Handler
-	Metrics       *metrics.Handler
-	Auth          *authHandler.Handler
-	User          *userHandler.Handler
-	Organization  *organizationHandler.Handler
-	Project       *project.Handler
-	APIKey        *apikey.Handler
-	Analytics     *analytics.Handler
-	Logs          *logs.Handler
-	Billing       *billing.Handler
-	WebSocket     *websocket.Handler
-	Admin         *admin.TokenAdminHandler
-	RBAC          *rbac.Handler
-	Observability *observability.Handler
-	OTLP          *observability.OTLPHandler
-	OTLPMetrics   *observability.OTLPMetricsHandler
-	OTLPLogs      *observability.OTLPLogsHandler
-	Prompt        *prompt.Handler
-	Playground    *playground.Handler
-	SDKPlayground *playground.SDKPlaygroundHandler
-	Credentials   *credentials.Handler
-	Evaluation    *evaluationHandler.ScoreConfigHandler
-	SDKScore      *evaluationHandler.SDKScoreHandler
-	Dataset        *evaluationHandler.DatasetHandler
-	DatasetItem    *evaluationHandler.DatasetItemHandler
-	DatasetVersion *evaluationHandler.DatasetVersionHandler
-	Experiment       *evaluationHandler.ExperimentHandler
-	ExperimentItem   *evaluationHandler.ExperimentItemHandler
-	ExperimentWizard *evaluationHandler.ExperimentWizardHandler
+	Health             *health.Handler
+	Metrics            *metrics.Handler
+	Auth               *authHandler.Handler
+	User               *userHandler.Handler
+	Organization       *organizationHandler.Handler
+	Project            *project.Handler
+	APIKey             *apikey.Handler
+	Analytics          *analytics.Handler
+	Logs               *logs.Handler
+	Billing            *billing.Handler
+	WebSocket          *websocket.Handler
+	Admin              *admin.TokenAdminHandler
+	RBAC               *rbac.Handler
+	Observability      *observability.Handler
+	OTLP               *observability.OTLPHandler
+	OTLPMetrics        *observability.OTLPMetricsHandler
+	OTLPLogs           *observability.OTLPLogsHandler
+	Prompt             *prompt.Handler
+	Playground         *playground.Handler
+	SDKPlayground      *playground.SDKPlaygroundHandler
+	Credentials        *credentials.Handler
+	Evaluation         *evaluationHandler.ScoreConfigHandler
+	SDKScore           *evaluationHandler.SDKScoreHandler
+	Dataset            *evaluationHandler.DatasetHandler
+	DatasetItem        *evaluationHandler.DatasetItemHandler
+	DatasetVersion     *evaluationHandler.DatasetVersionHandler
+	Experiment         *evaluationHandler.ExperimentHandler
+	ExperimentItem     *evaluationHandler.ExperimentItemHandler
+	ExperimentWizard   *evaluationHandler.ExperimentWizardHandler
 	Evaluator          *evaluationHandler.EvaluatorHandler
 	EvaluatorExecution *evaluationHandler.EvaluatorExecutionHandler
-	SpanQuery     *observability.SpanQueryHandler
-	Dashboard         *dashboard.Handler
-	DashboardTemplate *dashboard.TemplateHandler
-	Overview          *overview.Handler
+	SpanQuery          *observability.SpanQueryHandler
+	Dashboard          *dashboard.Handler
+	DashboardTemplate  *dashboard.TemplateHandler
+	Overview           *overview.Handler
 	// Usage-based billing handlers (Spans + GB + Scores)
 	Usage    *billing.UsageHandler
 	Budget   *billing.BudgetHandler
@@ -150,41 +150,41 @@ func NewHandlers(
 	websiteService websiteDomain.WebsiteService,
 ) *Handlers {
 	return &Handlers{
-		Health:        health.NewHandler(cfg, logger),
-		Metrics:       metrics.NewHandler(cfg, logger),
-		Auth:          authHandler.NewHandler(cfg, logger, authSvc, apiKeyService, userService, registrationService, oauthProvider),
-		User:          userHandler.NewHandler(cfg, logger, userService, profileService, organizationService),
-		Organization:  organizationHandler.NewHandler(cfg, logger, organizationService, memberService, projectService, invitationService, settingsService, userService, roleService),
-		Project:       project.NewHandler(cfg, logger, projectService, organizationService, memberService),
-		APIKey:        apikey.NewHandler(cfg, logger, apiKeyService),
-		Analytics:     analytics.NewHandler(cfg, logger),
-		Logs:          logs.NewHandler(cfg, logger),
-		Billing:       billing.NewHandler(cfg, logger),
-		WebSocket:     websocket.NewHandler(cfg, logger),
-		Admin:         admin.NewTokenAdminHandler(authSvc, blacklistedTokens, logger),
-		RBAC:          rbac.NewHandler(cfg, logger, roleService, permissionService, organizationMemberService, scopeService),
-		Observability: observability.NewHandler(cfg, logger, observabilityServices),
-		OTLP:          observability.NewOTLPHandler(observabilityServices.StreamProducer, observabilityServices.DeduplicationService, observabilityServices.OTLPConverterService, logger),
-		OTLPMetrics:   observability.NewOTLPMetricsHandler(observabilityServices.StreamProducer, observabilityServices.OTLPMetricsConverterService, logger),
-		OTLPLogs:      observability.NewOTLPLogsHandler(observabilityServices.StreamProducer, observabilityServices.OTLPLogsConverterService, observabilityServices.OTLPEventsConverterService, logger),
-		Prompt:        prompt.NewHandler(cfg, logger, promptService, compilerService),
-		Playground:    playground.NewHandler(cfg, logger, playgroundService, projectService),
-		SDKPlayground: playground.NewSDKPlaygroundHandler(logger, playgroundService),
-		Credentials:   credentials.NewHandler(cfg, logger, credentialsSvc, modelCatalogSvc),
-		Evaluation:    evaluationHandler.NewScoreConfigHandler(logger, scoreConfigService),
-		SDKScore:      evaluationHandler.NewSDKScoreHandler(logger, observabilityServices.ScoreService, scoreConfigService),
-		Dataset:        evaluationHandler.NewDatasetHandler(logger, datasetService, datasetItemService),
-		DatasetItem:    evaluationHandler.NewDatasetItemHandler(logger, datasetItemService),
-		DatasetVersion: evaluationHandler.NewDatasetVersionHandler(logger, datasetVersionService),
-		Experiment:       evaluationHandler.NewExperimentHandler(logger, experimentService, experimentItemService),
-		ExperimentItem:   evaluationHandler.NewExperimentItemHandler(logger, experimentItemService),
-		ExperimentWizard: evaluationHandler.NewExperimentWizardHandler(logger, experimentWizardService),
+		Health:             health.NewHandler(cfg, logger),
+		Metrics:            metrics.NewHandler(cfg, logger),
+		Auth:               authHandler.NewHandler(cfg, logger, authSvc, apiKeyService, userService, registrationService, oauthProvider),
+		User:               userHandler.NewHandler(cfg, logger, userService, profileService, organizationService),
+		Organization:       organizationHandler.NewHandler(cfg, logger, organizationService, memberService, projectService, invitationService, settingsService, userService, roleService),
+		Project:            project.NewHandler(cfg, logger, projectService, organizationService, memberService),
+		APIKey:             apikey.NewHandler(cfg, logger, apiKeyService),
+		Analytics:          analytics.NewHandler(cfg, logger),
+		Logs:               logs.NewHandler(cfg, logger),
+		Billing:            billing.NewHandler(cfg, logger),
+		WebSocket:          websocket.NewHandler(cfg, logger),
+		Admin:              admin.NewTokenAdminHandler(authSvc, blacklistedTokens, logger),
+		RBAC:               rbac.NewHandler(cfg, logger, roleService, permissionService, organizationMemberService, scopeService),
+		Observability:      observability.NewHandler(cfg, logger, observabilityServices),
+		OTLP:               observability.NewOTLPHandler(observabilityServices.StreamProducer, observabilityServices.DeduplicationService, observabilityServices.OTLPConverterService, logger),
+		OTLPMetrics:        observability.NewOTLPMetricsHandler(observabilityServices.StreamProducer, observabilityServices.OTLPMetricsConverterService, logger),
+		OTLPLogs:           observability.NewOTLPLogsHandler(observabilityServices.StreamProducer, observabilityServices.OTLPLogsConverterService, observabilityServices.OTLPEventsConverterService, logger),
+		Prompt:             prompt.NewHandler(cfg, logger, promptService, compilerService),
+		Playground:         playground.NewHandler(cfg, logger, playgroundService, projectService),
+		SDKPlayground:      playground.NewSDKPlaygroundHandler(logger, playgroundService),
+		Credentials:        credentials.NewHandler(cfg, logger, credentialsSvc, modelCatalogSvc),
+		Evaluation:         evaluationHandler.NewScoreConfigHandler(logger, scoreConfigService),
+		SDKScore:           evaluationHandler.NewSDKScoreHandler(logger, observabilityServices.ScoreService, scoreConfigService),
+		Dataset:            evaluationHandler.NewDatasetHandler(logger, datasetService, datasetItemService),
+		DatasetItem:        evaluationHandler.NewDatasetItemHandler(logger, datasetItemService),
+		DatasetVersion:     evaluationHandler.NewDatasetVersionHandler(logger, datasetVersionService),
+		Experiment:         evaluationHandler.NewExperimentHandler(logger, experimentService, experimentItemService),
+		ExperimentItem:     evaluationHandler.NewExperimentItemHandler(logger, experimentItemService),
+		ExperimentWizard:   evaluationHandler.NewExperimentWizardHandler(logger, experimentWizardService),
 		Evaluator:          evaluationHandler.NewEvaluatorHandler(evaluatorService),
 		EvaluatorExecution: evaluationHandler.NewEvaluatorExecutionHandler(evaluatorExecutionService),
-		SpanQuery:     observability.NewSpanQueryHandler(observabilityServices.SpanQueryService, logger),
-		Dashboard:         dashboard.NewHandler(cfg, logger, dashboardService, widgetQueryService),
-		DashboardTemplate: dashboard.NewTemplateHandler(cfg, logger, templateService),
-		Overview:          overview.NewHandler(cfg, logger, overviewService),
+		SpanQuery:          observability.NewSpanQueryHandler(observabilityServices.SpanQueryService, logger),
+		Dashboard:          dashboard.NewHandler(cfg, logger, dashboardService, widgetQueryService),
+		DashboardTemplate:  dashboard.NewTemplateHandler(cfg, logger, templateService),
+		Overview:           overview.NewHandler(cfg, logger, overviewService),
 		// Usage-based billing handlers
 		Usage:    billing.NewUsageHandler(cfg, logger, usageService),
 		Budget:   billing.NewBudgetHandler(cfg, logger, budgetService),

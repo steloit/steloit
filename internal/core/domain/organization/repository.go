@@ -4,105 +4,106 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
+
 	"brokle/pkg/pagination"
-	"brokle/pkg/ulid"
 )
 
 // OrganizationRepository defines the interface for organization data access.
 type OrganizationRepository interface {
 	// Basic CRUD operations
 	Create(ctx context.Context, org *Organization) error
-	GetByID(ctx context.Context, id ulid.ULID) (*Organization, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*Organization, error)
 	GetBySlug(ctx context.Context, slug string) (*Organization, error)
 	Update(ctx context.Context, org *Organization) error
-	Delete(ctx context.Context, id ulid.ULID) error
+	Delete(ctx context.Context, id uuid.UUID) error
 	List(ctx context.Context, filters *OrganizationFilters) ([]*Organization, error)
 
 	// User context
-	GetOrganizationsByUserID(ctx context.Context, userID ulid.ULID) ([]*Organization, error)
+	GetOrganizationsByUserID(ctx context.Context, userID uuid.UUID) ([]*Organization, error)
 
 	// Batch operations for workspace context
-	GetUserOrganizationsWithProjectsBatch(ctx context.Context, userID ulid.ULID) ([]*OrganizationWithProjectsAndRole, error)
+	GetUserOrganizationsWithProjectsBatch(ctx context.Context, userID uuid.UUID) ([]*OrganizationWithProjectsAndRole, error)
 }
 
 // MemberRepository defines the interface for organization member data access.
 type MemberRepository interface {
 	// Member management
 	Create(ctx context.Context, member *Member) error
-	GetByID(ctx context.Context, id ulid.ULID) (*Member, error)
-	GetByUserAndOrg(ctx context.Context, userID, orgID ulid.ULID) (*Member, error)
-	GetByUserAndOrganization(ctx context.Context, userID, orgID ulid.ULID) (*Member, error) // Alias for GetByUserAndOrg
+	GetByID(ctx context.Context, id uuid.UUID) (*Member, error)
+	GetByUserAndOrg(ctx context.Context, userID, orgID uuid.UUID) (*Member, error)
+	GetByUserAndOrganization(ctx context.Context, userID, orgID uuid.UUID) (*Member, error) // Alias for GetByUserAndOrg
 	Update(ctx context.Context, member *Member) error
-	Delete(ctx context.Context, id ulid.ULID) error
-	DeleteByUserAndOrg(ctx context.Context, orgID, userID ulid.ULID) error
+	Delete(ctx context.Context, id uuid.UUID) error
+	DeleteByUserAndOrg(ctx context.Context, orgID, userID uuid.UUID) error
 
 	// Organization members
-	GetMembersByOrganizationID(ctx context.Context, orgID ulid.ULID) ([]*Member, error)
-	GetByOrganizationID(ctx context.Context, orgID ulid.ULID) ([]*Member, error) // Alias for GetMembersByOrganizationID
-	GetMembersByUserID(ctx context.Context, userID ulid.ULID) ([]*Member, error)
+	GetMembersByOrganizationID(ctx context.Context, orgID uuid.UUID) ([]*Member, error)
+	GetByOrganizationID(ctx context.Context, orgID uuid.UUID) ([]*Member, error) // Alias for GetMembersByOrganizationID
+	GetMembersByUserID(ctx context.Context, userID uuid.UUID) ([]*Member, error)
 
 	// Role operations
-	UpdateMemberRole(ctx context.Context, orgID, userID, roleID ulid.ULID) error
-	GetMemberRole(ctx context.Context, userID, orgID ulid.ULID) (ulid.ULID, error)
-	CountByOrganizationAndRole(ctx context.Context, orgID, roleID ulid.ULID) (int, error)
+	UpdateMemberRole(ctx context.Context, orgID, userID, roleID uuid.UUID) error
+	GetMemberRole(ctx context.Context, userID, orgID uuid.UUID) (uuid.UUID, error)
+	CountByOrganizationAndRole(ctx context.Context, orgID, roleID uuid.UUID) (int, error)
 
 	// Membership validation
-	IsMember(ctx context.Context, userID, orgID ulid.ULID) (bool, error)
-	GetMemberCount(ctx context.Context, orgID ulid.ULID) (int, error)
+	IsMember(ctx context.Context, userID, orgID uuid.UUID) (bool, error)
+	GetMemberCount(ctx context.Context, orgID uuid.UUID) (int, error)
 }
 
 // ProjectRepository defines the interface for project data access.
 type ProjectRepository interface {
 	// Basic CRUD operations
 	Create(ctx context.Context, project *Project) error
-	GetByID(ctx context.Context, id ulid.ULID) (*Project, error)
-	GetBySlug(ctx context.Context, orgID ulid.ULID, slug string) (*Project, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*Project, error)
+	GetBySlug(ctx context.Context, orgID uuid.UUID, slug string) (*Project, error)
 	Update(ctx context.Context, project *Project) error
-	Delete(ctx context.Context, id ulid.ULID) error
+	Delete(ctx context.Context, id uuid.UUID) error
 
 	// Organization scoped
-	GetByOrganizationID(ctx context.Context, orgID ulid.ULID) ([]*Project, error)
-	GetProjectCount(ctx context.Context, orgID ulid.ULID) (int, error)
+	GetByOrganizationID(ctx context.Context, orgID uuid.UUID) ([]*Project, error)
+	GetProjectCount(ctx context.Context, orgID uuid.UUID) (int, error)
 
 	// Access validation
-	CanUserAccessProject(ctx context.Context, userID, projectID ulid.ULID) (bool, error)
+	CanUserAccessProject(ctx context.Context, userID, projectID uuid.UUID) (bool, error)
 }
 
 // InvitationRepository defines the interface for user invitation data access.
 type InvitationRepository interface {
 	// Basic CRUD operations
 	Create(ctx context.Context, invitation *Invitation) error
-	GetByID(ctx context.Context, id ulid.ULID) (*Invitation, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*Invitation, error)
 	GetByToken(ctx context.Context, token string) (*Invitation, error)         // Deprecated: use GetByTokenHash
 	GetByTokenHash(ctx context.Context, tokenHash string) (*Invitation, error) // Secure token lookup
 	Update(ctx context.Context, invitation *Invitation) error
-	Delete(ctx context.Context, id ulid.ULID) error
+	Delete(ctx context.Context, id uuid.UUID) error
 
 	// Organization invitations
-	GetByOrganizationID(ctx context.Context, orgID ulid.ULID) ([]*Invitation, error)
+	GetByOrganizationID(ctx context.Context, orgID uuid.UUID) ([]*Invitation, error)
 	GetByEmail(ctx context.Context, email string) ([]*Invitation, error)
-	GetPendingByEmail(ctx context.Context, orgID ulid.ULID, email string) (*Invitation, error)
-	GetPendingInvitations(ctx context.Context, orgID ulid.ULID) ([]*Invitation, error)
+	GetPendingByEmail(ctx context.Context, orgID uuid.UUID, email string) (*Invitation, error)
+	GetPendingInvitations(ctx context.Context, orgID uuid.UUID) ([]*Invitation, error)
 
 	// Invitation management
-	MarkAccepted(ctx context.Context, id ulid.ULID, acceptedByID ulid.ULID) error
-	MarkExpired(ctx context.Context, id ulid.ULID) error
-	RevokeInvitation(ctx context.Context, id ulid.ULID, revokedByID ulid.ULID) error
+	MarkAccepted(ctx context.Context, id uuid.UUID, acceptedByID uuid.UUID) error
+	MarkExpired(ctx context.Context, id uuid.UUID) error
+	RevokeInvitation(ctx context.Context, id uuid.UUID, revokedByID uuid.UUID) error
 	// MarkResent atomically increments resent_count if within limits.
 	// Returns ErrResendLimitReached or ErrResendCooldown if constraints not met.
-	MarkResent(ctx context.Context, id ulid.ULID, newExpiresAt time.Time, maxAttempts int, cooldown time.Duration) error
+	MarkResent(ctx context.Context, id uuid.UUID, newExpiresAt time.Time, maxAttempts int, cooldown time.Duration) error
 	CleanupExpiredInvitations(ctx context.Context) error
 
 	// UpdateTokenHash updates only the token hash and preview fields.
 	// Use this instead of Update when you need to preserve other field changes.
-	UpdateTokenHash(ctx context.Context, id ulid.ULID, tokenHash, tokenPreview string) error
+	UpdateTokenHash(ctx context.Context, id uuid.UUID, tokenHash, tokenPreview string) error
 
 	// Validation
-	IsEmailAlreadyInvited(ctx context.Context, email string, orgID ulid.ULID) (bool, error)
+	IsEmailAlreadyInvited(ctx context.Context, email string, orgID uuid.UUID) (bool, error)
 
 	// Audit logging
 	CreateAuditEvent(ctx context.Context, event *InvitationAuditEvent) error
-	GetAuditEventsByInvitationID(ctx context.Context, invitationID ulid.ULID) ([]*InvitationAuditEvent, error)
+	GetAuditEventsByInvitationID(ctx context.Context, invitationID uuid.UUID) ([]*InvitationAuditEvent, error)
 }
 
 // OrganizationFilters represents filters for organization queries.
@@ -119,9 +120,9 @@ type OrganizationFilters struct {
 // MemberFilters represents filters for member queries.
 type MemberFilters struct {
 	// Domain filters
-	OrganizationID *ulid.ULID
-	UserID         *ulid.ULID
-	RoleID         *ulid.ULID
+	OrganizationID *uuid.UUID
+	UserID         *uuid.UUID
+	RoleID         *uuid.UUID
 
 	// Pagination (embedded for DRY)
 	pagination.Params
@@ -130,7 +131,7 @@ type MemberFilters struct {
 // ProjectFilters represents filters for project queries.
 type ProjectFilters struct {
 	// Domain filters
-	OrganizationID *ulid.ULID
+	OrganizationID *uuid.UUID
 	Name           *string
 
 	// Pagination (embedded for DRY)
@@ -140,7 +141,7 @@ type ProjectFilters struct {
 // InvitationFilters represents filters for invitation queries.
 type InvitationFilters struct {
 	// Domain filters
-	OrganizationID *ulid.ULID
+	OrganizationID *uuid.UUID
 	Status         *string
 	Email          *string
 
@@ -152,21 +153,21 @@ type InvitationFilters struct {
 type OrganizationSettingsRepository interface {
 	// Basic CRUD operations
 	Create(ctx context.Context, setting *OrganizationSettings) error
-	GetByID(ctx context.Context, id ulid.ULID) (*OrganizationSettings, error)
-	GetByKey(ctx context.Context, orgID ulid.ULID, key string) (*OrganizationSettings, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*OrganizationSettings, error)
+	GetByKey(ctx context.Context, orgID uuid.UUID, key string) (*OrganizationSettings, error)
 	Update(ctx context.Context, setting *OrganizationSettings) error
-	Delete(ctx context.Context, id ulid.ULID) error
+	Delete(ctx context.Context, id uuid.UUID) error
 
 	// Organization scoped operations
-	GetAllByOrganizationID(ctx context.Context, orgID ulid.ULID) ([]*OrganizationSettings, error)
-	GetSettingsMap(ctx context.Context, orgID ulid.ULID) (map[string]interface{}, error)
-	DeleteByKey(ctx context.Context, orgID ulid.ULID, key string) error
-	UpsertSetting(ctx context.Context, orgID ulid.ULID, key string, value interface{}) (*OrganizationSettings, error)
+	GetAllByOrganizationID(ctx context.Context, orgID uuid.UUID) ([]*OrganizationSettings, error)
+	GetSettingsMap(ctx context.Context, orgID uuid.UUID) (map[string]interface{}, error)
+	DeleteByKey(ctx context.Context, orgID uuid.UUID, key string) error
+	UpsertSetting(ctx context.Context, orgID uuid.UUID, key string, value interface{}) (*OrganizationSettings, error)
 
 	// Bulk operations
 	CreateMultiple(ctx context.Context, settings []*OrganizationSettings) error
-	GetByKeys(ctx context.Context, orgID ulid.ULID, keys []string) ([]*OrganizationSettings, error)
-	DeleteMultiple(ctx context.Context, orgID ulid.ULID, keys []string) error
+	GetByKeys(ctx context.Context, orgID uuid.UUID, keys []string) ([]*OrganizationSettings, error)
+	DeleteMultiple(ctx context.Context, orgID uuid.UUID, keys []string) error
 }
 
 // Repository aggregates all organization-related repositories.

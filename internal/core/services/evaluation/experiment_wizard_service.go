@@ -9,11 +9,12 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/common"
 	"brokle/internal/core/domain/evaluation"
 	"brokle/internal/core/domain/prompt"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
 )
 
 type experimentWizardService struct {
@@ -54,24 +55,24 @@ func NewExperimentWizardService(
 
 func (s *experimentWizardService) CreateFromWizard(
 	ctx context.Context,
-	projectID ulid.ULID,
-	userID *ulid.ULID,
+	projectID uuid.UUID,
+	userID *uuid.UUID,
 	req *evaluation.CreateExperimentFromWizardRequest,
 ) (*evaluation.Experiment, error) {
 	// Parse and validate IDs
-	promptID, err := ulid.Parse(req.PromptID)
+	promptID, err := uuid.Parse(req.PromptID)
 	if err != nil {
-		return nil, appErrors.NewValidationError("prompt_id", "must be a valid ULID")
+		return nil, appErrors.NewValidationError("prompt_id", "must be a valid UUID")
 	}
 
-	promptVersionID, err := ulid.Parse(req.PromptVersionID)
+	promptVersionID, err := uuid.Parse(req.PromptVersionID)
 	if err != nil {
-		return nil, appErrors.NewValidationError("prompt_version_id", "must be a valid ULID")
+		return nil, appErrors.NewValidationError("prompt_version_id", "must be a valid UUID")
 	}
 
-	datasetID, err := ulid.Parse(req.DatasetID)
+	datasetID, err := uuid.Parse(req.DatasetID)
 	if err != nil {
-		return nil, appErrors.NewValidationError("dataset_id", "must be a valid ULID")
+		return nil, appErrors.NewValidationError("dataset_id", "must be a valid UUID")
 	}
 
 	// Verify prompt exists AND belongs to this project
@@ -107,11 +108,11 @@ func (s *experimentWizardService) CreateFromWizard(
 	}
 
 	// Parse optional dataset version ID
-	var datasetVersionID *ulid.ULID
+	var datasetVersionID *uuid.UUID
 	if req.DatasetVersionID != nil {
-		parsed, err := ulid.Parse(*req.DatasetVersionID)
+		parsed, err := uuid.Parse(*req.DatasetVersionID)
 		if err != nil {
-			return nil, appErrors.NewValidationError("dataset_version_id", "must be a valid ULID")
+			return nil, appErrors.NewValidationError("dataset_version_id", "must be a valid UUID")
 		}
 		datasetVersionID = &parsed
 
@@ -204,7 +205,7 @@ func (s *experimentWizardService) CreateFromWizard(
 
 func (s *experimentWizardService) ValidateStep(
 	ctx context.Context,
-	projectID ulid.ULID,
+	projectID uuid.UUID,
 	req *evaluation.ValidateStepRequest,
 ) (*evaluation.ValidateStepResponse, error) {
 	response := &evaluation.ValidateStepResponse{
@@ -237,7 +238,7 @@ func (s *experimentWizardService) ValidateStep(
 
 func (s *experimentWizardService) validateStep1(
 	ctx context.Context,
-	projectID ulid.ULID,
+	projectID uuid.UUID,
 	data map[string]any,
 	response *evaluation.ValidateStepResponse,
 ) {
@@ -256,7 +257,7 @@ func (s *experimentWizardService) validateStep1(
 	}
 
 	// Track validated promptID for version ownership check
-	var validatedPromptID *ulid.ULID
+	var validatedPromptID *uuid.UUID
 
 	// Validate prompt_id
 	promptIDStr, ok := data["prompt_id"].(string)
@@ -266,11 +267,11 @@ func (s *experimentWizardService) validateStep1(
 			Message: "prompt_id is required",
 		})
 	} else {
-		promptID, err := ulid.Parse(promptIDStr)
+		promptID, err := uuid.Parse(promptIDStr)
 		if err != nil {
 			response.Errors = append(response.Errors, evaluation.ValidationError{
 				Field:   "prompt_id",
-				Message: "must be a valid ULID",
+				Message: "must be a valid UUID",
 			})
 		} else {
 			// Verify prompt exists AND belongs to this project
@@ -300,11 +301,11 @@ func (s *experimentWizardService) validateStep1(
 			Message: "prompt_version_id is required",
 		})
 	} else {
-		versionID, err := ulid.Parse(versionIDStr)
+		versionID, err := uuid.Parse(versionIDStr)
 		if err != nil {
 			response.Errors = append(response.Errors, evaluation.ValidationError{
 				Field:   "prompt_version_id",
-				Message: "must be a valid ULID",
+				Message: "must be a valid UUID",
 			})
 		} else {
 			// Verify version exists AND belongs to the validated prompt
@@ -327,7 +328,7 @@ func (s *experimentWizardService) validateStep1(
 
 func (s *experimentWizardService) validateStep2(
 	ctx context.Context,
-	projectID ulid.ULID,
+	projectID uuid.UUID,
 	data map[string]any,
 	response *evaluation.ValidateStepResponse,
 ) {
@@ -339,11 +340,11 @@ func (s *experimentWizardService) validateStep2(
 			Message: "dataset_id is required",
 		})
 	} else {
-		datasetID, err := ulid.Parse(datasetIDStr)
+		datasetID, err := uuid.Parse(datasetIDStr)
 		if err != nil {
 			response.Errors = append(response.Errors, evaluation.ValidationError{
 				Field:   "dataset_id",
-				Message: "must be a valid ULID",
+				Message: "must be a valid UUID",
 			})
 		} else {
 			if _, err := s.datasetRepo.GetByID(ctx, datasetID, projectID); err != nil {
@@ -448,13 +449,13 @@ func (s *experimentWizardService) validateStep3(
 
 func (s *experimentWizardService) EstimateCost(
 	ctx context.Context,
-	projectID ulid.ULID,
+	projectID uuid.UUID,
 	req *evaluation.EstimateCostRequest,
 ) (*evaluation.EstimateCostResponse, error) {
 	// Parse dataset ID
-	datasetID, err := ulid.Parse(req.DatasetID)
+	datasetID, err := uuid.Parse(req.DatasetID)
 	if err != nil {
-		return nil, appErrors.NewValidationError("dataset_id", "must be a valid ULID")
+		return nil, appErrors.NewValidationError("dataset_id", "must be a valid UUID")
 	}
 
 	// Validate dataset belongs to this project (security: prevent cross-project information disclosure)
@@ -521,8 +522,8 @@ func (s *experimentWizardService) EstimateCost(
 
 func (s *experimentWizardService) GetDatasetFields(
 	ctx context.Context,
-	projectID ulid.ULID,
-	datasetID ulid.ULID,
+	projectID uuid.UUID,
+	datasetID uuid.UUID,
 ) (*evaluation.DatasetFieldsResponse, error) {
 	// Verify dataset exists
 	if _, err := s.datasetRepo.GetByID(ctx, datasetID, projectID); err != nil {
@@ -569,8 +570,8 @@ func (s *experimentWizardService) GetDatasetFields(
 
 func (s *experimentWizardService) GetExperimentConfig(
 	ctx context.Context,
-	experimentID ulid.ULID,
-	projectID ulid.ULID,
+	experimentID uuid.UUID,
+	projectID uuid.UUID,
 ) (*evaluation.ExperimentConfig, error) {
 	// First verify experiment exists and belongs to project
 	experiment, err := s.experimentRepo.GetByID(ctx, experimentID, projectID)

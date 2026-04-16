@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/evaluation"
 	"brokle/internal/infrastructure/shared"
-	"brokle/pkg/ulid"
 
 	"gorm.io/gorm"
 )
@@ -28,7 +29,7 @@ func (r *ExperimentConfigRepository) Create(ctx context.Context, config *evaluat
 	return r.getDB(ctx).WithContext(ctx).Create(config).Error
 }
 
-func (r *ExperimentConfigRepository) GetByID(ctx context.Context, id ulid.ULID) (*evaluation.ExperimentConfig, error) {
+func (r *ExperimentConfigRepository) GetByID(ctx context.Context, id uuid.UUID) (*evaluation.ExperimentConfig, error) {
 	var config evaluation.ExperimentConfig
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("id = ?", id.String()).
@@ -43,7 +44,7 @@ func (r *ExperimentConfigRepository) GetByID(ctx context.Context, id ulid.ULID) 
 	return &config, nil
 }
 
-func (r *ExperimentConfigRepository) GetByExperimentID(ctx context.Context, experimentID ulid.ULID) (*evaluation.ExperimentConfig, error) {
+func (r *ExperimentConfigRepository) GetByExperimentID(ctx context.Context, experimentID uuid.UUID) (*evaluation.ExperimentConfig, error) {
 	var config evaluation.ExperimentConfig
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("experiment_id = ?", experimentID.String()).
@@ -73,7 +74,7 @@ func (r *ExperimentConfigRepository) Update(ctx context.Context, config *evaluat
 	return nil
 }
 
-func (r *ExperimentConfigRepository) Delete(ctx context.Context, id ulid.ULID) error {
+func (r *ExperimentConfigRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("id = ?", id.String()).
 		Delete(&evaluation.ExperimentConfig{})

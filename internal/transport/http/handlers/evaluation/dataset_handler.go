@@ -4,11 +4,11 @@ import (
 	"log/slog"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	evaluationDomain "brokle/internal/core/domain/evaluation"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 )
 
 type DatasetHandler struct {
@@ -149,9 +149,9 @@ func (h *DatasetHandler) Get(c *gin.Context) {
 		return
 	}
 
-	datasetID, err := ulid.Parse(c.Param("datasetId"))
+	datasetID, err := uuid.Parse(c.Param("datasetId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid UUID"))
 		return
 	}
 
@@ -187,9 +187,9 @@ func (h *DatasetHandler) Update(c *gin.Context) {
 		return
 	}
 
-	datasetID, err := ulid.Parse(c.Param("datasetId"))
+	datasetID, err := uuid.Parse(c.Param("datasetId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid UUID"))
 		return
 	}
 
@@ -228,9 +228,9 @@ func (h *DatasetHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	datasetID, err := ulid.Parse(c.Param("datasetId"))
+	datasetID, err := uuid.Parse(c.Param("datasetId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid UUID"))
 		return
 	}
 
@@ -262,9 +262,9 @@ func (h *DatasetHandler) CreateItems(c *gin.Context) {
 		return
 	}
 
-	datasetID, err := ulid.Parse(c.Param("datasetId"))
+	datasetID, err := uuid.Parse(c.Param("datasetId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid UUID"))
 		return
 	}
 
@@ -309,9 +309,9 @@ func (h *DatasetHandler) ListItems(c *gin.Context) {
 		return
 	}
 
-	datasetID, err := ulid.Parse(c.Param("datasetId"))
+	datasetID, err := uuid.Parse(c.Param("datasetId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid UUID"))
 		return
 	}
 
@@ -364,9 +364,9 @@ func (h *DatasetHandler) ExportItems(c *gin.Context) {
 		return
 	}
 
-	datasetID, err := ulid.Parse(c.Param("datasetId"))
+	datasetID, err := uuid.Parse(c.Param("datasetId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid UUID"))
 		return
 	}
 
@@ -412,9 +412,9 @@ func (h *DatasetHandler) ImportFromJSON(c *gin.Context) {
 		return
 	}
 
-	datasetID, err := ulid.Parse(c.Param("datasetId"))
+	datasetID, err := uuid.Parse(c.Param("datasetId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid UUID"))
 		return
 	}
 
@@ -475,9 +475,9 @@ func (h *DatasetHandler) ImportFromCSV(c *gin.Context) {
 		return
 	}
 
-	datasetID, err := ulid.Parse(c.Param("datasetId"))
+	datasetID, err := uuid.Parse(c.Param("datasetId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid UUID"))
 		return
 	}
 
@@ -528,9 +528,9 @@ func (h *DatasetHandler) CreateFromTraces(c *gin.Context) {
 		return
 	}
 
-	datasetID, err := ulid.Parse(c.Param("datasetId"))
+	datasetID, err := uuid.Parse(c.Param("datasetId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid UUID"))
 		return
 	}
 
@@ -582,9 +582,9 @@ func (h *DatasetHandler) CreateFromSpans(c *gin.Context) {
 		return
 	}
 
-	datasetID, err := ulid.Parse(c.Param("datasetId"))
+	datasetID, err := uuid.Parse(c.Param("datasetId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid UUID"))
 		return
 	}
 

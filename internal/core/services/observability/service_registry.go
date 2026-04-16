@@ -2,13 +2,13 @@ package observability
 
 import (
 	"log/slog"
+
 	"brokle/internal/config"
 	"brokle/internal/core/domain/analytics"
 	"brokle/internal/core/domain/observability"
 	storageDomain "brokle/internal/core/domain/storage"
 	infraStorage "brokle/internal/infrastructure/storage"
 	"brokle/internal/infrastructure/streams"
-
 )
 
 type ServiceRegistry struct {

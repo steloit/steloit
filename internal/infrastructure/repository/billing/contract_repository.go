@@ -8,9 +8,10 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/billing"
 	"brokle/internal/infrastructure/shared"
-	"brokle/pkg/ulid"
 )
 
 type contractRepository struct {
@@ -30,7 +31,7 @@ func (r *contractRepository) Create(ctx context.Context, contract *billing.Contr
 	return r.getDB(ctx).WithContext(ctx).Create(contract).Error
 }
 
-func (r *contractRepository) GetByID(ctx context.Context, id ulid.ULID) (*billing.Contract, error) {
+func (r *contractRepository) GetByID(ctx context.Context, id uuid.UUID) (*billing.Contract, error) {
 	var contract billing.Contract
 	err := r.getDB(ctx).WithContext(ctx).
 		Preload("VolumeTiers").
@@ -45,7 +46,7 @@ func (r *contractRepository) GetByID(ctx context.Context, id ulid.ULID) (*billin
 	return &contract, nil
 }
 
-func (r *contractRepository) GetActiveByOrgID(ctx context.Context, orgID ulid.ULID) (*billing.Contract, error) {
+func (r *contractRepository) GetActiveByOrgID(ctx context.Context, orgID uuid.UUID) (*billing.Contract, error) {
 	var contract billing.Contract
 	err := r.getDB(ctx).WithContext(ctx).
 		Preload("VolumeTiers").
@@ -60,7 +61,7 @@ func (r *contractRepository) GetActiveByOrgID(ctx context.Context, orgID ulid.UL
 	return &contract, nil
 }
 
-func (r *contractRepository) GetByOrgID(ctx context.Context, orgID ulid.ULID) ([]*billing.Contract, error) {
+func (r *contractRepository) GetByOrgID(ctx context.Context, orgID uuid.UUID) ([]*billing.Contract, error) {
 	var contracts []*billing.Contract
 	err := r.getDB(ctx).WithContext(ctx).
 		Preload("VolumeTiers").
@@ -78,7 +79,7 @@ func (r *contractRepository) Update(ctx context.Context, contract *billing.Contr
 	return r.getDB(ctx).WithContext(ctx).Save(contract).Error
 }
 
-func (r *contractRepository) Expire(ctx context.Context, contractID ulid.ULID) error {
+func (r *contractRepository) Expire(ctx context.Context, contractID uuid.UUID) error {
 	result := r.getDB(ctx).WithContext(ctx).
 		Model(&billing.Contract{}).
 		Where("id = ?", contractID).
@@ -98,7 +99,7 @@ func (r *contractRepository) Expire(ctx context.Context, contractID ulid.ULID) e
 	return nil
 }
 
-func (r *contractRepository) Cancel(ctx context.Context, contractID ulid.ULID) error {
+func (r *contractRepository) Cancel(ctx context.Context, contractID uuid.UUID) error {
 	result := r.getDB(ctx).WithContext(ctx).
 		Model(&billing.Contract{}).
 		Where("id = ?", contractID).

@@ -5,8 +5,8 @@
 -- Uses label-based versioning for deployment management
 
 CREATE TABLE prompts (
-    id CHAR(26) PRIMARY KEY,
-    project_id CHAR(26) NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     description TEXT,
     type VARCHAR(10) NOT NULL DEFAULT 'text' CHECK (type IN ('text', 'chat')),

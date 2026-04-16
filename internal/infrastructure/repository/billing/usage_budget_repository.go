@@ -9,9 +9,10 @@ import (
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/billing"
 	"brokle/internal/infrastructure/shared"
-	"brokle/pkg/ulid"
 )
 
 type usageBudgetRepository struct {
@@ -27,7 +28,7 @@ func (r *usageBudgetRepository) getDB(ctx context.Context) *gorm.DB {
 	return shared.GetDB(ctx, r.db)
 }
 
-func (r *usageBudgetRepository) GetByID(ctx context.Context, id ulid.ULID) (*billing.UsageBudget, error) {
+func (r *usageBudgetRepository) GetByID(ctx context.Context, id uuid.UUID) (*billing.UsageBudget, error) {
 	var budget billing.UsageBudget
 	err := r.getDB(ctx).WithContext(ctx).Where("id = ?", id).First(&budget).Error
 	if err != nil {
@@ -39,7 +40,7 @@ func (r *usageBudgetRepository) GetByID(ctx context.Context, id ulid.ULID) (*bil
 	return &budget, nil
 }
 
-func (r *usageBudgetRepository) GetByOrgID(ctx context.Context, orgID ulid.ULID) ([]*billing.UsageBudget, error) {
+func (r *usageBudgetRepository) GetByOrgID(ctx context.Context, orgID uuid.UUID) ([]*billing.UsageBudget, error) {
 	var budgets []*billing.UsageBudget
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("organization_id = ?", orgID).
@@ -51,7 +52,7 @@ func (r *usageBudgetRepository) GetByOrgID(ctx context.Context, orgID ulid.ULID)
 	return budgets, nil
 }
 
-func (r *usageBudgetRepository) GetByProjectID(ctx context.Context, projectID ulid.ULID) ([]*billing.UsageBudget, error) {
+func (r *usageBudgetRepository) GetByProjectID(ctx context.Context, projectID uuid.UUID) ([]*billing.UsageBudget, error) {
 	var budgets []*billing.UsageBudget
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("project_id = ?", projectID).
@@ -63,7 +64,7 @@ func (r *usageBudgetRepository) GetByProjectID(ctx context.Context, projectID ul
 	return budgets, nil
 }
 
-func (r *usageBudgetRepository) GetActive(ctx context.Context, orgID ulid.ULID) ([]*billing.UsageBudget, error) {
+func (r *usageBudgetRepository) GetActive(ctx context.Context, orgID uuid.UUID) ([]*billing.UsageBudget, error) {
 	var budgets []*billing.UsageBudget
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("organization_id = ? AND is_active = ?", orgID, true).
@@ -85,7 +86,7 @@ func (r *usageBudgetRepository) Update(ctx context.Context, budget *billing.Usag
 }
 
 // UpdateUsage sets usage counters for a budget (expects cumulative totals, not deltas)
-func (r *usageBudgetRepository) UpdateUsage(ctx context.Context, budgetID ulid.ULID, spans, bytes, scores int64, cost decimal.Decimal) error {
+func (r *usageBudgetRepository) UpdateUsage(ctx context.Context, budgetID uuid.UUID, spans, bytes, scores int64, cost decimal.Decimal) error {
 	return r.getDB(ctx).WithContext(ctx).
 		Model(&billing.UsageBudget{}).
 		Where("id = ?", budgetID).
@@ -99,7 +100,7 @@ func (r *usageBudgetRepository) UpdateUsage(ctx context.Context, budgetID ulid.U
 }
 
 // Delete soft deletes a budget by setting is_active to false
-func (r *usageBudgetRepository) Delete(ctx context.Context, id ulid.ULID) error {
+func (r *usageBudgetRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).
 		Model(&billing.UsageBudget{}).
 		Where("id = ?", id).

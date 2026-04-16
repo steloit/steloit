@@ -3,11 +3,12 @@ package playground
 import (
 	"github.com/gin-gonic/gin"
 
+	"github.com/google/uuid"
+
 	playgroundDomain "brokle/internal/core/domain/playground"
 	prompt "brokle/internal/core/domain/prompt"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 )
 
 // ExecuteRequest represents a playground execution request.
@@ -49,9 +50,9 @@ func (h *Handler) Execute(c *gin.Context) {
 		return
 	}
 
-	projectID, err := ulid.Parse(*req.ProjectID)
+	projectID, err := uuid.Parse(*req.ProjectID)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid UUID"))
 		return
 	}
 
@@ -63,11 +64,11 @@ func (h *Handler) Execute(c *gin.Context) {
 	}
 	organizationID := project.OrganizationID
 
-	var sessionID *ulid.ULID
+	var sessionID *uuid.UUID
 	if req.SessionID != nil {
-		sid, err := ulid.Parse(*req.SessionID)
+		sid, err := uuid.Parse(*req.SessionID)
 		if err != nil {
-			response.Error(c, appErrors.NewValidationError("Invalid session ID", "session_id must be a valid ULID"))
+			response.Error(c, appErrors.NewValidationError("Invalid session ID", "session_id must be a valid UUID"))
 			return
 		}
 		sessionID = &sid

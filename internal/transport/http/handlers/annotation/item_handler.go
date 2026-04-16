@@ -5,11 +5,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/google/uuid"
+
 	annotationDomain "brokle/internal/core/domain/annotation"
 	"brokle/internal/transport/http/middleware"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 )
 
 // ItemHandler handles annotation queue item HTTP endpoints.
@@ -46,15 +47,15 @@ func NewItemHandler(
 // @Failure 404 {object} response.ErrorResponse "Queue not found"
 // @Router /api/v1/projects/{projectId}/annotation-queues/{queueId}/items [post]
 func (h *ItemHandler) AddItems(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	queueID, err := ulid.Parse(c.Param("queueId"))
+	queueID, err := uuid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid UUID"))
 		return
 	}
 
@@ -106,15 +107,15 @@ func (h *ItemHandler) AddItems(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/annotation-queues/{queueId}/items [get]
 func (h *ItemHandler) ListItems(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	queueID, err := ulid.Parse(c.Param("queueId"))
+	queueID, err := uuid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid UUID"))
 		return
 	}
 
@@ -159,19 +160,19 @@ func (h *ItemHandler) ListItems(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse "Queue not found or no items available"
 // @Router /api/v1/projects/{projectId}/annotation-queues/{queueId}/items/claim [post]
 func (h *ItemHandler) ClaimNext(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	queueID, err := ulid.Parse(c.Param("queueId"))
+	queueID, err := uuid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid UUID"))
 		return
 	}
 
-	userID, exists := middleware.GetUserIDULID(c)
+	userID, exists := middleware.GetUserIDFromContext(c)
 	if !exists {
 		response.Unauthorized(c, "User authentication required")
 		return
@@ -191,11 +192,11 @@ func (h *ItemHandler) ClaimNext(c *gin.Context) {
 	var req ClaimNextRequest
 	_ = c.ShouldBindJSON(&req) // Ignore errors - body is optional
 
-	var seenItemIDs []ulid.ULID
+	var seenItemIDs []uuid.UUID
 	if len(req.SeenItemIDs) > 0 {
-		seenItemIDs = make([]ulid.ULID, 0, len(req.SeenItemIDs))
+		seenItemIDs = make([]uuid.UUID, 0, len(req.SeenItemIDs))
 		for _, idStr := range req.SeenItemIDs {
-			if id, err := ulid.Parse(idStr); err == nil {
+			if id, err := uuid.Parse(idStr); err == nil {
 				seenItemIDs = append(seenItemIDs, id)
 			}
 		}
@@ -226,25 +227,25 @@ func (h *ItemHandler) ClaimNext(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/annotation-queues/{queueId}/items/{itemId}/complete [post]
 func (h *ItemHandler) Complete(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	queueID, err := ulid.Parse(c.Param("queueId"))
+	queueID, err := uuid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid UUID"))
 		return
 	}
 
-	itemID, err := ulid.Parse(c.Param("itemId"))
+	itemID, err := uuid.Parse(c.Param("itemId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid item ID", "itemId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid item ID", "itemId must be a valid UUID"))
 		return
 	}
 
-	userID, exists := middleware.GetUserIDULID(c)
+	userID, exists := middleware.GetUserIDFromContext(c)
 	if !exists {
 		response.Unauthorized(c, "User authentication required")
 		return
@@ -299,25 +300,25 @@ func (h *ItemHandler) Complete(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/annotation-queues/{queueId}/items/{itemId}/skip [post]
 func (h *ItemHandler) Skip(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	queueID, err := ulid.Parse(c.Param("queueId"))
+	queueID, err := uuid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid UUID"))
 		return
 	}
 
-	itemID, err := ulid.Parse(c.Param("itemId"))
+	itemID, err := uuid.Parse(c.Param("itemId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid item ID", "itemId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid item ID", "itemId must be a valid UUID"))
 		return
 	}
 
-	userID, exists := middleware.GetUserIDULID(c)
+	userID, exists := middleware.GetUserIDFromContext(c)
 	if !exists {
 		response.Unauthorized(c, "User authentication required")
 		return
@@ -363,25 +364,25 @@ func (h *ItemHandler) Skip(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/annotation-queues/{queueId}/items/{itemId}/release [post]
 func (h *ItemHandler) ReleaseLock(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	queueID, err := ulid.Parse(c.Param("queueId"))
+	queueID, err := uuid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid UUID"))
 		return
 	}
 
-	itemID, err := ulid.Parse(c.Param("itemId"))
+	itemID, err := uuid.Parse(c.Param("itemId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid item ID", "itemId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid item ID", "itemId must be a valid UUID"))
 		return
 	}
 
-	userID, exists := middleware.GetUserIDULID(c)
+	userID, exists := middleware.GetUserIDFromContext(c)
 	if !exists {
 		response.Unauthorized(c, "User authentication required")
 		return
@@ -419,21 +420,21 @@ func (h *ItemHandler) ReleaseLock(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/annotation-queues/{queueId}/items/{itemId} [delete]
 func (h *ItemHandler) DeleteItem(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	queueID, err := ulid.Parse(c.Param("queueId"))
+	queueID, err := uuid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid UUID"))
 		return
 	}
 
-	itemID, err := ulid.Parse(c.Param("itemId"))
+	itemID, err := uuid.Parse(c.Param("itemId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid item ID", "itemId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid item ID", "itemId must be a valid UUID"))
 		return
 	}
 
@@ -457,15 +458,15 @@ func (h *ItemHandler) DeleteItem(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/annotation-queues/{queueId}/stats [get]
 func (h *ItemHandler) GetStats(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	queueID, err := ulid.Parse(c.Param("queueId"))
+	queueID, err := uuid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid UUID"))
 		return
 	}
 
@@ -503,9 +504,9 @@ func (h *ItemHandler) AddItemsSDK(c *gin.Context) {
 	}
 	projectID := *projectIDPtr
 
-	queueID, err := ulid.Parse(c.Param("queueId"))
+	queueID, err := uuid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid UUID"))
 		return
 	}
 
@@ -564,9 +565,9 @@ func (h *ItemHandler) ListItemsSDK(c *gin.Context) {
 	}
 	projectID := *projectIDPtr
 
-	queueID, err := ulid.Parse(c.Param("queueId"))
+	queueID, err := uuid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid UUID"))
 		return
 	}
 

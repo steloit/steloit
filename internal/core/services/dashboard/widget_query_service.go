@@ -9,9 +9,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+
 	dashboardDomain "brokle/internal/core/domain/dashboard"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
 )
 
 type widgetQueryService struct {
@@ -36,7 +37,7 @@ func NewWidgetQueryService(
 
 func (s *widgetQueryService) ExecuteWidgetQuery(
 	ctx context.Context,
-	projectID ulid.ULID,
+	projectID uuid.UUID,
 	widget *dashboardDomain.Widget,
 	timeRange *dashboardDomain.TimeRange,
 ) (*dashboardDomain.QueryResult, error) {
@@ -75,7 +76,7 @@ func (s *widgetQueryService) ExecuteWidgetQuery(
 
 func (s *widgetQueryService) executeStandardQuery(
 	ctx context.Context,
-	projectID ulid.ULID,
+	projectID uuid.UUID,
 	widget *dashboardDomain.Widget,
 	startTime, endTime *time.Time,
 	executionStart time.Time,
@@ -130,7 +131,7 @@ func (s *widgetQueryService) executeStandardQuery(
 
 func (s *widgetQueryService) executeTraceListQuery(
 	ctx context.Context,
-	projectID ulid.ULID,
+	projectID uuid.UUID,
 	widget *dashboardDomain.Widget,
 	startTime, endTime *time.Time,
 	executionStart time.Time,
@@ -201,7 +202,7 @@ func (s *widgetQueryService) executeTraceListQuery(
 
 func (s *widgetQueryService) executeHistogramQuery(
 	ctx context.Context,
-	projectID ulid.ULID,
+	projectID uuid.UUID,
 	widget *dashboardDomain.Widget,
 	startTime, endTime *time.Time,
 	executionStart time.Time,

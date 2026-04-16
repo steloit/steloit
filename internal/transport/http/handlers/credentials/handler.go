@@ -5,13 +5,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/config"
 	credentialsDomain "brokle/internal/core/domain/credentials"
 	credentialsService "brokle/internal/core/services/credentials"
 	"brokle/internal/transport/http/middleware"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 )
 
 type Handler struct {
@@ -77,9 +78,9 @@ type TestConnectionRequest struct {
 // @Failure 422 {object} response.ErrorResponse "API key validation failed"
 // @Router /api/v1/organizations/{orgId}/credentials/ai [post]
 func (h *Handler) Create(c *gin.Context) {
-	orgID, err := ulid.Parse(c.Param("orgId"))
+	orgID, err := uuid.Parse(c.Param("orgId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid UUID"))
 		return
 	}
 
@@ -89,8 +90,8 @@ func (h *Handler) Create(c *gin.Context) {
 		return
 	}
 
-	userID, exists := middleware.GetUserIDULID(c)
-	var userIDPtr *ulid.ULID
+	userID, exists := middleware.GetUserIDFromContext(c)
+	var userIDPtr *uuid.UUID
 	if exists {
 		userIDPtr = &userID
 	}
@@ -133,15 +134,15 @@ func (h *Handler) Create(c *gin.Context) {
 // @Failure 422 {object} response.ErrorResponse "API key validation failed"
 // @Router /api/v1/organizations/{orgId}/credentials/ai/{credentialId} [patch]
 func (h *Handler) Update(c *gin.Context) {
-	orgID, err := ulid.Parse(c.Param("orgId"))
+	orgID, err := uuid.Parse(c.Param("orgId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid UUID"))
 		return
 	}
 
-	credentialID, err := ulid.Parse(c.Param("credentialId"))
+	credentialID, err := uuid.Parse(c.Param("credentialId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid credential ID", "credentialId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid credential ID", "credentialId must be a valid UUID"))
 		return
 	}
 
@@ -180,9 +181,9 @@ func (h *Handler) Update(c *gin.Context) {
 // @Failure 401 {object} response.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/credentials/ai [get]
 func (h *Handler) List(c *gin.Context) {
-	orgID, err := ulid.Parse(c.Param("orgId"))
+	orgID, err := uuid.Parse(c.Param("orgId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid UUID"))
 		return
 	}
 
@@ -208,15 +209,15 @@ func (h *Handler) List(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/credentials/ai/{credentialId} [get]
 func (h *Handler) Get(c *gin.Context) {
-	orgID, err := ulid.Parse(c.Param("orgId"))
+	orgID, err := uuid.Parse(c.Param("orgId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid UUID"))
 		return
 	}
 
-	credentialID, err := ulid.Parse(c.Param("credentialId"))
+	credentialID, err := uuid.Parse(c.Param("credentialId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid credential ID", "credentialId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid credential ID", "credentialId must be a valid UUID"))
 		return
 	}
 
@@ -242,15 +243,15 @@ func (h *Handler) Get(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/credentials/ai/{credentialId} [delete]
 func (h *Handler) Delete(c *gin.Context) {
-	orgID, err := ulid.Parse(c.Param("orgId"))
+	orgID, err := uuid.Parse(c.Param("orgId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid UUID"))
 		return
 	}
 
-	credentialID, err := ulid.Parse(c.Param("credentialId"))
+	credentialID, err := uuid.Parse(c.Param("credentialId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid credential ID", "credentialId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid credential ID", "credentialId must be a valid UUID"))
 		return
 	}
 
@@ -275,8 +276,8 @@ func (h *Handler) Delete(c *gin.Context) {
 // @Failure 401 {object} response.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/credentials/ai/test [post]
 func (h *Handler) TestConnection(c *gin.Context) {
-	if _, err := ulid.Parse(c.Param("orgId")); err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid ULID"))
+	if _, err := uuid.Parse(c.Param("orgId")); err != nil {
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid UUID"))
 		return
 	}
 
@@ -309,9 +310,9 @@ func (h *Handler) TestConnection(c *gin.Context) {
 // @Failure 401 {object} response.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/credentials/ai/models [get]
 func (h *Handler) GetAvailableModels(c *gin.Context) {
-	orgID, err := ulid.Parse(c.Param("orgId"))
+	orgID, err := uuid.Parse(c.Param("orgId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid UUID"))
 		return
 	}
 

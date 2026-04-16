@@ -7,7 +7,7 @@ ADD COLUMN deleted_at TIMESTAMP WITH TIME ZONE;
 
 -- Add missing invited_by_id column to track who sent the invitation
 ALTER TABLE user_invitations
-ADD COLUMN invited_by_id CHAR(26);
+ADD COLUMN invited_by_id UUID;
 
 -- Add foreign key constraint for invited_by_id
 ALTER TABLE user_invitations

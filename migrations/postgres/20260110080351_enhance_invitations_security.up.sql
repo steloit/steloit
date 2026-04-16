@@ -15,9 +15,9 @@ ALTER TABLE user_invitations ADD COLUMN IF NOT EXISTS resent_count INT NOT NULL 
 ALTER TABLE user_invitations ADD COLUMN IF NOT EXISTS resent_at TIMESTAMPTZ;
 
 -- Add audit fields for acceptance and revocation
-ALTER TABLE user_invitations ADD COLUMN IF NOT EXISTS accepted_by_id VARCHAR(26) REFERENCES users(id) ON DELETE SET NULL;
+ALTER TABLE user_invitations ADD COLUMN IF NOT EXISTS accepted_by_id UUID REFERENCES users(id) ON DELETE SET NULL;
 ALTER TABLE user_invitations ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ;
-ALTER TABLE user_invitations ADD COLUMN IF NOT EXISTS revoked_by_id VARCHAR(26) REFERENCES users(id) ON DELETE SET NULL;
+ALTER TABLE user_invitations ADD COLUMN IF NOT EXISTS revoked_by_id UUID REFERENCES users(id) ON DELETE SET NULL;
 
 -- Create index for token hash lookup (O(1) lookup)
 CREATE UNIQUE INDEX IF NOT EXISTS idx_invitations_token_hash

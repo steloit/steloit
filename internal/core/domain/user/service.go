@@ -3,44 +3,44 @@ package user
 import (
 	"context"
 
-	"brokle/pkg/ulid"
+	"github.com/google/uuid"
 )
 
 // UserService defines the interface for core user management operations.
 type UserService interface {
 	// User lifecycle management
-	GetUser(ctx context.Context, userID ulid.ULID) (*User, error)
+	GetUser(ctx context.Context, userID uuid.UUID) (*User, error)
 	GetUserByEmail(ctx context.Context, email string) (*User, error)
 	GetUserByEmailWithPassword(ctx context.Context, email string) (*User, error)
-	UpdateUser(ctx context.Context, userID ulid.ULID, req *UpdateUserRequest) (*User, error)
-	DeactivateUser(ctx context.Context, userID ulid.ULID) error
-	ReactivateUser(ctx context.Context, userID ulid.ULID) error
-	DeleteUser(ctx context.Context, userID ulid.ULID) error
+	UpdateUser(ctx context.Context, userID uuid.UUID, req *UpdateUserRequest) (*User, error)
+	DeactivateUser(ctx context.Context, userID uuid.UUID) error
+	ReactivateUser(ctx context.Context, userID uuid.UUID) error
+	DeleteUser(ctx context.Context, userID uuid.UUID) error
 
 	// User listing and search
 	ListUsers(ctx context.Context, filters *ListFilters) ([]*User, int, error)
 	SearchUsers(ctx context.Context, query string, limit, offset int) ([]*User, int, error)
-	GetUsersByIDs(ctx context.Context, userIDs []ulid.ULID) ([]*User, error)
-	GetPublicUsers(ctx context.Context, userIDs []ulid.ULID) ([]*PublicUser, error)
+	GetUsersByIDs(ctx context.Context, userIDs []uuid.UUID) ([]*User, error)
+	GetPublicUsers(ctx context.Context, userIDs []uuid.UUID) ([]*PublicUser, error)
 
 	// Email verification
-	VerifyEmail(ctx context.Context, userID ulid.ULID, token string) error
-	MarkEmailAsVerified(ctx context.Context, userID ulid.ULID) error
-	SendVerificationEmail(ctx context.Context, userID ulid.ULID) error
+	VerifyEmail(ctx context.Context, userID uuid.UUID, token string) error
+	MarkEmailAsVerified(ctx context.Context, userID uuid.UUID) error
+	SendVerificationEmail(ctx context.Context, userID uuid.UUID) error
 
 	// Password management
 	RequestPasswordReset(ctx context.Context, email string) error
 	ResetPassword(ctx context.Context, token, newPassword string) error
-	ChangePassword(ctx context.Context, userID ulid.ULID, currentPassword, newPassword string) error
+	ChangePassword(ctx context.Context, userID uuid.UUID, currentPassword, newPassword string) error
 
 	// Activity tracking
-	UpdateLastLogin(ctx context.Context, userID ulid.ULID) error
-	GetUserActivity(ctx context.Context, userID ulid.ULID) (*UserActivity, error)
+	UpdateLastLogin(ctx context.Context, userID uuid.UUID) error
+	GetUserActivity(ctx context.Context, userID uuid.UUID) (*UserActivity, error)
 
 	// Organization context
-	SetDefaultOrganization(ctx context.Context, userID, orgID ulid.ULID) error
-	GetDefaultOrganization(ctx context.Context, userID ulid.ULID) (*ulid.ULID, error)
-	ValidateUserOrgMembership(ctx context.Context, userID, orgID ulid.ULID) (bool, error)
+	SetDefaultOrganization(ctx context.Context, userID, orgID uuid.UUID) error
+	GetDefaultOrganization(ctx context.Context, userID uuid.UUID) (*uuid.UUID, error)
+	ValidateUserOrgMembership(ctx context.Context, userID, orgID uuid.UUID) (bool, error)
 
 	// User statistics
 	GetUserStats(ctx context.Context) (*UserStats, error)
@@ -49,28 +49,28 @@ type UserService interface {
 // ProfileService defines the interface for user profile management and preferences.
 type ProfileService interface {
 	// Profile management
-	GetProfile(ctx context.Context, userID ulid.ULID) (*UserProfile, error)
-	UpdateProfile(ctx context.Context, userID ulid.ULID, req *UpdateProfileRequest) (*UserProfile, error)
-	UploadAvatar(ctx context.Context, userID ulid.ULID, imageData []byte, contentType string) (*UserProfile, error)
-	RemoveAvatar(ctx context.Context, userID ulid.ULID) error
+	GetProfile(ctx context.Context, userID uuid.UUID) (*UserProfile, error)
+	UpdateProfile(ctx context.Context, userID uuid.UUID, req *UpdateProfileRequest) (*UserProfile, error)
+	UploadAvatar(ctx context.Context, userID uuid.UUID, imageData []byte, contentType string) (*UserProfile, error)
+	RemoveAvatar(ctx context.Context, userID uuid.UUID) error
 
 	// Notification preferences (consolidated from preferences service)
-	GetNotificationPreferences(ctx context.Context, userID ulid.ULID) (*NotificationPreferences, error)
-	UpdateNotificationPreferences(ctx context.Context, userID ulid.ULID, req *UpdateNotificationPreferencesRequest) (*NotificationPreferences, error)
+	GetNotificationPreferences(ctx context.Context, userID uuid.UUID) (*NotificationPreferences, error)
+	UpdateNotificationPreferences(ctx context.Context, userID uuid.UUID, req *UpdateNotificationPreferencesRequest) (*NotificationPreferences, error)
 
 	// Theme and UI preferences (consolidated from preferences service)
-	GetThemePreferences(ctx context.Context, userID ulid.ULID) (*ThemePreferences, error)
-	UpdateThemePreferences(ctx context.Context, userID ulid.ULID, req *UpdateThemePreferencesRequest) (*ThemePreferences, error)
+	GetThemePreferences(ctx context.Context, userID uuid.UUID) (*ThemePreferences, error)
+	UpdateThemePreferences(ctx context.Context, userID uuid.UUID, req *UpdateThemePreferencesRequest) (*ThemePreferences, error)
 
 	// Profile visibility and privacy
-	UpdateProfileVisibility(ctx context.Context, userID ulid.ULID, visibility ProfileVisibility) error
-	GetPublicProfile(ctx context.Context, userID ulid.ULID) (*PublicProfile, error)
-	GetPrivacyPreferences(ctx context.Context, userID ulid.ULID) (*PrivacyPreferences, error)
-	UpdatePrivacyPreferences(ctx context.Context, userID ulid.ULID, req *UpdatePrivacyPreferencesRequest) (*PrivacyPreferences, error)
+	UpdateProfileVisibility(ctx context.Context, userID uuid.UUID, visibility ProfileVisibility) error
+	GetPublicProfile(ctx context.Context, userID uuid.UUID) (*PublicProfile, error)
+	GetPrivacyPreferences(ctx context.Context, userID uuid.UUID) (*PrivacyPreferences, error)
+	UpdatePrivacyPreferences(ctx context.Context, userID uuid.UUID, req *UpdatePrivacyPreferencesRequest) (*PrivacyPreferences, error)
 
 	// Profile completeness and validation
-	GetProfileCompleteness(ctx context.Context, userID ulid.ULID) (*ProfileCompleteness, error)
-	ValidateProfile(ctx context.Context, userID ulid.ULID) (*ProfileValidation, error)
+	GetProfileCompleteness(ctx context.Context, userID uuid.UUID) (*ProfileCompleteness, error)
+	ValidateProfile(ctx context.Context, userID uuid.UUID) (*ProfileValidation, error)
 }
 
 // Supporting types for the new service interfaces
@@ -92,7 +92,7 @@ type PublicProfile struct {
 	Location  *string   `json:"location,omitempty"`
 	FirstName string    `json:"first_name"`
 	LastName  string    `json:"last_name"`
-	UserID    ulid.ULID `json:"user_id"`
+	UserID    uuid.UUID `json:"user_id"`
 }
 
 // ProfileCompleteness represents profile completion status
@@ -203,7 +203,7 @@ type UserActivity struct {
 	APIRequestsCount int64     `json:"api_requests_count"`
 	CreatedProjects  int64     `json:"created_projects"`
 	JoinedOrgs       int64     `json:"joined_orgs"`
-	UserID           ulid.ULID `json:"user_id"`
+	UserID           uuid.UUID `json:"user_id"`
 }
 
 // UserStats represents aggregate user statistics.

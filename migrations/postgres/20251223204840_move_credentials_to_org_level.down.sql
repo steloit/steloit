@@ -5,7 +5,7 @@
 -- ============================================
 -- Phase 1: Add project_id column back
 -- ============================================
-ALTER TABLE provider_credentials ADD COLUMN project_id CHAR(26);
+ALTER TABLE provider_credentials ADD COLUMN project_id UUID;
 
 -- ============================================
 -- Phase 2: Migrate data back

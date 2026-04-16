@@ -52,20 +52,20 @@ type DimensionConfig struct {
 	ID          string `json:"id"`
 	Label       string `json:"label"`
 	Description string `json:"description"`
-	SQL         string `json:"sql"`           // ClickHouse expression
-	ColumnType  string `json:"column_type"`   // string, number, datetime, etc.
-	Bucketable  bool   `json:"bucketable"`    // can be used for time bucketing
+	SQL         string `json:"sql"`         // ClickHouse expression
+	ColumnType  string `json:"column_type"` // string, number, datetime, etc.
+	Bucketable  bool   `json:"bucketable"`  // can be used for time bucketing
 }
 
 // ViewDefinition defines a data source view for widget queries
 type ViewDefinition struct {
-	Name        ViewType                    `json:"name"`
-	Table       string                      `json:"table"`
-	TimeColumn  string                      `json:"time_column"`  // column for PREWHERE time filtering
-	Description string                      `json:"description"`
-	BaseFilter  string                      `json:"base_filter"` // always applied filter
-	Measures    map[string]MeasureConfig    `json:"measures"`
-	Dimensions  map[string]DimensionConfig  `json:"dimensions"`
+	Name        ViewType                   `json:"name"`
+	Table       string                     `json:"table"`
+	TimeColumn  string                     `json:"time_column"` // column for PREWHERE time filtering
+	Description string                     `json:"description"`
+	BaseFilter  string                     `json:"base_filter"` // always applied filter
+	Measures    map[string]MeasureConfig   `json:"measures"`
+	Dimensions  map[string]DimensionConfig `json:"dimensions"`
 }
 
 // TracesViewDefinition returns the view definition for traces (root spans)

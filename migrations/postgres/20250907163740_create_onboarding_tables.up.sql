@@ -1,6 +1,6 @@
 -- Create onboarding questions table
 CREATE TABLE onboarding_questions (
-    id CHAR(26) PRIMARY KEY,
+    id UUID PRIMARY KEY,
     step INTEGER NOT NULL,
     question_type VARCHAR(50) NOT NULL CHECK (question_type IN ('single_choice', 'multiple_choice', 'text', 'skip_optional')),
     title TEXT NOT NULL,
@@ -15,9 +15,9 @@ CREATE TABLE onboarding_questions (
 
 -- Create user onboarding responses table
 CREATE TABLE user_onboarding_responses (
-    id CHAR(26) PRIMARY KEY,
-    user_id CHAR(26) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    question_id CHAR(26) NOT NULL REFERENCES onboarding_questions(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    question_id UUID NOT NULL REFERENCES onboarding_questions(id) ON DELETE CASCADE,
     response_value JSONB NOT NULL, -- Flexible answer storage: "string", ["array"], {"object": "value"}
     skipped BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

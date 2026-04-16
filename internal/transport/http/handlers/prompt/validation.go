@@ -2,11 +2,11 @@ package prompt
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	promptDomain "brokle/internal/core/domain/prompt"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 )
 
 // ValidateTemplateRequest represents the request body for template validation.
@@ -18,11 +18,11 @@ type ValidateTemplateRequest struct {
 
 // ValidateTemplateResponse represents the response for template validation.
 type ValidateTemplateResponse struct {
-	Valid     bool                          `json:"valid"`
-	Dialect   promptDomain.TemplateDialect  `json:"dialect" swaggertype:"string"`
-	Variables []string                      `json:"variables"`
-	Errors    []promptDomain.SyntaxError    `json:"errors,omitempty" swaggertype:"array,object"`
-	Warnings  []promptDomain.SyntaxWarning  `json:"warnings,omitempty" swaggertype:"array,object"`
+	Valid     bool                         `json:"valid"`
+	Dialect   promptDomain.TemplateDialect `json:"dialect" swaggertype:"string"`
+	Variables []string                     `json:"variables"`
+	Errors    []promptDomain.SyntaxError   `json:"errors,omitempty" swaggertype:"array,object"`
+	Warnings  []promptDomain.SyntaxWarning `json:"warnings,omitempty" swaggertype:"array,object"`
 }
 
 // PreviewTemplateRequest represents the request body for template preview/compilation.
@@ -55,8 +55,8 @@ type PreviewTemplateResponse struct {
 // @Router /api/v1/projects/{projectId}/prompts/validate-template [post]
 func (h *Handler) ValidateTemplate(c *gin.Context) {
 	// Validate project ID exists (for authorization)
-	if _, err := ulid.Parse(c.Param("projectId")); err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+	if _, err := uuid.Parse(c.Param("projectId")); err != nil {
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
@@ -133,8 +133,8 @@ func (h *Handler) ValidateTemplate(c *gin.Context) {
 // @Router /api/v1/projects/{projectId}/prompts/preview-template [post]
 func (h *Handler) PreviewTemplate(c *gin.Context) {
 	// Validate project ID exists (for authorization)
-	if _, err := ulid.Parse(c.Param("projectId")); err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+	if _, err := uuid.Parse(c.Param("projectId")); err != nil {
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
@@ -215,8 +215,8 @@ func (h *Handler) PreviewTemplate(c *gin.Context) {
 // @Router /api/v1/projects/{projectId}/prompts/detect-dialect [post]
 func (h *Handler) DetectDialect(c *gin.Context) {
 	// Validate project ID exists (for authorization)
-	if _, err := ulid.Parse(c.Param("projectId")); err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+	if _, err := uuid.Parse(c.Param("projectId")); err != nil {
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 

@@ -5,12 +5,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/config"
 	dashboardDomain "brokle/internal/core/domain/dashboard"
 	"brokle/internal/transport/http/middleware"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 )
 
 // TemplateHandler handles dashboard template HTTP requests
@@ -69,9 +70,9 @@ func (h *TemplateHandler) ListTemplates(c *gin.Context) {
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/dashboard-templates/{templateId} [get]
 func (h *TemplateHandler) GetTemplate(c *gin.Context) {
-	templateID, err := ulid.Parse(c.Param("templateId"))
+	templateID, err := uuid.Parse(c.Param("templateId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid template ID", "templateId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid template ID", "templateId must be a valid UUID"))
 		return
 	}
 
@@ -101,9 +102,9 @@ func (h *TemplateHandler) GetTemplate(c *gin.Context) {
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/projects/{projectId}/dashboards/from-template [post]
 func (h *TemplateHandler) CreateFromTemplate(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
@@ -113,8 +114,8 @@ func (h *TemplateHandler) CreateFromTemplate(c *gin.Context) {
 		return
 	}
 
-	var userID *ulid.ULID
-	if uid, ok := middleware.GetUserIDULID(c); ok {
+	var userID *uuid.UUID
+	if uid, ok := middleware.GetUserIDFromContext(c); ok {
 		userID = &uid
 	}
 

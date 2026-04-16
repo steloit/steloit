@@ -13,15 +13,15 @@ func TestRegexScorer_ParseConfig(t *testing.T) {
 	scorer := NewRegexScorer(newTestLogger())
 
 	tests := []struct {
-		name         string
-		config       map[string]any
-		wantPattern  string
-		wantName     string
-		wantMatch    float64
-		wantNoMatch  float64
-		wantCapture  *int
-		wantErr      bool
-		errContain   string
+		name        string
+		config      map[string]any
+		wantPattern string
+		wantName    string
+		wantMatch   float64
+		wantNoMatch float64
+		wantCapture *int
+		wantErr     bool
+		errContain  string
 	}{
 		{
 			name:        "minimal config",
@@ -402,9 +402,9 @@ func TestRegexScorer_ReDoSProtection(t *testing.T) {
 			errContain: "too long",
 		},
 		{
-			name:       "exactly max length is ok",
-			pattern:    strings.Repeat("a", 200),
-			wantErr:    false,
+			name:    "exactly max length is ok",
+			pattern: strings.Repeat("a", 200),
+			wantErr: false,
 		},
 		{
 			name:       "too many wildcards",

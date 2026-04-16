@@ -4,36 +4,37 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
+
 	"brokle/pkg/pagination"
-	"brokle/pkg/ulid"
 )
 
 // UserSessionRepository defines the interface for user session data access.
 type UserSessionRepository interface {
 	// Basic CRUD operations
 	Create(ctx context.Context, session *UserSession) error
-	GetByID(ctx context.Context, id ulid.ULID) (*UserSession, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*UserSession, error)
 	GetByJTI(ctx context.Context, jti string) (*UserSession, error)                           // Get session by JWT ID (current access token)
 	GetByRefreshTokenHash(ctx context.Context, refreshTokenHash string) (*UserSession, error) // Get session by refresh token hash
 	Update(ctx context.Context, session *UserSession) error
-	Delete(ctx context.Context, id ulid.ULID) error
+	Delete(ctx context.Context, id uuid.UUID) error
 
 	// User sessions
-	GetByUserID(ctx context.Context, userID ulid.ULID) ([]*UserSession, error)
-	GetActiveSessionsByUserID(ctx context.Context, userID ulid.ULID) ([]*UserSession, error)
+	GetByUserID(ctx context.Context, userID uuid.UUID) ([]*UserSession, error)
+	GetActiveSessionsByUserID(ctx context.Context, userID uuid.UUID) ([]*UserSession, error)
 
 	// Session management
-	DeactivateSession(ctx context.Context, id ulid.ULID) error
-	DeactivateUserSessions(ctx context.Context, userID ulid.ULID) error
-	RevokeSession(ctx context.Context, id ulid.ULID) error
-	RevokeUserSessions(ctx context.Context, userID ulid.ULID) error
+	DeactivateSession(ctx context.Context, id uuid.UUID) error
+	DeactivateUserSessions(ctx context.Context, userID uuid.UUID) error
+	RevokeSession(ctx context.Context, id uuid.UUID) error
+	RevokeUserSessions(ctx context.Context, userID uuid.UUID) error
 	CleanupExpiredSessions(ctx context.Context) error
 	CleanupRevokedSessions(ctx context.Context) error
-	MarkAsUsed(ctx context.Context, id ulid.ULID) error
+	MarkAsUsed(ctx context.Context, id uuid.UUID) error
 
 	// Device-specific queries
-	GetByDeviceInfo(ctx context.Context, userID ulid.ULID, deviceInfo interface{}) ([]*UserSession, error)
-	GetActiveSessionsCount(ctx context.Context, userID ulid.ULID) (int, error)
+	GetByDeviceInfo(ctx context.Context, userID uuid.UUID, deviceInfo interface{}) ([]*UserSession, error)
+	GetActiveSessionsCount(ctx context.Context, userID uuid.UUID) (int, error)
 }
 
 // BlacklistedTokenRepository defines the interface for blacklisted token data access.
@@ -44,16 +45,16 @@ type BlacklistedTokenRepository interface {
 	IsTokenBlacklisted(ctx context.Context, jti string) (bool, error)
 
 	// User-wide timestamp blacklisting (GDPR/SOC2 compliance)
-	CreateUserTimestampBlacklist(ctx context.Context, userID ulid.ULID, blacklistTimestamp int64, reason string) error
-	IsUserBlacklistedAfterTimestamp(ctx context.Context, userID ulid.ULID, tokenIssuedAt int64) (bool, error)
-	GetUserBlacklistTimestamp(ctx context.Context, userID ulid.ULID) (*int64, error)
+	CreateUserTimestampBlacklist(ctx context.Context, userID uuid.UUID, blacklistTimestamp int64, reason string) error
+	IsUserBlacklistedAfterTimestamp(ctx context.Context, userID uuid.UUID, tokenIssuedAt int64) (bool, error)
+	GetUserBlacklistTimestamp(ctx context.Context, userID uuid.UUID) (*int64, error)
 
 	// Cleanup operations
 	CleanupExpiredTokens(ctx context.Context) error
 	CleanupTokensOlderThan(ctx context.Context, olderThan time.Time) error
 
 	// Bulk operations
-	BlacklistUserTokens(ctx context.Context, userID ulid.ULID, reason string) error
+	BlacklistUserTokens(ctx context.Context, userID uuid.UUID, reason string) error
 	GetBlacklistedTokensByUser(ctx context.Context, filters *BlacklistedTokenFilter) ([]*BlacklistedToken, error)
 
 	// Statistics
@@ -64,7 +65,7 @@ type BlacklistedTokenRepository interface {
 // BlacklistedTokenFilter represents filters for blacklisted token queries
 type BlacklistedTokenFilter struct {
 	// Domain filters
-	UserID *ulid.ULID
+	UserID *uuid.UUID
 	Reason *string
 
 	// Pagination (embedded for DRY)
@@ -75,18 +76,18 @@ type BlacklistedTokenFilter struct {
 type APIKeyRepository interface {
 	// Basic CRUD operations
 	Create(ctx context.Context, apiKey *APIKey) error
-	GetByID(ctx context.Context, id ulid.ULID) (*APIKey, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*APIKey, error)
 	GetByKeyHash(ctx context.Context, keyHash string) (*APIKey, error) // Industry-standard direct hash lookup
 	Update(ctx context.Context, apiKey *APIKey) error
-	Delete(ctx context.Context, id ulid.ULID) error
+	Delete(ctx context.Context, id uuid.UUID) error
 
 	// User and organization scoped
-	GetByUserID(ctx context.Context, userID ulid.ULID) ([]*APIKey, error)
-	GetByOrganizationID(ctx context.Context, orgID ulid.ULID) ([]*APIKey, error)
-	GetByProjectID(ctx context.Context, projectID ulid.ULID) ([]*APIKey, error)
+	GetByUserID(ctx context.Context, userID uuid.UUID) ([]*APIKey, error)
+	GetByOrganizationID(ctx context.Context, orgID uuid.UUID) ([]*APIKey, error)
+	GetByProjectID(ctx context.Context, projectID uuid.UUID) ([]*APIKey, error)
 
 	// API key management
-	UpdateLastUsed(ctx context.Context, id ulid.ULID) error // For async last used updates
+	UpdateLastUsed(ctx context.Context, id uuid.UUID) error // For async last used updates
 	CleanupExpiredAPIKeys(ctx context.Context) error
 
 	// Filtered queries with pagination
@@ -94,18 +95,18 @@ type APIKeyRepository interface {
 	CountByFilters(ctx context.Context, filters *APIKeyFilters) (int64, error)
 
 	// Statistics
-	GetAPIKeyCount(ctx context.Context, userID ulid.ULID) (int, error)
-	GetActiveAPIKeyCount(ctx context.Context, userID ulid.ULID) (int, error)
+	GetAPIKeyCount(ctx context.Context, userID uuid.UUID) (int, error)
+	GetActiveAPIKeyCount(ctx context.Context, userID uuid.UUID) (int, error)
 }
 
 // RoleRepository defines the interface for both system template and custom scoped role data access.
 type RoleRepository interface {
 	// Core CRUD operations
 	Create(ctx context.Context, role *Role) error
-	GetByID(ctx context.Context, id ulid.ULID) (*Role, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*Role, error)
 	GetByNameAndScope(ctx context.Context, name, scopeType string) (*Role, error)
 	Update(ctx context.Context, role *Role) error
-	Delete(ctx context.Context, id ulid.ULID) error
+	Delete(ctx context.Context, id uuid.UUID) error
 
 	// System template role queries
 	GetByScopeType(ctx context.Context, scopeType string) ([]*Role, error)
@@ -113,15 +114,15 @@ type RoleRepository interface {
 	GetSystemRoles(ctx context.Context) ([]*Role, error)
 
 	// Custom scoped role queries
-	GetCustomRolesByScopeID(ctx context.Context, scopeType string, scopeID ulid.ULID) ([]*Role, error)
-	GetByNameScopeAndID(ctx context.Context, name, scopeType string, scopeID *ulid.ULID) (*Role, error)
-	GetCustomRolesByOrganization(ctx context.Context, organizationID ulid.ULID) ([]*Role, error)
+	GetCustomRolesByScopeID(ctx context.Context, scopeType string, scopeID uuid.UUID) ([]*Role, error)
+	GetByNameScopeAndID(ctx context.Context, name, scopeType string, scopeID *uuid.UUID) (*Role, error)
+	GetCustomRolesByOrganization(ctx context.Context, organizationID uuid.UUID) ([]*Role, error)
 
 	// Permission management for roles
-	GetRolePermissions(ctx context.Context, roleID ulid.ULID) ([]*Permission, error)
-	AssignRolePermissions(ctx context.Context, roleID ulid.ULID, permissionIDs []ulid.ULID, grantedBy *ulid.ULID) error
-	RevokeRolePermissions(ctx context.Context, roleID ulid.ULID, permissionIDs []ulid.ULID) error
-	UpdateRolePermissions(ctx context.Context, roleID ulid.ULID, permissionIDs []ulid.ULID, grantedBy *ulid.ULID) error
+	GetRolePermissions(ctx context.Context, roleID uuid.UUID) ([]*Permission, error)
+	AssignRolePermissions(ctx context.Context, roleID uuid.UUID, permissionIDs []uuid.UUID, grantedBy *uuid.UUID) error
+	RevokeRolePermissions(ctx context.Context, roleID uuid.UUID, permissionIDs []uuid.UUID) error
+	UpdateRolePermissions(ctx context.Context, roleID uuid.UUID, permissionIDs []uuid.UUID, grantedBy *uuid.UUID) error
 
 	// Statistics
 	GetRoleStatistics(ctx context.Context) (*RoleStatistics, error)
@@ -132,25 +133,25 @@ type RoleRepository interface {
 
 // RolePermissionAssignment represents a bulk role permission assignment
 type RolePermissionAssignment struct {
-	RoleID       ulid.ULID `json:"role_id"`
-	PermissionID ulid.ULID `json:"permission_id"`
+	RoleID       uuid.UUID `json:"role_id"`
+	PermissionID uuid.UUID `json:"permission_id"`
 }
 
 // RolePermissionRevocation represents a bulk role permission revocation
 type RolePermissionRevocation struct {
-	RoleID       ulid.ULID `json:"role_id"`
-	PermissionID ulid.ULID `json:"permission_id"`
+	RoleID       uuid.UUID `json:"role_id"`
+	PermissionID uuid.UUID `json:"permission_id"`
 }
 
 // PermissionRepository defines the interface for normalized permission data access.
 type PermissionRepository interface {
 	// Basic CRUD operations
 	Create(ctx context.Context, permission *Permission) error
-	GetByID(ctx context.Context, id ulid.ULID) (*Permission, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*Permission, error)
 	GetByName(ctx context.Context, name string) (*Permission, error)
 	GetByResourceAction(ctx context.Context, resource, action string) (*Permission, error)
 	Update(ctx context.Context, permission *Permission) error
-	Delete(ctx context.Context, id ulid.ULID) error
+	Delete(ctx context.Context, id uuid.UUID) error
 
 	// Permission queries
 	GetAllPermissions(ctx context.Context) ([]*Permission, error)
@@ -171,7 +172,7 @@ type PermissionRepository interface {
 	GetAvailableCategories(ctx context.Context) ([]string, error)
 
 	// Role permissions
-	GetPermissionsByRoleID(ctx context.Context, roleID ulid.ULID) ([]*Permission, error)
+	GetPermissionsByRoleID(ctx context.Context, roleID uuid.UUID) ([]*Permission, error)
 
 	// Permission validation
 	PermissionExists(ctx context.Context, resource, action string) (bool, error)
@@ -185,58 +186,58 @@ type PermissionRepository interface {
 type OrganizationMemberRepository interface {
 	// Core CRUD operations
 	Create(ctx context.Context, member *OrganizationMember) error
-	GetByUserAndOrganization(ctx context.Context, userID, orgID ulid.ULID) (*OrganizationMember, error)
+	GetByUserAndOrganization(ctx context.Context, userID, orgID uuid.UUID) (*OrganizationMember, error)
 	Update(ctx context.Context, member *OrganizationMember) error
-	Delete(ctx context.Context, userID, orgID ulid.ULID) error
+	Delete(ctx context.Context, userID, orgID uuid.UUID) error
 
 	// Membership queries
-	GetByUserID(ctx context.Context, userID ulid.ULID) ([]*OrganizationMember, error)
-	GetByOrganizationID(ctx context.Context, orgID ulid.ULID) ([]*OrganizationMember, error)
-	GetByRole(ctx context.Context, roleID ulid.ULID) ([]*OrganizationMember, error)
-	Exists(ctx context.Context, userID, orgID ulid.ULID) (bool, error)
+	GetByUserID(ctx context.Context, userID uuid.UUID) ([]*OrganizationMember, error)
+	GetByOrganizationID(ctx context.Context, orgID uuid.UUID) ([]*OrganizationMember, error)
+	GetByRole(ctx context.Context, roleID uuid.UUID) ([]*OrganizationMember, error)
+	Exists(ctx context.Context, userID, orgID uuid.UUID) (bool, error)
 
 	// Permission queries
-	GetUserEffectivePermissions(ctx context.Context, userID ulid.ULID) ([]string, error)
-	HasUserPermission(ctx context.Context, userID ulid.ULID, permission string) (bool, error)
-	CheckUserPermissions(ctx context.Context, userID ulid.ULID, permissions []string) (map[string]bool, error)
-	GetUserPermissionsInOrganization(ctx context.Context, userID, orgID ulid.ULID) ([]string, error)
+	GetUserEffectivePermissions(ctx context.Context, userID uuid.UUID) ([]string, error)
+	HasUserPermission(ctx context.Context, userID uuid.UUID, permission string) (bool, error)
+	CheckUserPermissions(ctx context.Context, userID uuid.UUID, permissions []string) (map[string]bool, error)
+	GetUserPermissionsInOrganization(ctx context.Context, userID, orgID uuid.UUID) ([]string, error)
 
 	// Status management
-	ActivateMember(ctx context.Context, userID, orgID ulid.ULID) error
-	SuspendMember(ctx context.Context, userID, orgID ulid.ULID) error
-	GetActiveMembers(ctx context.Context, orgID ulid.ULID) ([]*OrganizationMember, error)
+	ActivateMember(ctx context.Context, userID, orgID uuid.UUID) error
+	SuspendMember(ctx context.Context, userID, orgID uuid.UUID) error
+	GetActiveMembers(ctx context.Context, orgID uuid.UUID) ([]*OrganizationMember, error)
 
 	// Role management
-	UpdateMemberRole(ctx context.Context, userID, orgID, roleID ulid.ULID) error
+	UpdateMemberRole(ctx context.Context, userID, orgID, roleID uuid.UUID) error
 
 	// Bulk operations
 	BulkCreate(ctx context.Context, members []*OrganizationMember) error
 	BulkUpdateRoles(ctx context.Context, updates []MemberRoleUpdate) error
 
 	// Statistics
-	GetMemberCount(ctx context.Context, orgID ulid.ULID) (int, error)
-	GetMembersByRole(ctx context.Context, orgID ulid.ULID) (map[string]int, error)
+	GetMemberCount(ctx context.Context, orgID uuid.UUID) (int, error)
+	GetMembersByRole(ctx context.Context, orgID uuid.UUID) (map[string]int, error)
 }
 
 // MemberRoleUpdate represents a bulk role update for a member
 type MemberRoleUpdate struct {
-	UserID         ulid.ULID `json:"user_id"`
-	OrganizationID ulid.ULID `json:"organization_id"`
-	RoleID         ulid.ULID `json:"role_id"`
+	UserID         uuid.UUID `json:"user_id"`
+	OrganizationID uuid.UUID `json:"organization_id"`
+	RoleID         uuid.UUID `json:"role_id"`
 }
 
 // RolePermissionRepository defines the interface for role-permission relationships.
 type RolePermissionRepository interface {
 	// Core operations
 	Create(ctx context.Context, rolePermission *RolePermission) error
-	Delete(ctx context.Context, roleID, permissionID ulid.ULID) error
-	GetByRoleID(ctx context.Context, roleID ulid.ULID) ([]*RolePermission, error)
-	HasPermission(ctx context.Context, roleID, permissionID ulid.ULID) (bool, error)
+	Delete(ctx context.Context, roleID, permissionID uuid.UUID) error
+	GetByRoleID(ctx context.Context, roleID uuid.UUID) ([]*RolePermission, error)
+	HasPermission(ctx context.Context, roleID, permissionID uuid.UUID) (bool, error)
 
 	// Batch operations
-	AssignPermissions(ctx context.Context, roleID ulid.ULID, permissionIDs []ulid.ULID, grantedBy *ulid.ULID) error
-	RevokePermissions(ctx context.Context, roleID ulid.ULID, permissionIDs []ulid.ULID) error
-	ReplaceAllPermissions(ctx context.Context, roleID ulid.ULID, permissionIDs []ulid.ULID, grantedBy *ulid.ULID) error
+	AssignPermissions(ctx context.Context, roleID uuid.UUID, permissionIDs []uuid.UUID, grantedBy *uuid.UUID) error
+	RevokePermissions(ctx context.Context, roleID uuid.UUID, permissionIDs []uuid.UUID) error
+	ReplaceAllPermissions(ctx context.Context, roleID uuid.UUID, permissionIDs []uuid.UUID, grantedBy *uuid.UUID) error
 
 	// Bulk operations
 	BulkAssign(ctx context.Context, assignments []RolePermissionAssignment) error
@@ -247,11 +248,11 @@ type RolePermissionRepository interface {
 type AuditLogRepository interface {
 	// Basic operations
 	Create(ctx context.Context, auditLog *AuditLog) error
-	GetByID(ctx context.Context, id ulid.ULID) (*AuditLog, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*AuditLog, error)
 
 	// Audit log queries
-	GetByUserID(ctx context.Context, userID ulid.ULID, limit, offset int) ([]*AuditLog, error)
-	GetByOrganizationID(ctx context.Context, orgID ulid.ULID, limit, offset int) ([]*AuditLog, error)
+	GetByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*AuditLog, error)
+	GetByOrganizationID(ctx context.Context, orgID uuid.UUID, limit, offset int) ([]*AuditLog, error)
 	GetByResource(ctx context.Context, resource, resourceID string, limit, offset int) ([]*AuditLog, error)
 	GetByAction(ctx context.Context, action string, limit, offset int) ([]*AuditLog, error)
 	GetByDateRange(ctx context.Context, startDate, endDate time.Time, limit, offset int) ([]*AuditLog, error)
@@ -261,8 +262,8 @@ type AuditLogRepository interface {
 
 	// Statistics
 	GetAuditLogStats(ctx context.Context) (*AuditLogStats, error)
-	GetUserAuditLogStats(ctx context.Context, userID ulid.ULID) (*AuditLogStats, error)
-	GetOrganizationAuditLogStats(ctx context.Context, orgID ulid.ULID) (*AuditLogStats, error)
+	GetUserAuditLogStats(ctx context.Context, userID uuid.UUID) (*AuditLogStats, error)
+	GetOrganizationAuditLogStats(ctx context.Context, orgID uuid.UUID) (*AuditLogStats, error)
 
 	// Cleanup
 	CleanupOldLogs(ctx context.Context, olderThan time.Time) error
@@ -271,8 +272,8 @@ type AuditLogRepository interface {
 // AuditLogFilters represents filters for audit log queries.
 type AuditLogFilters struct {
 	// Domain filters
-	UserID         *ulid.ULID `json:"user_id,omitempty"`
-	OrganizationID *ulid.ULID `json:"organization_id,omitempty"`
+	UserID         *uuid.UUID `json:"user_id,omitempty"`
+	OrganizationID *uuid.UUID `json:"organization_id,omitempty"`
 	Action         *string    `json:"action,omitempty"`
 	Resource       *string    `json:"resource,omitempty"`
 	ResourceID     *string    `json:"resource_id,omitempty"`
@@ -296,22 +297,22 @@ type AuditLogStats struct {
 type PasswordResetTokenRepository interface {
 	// Basic CRUD operations
 	Create(ctx context.Context, token *PasswordResetToken) error
-	GetByID(ctx context.Context, id ulid.ULID) (*PasswordResetToken, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*PasswordResetToken, error)
 	GetByToken(ctx context.Context, token string) (*PasswordResetToken, error)
-	GetByUserID(ctx context.Context, userID ulid.ULID) ([]*PasswordResetToken, error)
+	GetByUserID(ctx context.Context, userID uuid.UUID) ([]*PasswordResetToken, error)
 	Update(ctx context.Context, token *PasswordResetToken) error
-	Delete(ctx context.Context, id ulid.ULID) error
+	Delete(ctx context.Context, id uuid.UUID) error
 
 	// Token management
-	MarkAsUsed(ctx context.Context, id ulid.ULID) error
-	IsUsed(ctx context.Context, id ulid.ULID) (bool, error)
-	IsValid(ctx context.Context, id ulid.ULID) (bool, error)
-	GetValidTokenByUserID(ctx context.Context, userID ulid.ULID) (*PasswordResetToken, error)
+	MarkAsUsed(ctx context.Context, id uuid.UUID) error
+	IsUsed(ctx context.Context, id uuid.UUID) (bool, error)
+	IsValid(ctx context.Context, id uuid.UUID) (bool, error)
+	GetValidTokenByUserID(ctx context.Context, userID uuid.UUID) (*PasswordResetToken, error)
 
 	// Cleanup operations
 	CleanupExpiredTokens(ctx context.Context) error
 	CleanupUsedTokens(ctx context.Context, olderThan time.Time) error
-	InvalidateAllUserTokens(ctx context.Context, userID ulid.ULID) error
+	InvalidateAllUserTokens(ctx context.Context, userID uuid.UUID) error
 }
 
 // Repository aggregates all auth-related repositories (normalized version).

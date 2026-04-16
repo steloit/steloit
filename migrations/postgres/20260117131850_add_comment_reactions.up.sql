@@ -2,9 +2,9 @@
 -- Users can toggle reactions (add/remove), with max 6 different emojis per comment
 
 CREATE TABLE comment_reactions (
-    id CHAR(26) PRIMARY KEY,
-    comment_id CHAR(26) NOT NULL,
-    user_id CHAR(26) NOT NULL,
+    id UUID PRIMARY KEY,
+    comment_id UUID NOT NULL,
+    user_id UUID NOT NULL,
     emoji VARCHAR(8) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 

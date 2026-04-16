@@ -37,8 +37,8 @@ type SpanQueryHTTPRequest struct {
 	Filter    string     `json:"filter" binding:"required,max=2000" example:"service.name=chatbot AND gen_ai.system=openai"`
 	StartTime *time.Time `json:"start_time,omitempty" example:"2024-01-01T00:00:00Z"`
 	EndTime   *time.Time `json:"end_time,omitempty" example:"2024-01-31T23:59:59Z"`
-	Limit int `json:"limit,omitempty" example:"100"`
-	Page  int `json:"page,omitempty" example:"1"`
+	Limit     int        `json:"limit,omitempty" example:"100"`
+	Page      int        `json:"page,omitempty" example:"1"`
 }
 
 // SpanQueryHTTPResponse is the HTTP response for span queries.

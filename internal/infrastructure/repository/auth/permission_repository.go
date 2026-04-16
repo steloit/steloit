@@ -8,8 +8,9 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	authDomain "brokle/internal/core/domain/auth"
-	"brokle/pkg/ulid"
 )
 
 // permissionRepository implements authDomain.PermissionRepository using GORM
@@ -30,7 +31,7 @@ func (r *permissionRepository) Create(ctx context.Context, permission *authDomai
 }
 
 // GetByID retrieves a permission by ID
-func (r *permissionRepository) GetByID(ctx context.Context, id ulid.ULID) (*authDomain.Permission, error) {
+func (r *permissionRepository) GetByID(ctx context.Context, id uuid.UUID) (*authDomain.Permission, error) {
 	var permission authDomain.Permission
 	err := r.db.WithContext(ctx).Where("id = ?", id).First(&permission).Error
 	if err != nil {
@@ -83,12 +84,12 @@ func (r *permissionRepository) Update(ctx context.Context, permission *authDomai
 }
 
 // Delete soft deletes a permission
-func (r *permissionRepository) Delete(ctx context.Context, id ulid.ULID) error {
+func (r *permissionRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return r.db.WithContext(ctx).Model(&authDomain.Permission{}).Where("id = ?", id).Update("deleted_at", time.Now()).Error
 }
 
 // GetPermissionsByRoleID retrieves permissions for a specific role
-func (r *permissionRepository) GetPermissionsByRoleID(ctx context.Context, roleID ulid.ULID) ([]*authDomain.Permission, error) {
+func (r *permissionRepository) GetPermissionsByRoleID(ctx context.Context, roleID uuid.UUID) ([]*authDomain.Permission, error) {
 	var permissions []*authDomain.Permission
 	err := r.db.WithContext(ctx).
 		Table("permissions").
@@ -100,7 +101,7 @@ func (r *permissionRepository) GetPermissionsByRoleID(ctx context.Context, roleI
 }
 
 // GetUserPermissions retrieves permissions for a user in an organization
-func (r *permissionRepository) GetUserPermissions(ctx context.Context, userID, orgID ulid.ULID) ([]*authDomain.Permission, error) {
+func (r *permissionRepository) GetUserPermissions(ctx context.Context, userID, orgID uuid.UUID) ([]*authDomain.Permission, error) {
 	var permissions []*authDomain.Permission
 	err := r.db.WithContext(ctx).
 		Table("permissions").
@@ -114,7 +115,7 @@ func (r *permissionRepository) GetUserPermissions(ctx context.Context, userID, o
 }
 
 // GetUserPermissionsByAPIKey retrieves permissions for a user through API key
-func (r *permissionRepository) GetUserPermissionsByAPIKey(ctx context.Context, apiKeyID ulid.ULID) ([]string, error) {
+func (r *permissionRepository) GetUserPermissionsByAPIKey(ctx context.Context, apiKeyID uuid.UUID) ([]string, error) {
 	var permissionNames []string
 	err := r.db.WithContext(ctx).
 		Table("permissions").
@@ -239,7 +240,7 @@ func (r *permissionRepository) GetPermissionCategories(ctx context.Context) ([]s
 }
 
 // GetRolePermissionMap returns a map of resource:action -> true for a role
-func (r *permissionRepository) GetRolePermissionMap(ctx context.Context, roleID ulid.ULID) (map[string]bool, error) {
+func (r *permissionRepository) GetRolePermissionMap(ctx context.Context, roleID uuid.UUID) (map[string]bool, error) {
 	var resourceActions []string
 	err := r.db.WithContext(ctx).
 		Table("permissions").
@@ -259,7 +260,7 @@ func (r *permissionRepository) GetRolePermissionMap(ctx context.Context, roleID 
 }
 
 // GetUserPermissionStrings returns user permissions as resource:action strings
-func (r *permissionRepository) GetUserPermissionStrings(ctx context.Context, userID, orgID ulid.ULID) ([]string, error) {
+func (r *permissionRepository) GetUserPermissionStrings(ctx context.Context, userID, orgID uuid.UUID) ([]string, error) {
 	var resourceActions []string
 	err := r.db.WithContext(ctx).
 		Table("permissions").
@@ -273,7 +274,7 @@ func (r *permissionRepository) GetUserPermissionStrings(ctx context.Context, use
 }
 
 // GetUserEffectivePermissions returns effective permissions as map
-func (r *permissionRepository) GetUserEffectivePermissions(ctx context.Context, userID, orgID ulid.ULID) (map[string]bool, error) {
+func (r *permissionRepository) GetUserEffectivePermissions(ctx context.Context, userID, orgID uuid.UUID) (map[string]bool, error) {
 	resourceActions, err := r.GetUserPermissionStrings(ctx, userID, orgID)
 	if err != nil {
 		return nil, err
@@ -357,7 +358,7 @@ func (r *permissionRepository) BulkUpdate(ctx context.Context, permissions []*au
 }
 
 // BulkDelete deletes multiple permissions
-func (r *permissionRepository) BulkDelete(ctx context.Context, permissionIDs []ulid.ULID) error {
+func (r *permissionRepository) BulkDelete(ctx context.Context, permissionIDs []uuid.UUID) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		for _, id := range permissionIDs {
 			if err := tx.Model(&authDomain.Permission{}).Where("id = ?", id).Update("deleted_at", time.Now()).Error; err != nil {

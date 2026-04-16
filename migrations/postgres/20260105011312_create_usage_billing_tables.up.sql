@@ -5,7 +5,7 @@
 -- pricing_configs: Three-dimension pricing tiers
 -- NOTE: Seed data is loaded via seeder, not migration (ULIDs generated at runtime)
 CREATE TABLE pricing_configs (
-    id VARCHAR(26) PRIMARY KEY,
+    id UUID PRIMARY KEY,
     name VARCHAR(50) NOT NULL UNIQUE,
 
     -- Span pricing (per 100K)
@@ -31,8 +31,8 @@ CREATE UNIQUE INDEX idx_pricing_configs_default ON pricing_configs(is_default) W
 
 -- organization_billings: Org-level billing state (three dimensions)
 CREATE TABLE organization_billings (
-    organization_id VARCHAR(26) PRIMARY KEY REFERENCES organizations(id) ON DELETE CASCADE,
-    pricing_config_id VARCHAR(26) NOT NULL REFERENCES pricing_configs(id),
+    organization_id UUID PRIMARY KEY REFERENCES organizations(id) ON DELETE CASCADE,
+    pricing_config_id UUID NOT NULL REFERENCES pricing_configs(id),
     billing_cycle_start TIMESTAMPTZ NOT NULL,
     billing_cycle_anchor_day INTEGER DEFAULT 1 CHECK (billing_cycle_anchor_day >= 1 AND billing_cycle_anchor_day <= 28),
 
@@ -60,9 +60,9 @@ CREATE INDEX idx_organization_billings_cycle_start ON organization_billings(bill
 
 -- usage_budgets: Budget limits and alerts (multi-dimension)
 CREATE TABLE usage_budgets (
-    id VARCHAR(26) PRIMARY KEY,
-    organization_id VARCHAR(26) NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    project_id VARCHAR(26) REFERENCES projects(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     budget_type VARCHAR(20) NOT NULL DEFAULT 'monthly' CHECK (budget_type IN ('monthly', 'weekly')),
 
@@ -93,10 +93,10 @@ CREATE INDEX idx_usage_budgets_active ON usage_budgets(is_active) WHERE is_activ
 
 -- usage_alerts: Alert history
 CREATE TABLE usage_alerts (
-    id VARCHAR(26) PRIMARY KEY,
-    budget_id VARCHAR(26) REFERENCES usage_budgets(id) ON DELETE CASCADE,
-    organization_id VARCHAR(26) NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    project_id VARCHAR(26) REFERENCES projects(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    budget_id UUID REFERENCES usage_budgets(id) ON DELETE CASCADE,
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
     alert_threshold INTEGER NOT NULL CHECK (alert_threshold >= 1 AND alert_threshold <= 100),
     dimension VARCHAR(20) NOT NULL CHECK (dimension IN ('spans', 'bytes', 'scores', 'cost')),
     severity VARCHAR(20) NOT NULL CHECK (severity IN ('info', 'warning', 'critical')),

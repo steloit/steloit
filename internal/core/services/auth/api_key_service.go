@@ -8,10 +8,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+
 	authDomain "brokle/internal/core/domain/auth"
 	orgDomain "brokle/internal/core/domain/organization"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
 )
 
 // apiKeyService implements the authDomain.APIKeyService interface
@@ -35,7 +36,7 @@ func NewAPIKeyService(
 }
 
 // CreateAPIKey creates a new industry-standard API key with pure random secret
-func (s *apiKeyService) CreateAPIKey(ctx context.Context, userID ulid.ULID, req *authDomain.CreateAPIKeyRequest) (*authDomain.CreateAPIKeyResponse, error) {
+func (s *apiKeyService) CreateAPIKey(ctx context.Context, userID uuid.UUID, req *authDomain.CreateAPIKeyRequest) (*authDomain.CreateAPIKeyResponse, error) {
 	// TODO: Validate user has permission to create keys in the project
 	// For now, skip membership validation - will be implemented when organization service is ready
 
@@ -82,7 +83,7 @@ func (s *apiKeyService) CreateAPIKey(ctx context.Context, userID ulid.ULID, req 
 }
 
 // GetAPIKey retrieves an API key by ID
-func (s *apiKeyService) GetAPIKey(ctx context.Context, keyID ulid.ULID) (*authDomain.APIKey, error) {
+func (s *apiKeyService) GetAPIKey(ctx context.Context, keyID uuid.UUID) (*authDomain.APIKey, error) {
 	apiKey, err := s.apiKeyRepo.GetByID(ctx, keyID)
 	if err != nil {
 		return nil, fmt.Errorf("get API key: %w", err)
@@ -113,7 +114,7 @@ func (s *apiKeyService) CountAPIKeys(ctx context.Context, filters *authDomain.AP
 }
 
 // DeleteAPIKey deletes (soft deletes) an API key with project ownership verification
-func (s *apiKeyService) DeleteAPIKey(ctx context.Context, keyID ulid.ULID, projectID ulid.ULID) error {
+func (s *apiKeyService) DeleteAPIKey(ctx context.Context, keyID uuid.UUID, projectID uuid.UUID) error {
 	// Verify API key exists (filters out already-deleted keys)
 	apiKey, err := s.apiKeyRepo.GetByID(ctx, keyID)
 	if err != nil {
@@ -192,7 +193,7 @@ func (s *apiKeyService) ValidateAPIKey(ctx context.Context, fullKey string) (*au
 	// Return validation response with project_id and organization_id from database
 	return &authDomain.ValidateAPIKeyResponse{
 		APIKey:         apiKey,
-		ProjectID:      apiKey.ProjectID,      // Retrieved from database, not extracted from key
+		ProjectID:      apiKey.ProjectID,       // Retrieved from database, not extracted from key
 		OrganizationID: project.OrganizationID, // From project lookup for billing aggregation
 		Valid:          true,
 		AuthContext:    authContext,
@@ -200,14 +201,14 @@ func (s *apiKeyService) ValidateAPIKey(ctx context.Context, fullKey string) (*au
 }
 
 // CheckRateLimit checks if the API key has exceeded rate limits
-func (s *apiKeyService) CheckRateLimit(ctx context.Context, keyID ulid.ULID) (bool, error) {
+func (s *apiKeyService) CheckRateLimit(ctx context.Context, keyID uuid.UUID) (bool, error) {
 	// TODO: Implement rate limiting logic with Redis
 	// For now, always allow requests
 	return true, nil
 }
 
 // GetAPIKeyContext creates an AuthContext from an API key
-func (s *apiKeyService) GetAPIKeyContext(ctx context.Context, keyID ulid.ULID) (*authDomain.AuthContext, error) {
+func (s *apiKeyService) GetAPIKeyContext(ctx context.Context, keyID uuid.UUID) (*authDomain.AuthContext, error) {
 	apiKey, err := s.apiKeyRepo.GetByID(ctx, keyID)
 	if err != nil {
 		return nil, fmt.Errorf("get API key: %w", err)
@@ -222,7 +223,7 @@ func (s *apiKeyService) GetAPIKeyContext(ctx context.Context, keyID ulid.ULID) (
 // CanAPIKeyAccessResource checks if an API key can access a specific resource
 // Note: All non-deleted, non-expired API keys have full access to their project
 // Access control should be handled at the organization RBAC level
-func (s *apiKeyService) CanAPIKeyAccessResource(ctx context.Context, keyID ulid.ULID, resource string) (bool, error) {
+func (s *apiKeyService) CanAPIKeyAccessResource(ctx context.Context, keyID uuid.UUID, resource string) (bool, error) {
 	apiKey, err := s.apiKeyRepo.GetByID(ctx, keyID)
 	if err != nil {
 		return false, fmt.Errorf("get API key: %w", err)
@@ -234,14 +235,14 @@ func (s *apiKeyService) CanAPIKeyAccessResource(ctx context.Context, keyID ulid.
 }
 
 // Scoped access methods
-func (s *apiKeyService) GetAPIKeysByUser(ctx context.Context, userID ulid.ULID) ([]*authDomain.APIKey, error) {
+func (s *apiKeyService) GetAPIKeysByUser(ctx context.Context, userID uuid.UUID) ([]*authDomain.APIKey, error) {
 	return s.apiKeyRepo.GetByUserID(ctx, userID)
 }
 
-func (s *apiKeyService) GetAPIKeysByOrganization(ctx context.Context, orgID ulid.ULID) ([]*authDomain.APIKey, error) {
+func (s *apiKeyService) GetAPIKeysByOrganization(ctx context.Context, orgID uuid.UUID) ([]*authDomain.APIKey, error) {
 	return s.apiKeyRepo.GetByOrganizationID(ctx, orgID)
 }
 
-func (s *apiKeyService) GetAPIKeysByProject(ctx context.Context, projectID ulid.ULID) ([]*authDomain.APIKey, error) {
+func (s *apiKeyService) GetAPIKeysByProject(ctx context.Context, projectID uuid.UUID) ([]*authDomain.APIKey, error) {
 	return s.apiKeyRepo.GetByProjectID(ctx, projectID)
 }

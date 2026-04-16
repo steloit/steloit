@@ -2,8 +2,8 @@
 -- Created: 2026-01-06T15:34:48+05:30
 
 CREATE TABLE contracts (
-    id VARCHAR(26) PRIMARY KEY,
-    organization_id VARCHAR(26) NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
 
     -- Contract metadata
     contract_name VARCHAR(255) NOT NULL,
@@ -39,7 +39,7 @@ CREATE TABLE contracts (
     custom_price_per_1k_scores DECIMAL(10, 4),
 
     -- Audit trail
-    created_by VARCHAR(26),
+    created_by UUID,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     notes TEXT,

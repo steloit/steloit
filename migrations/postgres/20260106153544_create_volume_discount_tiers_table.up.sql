@@ -2,8 +2,8 @@
 -- Created: 2026-01-06T15:35:44+05:30
 
 CREATE TABLE volume_discount_tiers (
-    id VARCHAR(26) PRIMARY KEY,
-    contract_id VARCHAR(26) NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    contract_id UUID NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
 
     -- Which dimension
     dimension VARCHAR(20) NOT NULL CHECK (dimension IN ('spans', 'bytes', 'scores')),

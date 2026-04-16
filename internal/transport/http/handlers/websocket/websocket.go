@@ -1,9 +1,9 @@
 package websocket
 
 import (
-	"log/slog"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"sync"
 	"time"

@@ -4,10 +4,10 @@
 
 CREATE TABLE playground_sessions (
     -- Primary key (shareable URL ID)
-    id              CHAR(26) PRIMARY KEY,
+    id              UUID PRIMARY KEY,
 
     -- Project scope
-    project_id      CHAR(26) NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    project_id      UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
 
     -- Configuration (what persists across refreshes)
     name            VARCHAR(200),                   -- NULL = unsaved, "My Test" = saved
@@ -28,7 +28,7 @@ CREATE TABLE playground_sessions (
     tags            TEXT[] DEFAULT '{}',            -- For saved playgrounds only
 
     -- Audit fields
-    created_by      CHAR(26) REFERENCES users(id) ON DELETE SET NULL,
+    created_by      UUID REFERENCES users(id) ON DELETE SET NULL,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     last_used_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),

@@ -8,9 +8,10 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	authDomain "brokle/internal/core/domain/auth"
 	"brokle/pkg/pagination"
-	"brokle/pkg/ulid"
 )
 
 // auditLogRepository implements authDomain.AuditLogRepository using GORM
@@ -31,7 +32,7 @@ func (r *auditLogRepository) Create(ctx context.Context, auditLog *authDomain.Au
 }
 
 // GetByID retrieves an audit log by ID
-func (r *auditLogRepository) GetByID(ctx context.Context, id ulid.ULID) (*authDomain.AuditLog, error) {
+func (r *auditLogRepository) GetByID(ctx context.Context, id uuid.UUID) (*authDomain.AuditLog, error) {
 	var auditLog authDomain.AuditLog
 	err := r.db.WithContext(ctx).Where("id = ?", id).First(&auditLog).Error
 	if err != nil {
@@ -44,7 +45,7 @@ func (r *auditLogRepository) GetByID(ctx context.Context, id ulid.ULID) (*authDo
 }
 
 // GetByUserID retrieves audit logs for a user
-func (r *auditLogRepository) GetByUserID(ctx context.Context, userID ulid.ULID, limit, offset int) ([]*authDomain.AuditLog, error) {
+func (r *auditLogRepository) GetByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*authDomain.AuditLog, error) {
 	var auditLogs []*authDomain.AuditLog
 	err := r.db.WithContext(ctx).
 		Where("user_id = ?", userID).
@@ -56,7 +57,7 @@ func (r *auditLogRepository) GetByUserID(ctx context.Context, userID ulid.ULID, 
 }
 
 // GetByOrganizationID retrieves audit logs for an organization
-func (r *auditLogRepository) GetByOrganizationID(ctx context.Context, orgID ulid.ULID, limit, offset int) ([]*authDomain.AuditLog, error) {
+func (r *auditLogRepository) GetByOrganizationID(ctx context.Context, orgID uuid.UUID, limit, offset int) ([]*authDomain.AuditLog, error) {
 	var auditLogs []*authDomain.AuditLog
 	err := r.db.WithContext(ctx).
 		Where("organization_id = ?", orgID).
@@ -258,7 +259,7 @@ func (r *auditLogRepository) GetAuditLogStats(ctx context.Context) (*authDomain.
 }
 
 // GetUserAuditLogStats returns audit log statistics for a specific user
-func (r *auditLogRepository) GetUserAuditLogStats(ctx context.Context, userID ulid.ULID) (*authDomain.AuditLogStats, error) {
+func (r *auditLogRepository) GetUserAuditLogStats(ctx context.Context, userID uuid.UUID) (*authDomain.AuditLogStats, error) {
 	stats := &authDomain.AuditLogStats{
 		LogsByAction:   make(map[string]int64),
 		LogsByResource: make(map[string]int64),
@@ -317,7 +318,7 @@ func (r *auditLogRepository) GetUserAuditLogStats(ctx context.Context, userID ul
 }
 
 // GetOrganizationAuditLogStats returns audit log statistics for a specific organization
-func (r *auditLogRepository) GetOrganizationAuditLogStats(ctx context.Context, orgID ulid.ULID) (*authDomain.AuditLogStats, error) {
+func (r *auditLogRepository) GetOrganizationAuditLogStats(ctx context.Context, orgID uuid.UUID) (*authDomain.AuditLogStats, error) {
 	stats := &authDomain.AuditLogStats{
 		LogsByAction:   make(map[string]int64),
 		LogsByResource: make(map[string]int64),

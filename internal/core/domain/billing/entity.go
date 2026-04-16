@@ -7,7 +7,7 @@ import (
 	"github.com/shopspring/decimal"
 	"gorm.io/datatypes"
 
-	"brokle/pkg/ulid"
+	"github.com/google/uuid"
 )
 
 // Usage & Billing Entities
@@ -15,39 +15,39 @@ import (
 // Note: provider_id and model_id are now stored as text (no foreign keys to gateway tables)
 // These values come from ClickHouse spans for cost calculation
 type UsageRecord struct {
-	CreatedAt      time.Time  `json:"created_at"`
-	ProcessedAt    *time.Time `json:"processed_at,omitempty"`
-	RequestType    string     `json:"request_type"`
-	BillingTier    string     `json:"billing_tier"`
-	Currency       string     `json:"currency"`
-	ProviderName   string     `json:"provider_name,omitempty"` // Human-readable provider name (e.g., "openai", "anthropic")
-	ModelName      string     `json:"model_name,omitempty"`    // Human-readable model name (e.g., "gpt-4", "claude-3-opus")
+	CreatedAt      time.Time       `json:"created_at"`
+	ProcessedAt    *time.Time      `json:"processed_at,omitempty"`
+	RequestType    string          `json:"request_type"`
+	BillingTier    string          `json:"billing_tier"`
+	Currency       string          `json:"currency"`
+	ProviderName   string          `json:"provider_name,omitempty"` // Human-readable provider name (e.g., "openai", "anthropic")
+	ModelName      string          `json:"model_name,omitempty"`    // Human-readable model name (e.g., "gpt-4", "claude-3-opus")
 	Cost           decimal.Decimal `json:"cost" gorm:"type:decimal(18,6)"`
 	NetCost        decimal.Decimal `json:"net_cost" gorm:"type:decimal(18,6)"`
 	Discounts      decimal.Decimal `json:"discounts" gorm:"type:decimal(18,6)"`
-	TotalTokens    int32      `json:"total_tokens"`
-	OutputTokens   int32      `json:"output_tokens"`
-	InputTokens    int32      `json:"input_tokens"`
-	ID             ulid.ULID  `json:"id"`
-	ModelID        ulid.ULID  `json:"model_id"`     // Model ID from models table (for pricing lookup)
-	ProviderID     ulid.ULID  `json:"provider_id"`  // Provider identifier (text, not FK)
-	RequestID      ulid.ULID  `json:"request_id"`
-	OrganizationID ulid.ULID  `json:"organization_id"`
+	TotalTokens    int32           `json:"total_tokens"`
+	OutputTokens   int32           `json:"output_tokens"`
+	InputTokens    int32           `json:"input_tokens"`
+	ID             uuid.UUID       `json:"id"`
+	ModelID        uuid.UUID       `json:"model_id"`    // Model ID from models table (for pricing lookup)
+	ProviderID     uuid.UUID       `json:"provider_id"` // Provider identifier (text, not FK)
+	RequestID      uuid.UUID       `json:"request_id"`
+	OrganizationID uuid.UUID       `json:"organization_id"`
 }
 
 // UsageQuota represents organization usage quotas and limits
 type UsageQuota struct {
-	ResetDate           time.Time `json:"reset_date"`
-	LastUpdated         time.Time `json:"last_updated"`
-	BillingTier         string    `json:"billing_tier"`
-	Currency            string    `json:"currency"`
+	ResetDate           time.Time       `json:"reset_date"`
+	LastUpdated         time.Time       `json:"last_updated"`
+	BillingTier         string          `json:"billing_tier"`
+	Currency            string          `json:"currency"`
 	MonthlyRequestLimit int64           `json:"monthly_request_limit"`
 	MonthlyTokenLimit   int64           `json:"monthly_token_limit"`
 	MonthlyCostLimit    decimal.Decimal `json:"monthly_cost_limit" gorm:"type:decimal(18,6)"`
 	CurrentRequests     int64           `json:"current_requests"`
 	CurrentTokens       int64           `json:"current_tokens"`
 	CurrentCost         decimal.Decimal `json:"current_cost" gorm:"type:decimal(18,6)"`
-	OrganizationID      ulid.ULID `json:"organization_id"`
+	OrganizationID      uuid.UUID       `json:"organization_id"`
 }
 
 // Clone returns a deep copy of the UsageQuota
@@ -79,8 +79,8 @@ type PaymentMethod struct {
 	Last4          string    `json:"last_4"`
 	ExpiryMonth    int       `json:"expiry_month"`
 	ExpiryYear     int       `json:"expiry_year"`
-	ID             ulid.ULID `json:"id"`
-	OrganizationID ulid.ULID `json:"organization_id"`
+	ID             uuid.UUID `json:"id"`
+	OrganizationID uuid.UUID `json:"organization_id"`
 	IsDefault      bool      `json:"is_default"`
 }
 
@@ -106,8 +106,8 @@ type Invoice struct {
 	DiscountAmount   decimal.Decimal        `json:"discount_amount" gorm:"type:decimal(18,6)"`
 	TaxAmount        decimal.Decimal        `json:"tax_amount" gorm:"type:decimal(18,6)"`
 	Subtotal         decimal.Decimal        `json:"subtotal" gorm:"type:decimal(18,6)"`
-	ID               ulid.ULID              `json:"id"`
-	OrganizationID   ulid.ULID              `json:"organization_id"`
+	ID               uuid.UUID              `json:"id"`
+	OrganizationID   uuid.UUID              `json:"organization_id"`
 }
 
 type InvoiceStatus string
@@ -122,18 +122,18 @@ const (
 )
 
 type InvoiceLineItem struct {
-	ProviderID   *ulid.ULID `json:"provider_id,omitempty"`
-	ModelID      *ulid.ULID `json:"model_id,omitempty"`
-	Description  string     `json:"description"`
-	ProviderName string     `json:"provider_name,omitempty"`
-	ModelName    string     `json:"model_name,omitempty"`
-	RequestType  string     `json:"request_type,omitempty"`
+	ProviderID   *uuid.UUID      `json:"provider_id,omitempty"`
+	ModelID      *uuid.UUID      `json:"model_id,omitempty"`
+	Description  string          `json:"description"`
+	ProviderName string          `json:"provider_name,omitempty"`
+	ModelName    string          `json:"model_name,omitempty"`
+	RequestType  string          `json:"request_type,omitempty"`
 	Quantity     decimal.Decimal `json:"quantity" gorm:"type:decimal(18,6)"`
 	UnitPrice    decimal.Decimal `json:"unit_price" gorm:"type:decimal(18,6)"`
 	Amount       decimal.Decimal `json:"amount" gorm:"type:decimal(18,6)"`
-	Tokens       int64      `json:"tokens,omitempty"`
-	Requests     int64      `json:"requests,omitempty"`
-	ID           ulid.ULID  `json:"id"`
+	Tokens       int64           `json:"tokens,omitempty"`
+	Requests     int64           `json:"requests,omitempty"`
+	ID           uuid.UUID       `json:"id"`
 }
 
 type BillingAddress struct {
@@ -159,18 +159,18 @@ type DiscountRule struct {
 	CreatedAt       time.Time          `json:"created_at"`
 	ValidFrom       time.Time          `json:"valid_from"`
 	Conditions      *DiscountCondition `json:"conditions,omitempty"`
-	OrganizationID  *ulid.ULID         `json:"organization_id,omitempty"`
+	OrganizationID  *uuid.UUID         `json:"organization_id,omitempty"`
 	UsageLimit      *int               `json:"usage_limit,omitempty"`
 	ValidUntil      *time.Time         `json:"valid_until,omitempty"`
-	Type            DiscountType    `json:"type"`
-	Description     string          `json:"description"`
-	Name            string          `json:"name"`
-	MaximumDiscount decimal.Decimal `json:"maximum_discount" gorm:"type:decimal(18,6)"`
-	MinimumAmount   decimal.Decimal `json:"minimum_amount" gorm:"type:decimal(18,6)"`
-	Value           decimal.Decimal `json:"value" gorm:"type:decimal(18,6)"`
+	Type            DiscountType       `json:"type"`
+	Description     string             `json:"description"`
+	Name            string             `json:"name"`
+	MaximumDiscount decimal.Decimal    `json:"maximum_discount" gorm:"type:decimal(18,6)"`
+	MinimumAmount   decimal.Decimal    `json:"minimum_amount" gorm:"type:decimal(18,6)"`
+	Value           decimal.Decimal    `json:"value" gorm:"type:decimal(18,6)"`
 	UsageCount      int                `json:"usage_count"`
 	Priority        int                `json:"priority"`
-	ID              ulid.ULID          `json:"id"`
+	ID              uuid.UUID          `json:"id"`
 	IsActive        bool               `json:"is_active"`
 }
 
@@ -188,8 +188,8 @@ type DiscountCondition struct {
 	VolumeThreshold   *VolumeDiscount `json:"volume_threshold,omitempty"`
 	BillingTiers      []string        `json:"billing_tiers,omitempty"`
 	RequestTypes      []string        `json:"request_types,omitempty"`
-	Providers         []ulid.ULID     `json:"providers,omitempty"`
-	Models            []ulid.ULID     `json:"models,omitempty"`
+	Providers         []uuid.UUID     `json:"providers,omitempty"`
+	Models            []uuid.UUID     `json:"models,omitempty"`
 	DaysOfWeek        []time.Weekday  `json:"days_of_week,omitempty"`
 	FirstTimeCustomer bool            `json:"first_time_customer"`
 }
@@ -227,8 +227,8 @@ type BillingRecord struct {
 	Status         string                 `json:"status" db:"status"`
 	Amount         decimal.Decimal        `json:"amount" db:"amount" gorm:"type:decimal(18,6)"`
 	NetCost        decimal.Decimal        `json:"net_cost" db:"net_cost" gorm:"type:decimal(18,6)"`
-	ID             ulid.ULID              `json:"id" db:"id"`
-	OrganizationID ulid.ULID              `json:"organization_id" db:"organization_id"`
+	ID             uuid.UUID              `json:"id" db:"id"`
+	OrganizationID uuid.UUID              `json:"organization_id" db:"organization_id"`
 }
 
 // BillingSummary represents aggregated billing data (moved from deleted analytics worker)
@@ -249,40 +249,40 @@ type BillingSummary struct {
 	TotalCost         decimal.Decimal        `json:"total_cost" db:"total_cost" gorm:"type:decimal(18,6)"`
 	TotalTokens       int                    `json:"total_tokens" db:"total_tokens"`
 	TotalRequests     int                    `json:"total_requests" db:"total_requests"`
-	ID                ulid.ULID              `json:"id" db:"id"`
-	OrganizationID    ulid.ULID              `json:"organization_id" db:"organization_id"`
+	ID                uuid.UUID              `json:"id" db:"id"`
+	OrganizationID    uuid.UUID              `json:"organization_id" db:"organization_id"`
 }
 
 // CostMetric represents cost tracking data (moved from deleted analytics worker)
 type CostMetric struct {
-	Timestamp      time.Time `json:"timestamp"`
-	Provider       string    `json:"provider"`
-	Currency       string    `json:"currency"`
-	RequestType    string    `json:"request_type"`
+	Timestamp      time.Time       `json:"timestamp"`
+	Provider       string          `json:"provider"`
+	Currency       string          `json:"currency"`
+	RequestType    string          `json:"request_type"`
 	Model          string          `json:"model"`
 	TotalCost      decimal.Decimal `json:"total_cost" gorm:"type:decimal(18,6)"`
 	OutputTokens   int32           `json:"output_tokens"`
-	InputTokens    int32     `json:"input_tokens"`
-	TotalTokens    int32     `json:"total_tokens"`
-	ModelID        ulid.ULID `json:"model_id"`
-	RequestID      ulid.ULID `json:"request_id"`
-	ProviderID     ulid.ULID `json:"provider_id"`
-	ProjectID      ulid.ULID `json:"project_id"`
-	OrganizationID ulid.ULID `json:"organization_id"`
+	InputTokens    int32           `json:"input_tokens"`
+	TotalTokens    int32           `json:"total_tokens"`
+	ModelID        uuid.UUID       `json:"model_id"`
+	RequestID      uuid.UUID       `json:"request_id"`
+	ProviderID     uuid.UUID       `json:"provider_id"`
+	ProjectID      uuid.UUID       `json:"project_id"`
+	OrganizationID uuid.UUID       `json:"organization_id"`
 }
 
 // Usage-Based Billing Entities
 
 // Queried from ClickHouse billable_usage_hourly/daily tables
 type BillableUsage struct {
-	OrganizationID ulid.ULID `json:"organization_id"`
-	ProjectID      ulid.ULID `json:"project_id"`
+	OrganizationID uuid.UUID `json:"organization_id"`
+	ProjectID      uuid.UUID `json:"project_id"`
 	BucketTime     time.Time `json:"bucket_time"`
 
 	// Three billable dimensions
-	SpanCount      int64 `json:"span_count"`       // All spans (traces + child spans)
-	BytesProcessed int64 `json:"bytes_processed"`  // Total payload bytes (input + output)
-	ScoreCount     int64 `json:"score_count"`      // Quality scores
+	SpanCount      int64 `json:"span_count"`      // All spans (traces + child spans)
+	BytesProcessed int64 `json:"bytes_processed"` // Total payload bytes (input + output)
+	ScoreCount     int64 `json:"score_count"`     // Quality scores
 
 	// Informational (not billable by Brokle)
 	AIProviderCost decimal.Decimal `json:"ai_provider_cost" gorm:"type:decimal(18,6)"`
@@ -291,8 +291,8 @@ type BillableUsage struct {
 }
 
 type BillableUsageSummary struct {
-	OrganizationID ulid.ULID  `json:"organization_id"`
-	ProjectID      *ulid.ULID `json:"project_id,omitempty"` // nil for org-level summary
+	OrganizationID uuid.UUID  `json:"organization_id"`
+	ProjectID      *uuid.UUID `json:"project_id,omitempty"` // nil for org-level summary
 	PeriodStart    time.Time  `json:"period_start"`
 	PeriodEnd      time.Time  `json:"period_end"`
 
@@ -309,7 +309,7 @@ type BillableUsageSummary struct {
 }
 
 type Plan struct {
-	ID        ulid.ULID `json:"id" gorm:"column:id;primaryKey"`
+	ID        uuid.UUID `json:"id" gorm:"column:id;primaryKey"`
 	Name      string    `json:"name" gorm:"column:name"` // free, pro, enterprise
 	IsActive  bool      `json:"is_active" gorm:"column:is_active"`
 	IsDefault bool      `json:"is_default" gorm:"column:is_default"` // Default plan for new organizations
@@ -334,8 +334,8 @@ func (Plan) TableName() string {
 }
 
 type OrganizationBilling struct {
-	OrganizationID        ulid.ULID `json:"organization_id" db:"organization_id" gorm:"type:char(26);primaryKey"`
-	PlanID                ulid.ULID `json:"plan_id" db:"plan_id"`
+	OrganizationID        uuid.UUID `json:"organization_id" db:"organization_id" gorm:"type:uuid;primaryKey"`
+	PlanID                uuid.UUID `json:"plan_id" db:"plan_id"`
 	BillingCycleStart     time.Time `json:"billing_cycle_start" db:"billing_cycle_start"`
 	BillingCycleAnchorDay int       `json:"billing_cycle_anchor_day" db:"billing_cycle_anchor_day"` // Day of month (1-28)
 
@@ -365,9 +365,9 @@ const (
 )
 
 type UsageBudget struct {
-	ID             ulid.ULID  `json:"id" db:"id"`
-	OrganizationID ulid.ULID  `json:"organization_id" db:"organization_id"`
-	ProjectID      *ulid.ULID `json:"project_id,omitempty" db:"project_id"` // nil for org-level budget
+	ID             uuid.UUID  `json:"id" db:"id"`
+	OrganizationID uuid.UUID  `json:"organization_id" db:"organization_id"`
+	ProjectID      *uuid.UUID `json:"project_id,omitempty" db:"project_id"` // nil for org-level budget
 	Name           string     `json:"name" db:"name"`
 	BudgetType     BudgetType `json:"budget_type" db:"budget_type"`
 
@@ -417,10 +417,10 @@ const (
 )
 
 type UsageAlert struct {
-	ID             ulid.ULID  `json:"id" db:"id"`
-	BudgetID       *ulid.ULID `json:"budget_id,omitempty" db:"budget_id"`
-	OrganizationID ulid.ULID  `json:"organization_id" db:"organization_id"`
-	ProjectID      *ulid.ULID `json:"project_id,omitempty" db:"project_id"`
+	ID             uuid.UUID  `json:"id" db:"id"`
+	BudgetID       *uuid.UUID `json:"budget_id,omitempty" db:"budget_id"`
+	OrganizationID uuid.UUID  `json:"organization_id" db:"organization_id"`
+	ProjectID      *uuid.UUID `json:"project_id,omitempty" db:"project_id"`
 
 	AlertThreshold int64           `json:"alert_threshold" db:"alert_threshold"`
 	Dimension      AlertDimension  `json:"dimension" db:"dimension"`
@@ -448,10 +448,10 @@ const (
 )
 
 type Contract struct {
-	ID             ulid.ULID      `json:"id" gorm:"column:id;primaryKey"`
-	OrganizationID ulid.ULID      `json:"organization_id" gorm:"column:organization_id;type:char(26)"`
-	ContractName   string         `json:"contract_name" gorm:"column:contract_name"`
-	ContractNumber string         `json:"contract_number" gorm:"column:contract_number;uniqueIndex"`
+	ID             uuid.UUID `json:"id" gorm:"column:id;primaryKey"`
+	OrganizationID uuid.UUID `json:"organization_id" gorm:"column:organization_id;type:uuid"`
+	ContractName   string    `json:"contract_name" gorm:"column:contract_name"`
+	ContractNumber string    `json:"contract_number" gorm:"column:contract_number;uniqueIndex"`
 
 	// Timestamps (full precision, no normalization)
 	// Access rule: contract is active when now < EndDate
@@ -500,8 +500,8 @@ const (
 )
 
 type VolumeDiscountTier struct {
-	ID           ulid.ULID       `json:"id" gorm:"column:id;primaryKey"`
-	ContractID   ulid.ULID       `json:"contract_id" gorm:"column:contract_id;type:char(26)"`
+	ID           uuid.UUID       `json:"id" gorm:"column:id;primaryKey"`
+	ContractID   uuid.UUID       `json:"contract_id" gorm:"column:contract_id;type:uuid"`
 	Dimension    TierDimension   `json:"dimension" gorm:"column:dimension"`
 	TierMin      int64           `json:"tier_min" gorm:"column:tier_min;default:0"`
 	TierMax      *int64          `json:"tier_max,omitempty" gorm:"column:tier_max"` // NULL = unlimited
@@ -525,8 +525,8 @@ const (
 )
 
 type ContractHistory struct {
-	ID             ulid.ULID      `json:"id" gorm:"column:id;primaryKey"`
-	ContractID     ulid.ULID      `json:"contract_id" gorm:"column:contract_id;type:char(26)"`
+	ID             uuid.UUID      `json:"id" gorm:"column:id;primaryKey"`
+	ContractID     uuid.UUID      `json:"contract_id" gorm:"column:contract_id;type:uuid"`
 	Action         ContractAction `json:"action" gorm:"column:action"`
 	ChangedBy      string         `json:"changed_by,omitempty" gorm:"column:changed_by"`
 	ChangedByEmail string         `json:"changed_by_email,omitempty" gorm:"column:changed_by_email"`
@@ -541,7 +541,7 @@ func (ContractHistory) TableName() string {
 
 // EffectivePricing represents resolved pricing (contract overrides plan)
 type EffectivePricing struct {
-	OrganizationID ulid.ULID `json:"organization_id"`
+	OrganizationID uuid.UUID `json:"organization_id"`
 	BasePlan       *Plan     `json:"base_plan"`
 	Contract       *Contract `json:"contract,omitempty"`
 

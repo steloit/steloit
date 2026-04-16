@@ -14,16 +14,16 @@ var (
 	ErrInvalidPromptType   = errors.New("invalid prompt type")
 
 	// Version errors
-	ErrVersionNotFound       = errors.New("version not found")
-	ErrVersionImmutable      = errors.New("versions are immutable and cannot be modified")
-	ErrInvalidVersionNumber  = errors.New("invalid version number")
+	ErrVersionNotFound      = errors.New("version not found")
+	ErrVersionImmutable     = errors.New("versions are immutable and cannot be modified")
+	ErrInvalidVersionNumber = errors.New("invalid version number")
 
 	// Label errors
-	ErrLabelNotFound         = errors.New("label not found")
-	ErrLabelProtected        = errors.New("label is protected")
-	ErrLabelAlreadyExists    = errors.New("label already exists")
-	ErrInvalidLabelName      = errors.New("invalid label name")
-	ErrLatestLabelReserved   = errors.New("'latest' label is auto-managed and cannot be modified")
+	ErrLabelNotFound       = errors.New("label not found")
+	ErrLabelProtected      = errors.New("label is protected")
+	ErrLabelAlreadyExists  = errors.New("label already exists")
+	ErrInvalidLabelName    = errors.New("invalid label name")
+	ErrLatestLabelReserved = errors.New("'latest' label is auto-managed and cannot be modified")
 
 	// Template errors
 	ErrInvalidTemplate       = errors.New("invalid template")
@@ -32,10 +32,10 @@ var (
 	ErrInvalidVariableName   = errors.New("invalid variable name")
 
 	// Dialect errors
-	ErrUnsupportedDialect    = errors.New("unsupported template dialect")
-	ErrDialectCompilation    = errors.New("template compilation failed")
-	ErrTemplateTooLarge      = errors.New("template exceeds maximum size limit")
-	ErrNestingTooDeep        = errors.New("template nesting exceeds maximum depth")
+	ErrUnsupportedDialect = errors.New("unsupported template dialect")
+	ErrDialectCompilation = errors.New("template compilation failed")
+	ErrTemplateTooLarge   = errors.New("template exceeds maximum size limit")
+	ErrNestingTooDeep     = errors.New("template nesting exceeds maximum depth")
 
 	// Cache errors
 	ErrCacheNotFound = errors.New("cache entry not found")

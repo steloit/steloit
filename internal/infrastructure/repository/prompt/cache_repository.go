@@ -9,9 +9,10 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/common"
 	promptDomain "brokle/internal/core/domain/prompt"
-	"brokle/pkg/ulid"
 )
 
 const (
@@ -124,22 +125,22 @@ func (r *cacheRepository) DeleteByPattern(ctx context.Context, pattern string) e
 // patterns in prompt_service.go (promptNamePattern: ^[a-zA-Z][a-zA-Z0-9_-]*$,
 // labelPattern: ^[a-z0-9][a-z0-9_.-]*$). Key parsing in ParseCacheKey relies on
 // exactly 4 colon-separated parts.
-func (r *cacheRepository) BuildKey(projectID ulid.ULID, name string, labelOrVersion string) string {
+func (r *cacheRepository) BuildKey(projectID uuid.UUID, name string, labelOrVersion string) string {
 	return fmt.Sprintf("%s:%s:%s:%s", promptCachePrefix, projectID.String(), name, labelOrVersion)
 }
 
 // BuildPatternForPrompt generates a cache pattern for all versions/labels of a prompt
-func BuildPatternForPrompt(projectID ulid.ULID, name string) string {
+func BuildPatternForPrompt(projectID uuid.UUID, name string) string {
 	return fmt.Sprintf("%s:%s:%s:*", promptCachePrefix, projectID.String(), name)
 }
 
 // BuildPatternForLabel generates a cache pattern for a specific label across all prompts
-func BuildPatternForLabel(projectID ulid.ULID, label string) string {
+func BuildPatternForLabel(projectID uuid.UUID, label string) string {
 	return fmt.Sprintf("%s:%s:*:%s", promptCachePrefix, projectID.String(), label)
 }
 
 // BuildPatternForProject generates a cache pattern for all prompts in a project
-func BuildPatternForProject(projectID ulid.ULID) string {
+func BuildPatternForProject(projectID uuid.UUID) string {
 	return fmt.Sprintf("%s:%s:*", promptCachePrefix, projectID.String())
 }
 

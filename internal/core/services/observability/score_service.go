@@ -9,7 +9,7 @@ import (
 
 	"brokle/internal/core/domain/observability"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 type ScoreService struct {
@@ -50,7 +50,7 @@ func (s *ScoreService) CreateScore(ctx context.Context, score *observability.Sco
 		return err
 	}
 	if score.ID == "" {
-		score.ID = ulid.New().String()
+		score.ID = uid.New().String()
 	}
 	if score.Timestamp.IsZero() {
 		score.Timestamp = time.Now()
@@ -211,7 +211,7 @@ func (s *ScoreService) CreateScoreBatch(ctx context.Context, scores []*observabi
 
 		// Generate ID if not provided
 		if score.ID == "" {
-			score.ID = ulid.New().String()
+			score.ID = uid.New().String()
 		}
 
 		// Set timestamp if not provided

@@ -14,7 +14,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/oklog/ulid/v2"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -58,15 +58,14 @@ func GenerateHexToken(length int) (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
-// GenerateAPIKey generates a prefixed API key with ULID
+// GenerateAPIKey generates a prefixed API key with UUIDv7
 func GenerateAPIKey(prefix string) (string, error) {
 	if prefix == "" {
 		prefix = "bk"
 	}
 
-	id := ulid.MustNew(ulid.Timestamp(time.Now()), cryptoRand.Reader)
+	id := uuid.Must(uuid.NewV7())
 
-	// Create API key format: prefix_env_ulid (e.g., bk_live_01ARZ3NDEKTSV4RRFFQ69G5FAV)
 	return fmt.Sprintf("%s_live_%s", prefix, id.String()), nil
 }
 
@@ -191,39 +190,38 @@ func HashAPIKey(apiKey string) (string, error) {
 	return HashString(apiKey, AlgorithmSHA256)
 }
 
-// ULID Generation Functions
+// ID Generation Functions
 
-// GenerateULID generates a new ULID
-func GenerateULID() string {
-	return ulid.MustNew(ulid.Timestamp(time.Now()), cryptoRand.Reader).String()
+// GenerateID generates a new UUIDv7 string
+func GenerateID() string {
+	return uuid.Must(uuid.NewV7()).String()
 }
 
-// GenerateULIDWithTime generates a ULID with specific timestamp
-func GenerateULIDWithTime(t time.Time) string {
-	return ulid.MustNew(ulid.Timestamp(t), cryptoRand.Reader).String()
+// ParseID parses a UUID string
+func ParseID(s string) (uuid.UUID, error) {
+	return uuid.Parse(s)
 }
 
-// ParseULID parses a ULID string and returns the ULID
-func ParseULID(s string) (ulid.ULID, error) {
-	return ulid.Parse(s)
-}
-
-// ULIDTime extracts the timestamp from a ULID
-func ULIDTime(id string) (time.Time, error) {
-	parsed, err := ulid.Parse(id)
+// IDTime extracts the timestamp from a UUIDv7 string
+func IDTime(id string) (time.Time, error) {
+	parsed, err := uuid.Parse(id)
 	if err != nil {
 		return time.Time{}, err
 	}
-	return ulid.Time(parsed.Time()), nil
+	if parsed.Version() != 7 {
+		return time.Time{}, fmt.Errorf("not a UUIDv7: version %d", parsed.Version())
+	}
+	sec, nsec := parsed.Time().UnixTime()
+	return time.Unix(sec, nsec), nil
 }
 
-// GenerateTestAPIKey generates a test API key with ULID
+// GenerateTestAPIKey generates a test API key with UUIDv7
 func GenerateTestAPIKey(prefix string) (string, error) {
 	if prefix == "" {
 		prefix = "bk"
 	}
 
-	id := ulid.MustNew(ulid.Timestamp(time.Now()), cryptoRand.Reader)
+	id := uuid.Must(uuid.NewV7())
 
 	return fmt.Sprintf("%s_test_%s", prefix, id.String()), nil
 }

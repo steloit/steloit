@@ -4,12 +4,12 @@ import "errors"
 
 var (
 	// Queue errors
-	ErrQueueNotFound     = errors.New("annotation queue not found")
-	ErrQueueExists       = errors.New("annotation queue with this name already exists")
-	ErrQueuePaused       = errors.New("annotation queue is paused")
-	ErrQueueArchived     = errors.New("annotation queue is archived")
-	ErrInvalidQueueID    = errors.New("invalid queue ID")
-	ErrQueueValidation   = errors.New("annotation queue validation failed")
+	ErrQueueNotFound   = errors.New("annotation queue not found")
+	ErrQueueExists     = errors.New("annotation queue with this name already exists")
+	ErrQueuePaused     = errors.New("annotation queue is paused")
+	ErrQueueArchived   = errors.New("annotation queue is archived")
+	ErrInvalidQueueID  = errors.New("invalid queue ID")
+	ErrQueueValidation = errors.New("annotation queue validation failed")
 
 	// Item errors
 	ErrItemNotFound         = errors.New("queue item not found")

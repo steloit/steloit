@@ -1,9 +1,8 @@
 package observability
 
 import (
-	"log/slog"
 	"context"
-
+	"log/slog"
 
 	"brokle/internal/core/domain/observability"
 )

@@ -5,11 +5,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/google/uuid"
+
 	annotationDomain "brokle/internal/core/domain/annotation"
 	"brokle/internal/transport/http/middleware"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 )
 
 // QueueHandler handles annotation queue HTTP endpoints.
@@ -39,9 +40,9 @@ func NewQueueHandler(logger *slog.Logger, service annotationDomain.QueueService)
 // @Failure 409 {object} response.ErrorResponse "Name already exists"
 // @Router /api/v1/projects/{projectId}/annotation-queues [post]
 func (h *QueueHandler) Create(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
@@ -51,8 +52,8 @@ func (h *QueueHandler) Create(c *gin.Context) {
 		return
 	}
 
-	userID, exists := middleware.GetUserIDULID(c)
-	var userIDPtr *ulid.ULID
+	userID, exists := middleware.GetUserIDFromContext(c)
+	var userIDPtr *uuid.UUID
 	if exists {
 		userIDPtr = &userID
 	}
@@ -99,9 +100,9 @@ func (h *QueueHandler) Create(c *gin.Context) {
 // @Failure 401 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/annotation-queues [get]
 func (h *QueueHandler) List(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
@@ -149,15 +150,15 @@ func (h *QueueHandler) List(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/annotation-queues/{queueId} [get]
 func (h *QueueHandler) Get(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	queueID, err := ulid.Parse(c.Param("queueId"))
+	queueID, err := uuid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid UUID"))
 		return
 	}
 
@@ -182,15 +183,15 @@ func (h *QueueHandler) Get(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/annotation-queues/{queueId}/stats [get]
 func (h *QueueHandler) GetWithStats(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	queueID, err := ulid.Parse(c.Param("queueId"))
+	queueID, err := uuid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid UUID"))
 		return
 	}
 
@@ -221,15 +222,15 @@ func (h *QueueHandler) GetWithStats(c *gin.Context) {
 // @Failure 409 {object} response.ErrorResponse "Name already exists"
 // @Router /api/v1/projects/{projectId}/annotation-queues/{queueId} [put]
 func (h *QueueHandler) Update(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	queueID, err := ulid.Parse(c.Param("queueId"))
+	queueID, err := uuid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid UUID"))
 		return
 	}
 
@@ -277,15 +278,15 @@ func (h *QueueHandler) Update(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/annotation-queues/{queueId} [delete]
 func (h *QueueHandler) Delete(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	queueID, err := ulid.Parse(c.Param("queueId"))
+	queueID, err := uuid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid UUID"))
 		return
 	}
 

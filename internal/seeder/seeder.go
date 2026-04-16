@@ -14,6 +14,8 @@ import (
 	"gopkg.in/yaml.v3"
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/config"
 	"brokle/internal/core/domain/analytics"
 	"brokle/internal/core/domain/auth"
@@ -25,7 +27,7 @@ import (
 	billingRepo "brokle/internal/infrastructure/repository/billing"
 	dashboardRepo "brokle/internal/infrastructure/repository/dashboard"
 	"brokle/pkg/logging"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 type Seeder struct {
@@ -495,7 +497,7 @@ func (s *Seeder) seedRoles(ctx context.Context, roleSeeds []RoleSeed, entityMaps
 			entityMaps.Roles[fmt.Sprintf("%s:%s", roleSeed.ScopeType, roleSeed.Name)] = existing.ID
 
 			// Build permission ID list from YAML
-			var permissionIDs []ulid.ULID
+			var permissionIDs []uuid.UUID
 			for _, permName := range roleSeed.Permissions {
 				permID, exists := entityMaps.Permissions[permName]
 				if !exists {
@@ -526,7 +528,7 @@ func (s *Seeder) seedRoles(ctx context.Context, roleSeeds []RoleSeed, entityMaps
 
 		// Assign permissions to role template
 		if len(roleSeed.Permissions) > 0 {
-			var permissionIDs []ulid.ULID
+			var permissionIDs []uuid.UUID
 			for _, permName := range roleSeed.Permissions {
 				permID, exists := entityMaps.Permissions[permName]
 				if !exists {
@@ -598,9 +600,9 @@ func (s *Seeder) seedModel(ctx context.Context, modelSeed ProviderModelSeed, ver
 		unit = "TOKENS"
 	}
 
-	// Create provider model with new ULID
+	// Create provider model with new UUID
 	model := &analytics.ProviderModel{
-		ID:           ulid.New(),
+		ID:           uid.New(),
 		ModelName:    modelSeed.ModelName,
 		Provider:     modelSeed.Provider,
 		MatchPattern: modelSeed.MatchPattern,
@@ -633,7 +635,7 @@ func (s *Seeder) seedModel(ctx context.Context, modelSeed ProviderModelSeed, ver
 	// Create prices for this model
 	for _, priceSeed := range modelSeed.Prices {
 		price := &analytics.ProviderPrice{
-			ID:              ulid.New(),
+			ID:              uid.New(),
 			ProviderModelID: model.ID,
 			UsageType:       priceSeed.UsageType,
 			Price:           decimal.NewFromFloat(priceSeed.Price),
@@ -905,7 +907,7 @@ func (s *Seeder) seedTemplate(ctx context.Context, tmplSeed TemplateSeed, verbos
 
 	// Create new template
 	template := &dashboard.Template{
-		ID:          ulid.New(),
+		ID:          uid.New(),
 		Name:        tmplSeed.Name,
 		Description: tmplSeed.Description,
 		Category:    dashboard.TemplateCategory(tmplSeed.Category),
@@ -1150,9 +1152,9 @@ func (s *Seeder) seedBillingConfigsData(ctx context.Context, data *BillingConfig
 			continue
 		}
 
-		// Create new plan with runtime ULID
+		// Create new plan with runtime UUID
 		config := &billing.Plan{
-			ID:                ulid.New(),
+			ID:                uid.New(),
 			Name:              cfgSeed.Name,
 			IsDefault:         cfgSeed.IsDefault,
 			FreeSpans:         cfgSeed.FreeSpans,
@@ -1276,7 +1278,7 @@ func (s *Seeder) SeedOrganizationBillings(ctx context.Context, opts *Options) er
 
 	for _, org := range orgs {
 		// Parse the org ID
-		orgID, err := ulid.Parse(org.ID)
+		orgID, err := uuid.Parse(org.ID)
 		if err != nil {
 			s.logger.Warn("Invalid organization ID, skipping", "id", org.ID, "error", err)
 			continue

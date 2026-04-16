@@ -9,8 +9,9 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	authDomain "brokle/internal/core/domain/auth"
-	"brokle/pkg/ulid"
 )
 
 // userSessionRepository implements authDomain.UserSessionRepository using GORM
@@ -31,7 +32,7 @@ func (r *userSessionRepository) Create(ctx context.Context, session *authDomain.
 }
 
 // GetByID retrieves a user session by ID
-func (r *userSessionRepository) GetByID(ctx context.Context, id ulid.ULID) (*authDomain.UserSession, error) {
+func (r *userSessionRepository) GetByID(ctx context.Context, id uuid.UUID) (*authDomain.UserSession, error) {
 	var session authDomain.UserSession
 	err := r.db.WithContext(ctx).Where("id = ?", id).First(&session).Error
 	if err != nil {
@@ -75,12 +76,12 @@ func (r *userSessionRepository) Update(ctx context.Context, session *authDomain.
 }
 
 // Delete deletes a user session by ID (hard delete)
-func (r *userSessionRepository) Delete(ctx context.Context, id ulid.ULID) error {
+func (r *userSessionRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return r.db.WithContext(ctx).Delete(&authDomain.UserSession{}, "id = ?", id).Error
 }
 
 // GetByUserID retrieves all sessions for a user
-func (r *userSessionRepository) GetByUserID(ctx context.Context, userID ulid.ULID) ([]*authDomain.UserSession, error) {
+func (r *userSessionRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]*authDomain.UserSession, error) {
 	var sessions []*authDomain.UserSession
 	err := r.db.WithContext(ctx).Where("user_id = ?", userID).Find(&sessions).Error
 	if err != nil {
@@ -90,7 +91,7 @@ func (r *userSessionRepository) GetByUserID(ctx context.Context, userID ulid.ULI
 }
 
 // GetActiveSessionsByUserID retrieves active sessions for a user
-func (r *userSessionRepository) GetActiveSessionsByUserID(ctx context.Context, userID ulid.ULID) ([]*authDomain.UserSession, error) {
+func (r *userSessionRepository) GetActiveSessionsByUserID(ctx context.Context, userID uuid.UUID) ([]*authDomain.UserSession, error) {
 	var sessions []*authDomain.UserSession
 	err := r.db.WithContext(ctx).Where("user_id = ? AND is_active = ? AND revoked_at IS NULL AND expires_at > ?", userID, true, time.Now()).Find(&sessions).Error
 	if err != nil {
@@ -100,17 +101,17 @@ func (r *userSessionRepository) GetActiveSessionsByUserID(ctx context.Context, u
 }
 
 // DeactivateSession deactivates a session without revoking it
-func (r *userSessionRepository) DeactivateSession(ctx context.Context, id ulid.ULID) error {
+func (r *userSessionRepository) DeactivateSession(ctx context.Context, id uuid.UUID) error {
 	return r.db.WithContext(ctx).Model(&authDomain.UserSession{}).Where("id = ?", id).Update("is_active", false).Error
 }
 
 // DeactivateUserSessions deactivates all sessions for a user
-func (r *userSessionRepository) DeactivateUserSessions(ctx context.Context, userID ulid.ULID) error {
+func (r *userSessionRepository) DeactivateUserSessions(ctx context.Context, userID uuid.UUID) error {
 	return r.db.WithContext(ctx).Model(&authDomain.UserSession{}).Where("user_id = ?", userID).Update("is_active", false).Error
 }
 
 // RevokeSession revokes a session (sets revoked_at timestamp)
-func (r *userSessionRepository) RevokeSession(ctx context.Context, id ulid.ULID) error {
+func (r *userSessionRepository) RevokeSession(ctx context.Context, id uuid.UUID) error {
 	now := time.Now()
 	return r.db.WithContext(ctx).Model(&authDomain.UserSession{}).Where("id = ?", id).Updates(map[string]interface{}{
 		"revoked_at": now,
@@ -120,7 +121,7 @@ func (r *userSessionRepository) RevokeSession(ctx context.Context, id ulid.ULID)
 }
 
 // RevokeUserSessions revokes all sessions for a user
-func (r *userSessionRepository) RevokeUserSessions(ctx context.Context, userID ulid.ULID) error {
+func (r *userSessionRepository) RevokeUserSessions(ctx context.Context, userID uuid.UUID) error {
 	now := time.Now()
 	return r.db.WithContext(ctx).Model(&authDomain.UserSession{}).Where("user_id = ? AND revoked_at IS NULL", userID).Updates(map[string]interface{}{
 		"revoked_at": now,
@@ -141,7 +142,7 @@ func (r *userSessionRepository) CleanupRevokedSessions(ctx context.Context) erro
 }
 
 // MarkAsUsed updates the last_used_at timestamp
-func (r *userSessionRepository) MarkAsUsed(ctx context.Context, id ulid.ULID) error {
+func (r *userSessionRepository) MarkAsUsed(ctx context.Context, id uuid.UUID) error {
 	now := time.Now()
 	return r.db.WithContext(ctx).Model(&authDomain.UserSession{}).Where("id = ?", id).Updates(map[string]interface{}{
 		"last_used_at": now,
@@ -150,7 +151,7 @@ func (r *userSessionRepository) MarkAsUsed(ctx context.Context, id ulid.ULID) er
 }
 
 // GetByDeviceInfo retrieves sessions by user ID and device info
-func (r *userSessionRepository) GetByDeviceInfo(ctx context.Context, userID ulid.ULID, deviceInfo interface{}) ([]*authDomain.UserSession, error) {
+func (r *userSessionRepository) GetByDeviceInfo(ctx context.Context, userID uuid.UUID, deviceInfo interface{}) ([]*authDomain.UserSession, error) {
 	var sessions []*authDomain.UserSession
 
 	// Convert device info to JSON for comparison
@@ -167,7 +168,7 @@ func (r *userSessionRepository) GetByDeviceInfo(ctx context.Context, userID ulid
 }
 
 // GetActiveSessionsCount returns the count of active sessions for a user
-func (r *userSessionRepository) GetActiveSessionsCount(ctx context.Context, userID ulid.ULID) (int, error) {
+func (r *userSessionRepository) GetActiveSessionsCount(ctx context.Context, userID uuid.UUID) (int, error) {
 	var count int64
 	err := r.db.WithContext(ctx).Model(&authDomain.UserSession{}).Where("user_id = ? AND is_active = ? AND revoked_at IS NULL AND expires_at > ?", userID, true, time.Now()).Count(&count).Error
 	if err != nil {

@@ -194,8 +194,8 @@ func (s *executionService) mergeConfig(base, overrides *promptDomain.ModelConfig
 		// Preserve credentials from overrides (set by handler after credential resolution)
 		APIKey:          overrides.APIKey,
 		ResolvedBaseURL: overrides.ResolvedBaseURL,
-		ProviderConfig:  overrides.ProviderConfig,  // Azure deployment_id, api_version
-		CustomHeaders:   overrides.CustomHeaders,   // Custom provider headers
+		ProviderConfig:  overrides.ProviderConfig, // Azure deployment_id, api_version
+		CustomHeaders:   overrides.CustomHeaders,  // Custom provider headers
 	}
 
 	if overrides.Model != "" {

@@ -4,9 +4,10 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
+
 	orgDomain "brokle/internal/core/domain/organization"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
 )
 
 // projectService implements the orgDomain.ProjectService interface
@@ -30,14 +31,14 @@ func NewProjectService(
 }
 
 // CreateProject creates a new project in an organization
-func (s *projectService) CreateProject(ctx context.Context, orgID ulid.ULID, req *orgDomain.CreateProjectRequest) (*orgDomain.Project, error) {
+func (s *projectService) CreateProject(ctx context.Context, orgID uuid.UUID, req *orgDomain.CreateProjectRequest) (*orgDomain.Project, error) {
 	// Verify organization exists
 	_, err := s.orgRepo.GetByID(ctx, orgID)
 	if err != nil {
 		return nil, appErrors.NewNotFoundError("Organization not found")
 	}
 
-	// Create project (no slug - use ULID only)
+	// Create project (no slug - use UUID only)
 	project := orgDomain.NewProject(orgID, req.Name, req.Description)
 	err = s.projectRepo.Create(ctx, project)
 	if err != nil {
@@ -48,17 +49,17 @@ func (s *projectService) CreateProject(ctx context.Context, orgID ulid.ULID, req
 }
 
 // GetProject retrieves a project by ID
-func (s *projectService) GetProject(ctx context.Context, projectID ulid.ULID) (*orgDomain.Project, error) {
+func (s *projectService) GetProject(ctx context.Context, projectID uuid.UUID) (*orgDomain.Project, error) {
 	return s.projectRepo.GetByID(ctx, projectID)
 }
 
 // GetProjectBySlug retrieves a project by organization and slug
-func (s *projectService) GetProjectBySlug(ctx context.Context, orgID ulid.ULID, slug string) (*orgDomain.Project, error) {
+func (s *projectService) GetProjectBySlug(ctx context.Context, orgID uuid.UUID, slug string) (*orgDomain.Project, error) {
 	return s.projectRepo.GetBySlug(ctx, orgID, slug)
 }
 
 // UpdateProject updates project details
-func (s *projectService) UpdateProject(ctx context.Context, projectID ulid.ULID, req *orgDomain.UpdateProjectRequest) error {
+func (s *projectService) UpdateProject(ctx context.Context, projectID uuid.UUID, req *orgDomain.UpdateProjectRequest) error {
 	project, err := s.projectRepo.GetByID(ctx, projectID)
 	if err != nil {
 		return appErrors.NewNotFoundError("Project not found")
@@ -88,7 +89,7 @@ func (s *projectService) UpdateProject(ctx context.Context, projectID ulid.ULID,
 }
 
 // ArchiveProject archives a project (sets status to archived, read-only, reversible)
-func (s *projectService) ArchiveProject(ctx context.Context, projectID ulid.ULID) error {
+func (s *projectService) ArchiveProject(ctx context.Context, projectID uuid.UUID) error {
 	// Verify project exists
 	project, err := s.projectRepo.GetByID(ctx, projectID)
 	if err != nil {
@@ -111,7 +112,7 @@ func (s *projectService) ArchiveProject(ctx context.Context, projectID ulid.ULID
 }
 
 // UnarchiveProject unarchives a project (sets status back to active)
-func (s *projectService) UnarchiveProject(ctx context.Context, projectID ulid.ULID) error {
+func (s *projectService) UnarchiveProject(ctx context.Context, projectID uuid.UUID) error {
 	// Verify project exists
 	project, err := s.projectRepo.GetByID(ctx, projectID)
 	if err != nil {
@@ -134,7 +135,7 @@ func (s *projectService) UnarchiveProject(ctx context.Context, projectID ulid.UL
 }
 
 // DeleteProject soft deletes a project
-func (s *projectService) DeleteProject(ctx context.Context, projectID ulid.ULID) error {
+func (s *projectService) DeleteProject(ctx context.Context, projectID uuid.UUID) error {
 	// Verify project exists before deletion
 	_, err := s.projectRepo.GetByID(ctx, projectID)
 	if err != nil {
@@ -150,12 +151,12 @@ func (s *projectService) DeleteProject(ctx context.Context, projectID ulid.ULID)
 }
 
 // GetProjectsByOrganization retrieves all projects for an organization
-func (s *projectService) GetProjectsByOrganization(ctx context.Context, orgID ulid.ULID) ([]*orgDomain.Project, error) {
+func (s *projectService) GetProjectsByOrganization(ctx context.Context, orgID uuid.UUID) ([]*orgDomain.Project, error) {
 	return s.projectRepo.GetByOrganizationID(ctx, orgID)
 }
 
 // GetProjectCount returns the number of projects in an organization
-func (s *projectService) GetProjectCount(ctx context.Context, orgID ulid.ULID) (int, error) {
+func (s *projectService) GetProjectCount(ctx context.Context, orgID uuid.UUID) (int, error) {
 	projects, err := s.projectRepo.GetByOrganizationID(ctx, orgID)
 	if err != nil {
 		return 0, appErrors.NewInternalError("Failed to get projects", err)
@@ -164,7 +165,7 @@ func (s *projectService) GetProjectCount(ctx context.Context, orgID ulid.ULID) (
 }
 
 // CanUserAccessProject checks if user can access a project
-func (s *projectService) CanUserAccessProject(ctx context.Context, userID, projectID ulid.ULID) (bool, error) {
+func (s *projectService) CanUserAccessProject(ctx context.Context, userID, projectID uuid.UUID) (bool, error) {
 	// Get project to find organization
 	project, err := s.projectRepo.GetByID(ctx, projectID)
 	if err != nil {
@@ -176,7 +177,7 @@ func (s *projectService) CanUserAccessProject(ctx context.Context, userID, proje
 }
 
 // ValidateProjectAccess validates if user can access a project (throws error if not)
-func (s *projectService) ValidateProjectAccess(ctx context.Context, userID, projectID ulid.ULID) error {
+func (s *projectService) ValidateProjectAccess(ctx context.Context, userID, projectID uuid.UUID) error {
 	canAccess, err := s.CanUserAccessProject(ctx, userID, projectID)
 	if err != nil {
 		return err

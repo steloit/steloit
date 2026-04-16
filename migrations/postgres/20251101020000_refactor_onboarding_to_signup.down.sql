@@ -2,7 +2,7 @@
 
 -- Recreate onboarding tables (reverse order)
 CREATE TABLE IF NOT EXISTS onboarding_questions (
-    id CHAR(26) PRIMARY KEY,
+    id UUID PRIMARY KEY,
     question_text TEXT NOT NULL,
     question_type VARCHAR(50) NOT NULL,
     options JSONB,
@@ -13,9 +13,9 @@ CREATE TABLE IF NOT EXISTS onboarding_questions (
 );
 
 CREATE TABLE IF NOT EXISTS onboarding_responses (
-    id CHAR(26) PRIMARY KEY,
-    user_id CHAR(26) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    question_id CHAR(26) NOT NULL REFERENCES onboarding_questions(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    question_id UUID NOT NULL REFERENCES onboarding_questions(id) ON DELETE CASCADE,
     response_value TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(user_id, question_id)

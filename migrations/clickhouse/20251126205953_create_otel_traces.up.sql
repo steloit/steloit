@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS otel_traces (
     trace_state Nullable(String) CODEC(ZSTD(1)),
 
     -- Multi-Tenancy
-    project_id String CODEC(ZSTD(1)),
+    project_id UUID CODEC(ZSTD(1)),
 
     -- OTLP Span Metadata
     span_name String CODEC(ZSTD(1)),

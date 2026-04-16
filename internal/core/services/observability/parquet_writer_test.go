@@ -74,38 +74,38 @@ func TestParquetWriter_GetZstdLevel(t *testing.T) {
 
 func TestNewParquetWriter_ClampsCompressionLevel(t *testing.T) {
 	tests := []struct {
-		name           string
-		inputLevel     int
+		name            string
+		inputLevel      int
 		expectedClamped int
 	}{
 		{
-			name:           "level 0 clamped to 1",
-			inputLevel:     0,
+			name:            "level 0 clamped to 1",
+			inputLevel:      0,
 			expectedClamped: 1,
 		},
 		{
-			name:           "negative level clamped to 1",
-			inputLevel:     -5,
+			name:            "negative level clamped to 1",
+			inputLevel:      -5,
 			expectedClamped: 1,
 		},
 		{
-			name:           "level 23 clamped to 22",
-			inputLevel:     23,
+			name:            "level 23 clamped to 22",
+			inputLevel:      23,
 			expectedClamped: 22,
 		},
 		{
-			name:           "level 100 clamped to 22",
-			inputLevel:     100,
+			name:            "level 100 clamped to 22",
+			inputLevel:      100,
 			expectedClamped: 22,
 		},
 		{
-			name:           "valid level 3 unchanged",
-			inputLevel:     3,
+			name:            "valid level 3 unchanged",
+			inputLevel:      3,
 			expectedClamped: 3,
 		},
 		{
-			name:           "valid level 15 unchanged",
-			inputLevel:     15,
+			name:            "valid level 15 unchanged",
+			inputLevel:      15,
 			expectedClamped: 15,
 		},
 	}

@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/observability"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 // telemetryDeduplicationService implements the TelemetryDeduplicationService interface
@@ -63,16 +65,16 @@ func (s *telemetryDeduplicationService) CheckBatchDuplicates(ctx context.Context
 
 // ClaimEvents atomically claims dedup IDs for processing
 // Returns: (claimedIDs, duplicateIDs, error)
-func (s *telemetryDeduplicationService) ClaimEvents(ctx context.Context, projectID ulid.ULID, batchID ulid.ULID, dedupIDs []string, ttl time.Duration) ([]string, []string, error) {
+func (s *telemetryDeduplicationService) ClaimEvents(ctx context.Context, projectID uuid.UUID, batchID uuid.UUID, dedupIDs []string, ttl time.Duration) ([]string, []string, error) {
 	if len(dedupIDs) == 0 {
 		return nil, nil, nil
 	}
 
-	if projectID.IsZero() {
+	if projectID == uuid.Nil {
 		return nil, nil, errors.New("project ID cannot be zero")
 	}
 
-	if batchID.IsZero() {
+	if batchID == uuid.Nil {
 		return nil, nil, errors.New("batch ID cannot be zero")
 	}
 
@@ -107,14 +109,14 @@ func (s *telemetryDeduplicationService) ReleaseEvents(ctx context.Context, dedup
 }
 
 // RegisterEvent registers a new event for deduplication
-func (s *telemetryDeduplicationService) RegisterEvent(ctx context.Context, dedupID string, batchID ulid.ULID, projectID ulid.ULID, ttl time.Duration) error {
+func (s *telemetryDeduplicationService) RegisterEvent(ctx context.Context, dedupID string, batchID uuid.UUID, projectID uuid.UUID, ttl time.Duration) error {
 	if dedupID == "" {
 		return errors.New("dedup ID cannot be empty")
 	}
-	if batchID.IsZero() {
+	if batchID == uuid.Nil {
 		return errors.New("batch ID cannot be zero")
 	}
-	if projectID.IsZero() {
+	if projectID == uuid.Nil {
 		return errors.New("project ID cannot be zero")
 	}
 
@@ -145,11 +147,11 @@ func (s *telemetryDeduplicationService) RegisterEvent(ctx context.Context, dedup
 
 // RegisterProcessedEventsBatch registers multiple processed events for deduplication
 // Uses the default TTL from configuration (typically 24 hours for telemetry events)
-func (s *telemetryDeduplicationService) RegisterProcessedEventsBatch(ctx context.Context, projectID ulid.ULID, batchID ulid.ULID, dedupIDs []string) error {
-	if projectID.IsZero() {
+func (s *telemetryDeduplicationService) RegisterProcessedEventsBatch(ctx context.Context, projectID uuid.UUID, batchID uuid.UUID, dedupIDs []string) error {
+	if projectID == uuid.Nil {
 		return errors.New("project ID cannot be zero")
 	}
-	if batchID.IsZero() {
+	if batchID == uuid.Nil {
 		return errors.New("batch ID cannot be zero")
 	}
 	if len(dedupIDs) == 0 {
@@ -197,7 +199,7 @@ func (s *telemetryDeduplicationService) RegisterProcessedEventsBatch(ctx context
 	return nil
 }
 
-// CalculateOptimalTTL calculates the optimal TTL based on ULID timestamp and default TTL
+// CalculateOptimalTTL calculates the optimal TTL based on UUID timestamp and default TTL
 func (s *telemetryDeduplicationService) CalculateOptimalTTL(ctx context.Context, dedupID string, defaultTTL time.Duration) (time.Duration, error) {
 	if dedupID == "" {
 		return 0, errors.New("dedup ID cannot be empty")
@@ -225,8 +227,8 @@ func (s *telemetryDeduplicationService) CleanupExpired(ctx context.Context) (int
 
 // CleanupByProject removes expired entries for a specific project
 // Note: With Redis-only approach, TTL handles auto-expiry per key
-func (s *telemetryDeduplicationService) CleanupByProject(ctx context.Context, projectID ulid.ULID, olderThan time.Time) (int64, error) {
-	if projectID.IsZero() {
+func (s *telemetryDeduplicationService) CleanupByProject(ctx context.Context, projectID uuid.UUID, olderThan time.Time) (int64, error) {
+	if projectID == uuid.Nil {
 		return 0, errors.New("project ID cannot be zero")
 	}
 
@@ -255,8 +257,8 @@ func (s *telemetryDeduplicationService) SyncToRedis(ctx context.Context, entries
 func (s *telemetryDeduplicationService) ValidateRedisHealth(ctx context.Context) (*observability.RedisHealthStatus, error) {
 	// Create a test key to measure latency
 	testKey := "test-span-id-0102030405060708"
-	testBatchID := ulid.New()
-	testProjectID := ulid.New()
+	testBatchID := uid.New()
+	testProjectID := uid.New()
 
 	start := time.Now()
 
@@ -310,8 +312,8 @@ func (s *telemetryDeduplicationService) ValidateRedisHealth(ctx context.Context)
 }
 
 // GetDeduplicationStats retrieves deduplication performance statistics
-func (s *telemetryDeduplicationService) GetDeduplicationStats(ctx context.Context, projectID ulid.ULID) (*observability.DeduplicationStats, error) {
-	if projectID.IsZero() {
+func (s *telemetryDeduplicationService) GetDeduplicationStats(ctx context.Context, projectID uuid.UUID) (*observability.DeduplicationStats, error) {
+	if projectID == uuid.Nil {
 		return nil, errors.New("project ID cannot be zero")
 	}
 

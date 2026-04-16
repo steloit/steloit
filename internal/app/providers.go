@@ -10,14 +10,15 @@ import (
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/config"
 	"brokle/internal/core/domain/analytics"
 	annotationDomain "brokle/internal/core/domain/annotation"
 	"brokle/internal/core/domain/auth"
-	commentDomain "brokle/internal/core/domain/comment"
 	"brokle/internal/core/domain/billing"
+	commentDomain "brokle/internal/core/domain/comment"
 	"brokle/internal/core/domain/common"
-	websiteDomain "brokle/internal/core/domain/website"
 	credentialsDomain "brokle/internal/core/domain/credentials"
 	dashboardDomain "brokle/internal/core/domain/dashboard"
 	evaluationDomain "brokle/internal/core/domain/evaluation"
@@ -27,11 +28,12 @@ import (
 	promptDomain "brokle/internal/core/domain/prompt"
 	storageDomain "brokle/internal/core/domain/storage"
 	"brokle/internal/core/domain/user"
+	websiteDomain "brokle/internal/core/domain/website"
 	analyticsService "brokle/internal/core/services/analytics"
 	annotationService "brokle/internal/core/services/annotation"
 	authService "brokle/internal/core/services/auth"
-	commentService "brokle/internal/core/services/comment"
 	billingService "brokle/internal/core/services/billing"
+	commentService "brokle/internal/core/services/comment"
 	credentialsService "brokle/internal/core/services/credentials"
 	dashboardService "brokle/internal/core/services/dashboard"
 	evaluationService "brokle/internal/core/services/evaluation"
@@ -51,8 +53,8 @@ import (
 	analyticsRepo "brokle/internal/infrastructure/repository/analytics"
 	annotationRepo "brokle/internal/infrastructure/repository/annotation"
 	authRepo "brokle/internal/infrastructure/repository/auth"
-	commentRepo "brokle/internal/infrastructure/repository/comment"
 	billingRepo "brokle/internal/infrastructure/repository/billing"
+	commentRepo "brokle/internal/infrastructure/repository/comment"
 	credentialsRepo "brokle/internal/infrastructure/repository/credentials"
 	dashboardRepo "brokle/internal/infrastructure/repository/dashboard"
 	evaluationRepo "brokle/internal/infrastructure/repository/evaluation"
@@ -73,7 +75,7 @@ import (
 	evaluationWorker "brokle/internal/workers/evaluation"
 	"brokle/pkg/email"
 	"brokle/pkg/encryption"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 type DeploymentMode string
@@ -244,13 +246,13 @@ type PlaygroundRepositories struct {
 }
 
 type EvaluationRepositories struct {
-	ScoreConfig         evaluationDomain.ScoreConfigRepository
-	Dataset             evaluationDomain.DatasetRepository
-	DatasetItem         evaluationDomain.DatasetItemRepository
-	DatasetVersion      evaluationDomain.DatasetVersionRepository
-	Experiment          evaluationDomain.ExperimentRepository
-	ExperimentItem      evaluationDomain.ExperimentItemRepository
-	ExperimentConfig    evaluationDomain.ExperimentConfigRepository
+	ScoreConfig        evaluationDomain.ScoreConfigRepository
+	Dataset            evaluationDomain.DatasetRepository
+	DatasetItem        evaluationDomain.DatasetItemRepository
+	DatasetVersion     evaluationDomain.DatasetVersionRepository
+	Experiment         evaluationDomain.ExperimentRepository
+	ExperimentItem     evaluationDomain.ExperimentItemRepository
+	ExperimentConfig   evaluationDomain.ExperimentConfigRepository
 	Evaluator          evaluationDomain.EvaluatorRepository
 	EvaluatorExecution evaluationDomain.EvaluatorExecutionRepository
 }
@@ -320,13 +322,13 @@ type PlaygroundServices struct {
 }
 
 type EvaluationServices struct {
-	ScoreConfig         evaluationDomain.ScoreConfigService
-	Dataset             evaluationDomain.DatasetService
-	DatasetItem         evaluationDomain.DatasetItemService
-	DatasetVersion      evaluationDomain.DatasetVersionService
-	Experiment          evaluationDomain.ExperimentService
-	ExperimentItem      evaluationDomain.ExperimentItemService
-	ExperimentWizard    evaluationDomain.ExperimentWizardService
+	ScoreConfig        evaluationDomain.ScoreConfigService
+	Dataset            evaluationDomain.DatasetService
+	DatasetItem        evaluationDomain.DatasetItemService
+	DatasetVersion     evaluationDomain.DatasetVersionService
+	Experiment         evaluationDomain.ExperimentService
+	ExperimentItem     evaluationDomain.ExperimentItemService
+	ExperimentWizard   evaluationDomain.ExperimentWizardService
 	Evaluator          evaluationDomain.EvaluatorService
 	EvaluatorExecution evaluationDomain.EvaluatorExecutionService
 }
@@ -373,7 +375,7 @@ func ProvideWorkers(core *CoreContainer) (*WorkerContainer, error) {
 
 	consumerConfig := &workers.TelemetryStreamConsumerConfig{
 		ConsumerGroup:     "telemetry-workers",
-		ConsumerID:        "worker-" + ulid.New().String(),
+		ConsumerID:        "worker-" + uid.New().String(),
 		BatchSize:         50,
 		BlockDuration:     time.Second,
 		MaxRetries:        3,
@@ -408,7 +410,7 @@ func ProvideWorkers(core *CoreContainer) (*WorkerContainer, error) {
 
 	evaluatorWorkerConfig := &evaluationWorker.EvaluatorWorkerConfig{
 		ConsumerGroup:     "evaluator-workers",
-		ConsumerID:        "evaluator-worker-" + ulid.New().String(),
+		ConsumerID:        "evaluator-worker-" + uid.New().String(),
 		BatchSize:         core.Config.Workers.EvaluatorWorker.BatchSize,
 		BlockDuration:     time.Duration(core.Config.Workers.EvaluatorWorker.BlockDurationMs) * time.Millisecond,
 		MaxRetries:        core.Config.Workers.EvaluatorWorker.MaxRetries,
@@ -446,7 +448,7 @@ func ProvideWorkers(core *CoreContainer) (*WorkerContainer, error) {
 	// Create evaluation worker
 	evalWorkerConfig := &evaluationWorker.EvaluationWorkerConfig{
 		ConsumerGroup:  "evaluation-execution-workers",
-		ConsumerID:     "eval-worker-" + ulid.New().String(),
+		ConsumerID:     "eval-worker-" + uid.New().String(),
 		BatchSize:      10,
 		BlockDuration:  time.Second,
 		MaxRetries:     3,
@@ -467,7 +469,7 @@ func ProvideWorkers(core *CoreContainer) (*WorkerContainer, error) {
 
 	manualTriggerWorkerConfig := &evaluationWorker.ManualTriggerWorkerConfig{
 		ConsumerGroup:  "manual-trigger-workers",
-		ConsumerID:     "manual-trigger-" + ulid.New().String(),
+		ConsumerID:     "manual-trigger-" + uid.New().String(),
 		BlockDuration:  time.Second,
 		MaxRetries:     3,
 		RetryBackoff:   500 * time.Millisecond,
@@ -1538,17 +1540,17 @@ type simpleBillingOrgService struct {
 	logger *slog.Logger
 }
 
-func (s *simpleBillingOrgService) GetBillingTier(ctx context.Context, orgID ulid.ULID) (string, error) {
+func (s *simpleBillingOrgService) GetBillingTier(ctx context.Context, orgID uuid.UUID) (string, error) {
 	// Default to free tier for now - in production this would query the org service
 	return "free", nil
 }
 
-func (s *simpleBillingOrgService) GetDiscountRate(ctx context.Context, orgID ulid.ULID) (decimal.Decimal, error) {
+func (s *simpleBillingOrgService) GetDiscountRate(ctx context.Context, orgID uuid.UUID) (decimal.Decimal, error) {
 	// Default to no discount - in production this would query the org service
 	return decimal.Zero, nil
 }
 
-func (s *simpleBillingOrgService) GetPaymentMethod(ctx context.Context, orgID ulid.ULID) (*billing.PaymentMethod, error) {
+func (s *simpleBillingOrgService) GetPaymentMethod(ctx context.Context, orgID uuid.UUID) (*billing.PaymentMethod, error) {
 	// No payment method by default - in production this would query the org service
 	return nil, nil
 }

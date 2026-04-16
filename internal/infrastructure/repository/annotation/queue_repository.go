@@ -5,9 +5,10 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/annotation"
 	"brokle/internal/infrastructure/shared"
-	"brokle/pkg/ulid"
 
 	"gorm.io/gorm"
 )
@@ -40,7 +41,7 @@ func (r *QueueRepository) Create(ctx context.Context, queue *annotation.Annotati
 }
 
 // GetByID retrieves an annotation queue by its ID.
-func (r *QueueRepository) GetByID(ctx context.Context, id, projectID ulid.ULID) (*annotation.AnnotationQueue, error) {
+func (r *QueueRepository) GetByID(ctx context.Context, id, projectID uuid.UUID) (*annotation.AnnotationQueue, error) {
 	var queue annotation.AnnotationQueue
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("id = ? AND project_id = ?", id.String(), projectID.String()).
@@ -56,7 +57,7 @@ func (r *QueueRepository) GetByID(ctx context.Context, id, projectID ulid.ULID) 
 }
 
 // GetByName retrieves an annotation queue by name within a project.
-func (r *QueueRepository) GetByName(ctx context.Context, name string, projectID ulid.ULID) (*annotation.AnnotationQueue, error) {
+func (r *QueueRepository) GetByName(ctx context.Context, name string, projectID uuid.UUID) (*annotation.AnnotationQueue, error) {
 	var queue annotation.AnnotationQueue
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("project_id = ? AND name = ?", projectID.String(), name).
@@ -72,7 +73,7 @@ func (r *QueueRepository) GetByName(ctx context.Context, name string, projectID 
 }
 
 // List retrieves all annotation queues for a project with optional filtering and pagination.
-func (r *QueueRepository) List(ctx context.Context, projectID ulid.ULID, filter *annotation.QueueFilter, offset, limit int) ([]*annotation.AnnotationQueue, int64, error) {
+func (r *QueueRepository) List(ctx context.Context, projectID uuid.UUID, filter *annotation.QueueFilter, offset, limit int) ([]*annotation.AnnotationQueue, int64, error) {
 	var queues []*annotation.AnnotationQueue
 	var total int64
 
@@ -117,7 +118,7 @@ func (r *QueueRepository) Update(ctx context.Context, queue *annotation.Annotati
 }
 
 // Delete removes an annotation queue by ID.
-func (r *QueueRepository) Delete(ctx context.Context, id, projectID ulid.ULID) error {
+func (r *QueueRepository) Delete(ctx context.Context, id, projectID uuid.UUID) error {
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("id = ? AND project_id = ?", id.String(), projectID.String()).
 		Delete(&annotation.AnnotationQueue{})
@@ -133,7 +134,7 @@ func (r *QueueRepository) Delete(ctx context.Context, id, projectID ulid.ULID) e
 }
 
 // ExistsByName checks if a queue with the given name exists in the project.
-func (r *QueueRepository) ExistsByName(ctx context.Context, projectID ulid.ULID, name string) (bool, error) {
+func (r *QueueRepository) ExistsByName(ctx context.Context, projectID uuid.UUID, name string) (bool, error) {
 	var count int64
 	result := r.getDB(ctx).WithContext(ctx).
 		Model(&annotation.AnnotationQueue{}).

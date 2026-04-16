@@ -8,9 +8,9 @@ import (
 	"brokle/internal/transport/http/handlers/shared"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // Handler handles HTTP requests for project overview
@@ -66,9 +66,9 @@ func (h *Handler) GetOverview(c *gin.Context) {
 		return
 	}
 
-	projectID, err := ulid.Parse(projectIDStr)
+	projectID, err := uuid.Parse(projectIDStr)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 

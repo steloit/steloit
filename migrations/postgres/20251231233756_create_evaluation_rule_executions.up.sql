@@ -2,9 +2,9 @@
 -- Design patterns from Langfuse (JobExecution) and Opik (AutomationRuleEvaluatorLogs)
 
 CREATE TABLE evaluation_rule_executions (
-    id              CHAR(26) PRIMARY KEY,
-    rule_id         CHAR(26) NOT NULL REFERENCES evaluation_rules(id) ON DELETE CASCADE,
-    project_id      CHAR(26) NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    id              UUID PRIMARY KEY,
+    rule_id         UUID NOT NULL REFERENCES evaluation_rules(id) ON DELETE CASCADE,
+    project_id      UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     status          VARCHAR(20) NOT NULL CHECK (status IN ('pending', 'running', 'completed', 'failed', 'cancelled')),
     trigger_type    VARCHAR(20) NOT NULL DEFAULT 'automatic' CHECK (trigger_type IN ('automatic', 'manual')),
     spans_matched   INTEGER NOT NULL DEFAULT 0,

@@ -29,7 +29,7 @@ export const apiKeyQueryKeys = {
 /**
  * Query hook to list API keys for a project
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @param filters - Optional filters (status, pagination, sorting)
  * @param options - React Query options
  *

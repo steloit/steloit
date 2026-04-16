@@ -1,7 +1,7 @@
 -- Evaluation Rules for automated span/trace scoring
 CREATE TABLE evaluation_rules (
-    id CHAR(26) PRIMARY KEY,
-    project_id CHAR(26) NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     description TEXT,
     status VARCHAR(20) NOT NULL DEFAULT 'inactive',
@@ -13,7 +13,7 @@ CREATE TABLE evaluation_rules (
     scorer_type VARCHAR(20) NOT NULL,
     scorer_config JSONB NOT NULL,
     variable_mapping JSONB NOT NULL DEFAULT '[]',
-    created_by CHAR(26) REFERENCES users(id) ON DELETE SET NULL,
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 

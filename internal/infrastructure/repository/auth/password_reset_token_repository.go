@@ -8,8 +8,9 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	authDomain "brokle/internal/core/domain/auth"
-	"brokle/pkg/ulid"
 )
 
 // passwordResetTokenRepository implements authDomain.PasswordResetTokenRepository using GORM
@@ -30,7 +31,7 @@ func (r *passwordResetTokenRepository) Create(ctx context.Context, token *authDo
 }
 
 // GetByID retrieves a password reset token by ID
-func (r *passwordResetTokenRepository) GetByID(ctx context.Context, id ulid.ULID) (*authDomain.PasswordResetToken, error) {
+func (r *passwordResetTokenRepository) GetByID(ctx context.Context, id uuid.UUID) (*authDomain.PasswordResetToken, error) {
 	var token authDomain.PasswordResetToken
 	err := r.db.WithContext(ctx).Where("id = ?", id).First(&token).Error
 	if err != nil {
@@ -56,7 +57,7 @@ func (r *passwordResetTokenRepository) GetByToken(ctx context.Context, tokenStr 
 }
 
 // GetByUserID retrieves all password reset tokens for a user
-func (r *passwordResetTokenRepository) GetByUserID(ctx context.Context, userID ulid.ULID) ([]*authDomain.PasswordResetToken, error) {
+func (r *passwordResetTokenRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]*authDomain.PasswordResetToken, error) {
 	var tokens []*authDomain.PasswordResetToken
 	err := r.db.WithContext(ctx).Where("user_id = ?", userID).Order("created_at DESC").Find(&tokens).Error
 	if err != nil {
@@ -71,12 +72,12 @@ func (r *passwordResetTokenRepository) Update(ctx context.Context, token *authDo
 }
 
 // Delete deletes a password reset token by ID
-func (r *passwordResetTokenRepository) Delete(ctx context.Context, id ulid.ULID) error {
+func (r *passwordResetTokenRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return r.db.WithContext(ctx).Delete(&authDomain.PasswordResetToken{}, "id = ?", id).Error
 }
 
 // MarkAsUsed marks a password reset token as used by setting the used_at timestamp
-func (r *passwordResetTokenRepository) MarkAsUsed(ctx context.Context, id ulid.ULID) error {
+func (r *passwordResetTokenRepository) MarkAsUsed(ctx context.Context, id uuid.UUID) error {
 	now := time.Now()
 	return r.db.WithContext(ctx).Model(&authDomain.PasswordResetToken{}).Where("id = ?", id).Updates(map[string]interface{}{
 		"used_at":    now,
@@ -85,7 +86,7 @@ func (r *passwordResetTokenRepository) MarkAsUsed(ctx context.Context, id ulid.U
 }
 
 // IsUsed checks if a password reset token is used
-func (r *passwordResetTokenRepository) IsUsed(ctx context.Context, id ulid.ULID) (bool, error) {
+func (r *passwordResetTokenRepository) IsUsed(ctx context.Context, id uuid.UUID) (bool, error) {
 	var count int64
 	err := r.db.WithContext(ctx).Model(&authDomain.PasswordResetToken{}).Where("id = ? AND used_at IS NOT NULL", id).Count(&count).Error
 	if err != nil {
@@ -95,7 +96,7 @@ func (r *passwordResetTokenRepository) IsUsed(ctx context.Context, id ulid.ULID)
 }
 
 // IsValid checks if a password reset token is valid (not used and not expired)
-func (r *passwordResetTokenRepository) IsValid(ctx context.Context, id ulid.ULID) (bool, error) {
+func (r *passwordResetTokenRepository) IsValid(ctx context.Context, id uuid.UUID) (bool, error) {
 	var count int64
 	err := r.db.WithContext(ctx).Model(&authDomain.PasswordResetToken{}).Where("id = ? AND used_at IS NULL AND expires_at > ?", id, time.Now()).Count(&count).Error
 	if err != nil {
@@ -105,7 +106,7 @@ func (r *passwordResetTokenRepository) IsValid(ctx context.Context, id ulid.ULID
 }
 
 // GetValidTokenByUserID retrieves the most recent valid password reset token for a user
-func (r *passwordResetTokenRepository) GetValidTokenByUserID(ctx context.Context, userID ulid.ULID) (*authDomain.PasswordResetToken, error) {
+func (r *passwordResetTokenRepository) GetValidTokenByUserID(ctx context.Context, userID uuid.UUID) (*authDomain.PasswordResetToken, error) {
 	var token authDomain.PasswordResetToken
 	err := r.db.WithContext(ctx).Where("user_id = ? AND used_at IS NULL AND expires_at > ?", userID, time.Now()).Order("created_at DESC").First(&token).Error
 	if err != nil {
@@ -128,7 +129,7 @@ func (r *passwordResetTokenRepository) CleanupUsedTokens(ctx context.Context, ol
 }
 
 // InvalidateAllUserTokens marks all existing tokens for a user as used (invalidates them)
-func (r *passwordResetTokenRepository) InvalidateAllUserTokens(ctx context.Context, userID ulid.ULID) error {
+func (r *passwordResetTokenRepository) InvalidateAllUserTokens(ctx context.Context, userID uuid.UUID) error {
 	now := time.Now()
 	return r.db.WithContext(ctx).Model(&authDomain.PasswordResetToken{}).Where("user_id = ? AND used_at IS NULL", userID).Updates(map[string]interface{}{
 		"used_at":    now,

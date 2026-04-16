@@ -2,15 +2,15 @@
 CREATE TYPE comment_entity_type AS ENUM ('trace', 'span');
 
 CREATE TABLE trace_comments (
-    id CHAR(26) PRIMARY KEY,
+    id UUID PRIMARY KEY,
     entity_type comment_entity_type NOT NULL DEFAULT 'trace',
     entity_id VARCHAR(64) NOT NULL,  -- trace_id or span_id
-    project_id CHAR(26) NOT NULL,
+    project_id UUID NOT NULL,
     content TEXT NOT NULL,
 
     -- Audit trail (following Opik/Langfuse patterns)
-    created_by CHAR(26),
-    updated_by CHAR(26),
+    created_by UUID,
+    updated_by UUID,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     deleted_at TIMESTAMP WITH TIME ZONE,

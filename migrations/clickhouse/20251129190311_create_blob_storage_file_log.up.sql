@@ -9,12 +9,12 @@
 CREATE TABLE IF NOT EXISTS blob_storage_file_log (
     -- Identifiers
     id String,
-    project_id String,
+    project_id UUID,
 
     -- Entity reference
     entity_type LowCardinality(String),
     entity_id String,
-    event_id String,
+    event_id UUID,
 
     -- Storage location
     bucket_name String,

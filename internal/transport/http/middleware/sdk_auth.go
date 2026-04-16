@@ -6,9 +6,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/auth"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 )
 
 // SDKAuthMiddleware handles API key authentication for SDK routes
@@ -30,11 +31,11 @@ func NewSDKAuthMiddleware(
 
 // Context keys for SDK authentication
 const (
-	SDKAuthContextKey  = "sdk_auth_context"
-	APIKeyIDKey        = "api_key_id"
-	ProjectIDKey       = "project_id"
-	OrganizationIDKey  = "organization_id"
-	EnvironmentKey     = "environment"
+	SDKAuthContextKey = "sdk_auth_context"
+	APIKeyIDKey       = "api_key_id"
+	ProjectIDKey      = "project_id"
+	OrganizationIDKey = "organization_id"
+	EnvironmentKey    = "environment"
 )
 
 // RequireSDKAuth middleware validates self-contained API keys for SDK routes
@@ -97,35 +98,35 @@ func GetSDKAuthContext(c *gin.Context) (*auth.AuthContext, bool) {
 }
 
 // GetAPIKeyID retrieves API key ID from Gin context
-func GetAPIKeyID(c *gin.Context) (*ulid.ULID, bool) {
+func GetAPIKeyID(c *gin.Context) (*uuid.UUID, bool) {
 	keyID, exists := c.Get(APIKeyIDKey)
 	if !exists {
 		return nil, false
 	}
 
-	id, ok := keyID.(*ulid.ULID)
+	id, ok := keyID.(*uuid.UUID)
 	return id, ok
 }
 
 // GetProjectID retrieves project ID from Gin context
-func GetProjectID(c *gin.Context) (*ulid.ULID, bool) {
+func GetProjectID(c *gin.Context) (*uuid.UUID, bool) {
 	projectID, exists := c.Get(ProjectIDKey)
 	if !exists {
 		return nil, false
 	}
 
-	id, ok := projectID.(*ulid.ULID)
+	id, ok := projectID.(*uuid.UUID)
 	return id, ok
 }
 
 // GetOrganizationID retrieves organization ID from Gin context
-func GetOrganizationID(c *gin.Context) (*ulid.ULID, bool) {
+func GetOrganizationID(c *gin.Context) (*uuid.UUID, bool) {
 	organizationID, exists := c.Get(OrganizationIDKey)
 	if !exists {
 		return nil, false
 	}
 
-	id, ok := organizationID.(*ulid.ULID)
+	id, ok := organizationID.(*uuid.UUID)
 	return id, ok
 }
 
@@ -139,4 +140,3 @@ func GetEnvironment(c *gin.Context) (string, bool) {
 	env, ok := environment.(string)
 	return env, ok
 }
-

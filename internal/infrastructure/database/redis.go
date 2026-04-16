@@ -1,9 +1,9 @@
 package database
 
 import (
-	"log/slog"
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/redis/go-redis/v9"

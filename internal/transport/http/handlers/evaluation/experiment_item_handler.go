@@ -5,11 +5,11 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	evaluationDomain "brokle/internal/core/domain/evaluation"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 )
 
 type ExperimentItemHandler struct {
@@ -41,15 +41,15 @@ func NewExperimentItemHandler(
 // @Failure 404 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/experiments/{experimentId}/items [get]
 func (h *ExperimentItemHandler) List(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	experimentID, err := ulid.Parse(c.Param("experimentId"))
+	experimentID, err := uuid.Parse(c.Param("experimentId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid experiment ID", "experimentId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid experiment ID", "experimentId must be a valid UUID"))
 		return
 	}
 

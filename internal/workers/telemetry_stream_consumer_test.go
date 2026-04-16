@@ -20,18 +20,18 @@ func TestTelemetryStreamConsumer_GroupRecordsBySignalAndDay(t *testing.T) {
 	day2Early := time.Date(2024, 12, 16, 0, 0, 1, 0, time.UTC)
 
 	tests := []struct {
-		name           string
-		records        []observability.RawTelemetryRecord
+		name            string
+		records         []observability.RawTelemetryRecord
 		expectedSignals int
-		expectedDays    map[string]int // signal -> number of day groups
+		expectedDays    map[string]int            // signal -> number of day groups
 		expectedCounts  map[string]map[string]int // signal -> day -> count
 	}{
 		{
-			name:           "empty records returns empty map",
-			records:        []observability.RawTelemetryRecord{},
+			name:            "empty records returns empty map",
+			records:         []observability.RawTelemetryRecord{},
 			expectedSignals: 0,
-			expectedDays:   map[string]int{},
-			expectedCounts: map[string]map[string]int{},
+			expectedDays:    map[string]int{},
+			expectedCounts:  map[string]map[string]int{},
 		},
 		{
 			name: "single signal single day",
@@ -40,7 +40,7 @@ func TestTelemetryStreamConsumer_GroupRecordsBySignalAndDay(t *testing.T) {
 				{RecordID: "2", SignalType: observability.SignalTypeTraces, Timestamp: day1},
 			},
 			expectedSignals: 1,
-			expectedDays:   map[string]int{observability.SignalTypeTraces: 1},
+			expectedDays:    map[string]int{observability.SignalTypeTraces: 1},
 			expectedCounts: map[string]map[string]int{
 				observability.SignalTypeTraces: {"2024-12-15": 2},
 			},
@@ -53,7 +53,7 @@ func TestTelemetryStreamConsumer_GroupRecordsBySignalAndDay(t *testing.T) {
 				{RecordID: "3", SignalType: observability.SignalTypeTraces, Timestamp: day1},
 			},
 			expectedSignals: 1,
-			expectedDays:   map[string]int{observability.SignalTypeTraces: 2},
+			expectedDays:    map[string]int{observability.SignalTypeTraces: 2},
 			expectedCounts: map[string]map[string]int{
 				observability.SignalTypeTraces: {"2024-12-15": 2, "2024-12-16": 1},
 			},
@@ -105,7 +105,7 @@ func TestTelemetryStreamConsumer_GroupRecordsBySignalAndDay(t *testing.T) {
 				{RecordID: "2", SignalType: observability.SignalTypeTraces, Timestamp: day2Early}, // 00:00:01 on Dec 16
 			},
 			expectedSignals: 1,
-			expectedDays:   map[string]int{observability.SignalTypeTraces: 2},
+			expectedDays:    map[string]int{observability.SignalTypeTraces: 2},
 			expectedCounts: map[string]map[string]int{
 				observability.SignalTypeTraces: {"2024-12-15": 1, "2024-12-16": 1},
 			},
@@ -117,7 +117,7 @@ func TestTelemetryStreamConsumer_GroupRecordsBySignalAndDay(t *testing.T) {
 				{RecordID: "2", SignalType: observability.SignalTypeGenAI, Timestamp: day1},
 			},
 			expectedSignals: 1,
-			expectedDays:   map[string]int{observability.SignalTypeGenAI: 1},
+			expectedDays:    map[string]int{observability.SignalTypeGenAI: 1},
 			expectedCounts: map[string]map[string]int{
 				observability.SignalTypeGenAI: {"2024-12-15": 2},
 			},

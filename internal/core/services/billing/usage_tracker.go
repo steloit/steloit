@@ -9,8 +9,9 @@ import (
 
 	"github.com/shopspring/decimal"
 
+	"github.com/google/uuid"
+
 	billingDomain "brokle/internal/core/domain/billing"
-	"brokle/pkg/ulid"
 )
 
 // UsageTracker manages organization usage tracking and quotas
@@ -18,7 +19,7 @@ type UsageTracker struct {
 	usageRepo    billingDomain.UsageRepository
 	quotaRepo    billingDomain.QuotaRepository
 	logger       *slog.Logger
-	quotaCache   map[ulid.ULID]*billingDomain.UsageQuota
+	quotaCache   map[uuid.UUID]*billingDomain.UsageQuota
 	stopCh       chan struct{}
 	wg           sync.WaitGroup
 	cacheExpiry  time.Duration
@@ -33,7 +34,7 @@ type UsageUpdate struct {
 	Requests       int64
 	Tokens         int64
 	Cost           float64
-	OrganizationID ulid.ULID
+	OrganizationID uuid.UUID
 }
 
 // NewUsageTracker creates a new usage tracker instance
@@ -46,7 +47,7 @@ func NewUsageTracker(
 		logger:       logger,
 		usageRepo:    usageRepo,
 		quotaRepo:    quotaRepo,
-		quotaCache:   make(map[ulid.ULID]*billingDomain.UsageQuota),
+		quotaCache:   make(map[uuid.UUID]*billingDomain.UsageQuota),
 		cacheExpiry:  5 * time.Minute,
 		syncInterval: 1 * time.Minute,
 		stopCh:       make(chan struct{}),
@@ -60,7 +61,7 @@ func NewUsageTracker(
 }
 
 // UpdateUsage updates usage tracking for an organization
-func (t *UsageTracker) UpdateUsage(ctx context.Context, orgID ulid.ULID, record *billingDomain.UsageRecord) error {
+func (t *UsageTracker) UpdateUsage(ctx context.Context, orgID uuid.UUID, record *billingDomain.UsageRecord) error {
 	t.cacheMutex.Lock()
 	defer t.cacheMutex.Unlock()
 
@@ -117,7 +118,7 @@ func (t *UsageTracker) UpdateUsage(ctx context.Context, orgID ulid.ULID, record 
 }
 
 // GetUsageQuota retrieves current usage quota for an organization
-func (t *UsageTracker) GetUsageQuota(ctx context.Context, orgID ulid.ULID) (*billingDomain.UsageQuota, error) {
+func (t *UsageTracker) GetUsageQuota(ctx context.Context, orgID uuid.UUID) (*billingDomain.UsageQuota, error) {
 	t.cacheMutex.RLock()
 	defer t.cacheMutex.RUnlock()
 
@@ -130,7 +131,7 @@ func (t *UsageTracker) GetUsageQuota(ctx context.Context, orgID ulid.ULID) (*bil
 }
 
 // SetUsageQuota sets usage quota limits for an organization
-func (t *UsageTracker) SetUsageQuota(ctx context.Context, orgID ulid.ULID, quota *billingDomain.UsageQuota) error {
+func (t *UsageTracker) SetUsageQuota(ctx context.Context, orgID uuid.UUID, quota *billingDomain.UsageQuota) error {
 	quota.LastUpdated = time.Now()
 
 	// Update database
@@ -149,7 +150,7 @@ func (t *UsageTracker) SetUsageQuota(ctx context.Context, orgID ulid.ULID, quota
 }
 
 // CheckQuotaExceeded checks if organization has exceeded any quotas
-func (t *UsageTracker) CheckQuotaExceeded(ctx context.Context, orgID ulid.ULID) (*billingDomain.QuotaStatus, error) {
+func (t *UsageTracker) CheckQuotaExceeded(ctx context.Context, orgID uuid.UUID) (*billingDomain.QuotaStatus, error) {
 	quota, err := t.GetUsageQuota(ctx, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get usage quota: %w", err)
@@ -209,12 +210,12 @@ func (t *UsageTracker) CheckQuotaExceeded(ctx context.Context, orgID ulid.ULID) 
 }
 
 // GetUsageHistory retrieves usage history for an organization
-func (t *UsageTracker) GetUsageHistory(ctx context.Context, orgID ulid.ULID, start, end time.Time) ([]*billingDomain.UsageRecord, error) {
+func (t *UsageTracker) GetUsageHistory(ctx context.Context, orgID uuid.UUID, start, end time.Time) ([]*billingDomain.UsageRecord, error) {
 	return t.usageRepo.GetUsageRecords(ctx, orgID, start, end)
 }
 
 // ResetMonthlyUsage resets monthly usage counters for an organization
-func (t *UsageTracker) ResetMonthlyUsage(ctx context.Context, orgID ulid.ULID) error {
+func (t *UsageTracker) ResetMonthlyUsage(ctx context.Context, orgID uuid.UUID) error {
 	quota, err := t.GetUsageQuota(ctx, orgID)
 	if err != nil {
 		return fmt.Errorf("failed to get usage quota: %w", err)
@@ -263,7 +264,7 @@ func (t *UsageTracker) GetHealth() map[string]interface{} {
 
 // Internal methods
 
-func (t *UsageTracker) getQuotaLocked(ctx context.Context, orgID ulid.ULID) (*billingDomain.UsageQuota, error) {
+func (t *UsageTracker) getQuotaLocked(ctx context.Context, orgID uuid.UUID) (*billingDomain.UsageQuota, error) {
 	// Check cache first
 	if quota, exists := t.quotaCache[orgID]; exists {
 		// Check if cache entry is still valid
@@ -316,7 +317,7 @@ func (t *UsageTracker) syncQuotas() {
 
 	// Check for expired quotas and quotas that need monthly reset
 	now := time.Now()
-	var expiredOrgs []ulid.ULID
+	var expiredOrgs []uuid.UUID
 
 	for orgID, quota := range t.quotaCache {
 		// Check if cache entry expired
@@ -358,7 +359,7 @@ func (t *UsageTracker) syncQuotas() {
 }
 
 // GetUsageMetrics returns usage metrics for monitoring
-func (t *UsageTracker) GetUsageMetrics(ctx context.Context, orgID ulid.ULID) (map[string]interface{}, error) {
+func (t *UsageTracker) GetUsageMetrics(ctx context.Context, orgID uuid.UUID) (map[string]interface{}, error) {
 	quota, err := t.GetUsageQuota(ctx, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get usage quota: %w", err)

@@ -12,10 +12,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	credentialsDomain "brokle/internal/core/domain/credentials"
-	appErrors "brokle/pkg/errors"
 	"brokle/pkg/encryption"
-	"brokle/pkg/ulid"
+	appErrors "brokle/pkg/errors"
+	"brokle/pkg/uid"
 )
 
 type providerCredentialService struct {
@@ -122,7 +124,7 @@ func (s *providerCredentialService) Create(ctx context.Context, req *credentials
 	}
 
 	credential := &credentialsDomain.ProviderCredential{
-		ID:             ulid.New(),
+		ID:             uid.New(),
 		OrganizationID: req.OrganizationID,
 		Name:           req.Name,
 		Adapter:        req.Adapter,
@@ -160,7 +162,7 @@ func (s *providerCredentialService) Create(ctx context.Context, req *credentials
 	return s.toResponseWithHeaders(credential), nil
 }
 
-func (s *providerCredentialService) Update(ctx context.Context, id ulid.ULID, orgID ulid.ULID, req *credentialsDomain.UpdateCredentialRequest) (*credentialsDomain.ProviderCredentialResponse, error) {
+func (s *providerCredentialService) Update(ctx context.Context, id uuid.UUID, orgID uuid.UUID, req *credentialsDomain.UpdateCredentialRequest) (*credentialsDomain.ProviderCredentialResponse, error) {
 	credential, err := s.repo.GetByID(ctx, id, orgID)
 	if err != nil {
 		if errors.Is(err, credentialsDomain.ErrCredentialNotFound) {
@@ -262,7 +264,7 @@ func (s *providerCredentialService) Update(ctx context.Context, id ulid.ULID, or
 	return s.toResponseWithHeaders(credential), nil
 }
 
-func (s *providerCredentialService) GetByID(ctx context.Context, id ulid.ULID, orgID ulid.ULID) (*credentialsDomain.ProviderCredentialResponse, error) {
+func (s *providerCredentialService) GetByID(ctx context.Context, id uuid.UUID, orgID uuid.UUID) (*credentialsDomain.ProviderCredentialResponse, error) {
 	credential, err := s.repo.GetByID(ctx, id, orgID)
 	if err != nil {
 		if errors.Is(err, credentialsDomain.ErrCredentialNotFound) {
@@ -273,7 +275,7 @@ func (s *providerCredentialService) GetByID(ctx context.Context, id ulid.ULID, o
 	return s.toResponseWithHeaders(credential), nil
 }
 
-func (s *providerCredentialService) GetByName(ctx context.Context, orgID ulid.ULID, name string) (*credentialsDomain.ProviderCredentialResponse, error) {
+func (s *providerCredentialService) GetByName(ctx context.Context, orgID uuid.UUID, name string) (*credentialsDomain.ProviderCredentialResponse, error) {
 	credential, err := s.repo.GetByOrgAndName(ctx, orgID, name)
 	if err != nil {
 		return nil, appErrors.NewInternalError("Failed to retrieve credential", err)
@@ -284,7 +286,7 @@ func (s *providerCredentialService) GetByName(ctx context.Context, orgID ulid.UL
 	return s.toResponseWithHeaders(credential), nil
 }
 
-func (s *providerCredentialService) List(ctx context.Context, orgID ulid.ULID) ([]*credentialsDomain.ProviderCredentialResponse, error) {
+func (s *providerCredentialService) List(ctx context.Context, orgID uuid.UUID) ([]*credentialsDomain.ProviderCredentialResponse, error) {
 	credentials, err := s.repo.ListByOrganization(ctx, orgID)
 	if err != nil {
 		return nil, appErrors.NewInternalError("Failed to list credentials", err)
@@ -297,7 +299,7 @@ func (s *providerCredentialService) List(ctx context.Context, orgID ulid.ULID) (
 	return responses, nil
 }
 
-func (s *providerCredentialService) Delete(ctx context.Context, id ulid.ULID, orgID ulid.ULID) error {
+func (s *providerCredentialService) Delete(ctx context.Context, id uuid.UUID, orgID uuid.UUID) error {
 	// Get credential first for logging
 	credential, err := s.repo.GetByID(ctx, id, orgID)
 	if err != nil {
@@ -322,7 +324,7 @@ func (s *providerCredentialService) Delete(ctx context.Context, id ulid.ULID, or
 	return nil
 }
 
-func (s *providerCredentialService) GetDecryptedByID(ctx context.Context, credentialID ulid.ULID, orgID ulid.ULID) (*credentialsDomain.DecryptedKeyConfig, error) {
+func (s *providerCredentialService) GetDecryptedByID(ctx context.Context, credentialID uuid.UUID, orgID uuid.UUID) (*credentialsDomain.DecryptedKeyConfig, error) {
 	credential, err := s.repo.GetByID(ctx, credentialID, orgID)
 	if err != nil {
 		if errors.Is(err, credentialsDomain.ErrCredentialNotFound) {
@@ -333,7 +335,6 @@ func (s *providerCredentialService) GetDecryptedByID(ctx context.Context, creden
 
 	return s.decryptCredential(credential)
 }
-
 
 // toResponseWithHeaders converts a credential to a response DTO with decrypted headers.
 // This is the preferred method for returning credentials to the frontend.
@@ -412,7 +413,7 @@ func (s *providerCredentialService) decryptCredential(credential *credentialsDom
 // Requires credential_id and validates that the credential's adapter matches.
 // Returns ErrAdapterMismatch if the credential's adapter doesn't match the expected adapter.
 // Returns ErrCredentialNotFound if the credential doesn't exist.
-func (s *providerCredentialService) GetExecutionConfig(ctx context.Context, orgID ulid.ULID, credentialID ulid.ULID, adapter credentialsDomain.Provider) (*credentialsDomain.DecryptedKeyConfig, error) {
+func (s *providerCredentialService) GetExecutionConfig(ctx context.Context, orgID uuid.UUID, credentialID uuid.UUID, adapter credentialsDomain.Provider) (*credentialsDomain.DecryptedKeyConfig, error) {
 	config, err := s.GetDecryptedByID(ctx, credentialID, orgID)
 	if err != nil {
 		return nil, err // Don't convert - let caller handle

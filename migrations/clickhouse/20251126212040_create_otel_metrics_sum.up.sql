@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS otel_metrics_sum (
     is_monotonic Bool,
     exemplars_trace_id Array(String) CODEC(ZSTD(1)),
     exemplars_span_id Array(String) CODEC(ZSTD(1)),
-    project_id String CODEC(ZSTD(1)),
+    project_id UUID CODEC(ZSTD(1)),
     INDEX idx_metric_name metric_name TYPE bloom_filter(0.01) GRANULARITY 1,
     INDEX idx_service_name service_name TYPE bloom_filter(0.01) GRANULARITY 1,
     INDEX idx_project_id project_id TYPE bloom_filter(0.001) GRANULARITY 1

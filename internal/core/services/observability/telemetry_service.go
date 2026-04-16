@@ -1,11 +1,10 @@
 package observability
 
 import (
-	"log/slog"
 	"context"
+	"log/slog"
 	"sync"
 	"time"
-
 
 	"brokle/internal/core/domain/observability"
 	"brokle/internal/infrastructure/streams"

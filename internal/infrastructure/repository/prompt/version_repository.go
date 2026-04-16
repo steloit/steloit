@@ -8,8 +8,9 @@ import (
 	"github.com/lib/pq"
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	promptDomain "brokle/internal/core/domain/prompt"
-	"brokle/pkg/ulid"
 	"brokle/internal/infrastructure/shared"
 )
 
@@ -36,7 +37,7 @@ func (r *versionRepository) Create(ctx context.Context, version *promptDomain.Ve
 }
 
 // GetByID retrieves a version by ID
-func (r *versionRepository) GetByID(ctx context.Context, id ulid.ULID) (*promptDomain.Version, error) {
+func (r *versionRepository) GetByID(ctx context.Context, id uuid.UUID) (*promptDomain.Version, error) {
 	var version promptDomain.Version
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("id = ?", id).
@@ -51,12 +52,12 @@ func (r *versionRepository) GetByID(ctx context.Context, id ulid.ULID) (*promptD
 }
 
 // Delete deletes a version (versions should generally not be deleted)
-func (r *versionRepository) Delete(ctx context.Context, id ulid.ULID) error {
+func (r *versionRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).Where("id = ?", id).Delete(&promptDomain.Version{}).Error
 }
 
 // GetByPromptAndVersion retrieves a specific version of a prompt
-func (r *versionRepository) GetByPromptAndVersion(ctx context.Context, promptID ulid.ULID, version int) (*promptDomain.Version, error) {
+func (r *versionRepository) GetByPromptAndVersion(ctx context.Context, promptID uuid.UUID, version int) (*promptDomain.Version, error) {
 	var v promptDomain.Version
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("prompt_id = ? AND version = ?", promptID, version).
@@ -71,7 +72,7 @@ func (r *versionRepository) GetByPromptAndVersion(ctx context.Context, promptID 
 }
 
 // GetLatestByPrompt retrieves the latest version of a prompt
-func (r *versionRepository) GetLatestByPrompt(ctx context.Context, promptID ulid.ULID) (*promptDomain.Version, error) {
+func (r *versionRepository) GetLatestByPrompt(ctx context.Context, promptID uuid.UUID) (*promptDomain.Version, error) {
 	var version promptDomain.Version
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("prompt_id = ?", promptID).
@@ -87,7 +88,7 @@ func (r *versionRepository) GetLatestByPrompt(ctx context.Context, promptID ulid
 }
 
 // ListByPrompt retrieves all versions of a prompt
-func (r *versionRepository) ListByPrompt(ctx context.Context, promptID ulid.ULID) ([]*promptDomain.Version, error) {
+func (r *versionRepository) ListByPrompt(ctx context.Context, promptID uuid.UUID) ([]*promptDomain.Version, error) {
 	var versions []*promptDomain.Version
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("prompt_id = ?", promptID).
@@ -98,7 +99,7 @@ func (r *versionRepository) ListByPrompt(ctx context.Context, promptID ulid.ULID
 
 // GetNextVersionNumber atomically gets the next version number for a prompt.
 // Uses FOR UPDATE locking to prevent race conditions when called within a transaction.
-func (r *versionRepository) GetNextVersionNumber(ctx context.Context, promptID ulid.ULID) (int, error) {
+func (r *versionRepository) GetNextVersionNumber(ctx context.Context, promptID uuid.UUID) (int, error) {
 	var nextVersion int
 	// Subquery pattern: PostgreSQL disallows FOR UPDATE with aggregate functions
 	err := r.getDB(ctx).WithContext(ctx).
@@ -119,7 +120,7 @@ func (r *versionRepository) GetNextVersionNumber(ctx context.Context, promptID u
 }
 
 // CountByPrompt counts versions for a prompt
-func (r *versionRepository) CountByPrompt(ctx context.Context, promptID ulid.ULID) (int64, error) {
+func (r *versionRepository) CountByPrompt(ctx context.Context, promptID uuid.UUID) (int64, error) {
 	var count int64
 	err := r.getDB(ctx).WithContext(ctx).
 		Model(&promptDomain.Version{}).
@@ -130,7 +131,7 @@ func (r *versionRepository) CountByPrompt(ctx context.Context, promptID ulid.ULI
 
 // GetLatestByPrompts retrieves the latest version for multiple prompts in a single query
 // This is a batch operation to avoid N+1 query problems
-func (r *versionRepository) GetLatestByPrompts(ctx context.Context, promptIDs []ulid.ULID) ([]*promptDomain.Version, error) {
+func (r *versionRepository) GetLatestByPrompts(ctx context.Context, promptIDs []uuid.UUID) ([]*promptDomain.Version, error) {
 	if len(promptIDs) == 0 {
 		return []*promptDomain.Version{}, nil
 	}
@@ -160,7 +161,7 @@ func (r *versionRepository) GetLatestByPrompts(ctx context.Context, promptIDs []
 
 // GetByIDs retrieves multiple versions by their IDs in a single query
 // This is a batch operation to avoid N+1 query problems
-func (r *versionRepository) GetByIDs(ctx context.Context, versionIDs []ulid.ULID) ([]*promptDomain.Version, error) {
+func (r *versionRepository) GetByIDs(ctx context.Context, versionIDs []uuid.UUID) ([]*promptDomain.Version, error) {
 	if len(versionIDs) == 0 {
 		return []*promptDomain.Version{}, nil
 	}

@@ -6,9 +6,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/evaluation"
 	"brokle/internal/infrastructure/shared"
-	"brokle/pkg/ulid"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -31,7 +32,7 @@ func (r *ExperimentRepository) Create(ctx context.Context, experiment *evaluatio
 	return r.getDB(ctx).WithContext(ctx).Create(experiment).Error
 }
 
-func (r *ExperimentRepository) GetByID(ctx context.Context, id ulid.ULID, projectID ulid.ULID) (*evaluation.Experiment, error) {
+func (r *ExperimentRepository) GetByID(ctx context.Context, id uuid.UUID, projectID uuid.UUID) (*evaluation.Experiment, error) {
 	var experiment evaluation.Experiment
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("id = ? AND project_id = ?", id.String(), projectID.String()).
@@ -46,7 +47,7 @@ func (r *ExperimentRepository) GetByID(ctx context.Context, id ulid.ULID, projec
 	return &experiment, nil
 }
 
-func (r *ExperimentRepository) List(ctx context.Context, projectID ulid.ULID, filter *evaluation.ExperimentFilter, offset, limit int) ([]*evaluation.Experiment, int64, error) {
+func (r *ExperimentRepository) List(ctx context.Context, projectID uuid.UUID, filter *evaluation.ExperimentFilter, offset, limit int) ([]*evaluation.Experiment, int64, error) {
 	var experiments []*evaluation.Experiment
 	var total int64
 
@@ -88,7 +89,7 @@ func (r *ExperimentRepository) List(ctx context.Context, projectID ulid.ULID, fi
 	return experiments, total, nil
 }
 
-func (r *ExperimentRepository) Update(ctx context.Context, experiment *evaluation.Experiment, projectID ulid.ULID) error {
+func (r *ExperimentRepository) Update(ctx context.Context, experiment *evaluation.Experiment, projectID uuid.UUID) error {
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("id = ? AND project_id = ?", experiment.ID.String(), projectID.String()).
 		Save(experiment)
@@ -103,7 +104,7 @@ func (r *ExperimentRepository) Update(ctx context.Context, experiment *evaluatio
 	return nil
 }
 
-func (r *ExperimentRepository) Delete(ctx context.Context, id ulid.ULID, projectID ulid.ULID) error {
+func (r *ExperimentRepository) Delete(ctx context.Context, id uuid.UUID, projectID uuid.UUID) error {
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("id = ? AND project_id = ?", id.String(), projectID.String()).
 		Delete(&evaluation.Experiment{})
@@ -119,7 +120,7 @@ func (r *ExperimentRepository) Delete(ctx context.Context, id ulid.ULID, project
 }
 
 // SetTotalItems sets the total number of items for an experiment.
-func (r *ExperimentRepository) SetTotalItems(ctx context.Context, id, projectID ulid.ULID, total int) error {
+func (r *ExperimentRepository) SetTotalItems(ctx context.Context, id, projectID uuid.UUID, total int) error {
 	result := r.getDB(ctx).WithContext(ctx).
 		Model(&evaluation.Experiment{}).
 		Where("id = ? AND project_id = ?", id.String(), projectID.String()).
@@ -135,7 +136,7 @@ func (r *ExperimentRepository) SetTotalItems(ctx context.Context, id, projectID 
 }
 
 // IncrementCounters atomically increments completed and/or failed counters.
-func (r *ExperimentRepository) IncrementCounters(ctx context.Context, id, projectID ulid.ULID, completed, failed int) error {
+func (r *ExperimentRepository) IncrementCounters(ctx context.Context, id, projectID uuid.UUID, completed, failed int) error {
 	updates := map[string]interface{}{}
 
 	if completed > 0 {
@@ -165,7 +166,7 @@ func (r *ExperimentRepository) IncrementCounters(ctx context.Context, id, projec
 
 // IncrementCountersAndUpdateStatus atomically increments counters and updates status if complete.
 // Uses row locking to ensure atomicity. Returns true if the experiment was marked as complete.
-func (r *ExperimentRepository) IncrementCountersAndUpdateStatus(ctx context.Context, id, projectID ulid.ULID, completed, failed int) (bool, error) {
+func (r *ExperimentRepository) IncrementCountersAndUpdateStatus(ctx context.Context, id, projectID uuid.UUID, completed, failed int) (bool, error) {
 	var isComplete bool
 
 	err := r.getDB(ctx).WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -208,7 +209,7 @@ func (r *ExperimentRepository) IncrementCountersAndUpdateStatus(ctx context.Cont
 }
 
 // GetProgress gets minimal experiment data for progress polling.
-func (r *ExperimentRepository) GetProgress(ctx context.Context, id, projectID ulid.ULID) (*evaluation.Experiment, error) {
+func (r *ExperimentRepository) GetProgress(ctx context.Context, id, projectID uuid.UUID) (*evaluation.Experiment, error) {
 	var exp evaluation.Experiment
 	err := r.getDB(ctx).WithContext(ctx).
 		Select("id", "status", "total_items", "completed_items", "failed_items", "started_at", "completed_at").

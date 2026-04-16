@@ -8,9 +8,11 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	promptDomain "brokle/internal/core/domain/prompt"
-	"brokle/pkg/ulid"
 	"brokle/internal/infrastructure/shared"
+	"brokle/pkg/uid"
 )
 
 // labelRepository implements promptDomain.LabelRepository using GORM
@@ -36,7 +38,7 @@ func (r *labelRepository) Create(ctx context.Context, label *promptDomain.Label)
 }
 
 // GetByID retrieves a label by ID
-func (r *labelRepository) GetByID(ctx context.Context, id ulid.ULID) (*promptDomain.Label, error) {
+func (r *labelRepository) GetByID(ctx context.Context, id uuid.UUID) (*promptDomain.Label, error) {
 	var label promptDomain.Label
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("id = ?", id).
@@ -57,12 +59,12 @@ func (r *labelRepository) Update(ctx context.Context, label *promptDomain.Label)
 }
 
 // Delete deletes a label
-func (r *labelRepository) Delete(ctx context.Context, id ulid.ULID) error {
+func (r *labelRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).Where("id = ?", id).Delete(&promptDomain.Label{}).Error
 }
 
 // GetByPromptAndName retrieves a label by prompt and name
-func (r *labelRepository) GetByPromptAndName(ctx context.Context, promptID ulid.ULID, name string) (*promptDomain.Label, error) {
+func (r *labelRepository) GetByPromptAndName(ctx context.Context, promptID uuid.UUID, name string) (*promptDomain.Label, error) {
 	var label promptDomain.Label
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("prompt_id = ? AND name = ?", promptID, name).
@@ -77,7 +79,7 @@ func (r *labelRepository) GetByPromptAndName(ctx context.Context, promptID ulid.
 }
 
 // ListByPrompt retrieves all labels for a prompt
-func (r *labelRepository) ListByPrompt(ctx context.Context, promptID ulid.ULID) ([]*promptDomain.Label, error) {
+func (r *labelRepository) ListByPrompt(ctx context.Context, promptID uuid.UUID) ([]*promptDomain.Label, error) {
 	var labels []*promptDomain.Label
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("prompt_id = ?", promptID).
@@ -88,7 +90,7 @@ func (r *labelRepository) ListByPrompt(ctx context.Context, promptID ulid.ULID) 
 
 // ListByPrompts retrieves all labels for multiple prompts in a single query
 // This is a batch operation to avoid N+1 query problems
-func (r *labelRepository) ListByPrompts(ctx context.Context, promptIDs []ulid.ULID) ([]*promptDomain.Label, error) {
+func (r *labelRepository) ListByPrompts(ctx context.Context, promptIDs []uuid.UUID) ([]*promptDomain.Label, error) {
 	if len(promptIDs) == 0 {
 		return []*promptDomain.Label{}, nil
 	}
@@ -103,7 +105,7 @@ func (r *labelRepository) ListByPrompts(ctx context.Context, promptIDs []ulid.UL
 }
 
 // ListByVersion retrieves all labels pointing to a version
-func (r *labelRepository) ListByVersion(ctx context.Context, versionID ulid.ULID) ([]*promptDomain.Label, error) {
+func (r *labelRepository) ListByVersion(ctx context.Context, versionID uuid.UUID) ([]*promptDomain.Label, error) {
 	var labels []*promptDomain.Label
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("version_id = ?", versionID).
@@ -114,7 +116,7 @@ func (r *labelRepository) ListByVersion(ctx context.Context, versionID ulid.ULID
 
 // ListByVersions retrieves all labels for multiple versions in a single query
 // This is a batch operation to avoid N+1 query problems in ListVersions
-func (r *labelRepository) ListByVersions(ctx context.Context, versionIDs []ulid.ULID) ([]*promptDomain.Label, error) {
+func (r *labelRepository) ListByVersions(ctx context.Context, versionIDs []uuid.UUID) ([]*promptDomain.Label, error) {
 	if len(versionIDs) == 0 {
 		return []*promptDomain.Label{}, nil
 	}
@@ -129,7 +131,7 @@ func (r *labelRepository) ListByVersions(ctx context.Context, versionIDs []ulid.
 }
 
 // SetLabel atomically sets a label to point to a version (upsert)
-func (r *labelRepository) SetLabel(ctx context.Context, promptID, versionID ulid.ULID, name string, createdBy *ulid.ULID) error {
+func (r *labelRepository) SetLabel(ctx context.Context, promptID, versionID uuid.UUID, name string, createdBy *uuid.UUID) error {
 	now := time.Now()
 
 	var existing promptDomain.Label
@@ -148,7 +150,7 @@ func (r *labelRepository) SetLabel(ctx context.Context, promptID, versionID ulid
 	}
 
 	label := &promptDomain.Label{
-		ID:        ulid.New(),
+		ID:        uid.New(),
 		PromptID:  promptID,
 		VersionID: versionID,
 		Name:      name,
@@ -160,7 +162,7 @@ func (r *labelRepository) SetLabel(ctx context.Context, promptID, versionID ulid
 }
 
 // RemoveLabel removes a label from a prompt
-func (r *labelRepository) RemoveLabel(ctx context.Context, promptID ulid.ULID, name string) error {
+func (r *labelRepository) RemoveLabel(ctx context.Context, promptID uuid.UUID, name string) error {
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("prompt_id = ? AND name = ?", promptID, name).
 		Delete(&promptDomain.Label{})
@@ -174,7 +176,7 @@ func (r *labelRepository) RemoveLabel(ctx context.Context, promptID ulid.ULID, n
 }
 
 // DeleteByPrompt deletes all labels for a prompt
-func (r *labelRepository) DeleteByPrompt(ctx context.Context, promptID ulid.ULID) error {
+func (r *labelRepository) DeleteByPrompt(ctx context.Context, promptID uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).
 		Where("prompt_id = ?", promptID).
 		Delete(&promptDomain.Label{}).Error

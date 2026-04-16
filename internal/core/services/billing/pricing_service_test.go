@@ -6,7 +6,7 @@ import (
 
 	"brokle/internal/core/domain/billing"
 	"brokle/pkg/pointers"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
@@ -18,8 +18,8 @@ import (
 func TestPricingService_GetEffectivePricing_NoContract(t *testing.T) {
 	ctx := context.Background()
 	logger := newTestLogger()
-	orgID := ulid.New()
-	planID := ulid.New()
+	orgID := uid.New()
+	planID := uid.New()
 
 	billingRepo := new(MockOrganizationBillingRepository)
 	planRepo := new(MockPlanRepository)
@@ -35,7 +35,7 @@ func TestPricingService_GetEffectivePricing_NoContract(t *testing.T) {
 	}
 
 	plan := &billing.Plan{
-		ID:                ulid.New(),
+		ID:                uid.New(),
 		Name:              "pro",
 		FreeSpans:         1000000,
 		PricePer100KSpans: pointers.PtrDecimal(decimal.NewFromFloat(0.50)),
@@ -72,9 +72,9 @@ func TestPricingService_GetEffectivePricing_NoContract(t *testing.T) {
 func TestPricingService_GetEffectivePricing_WithContractOverrides(t *testing.T) {
 	ctx := context.Background()
 	logger := newTestLogger()
-	orgID := ulid.New()
-	planID := ulid.New()
-	contractID := ulid.New()
+	orgID := uid.New()
+	planID := uid.New()
+	contractID := uid.New()
 
 	billingRepo := new(MockOrganizationBillingRepository)
 	planRepo := new(MockPlanRepository)
@@ -89,7 +89,7 @@ func TestPricingService_GetEffectivePricing_WithContractOverrides(t *testing.T) 
 	}
 
 	plan := &billing.Plan{
-		ID:                ulid.New(),
+		ID:                uid.New(),
 		Name:              "enterprise",
 		FreeSpans:         1000000,
 		PricePer100KSpans: pointers.PtrDecimal(decimal.NewFromFloat(0.50)),
@@ -103,12 +103,12 @@ func TestPricingService_GetEffectivePricing_WithContractOverrides(t *testing.T) 
 		ID:                      contractID,
 		OrganizationID:          orgID,
 		Status:                  billing.ContractStatusActive,
-		CustomFreeSpans:         ptrInt64(50000000),   // Override
-		CustomPricePer100KSpans: pointers.PtrDecimal(decimal.NewFromFloat(0.25)),   // Override
-		CustomFreeGB:            pointers.PtrDecimal(decimal.NewFromFloat(100.0)),  // Override
-		CustomPricePerGB:        nil,                  // Use plan default
-		CustomFreeScores:        ptrInt64(1000),       // Override
-		CustomPricePer1KScores:  pointers.PtrDecimal(decimal.NewFromFloat(0.05)),   // Override
+		CustomFreeSpans:         ptrInt64(50000000),                               // Override
+		CustomPricePer100KSpans: pointers.PtrDecimal(decimal.NewFromFloat(0.25)),  // Override
+		CustomFreeGB:            pointers.PtrDecimal(decimal.NewFromFloat(100.0)), // Override
+		CustomPricePerGB:        nil,                                              // Use plan default
+		CustomFreeScores:        ptrInt64(1000),                                   // Override
+		CustomPricePer1KScores:  pointers.PtrDecimal(decimal.NewFromFloat(0.05)),  // Override
 	}
 
 	billingRepo.On("GetByOrgID", ctx, orgID).Return(orgBilling, nil)
@@ -139,9 +139,9 @@ func TestPricingService_GetEffectivePricing_WithContractOverrides(t *testing.T) 
 func TestPricingService_GetEffectivePricing_WithVolumeTiers(t *testing.T) {
 	ctx := context.Background()
 	logger := newTestLogger()
-	orgID := ulid.New()
-	planID := ulid.New()
-	contractID := ulid.New()
+	orgID := uid.New()
+	planID := uid.New()
+	contractID := uid.New()
 
 	billingRepo := new(MockOrganizationBillingRepository)
 	planRepo := new(MockPlanRepository)
@@ -156,7 +156,7 @@ func TestPricingService_GetEffectivePricing_WithVolumeTiers(t *testing.T) {
 	}
 
 	plan := &billing.Plan{
-		ID:                ulid.New(),
+		ID:                uid.New(),
 		Name:              "enterprise",
 		FreeSpans:         1000000,
 		PricePer100KSpans: pointers.PtrDecimal(decimal.NewFromFloat(0.50)),
@@ -170,7 +170,7 @@ func TestPricingService_GetEffectivePricing_WithVolumeTiers(t *testing.T) {
 
 	tiers := []*billing.VolumeDiscountTier{
 		{
-			ID:           ulid.New(),
+			ID:           uid.New(),
 			ContractID:   contractID,
 			Dimension:    billing.TierDimensionSpans,
 			TierMin:      0,
@@ -179,7 +179,7 @@ func TestPricingService_GetEffectivePricing_WithVolumeTiers(t *testing.T) {
 			Priority:     0,
 		},
 		{
-			ID:           ulid.New(),
+			ID:           uid.New(),
 			ContractID:   contractID,
 			Dimension:    billing.TierDimensionSpans,
 			TierMin:      100000000,
@@ -212,8 +212,8 @@ func TestPricingService_GetEffectivePricing_WithVolumeTiers(t *testing.T) {
 func TestPricingService_CalculateCostWithTiers_FlatPricing(t *testing.T) {
 	ctx := context.Background()
 	logger := newTestLogger()
-	orgID := ulid.New()
-	planID := ulid.New()
+	orgID := uid.New()
+	planID := uid.New()
 
 	billingRepo := new(MockOrganizationBillingRepository)
 	planRepo := new(MockPlanRepository)
@@ -228,7 +228,7 @@ func TestPricingService_CalculateCostWithTiers_FlatPricing(t *testing.T) {
 	}
 
 	plan := &billing.Plan{
-		ID:                ulid.New(),
+		ID:                uid.New(),
 		Name:              "pro",
 		FreeSpans:         1000000,
 		PricePer100KSpans: pointers.PtrDecimal(decimal.NewFromFloat(0.50)),
@@ -243,9 +243,9 @@ func TestPricingService_CalculateCostWithTiers_FlatPricing(t *testing.T) {
 	contractRepo.On("GetActiveByOrgID", ctx, orgID).Return(nil, nil)
 
 	usage := &billing.BillableUsageSummary{
-		TotalSpans:  5000000,                    // 5M spans
-		TotalBytes:  int64(50 * 1073741824),     // 50 GB
-		TotalScores: 500,                        // 500 scores
+		TotalSpans:  5000000,                // 5M spans
+		TotalBytes:  int64(50 * 1073741824), // 50 GB
+		TotalScores: 500,                    // 500 scores
 	}
 
 	cost, err := service.CalculateCostWithTiers(ctx, orgID, usage)
@@ -268,9 +268,9 @@ func TestPricingService_CalculateCostWithTiers_FlatPricing(t *testing.T) {
 func TestPricingService_CalculateCostWithTiers_ProgressiveTiers(t *testing.T) {
 	ctx := context.Background()
 	logger := newTestLogger()
-	orgID := ulid.New()
-	planID := ulid.New()
-	contractID := ulid.New()
+	orgID := uid.New()
+	planID := uid.New()
+	contractID := uid.New()
 
 	billingRepo := new(MockOrganizationBillingRepository)
 	planRepo := new(MockPlanRepository)
@@ -285,7 +285,7 @@ func TestPricingService_CalculateCostWithTiers_ProgressiveTiers(t *testing.T) {
 	}
 
 	plan := &billing.Plan{
-		ID:                ulid.New(),
+		ID:                uid.New(),
 		Name:              "enterprise",
 		FreeSpans:         50000000, // 50M free
 		PricePer100KSpans: pointers.PtrDecimal(decimal.NewFromFloat(0.50)),
@@ -302,7 +302,7 @@ func TestPricingService_CalculateCostWithTiers_ProgressiveTiers(t *testing.T) {
 	// 100M+: $0.25 per 100K
 	tiers := []*billing.VolumeDiscountTier{
 		{
-			ID:           ulid.New(),
+			ID:           uid.New(),
 			ContractID:   contractID,
 			Dimension:    billing.TierDimensionSpans,
 			TierMin:      0,
@@ -311,7 +311,7 @@ func TestPricingService_CalculateCostWithTiers_ProgressiveTiers(t *testing.T) {
 			Priority:     0,
 		},
 		{
-			ID:           ulid.New(),
+			ID:           uid.New(),
 			ContractID:   contractID,
 			Dimension:    billing.TierDimensionSpans,
 			TierMin:      100000000,
@@ -328,8 +328,8 @@ func TestPricingService_CalculateCostWithTiers_ProgressiveTiers(t *testing.T) {
 
 	// Usage: 600M spans total
 	usage := &billing.BillableUsageSummary{
-		TotalSpans: 600000000,
-		TotalBytes: 0,
+		TotalSpans:  600000000,
+		TotalBytes:  0,
 		TotalScores: 0,
 	}
 
@@ -372,8 +372,8 @@ func TestPricingService_CalculateCostWithTiers_ProgressiveTiers(t *testing.T) {
 func TestPricingService_CalculateCostWithTiers_WithinFreeTier(t *testing.T) {
 	ctx := context.Background()
 	logger := newTestLogger()
-	orgID := ulid.New()
-	planID := ulid.New()
+	orgID := uid.New()
+	planID := uid.New()
 
 	billingRepo := new(MockOrganizationBillingRepository)
 	planRepo := new(MockPlanRepository)
@@ -388,7 +388,7 @@ func TestPricingService_CalculateCostWithTiers_WithinFreeTier(t *testing.T) {
 	}
 
 	plan := &billing.Plan{
-		ID:                ulid.New(),
+		ID:                uid.New(),
 		Name:              "free",
 		FreeSpans:         1000000,
 		PricePer100KSpans: pointers.PtrDecimal(decimal.NewFromFloat(0.50)),
@@ -404,9 +404,9 @@ func TestPricingService_CalculateCostWithTiers_WithinFreeTier(t *testing.T) {
 
 	// Usage within free tier
 	usage := &billing.BillableUsageSummary{
-		TotalSpans:  500000,                    // 500K spans (< 1M free)
-		TotalBytes:  int64(5 * 1073741824),     // 5 GB (< 10GB free)
-		TotalScores: 50,                        // 50 scores (< 100 free)
+		TotalSpans:  500000,                // 500K spans (< 1M free)
+		TotalBytes:  int64(5 * 1073741824), // 5 GB (< 10GB free)
+		TotalScores: 50,                    // 50 scores (< 100 free)
 	}
 
 	cost, err := service.CalculateCostWithTiers(ctx, orgID, usage)
@@ -422,9 +422,9 @@ func TestPricingService_CalculateCostWithTiers_WithinFreeTier(t *testing.T) {
 func TestPricingService_CalculateCostWithTiers_MixedTiersAndFlat(t *testing.T) {
 	ctx := context.Background()
 	logger := newTestLogger()
-	orgID := ulid.New()
-	planID := ulid.New()
-	contractID := ulid.New()
+	orgID := uid.New()
+	planID := uid.New()
+	contractID := uid.New()
 
 	billingRepo := new(MockOrganizationBillingRepository)
 	planRepo := new(MockPlanRepository)
@@ -439,9 +439,9 @@ func TestPricingService_CalculateCostWithTiers_MixedTiersAndFlat(t *testing.T) {
 	}
 
 	plan := &billing.Plan{
-		ID:                ulid.New(),
+		ID:                uid.New(),
 		Name:              "enterprise",
-		FreeSpans:         1000000,  // 1M free
+		FreeSpans:         1000000, // 1M free
 		PricePer100KSpans: pointers.PtrDecimal(decimal.NewFromFloat(0.50)),
 		FreeGB:            decimal.NewFromFloat(10.0),
 		PricePerGB:        pointers.PtrDecimal(decimal.NewFromFloat(2.00)),
@@ -458,7 +458,7 @@ func TestPricingService_CalculateCostWithTiers_MixedTiersAndFlat(t *testing.T) {
 	// Tiers ONLY for spans - bytes and scores should fallback to flat pricing
 	tiers := []*billing.VolumeDiscountTier{
 		{
-			ID:           ulid.New(),
+			ID:           uid.New(),
 			ContractID:   contractID,
 			Dimension:    billing.TierDimensionSpans,
 			TierMin:      0,
@@ -467,7 +467,7 @@ func TestPricingService_CalculateCostWithTiers_MixedTiersAndFlat(t *testing.T) {
 			Priority:     0,
 		},
 		{
-			ID:           ulid.New(),
+			ID:           uid.New(),
 			ContractID:   contractID,
 			Dimension:    billing.TierDimensionSpans,
 			TierMin:      100000000,
@@ -484,9 +484,9 @@ func TestPricingService_CalculateCostWithTiers_MixedTiersAndFlat(t *testing.T) {
 
 	// Usage across all three dimensions
 	usage := &billing.BillableUsageSummary{
-		TotalSpans:  150000000,                  // 150M spans
-		TotalBytes:  int64(50 * 1073741824),     // 50 GB
-		TotalScores: 500,                        // 500 scores
+		TotalSpans:  150000000,              // 150M spans
+		TotalBytes:  int64(50 * 1073741824), // 50 GB
+		TotalScores: 500,                    // 500 scores
 	}
 
 	cost, err := service.CalculateCostWithTiers(ctx, orgID, usage)
@@ -535,9 +535,9 @@ func TestPricingService_CalculateCostWithTiers_MixedTiersAndFlat(t *testing.T) {
 func TestPricingService_CalculateCostWithTiers_NoTiersFallbackToFlat(t *testing.T) {
 	ctx := context.Background()
 	logger := newTestLogger()
-	orgID := ulid.New()
-	planID := ulid.New()
-	contractID := ulid.New()
+	orgID := uid.New()
+	planID := uid.New()
+	contractID := uid.New()
 
 	billingRepo := new(MockOrganizationBillingRepository)
 	planRepo := new(MockPlanRepository)
@@ -552,7 +552,7 @@ func TestPricingService_CalculateCostWithTiers_NoTiersFallbackToFlat(t *testing.
 	}
 
 	plan := &billing.Plan{
-		ID:                ulid.New(),
+		ID:                uid.New(),
 		Name:              "enterprise",
 		FreeSpans:         1000000,
 		PricePer100KSpans: pointers.PtrDecimal(decimal.NewFromFloat(0.50)),
@@ -578,9 +578,9 @@ func TestPricingService_CalculateCostWithTiers_NoTiersFallbackToFlat(t *testing.
 	tierRepo.On("GetByContractID", ctx, contractID).Return(tiers, nil)
 
 	usage := &billing.BillableUsageSummary{
-		TotalSpans:  5000000,                    // 5M spans
-		TotalBytes:  int64(50 * 1073741824),     // 50 GB
-		TotalScores: 500,                        // 500 scores
+		TotalSpans:  5000000,                // 5M spans
+		TotalBytes:  int64(50 * 1073741824), // 50 GB
+		TotalScores: 500,                    // 500 scores
 	}
 
 	cost, err := service.CalculateCostWithTiers(ctx, orgID, usage)
@@ -613,9 +613,9 @@ func TestPricingService_CalculateCostWithTiers_UsageAtBoundary(t *testing.T) {
 
 	service := NewPricingService(billingRepo, planRepo, contractRepo, tierRepo, logger)
 
-	orgID := ulid.New()
-	planID := ulid.New()
-	contractID := ulid.New()
+	orgID := uid.New()
+	planID := uid.New()
+	contractID := uid.New()
 
 	orgBilling := &billing.OrganizationBilling{
 		OrganizationID: orgID,
@@ -698,9 +698,9 @@ func TestPricingService_CalculateCostWithTiers_MultiTierOverlap(t *testing.T) {
 
 	service := NewPricingService(billingRepo, planRepo, contractRepo, tierRepo, logger)
 
-	orgID := ulid.New()
-	planID := ulid.New()
-	contractID := ulid.New()
+	orgID := uid.New()
+	planID := uid.New()
+	contractID := uid.New()
 
 	orgBilling := &billing.OrganizationBilling{
 		OrganizationID: orgID,
@@ -786,9 +786,9 @@ func TestPricingService_CalculateCostWithTiers_MultiTierOverlap(t *testing.T) {
 func TestPricingService_CalculateCostWithTiers_FreeTierOffset(t *testing.T) {
 	ctx := context.Background()
 	logger := newTestLogger()
-	orgID := ulid.New()
-	planID := ulid.New()
-	contractID := ulid.New()
+	orgID := uid.New()
+	planID := uid.New()
+	contractID := uid.New()
 
 	billingRepo := new(MockOrganizationBillingRepository)
 	planRepo := new(MockPlanRepository)
@@ -803,9 +803,9 @@ func TestPricingService_CalculateCostWithTiers_FreeTierOffset(t *testing.T) {
 	}
 
 	plan := &billing.Plan{
-		ID:                ulid.New(),
+		ID:                uid.New(),
 		Name:              "test",
-		FreeSpans:         50_000_000,   // 50M free spans
+		FreeSpans:         50_000_000, // 50M free spans
 		PricePer100KSpans: pointers.PtrDecimal(decimal.NewFromFloat(1.0)),
 	}
 
@@ -827,7 +827,7 @@ func TestPricingService_CalculateCostWithTiers_FreeTierOffset(t *testing.T) {
 	// - Total: $750
 	tiers := []*billing.VolumeDiscountTier{
 		{
-			ID:           ulid.New(),
+			ID:           uid.New(),
 			ContractID:   contractID,
 			Dimension:    billing.TierDimensionSpans,
 			TierMin:      0,
@@ -836,7 +836,7 @@ func TestPricingService_CalculateCostWithTiers_FreeTierOffset(t *testing.T) {
 			Priority:     0,
 		},
 		{
-			ID:           ulid.New(),
+			ID:           uid.New(),
 			ContractID:   contractID,
 			Dimension:    billing.TierDimensionSpans,
 			TierMin:      100_000_000,
@@ -878,9 +878,9 @@ func TestPricingService_CalculateCostWithTiers_FreeTierOffset(t *testing.T) {
 func TestPricingService_CalculateCostWithTiers_FreeTierExceedsFirstTier(t *testing.T) {
 	ctx := context.Background()
 	logger := newTestLogger()
-	orgID := ulid.New()
-	planID := ulid.New()
-	contractID := ulid.New()
+	orgID := uid.New()
+	planID := uid.New()
+	contractID := uid.New()
 
 	billingRepo := new(MockOrganizationBillingRepository)
 	planRepo := new(MockPlanRepository)
@@ -895,9 +895,9 @@ func TestPricingService_CalculateCostWithTiers_FreeTierExceedsFirstTier(t *testi
 	}
 
 	plan := &billing.Plan{
-		ID:                ulid.New(),
+		ID:                uid.New(),
 		Name:              "test",
-		FreeSpans:         150_000_000,  // 150M free spans
+		FreeSpans:         150_000_000, // 150M free spans
 		PricePer100KSpans: pointers.PtrDecimal(decimal.NewFromFloat(1.0)),
 	}
 
@@ -920,7 +920,7 @@ func TestPricingService_CalculateCostWithTiers_FreeTierExceedsFirstTier(t *testi
 	// - Total: $875
 	tiers := []*billing.VolumeDiscountTier{
 		{
-			ID:           ulid.New(),
+			ID:           uid.New(),
 			ContractID:   contractID,
 			Dimension:    billing.TierDimensionSpans,
 			TierMin:      0,
@@ -929,7 +929,7 @@ func TestPricingService_CalculateCostWithTiers_FreeTierExceedsFirstTier(t *testi
 			Priority:     0,
 		},
 		{
-			ID:           ulid.New(),
+			ID:           uid.New(),
 			ContractID:   contractID,
 			Dimension:    billing.TierDimensionSpans,
 			TierMin:      100_000_000,
@@ -938,7 +938,7 @@ func TestPricingService_CalculateCostWithTiers_FreeTierExceedsFirstTier(t *testi
 			Priority:     1,
 		},
 		{
-			ID:           ulid.New(),
+			ID:           uid.New(),
 			ContractID:   contractID,
 			Dimension:    billing.TierDimensionSpans,
 			TierMin:      200_000_000,
@@ -980,9 +980,9 @@ func TestPricingService_CalculateCostWithTiers_FreeTierExceedsFirstTier(t *testi
 func TestPricingService_CalculateCostWithTiers_FreeTierConsumesFirstTier(t *testing.T) {
 	ctx := context.Background()
 	logger := newTestLogger()
-	orgID := ulid.New()
-	planID := ulid.New()
-	contractID := ulid.New()
+	orgID := uid.New()
+	planID := uid.New()
+	contractID := uid.New()
 
 	billingRepo := new(MockOrganizationBillingRepository)
 	planRepo := new(MockPlanRepository)
@@ -997,9 +997,9 @@ func TestPricingService_CalculateCostWithTiers_FreeTierConsumesFirstTier(t *test
 	}
 
 	plan := &billing.Plan{
-		ID:                ulid.New(),
+		ID:                uid.New(),
 		Name:              "test",
-		FreeSpans:         100_000_000,  // 100M free spans
+		FreeSpans:         100_000_000, // 100M free spans
 		PricePer100KSpans: pointers.PtrDecimal(decimal.NewFromFloat(1.0)),
 	}
 
@@ -1021,7 +1021,7 @@ func TestPricingService_CalculateCostWithTiers_FreeTierConsumesFirstTier(t *test
 	// - Total: $250
 	tiers := []*billing.VolumeDiscountTier{
 		{
-			ID:           ulid.New(),
+			ID:           uid.New(),
 			ContractID:   contractID,
 			Dimension:    billing.TierDimensionSpans,
 			TierMin:      0,
@@ -1030,7 +1030,7 @@ func TestPricingService_CalculateCostWithTiers_FreeTierConsumesFirstTier(t *test
 			Priority:     0,
 		},
 		{
-			ID:           ulid.New(),
+			ID:           uid.New(),
 			ContractID:   contractID,
 			Dimension:    billing.TierDimensionSpans,
 			TierMin:      100_000_000,
@@ -1070,9 +1070,9 @@ func TestPricingService_CalculateCostWithTiers_FreeTierConsumesFirstTier(t *test
 func TestPricingService_CalculateCostWithTiers_SmallFreeTier(t *testing.T) {
 	ctx := context.Background()
 	logger := newTestLogger()
-	orgID := ulid.New()
-	planID := ulid.New()
-	contractID := ulid.New()
+	orgID := uid.New()
+	planID := uid.New()
+	contractID := uid.New()
 
 	billingRepo := new(MockOrganizationBillingRepository)
 	planRepo := new(MockPlanRepository)
@@ -1087,9 +1087,9 @@ func TestPricingService_CalculateCostWithTiers_SmallFreeTier(t *testing.T) {
 	}
 
 	plan := &billing.Plan{
-		ID:                ulid.New(),
+		ID:                uid.New(),
 		Name:              "test",
-		FreeSpans:         10_000_000,   // 10M free (small relative to tiers)
+		FreeSpans:         10_000_000, // 10M free (small relative to tiers)
 		PricePer100KSpans: pointers.PtrDecimal(decimal.NewFromFloat(0.50)),
 	}
 
@@ -1111,7 +1111,7 @@ func TestPricingService_CalculateCostWithTiers_SmallFreeTier(t *testing.T) {
 	// - Total: $395
 	tiers := []*billing.VolumeDiscountTier{
 		{
-			ID:           ulid.New(),
+			ID:           uid.New(),
 			ContractID:   contractID,
 			Dimension:    billing.TierDimensionSpans,
 			TierMin:      0,
@@ -1120,7 +1120,7 @@ func TestPricingService_CalculateCostWithTiers_SmallFreeTier(t *testing.T) {
 			Priority:     0,
 		},
 		{
-			ID:           ulid.New(),
+			ID:           uid.New(),
 			ContractID:   contractID,
 			Dimension:    billing.TierDimensionSpans,
 			TierMin:      100_000_000,

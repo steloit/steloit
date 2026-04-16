@@ -6,7 +6,7 @@ import (
 
 	"github.com/shopspring/decimal"
 
-	"brokle/pkg/ulid"
+	"github.com/google/uuid"
 )
 
 // ============================================================================
@@ -16,28 +16,28 @@ import (
 // UsageRepository handles usage tracking data access
 type UsageRepository interface {
 	InsertUsageRecord(ctx context.Context, record *UsageRecord) error
-	GetUsageRecords(ctx context.Context, orgID ulid.ULID, start, end time.Time) ([]*UsageRecord, error)
-	UpdateUsageRecord(ctx context.Context, recordID ulid.ULID, record *UsageRecord) error
+	GetUsageRecords(ctx context.Context, orgID uuid.UUID, start, end time.Time) ([]*UsageRecord, error)
+	UpdateUsageRecord(ctx context.Context, recordID uuid.UUID, record *UsageRecord) error
 }
 
 // BillingRecordRepository handles billing records and summaries persistence
 type BillingRecordRepository interface {
 	// Billing records
 	InsertBillingRecord(ctx context.Context, record *BillingRecord) error
-	UpdateBillingRecord(ctx context.Context, recordID ulid.ULID, record *BillingRecord) error
-	GetBillingRecord(ctx context.Context, recordID ulid.ULID) (*BillingRecord, error)
-	GetBillingHistory(ctx context.Context, orgID ulid.ULID, start, end time.Time) ([]*BillingRecord, error)
+	UpdateBillingRecord(ctx context.Context, recordID uuid.UUID, record *BillingRecord) error
+	GetBillingRecord(ctx context.Context, recordID uuid.UUID) (*BillingRecord, error)
+	GetBillingHistory(ctx context.Context, orgID uuid.UUID, start, end time.Time) ([]*BillingRecord, error)
 
 	// Billing summaries
 	InsertBillingSummary(ctx context.Context, summary *BillingSummary) error
-	GetBillingSummary(ctx context.Context, orgID ulid.ULID, period string) (*BillingSummary, error)
-	GetBillingSummaryHistory(ctx context.Context, orgID ulid.ULID, start, end time.Time) ([]*BillingSummary, error)
+	GetBillingSummary(ctx context.Context, orgID uuid.UUID, period string) (*BillingSummary, error)
+	GetBillingSummaryHistory(ctx context.Context, orgID uuid.UUID, start, end time.Time) ([]*BillingSummary, error)
 }
 
 // QuotaRepository handles usage quota management
 type QuotaRepository interface {
-	GetUsageQuota(ctx context.Context, orgID ulid.ULID) (*UsageQuota, error)
-	UpdateUsageQuota(ctx context.Context, orgID ulid.ULID, quota *UsageQuota) error
+	GetUsageQuota(ctx context.Context, orgID uuid.UUID) (*UsageQuota, error)
+	UpdateUsageQuota(ctx context.Context, orgID uuid.UUID, quota *UsageQuota) error
 }
 
 // ============================================================================
@@ -46,8 +46,8 @@ type QuotaRepository interface {
 
 // BillableUsageFilter defines filters for querying billable usage
 type BillableUsageFilter struct {
-	OrganizationID ulid.ULID
-	ProjectID      *ulid.ULID // nil for org-level
+	OrganizationID uuid.UUID
+	ProjectID      *uuid.UUID // nil for org-level
 	Start          time.Time
 	End            time.Time
 	Granularity    string // "hourly" or "daily"
@@ -62,12 +62,12 @@ type BillableUsageRepository interface {
 	GetUsageSummary(ctx context.Context, filter *BillableUsageFilter) (*BillableUsageSummary, error)
 
 	// Get usage breakdown by project
-	GetUsageByProject(ctx context.Context, orgID ulid.ULID, start, end time.Time) ([]*BillableUsageSummary, error)
+	GetUsageByProject(ctx context.Context, orgID uuid.UUID, start, end time.Time) ([]*BillableUsageSummary, error)
 }
 
 // PlanRepository handles pricing plans (PostgreSQL)
 type PlanRepository interface {
-	GetByID(ctx context.Context, id ulid.ULID) (*Plan, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*Plan, error)
 	GetByName(ctx context.Context, name string) (*Plan, error)
 	GetDefault(ctx context.Context) (*Plan, error)
 	GetActive(ctx context.Context) ([]*Plan, error)
@@ -77,39 +77,39 @@ type PlanRepository interface {
 
 // OrganizationBillingRepository handles org billing state (PostgreSQL)
 type OrganizationBillingRepository interface {
-	GetByOrgID(ctx context.Context, orgID ulid.ULID) (*OrganizationBilling, error)
+	GetByOrgID(ctx context.Context, orgID uuid.UUID) (*OrganizationBilling, error)
 	Create(ctx context.Context, billing *OrganizationBilling) error
 	Update(ctx context.Context, billing *OrganizationBilling) error
 
 	// SetUsage sets cumulative usage counters and free tier remaining (idempotent - can be called multiple times safely)
 	// This replaces values rather than adding, preventing race condition double-counting
-	SetUsage(ctx context.Context, orgID ulid.ULID, spans, bytes, scores int64, cost decimal.Decimal, freeSpansRemaining, freeBytesRemaining, freeScoresRemaining int64) error
+	SetUsage(ctx context.Context, orgID uuid.UUID, spans, bytes, scores int64, cost decimal.Decimal, freeSpansRemaining, freeBytesRemaining, freeScoresRemaining int64) error
 
-	ResetPeriod(ctx context.Context, orgID ulid.ULID, newCycleStart time.Time) error
+	ResetPeriod(ctx context.Context, orgID uuid.UUID, newCycleStart time.Time) error
 }
 
 // UsageBudgetRepository handles budget CRUD (PostgreSQL)
 type UsageBudgetRepository interface {
-	GetByID(ctx context.Context, id ulid.ULID) (*UsageBudget, error)
-	GetByOrgID(ctx context.Context, orgID ulid.ULID) ([]*UsageBudget, error)
-	GetByProjectID(ctx context.Context, projectID ulid.ULID) ([]*UsageBudget, error)
-	GetActive(ctx context.Context, orgID ulid.ULID) ([]*UsageBudget, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*UsageBudget, error)
+	GetByOrgID(ctx context.Context, orgID uuid.UUID) ([]*UsageBudget, error)
+	GetByProjectID(ctx context.Context, projectID uuid.UUID) ([]*UsageBudget, error)
+	GetActive(ctx context.Context, orgID uuid.UUID) ([]*UsageBudget, error)
 	Create(ctx context.Context, budget *UsageBudget) error
 	Update(ctx context.Context, budget *UsageBudget) error
-	UpdateUsage(ctx context.Context, budgetID ulid.ULID, spans, bytes, scores int64, cost decimal.Decimal) error
-	Delete(ctx context.Context, id ulid.ULID) error
+	UpdateUsage(ctx context.Context, budgetID uuid.UUID, spans, bytes, scores int64, cost decimal.Decimal) error
+	Delete(ctx context.Context, id uuid.UUID) error
 }
 
 // UsageAlertRepository handles alert history (PostgreSQL)
 type UsageAlertRepository interface {
-	GetByID(ctx context.Context, id ulid.ULID) (*UsageAlert, error)
-	GetByOrgID(ctx context.Context, orgID ulid.ULID, limit int) ([]*UsageAlert, error)
-	GetByBudgetID(ctx context.Context, budgetID ulid.ULID) ([]*UsageAlert, error)
-	GetUnacknowledged(ctx context.Context, orgID ulid.ULID) ([]*UsageAlert, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*UsageAlert, error)
+	GetByOrgID(ctx context.Context, orgID uuid.UUID, limit int) ([]*UsageAlert, error)
+	GetByBudgetID(ctx context.Context, budgetID uuid.UUID) ([]*UsageAlert, error)
+	GetUnacknowledged(ctx context.Context, orgID uuid.UUID) ([]*UsageAlert, error)
 	Create(ctx context.Context, alert *UsageAlert) error
-	Acknowledge(ctx context.Context, id ulid.ULID) error
-	Resolve(ctx context.Context, id ulid.ULID) error
-	MarkNotificationSent(ctx context.Context, id ulid.ULID) error
+	Acknowledge(ctx context.Context, id uuid.UUID) error
+	Resolve(ctx context.Context, id uuid.UUID) error
+	MarkNotificationSent(ctx context.Context, id uuid.UUID) error
 }
 
 // ============================================================================
@@ -127,20 +127,20 @@ type ContractRepository interface {
 
 	// GetByID retrieves a contract by its primary key.
 	// Returns (nil, error) if contract does not exist (required record).
-	GetByID(ctx context.Context, id ulid.ULID) (*Contract, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*Contract, error)
 
 	// GetActiveByOrgID retrieves the active contract for an organization.
 	// Returns (nil, nil) if no active contract exists (optional record).
 	// Returns (nil, error) for database errors only.
-	GetActiveByOrgID(ctx context.Context, orgID ulid.ULID) (*Contract, error)
+	GetActiveByOrgID(ctx context.Context, orgID uuid.UUID) (*Contract, error)
 
 	// GetByOrgID retrieves all contracts for an organization.
 	// Returns ([], nil) if organization has no contracts (empty collection is valid).
-	GetByOrgID(ctx context.Context, orgID ulid.ULID) ([]*Contract, error)
+	GetByOrgID(ctx context.Context, orgID uuid.UUID) ([]*Contract, error)
 
 	Update(ctx context.Context, contract *Contract) error
-	Expire(ctx context.Context, contractID ulid.ULID) error
-	Cancel(ctx context.Context, contractID ulid.ULID) error
+	Expire(ctx context.Context, contractID uuid.UUID) error
+	Cancel(ctx context.Context, contractID uuid.UUID) error
 
 	// GetExpiring retrieves contracts expiring on or before the target time.
 	// Uses timestamp-based comparison (not date-only).
@@ -157,12 +157,12 @@ type ContractRepository interface {
 type VolumeDiscountTierRepository interface {
 	Create(ctx context.Context, tier *VolumeDiscountTier) error
 	CreateBatch(ctx context.Context, tiers []*VolumeDiscountTier) error
-	GetByContractID(ctx context.Context, contractID ulid.ULID) ([]*VolumeDiscountTier, error)
-	DeleteByContractID(ctx context.Context, contractID ulid.ULID) error
+	GetByContractID(ctx context.Context, contractID uuid.UUID) ([]*VolumeDiscountTier, error)
+	DeleteByContractID(ctx context.Context, contractID uuid.UUID) error
 }
 
 // ContractHistoryRepository handles contract audit trail (PostgreSQL)
 type ContractHistoryRepository interface {
 	Log(ctx context.Context, history *ContractHistory) error
-	GetByContractID(ctx context.Context, contractID ulid.ULID) ([]*ContractHistory, error)
+	GetByContractID(ctx context.Context, contractID uuid.UUID) ([]*ContractHistory, error)
 }

@@ -10,28 +10,28 @@ import (
 	"brokle/internal/transport/http/middleware"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 // ScoreResponse is a DTO for score API responses.
 // Metadata is json.RawMessage to preserve the stored JSON exactly as-is,
 // avoiding lossy map[string]any conversion that silently drops non-object values.
 type ScoreResponse struct {
-	ID               string           `json:"id"`
-	ProjectID        string           `json:"project_id"`
-	TraceID          *string          `json:"trace_id,omitempty"`
-	SpanID           *string          `json:"span_id,omitempty"`
-	Name             string           `json:"name"`
-	Value            *float64         `json:"value,omitempty"`
-	StringValue      *string          `json:"string_value,omitempty"`
-	Type             string           `json:"type"`
-	Source           string           `json:"source"`
-	Reason           *string          `json:"reason,omitempty"`
-	Metadata         json.RawMessage  `json:"metadata,omitempty"`
-	ExperimentID     *string          `json:"experiment_id,omitempty"`
-	ExperimentItemID *string          `json:"experiment_item_id,omitempty"`
-	CreatedBy        *string          `json:"created_by,omitempty"`
-	Timestamp        time.Time        `json:"timestamp"`
+	ID               string          `json:"id"`
+	ProjectID        string          `json:"project_id"`
+	TraceID          *string         `json:"trace_id,omitempty"`
+	SpanID           *string         `json:"span_id,omitempty"`
+	Name             string          `json:"name"`
+	Value            *float64        `json:"value,omitempty"`
+	StringValue      *string         `json:"string_value,omitempty"`
+	Type             string          `json:"type"`
+	Source           string          `json:"source"`
+	Reason           *string         `json:"reason,omitempty"`
+	Metadata         json.RawMessage `json:"metadata,omitempty"`
+	ExperimentID     *string         `json:"experiment_id,omitempty"`
+	ExperimentItemID *string         `json:"experiment_item_id,omitempty"`
+	CreatedBy        *string         `json:"created_by,omitempty"`
+	Timestamp        time.Time       `json:"timestamp"`
 }
 
 func toScoreResponse(s *observability.Score) *ScoreResponse {
@@ -436,7 +436,7 @@ func (h *Handler) CreateTraceScore(c *gin.Context) {
 	}
 
 	// Get user ID from JWT (for audit trail)
-	userID, exists := middleware.GetUserIDULID(c)
+	userID, exists := middleware.GetUserIDFromContext(c)
 	if !exists {
 		response.Error(c, appErrors.NewUnauthorizedError("authentication required"))
 		return
@@ -465,7 +465,7 @@ func (h *Handler) CreateTraceScore(c *gin.Context) {
 	// Build the score entity
 	userIDStr := userID.String()
 	score := &observability.Score{
-		ID:             ulid.New().String(),
+		ID:             uid.New().String(),
 		ProjectID:      projectIDStr,
 		OrganizationID: rootSpan.OrganizationID,
 		TraceID:        &traceID,
@@ -614,7 +614,7 @@ func (h *Handler) DeleteTraceScore(c *gin.Context) {
 	_ = projectIDStr // used for authorization context
 
 	// Get user ID from JWT
-	userID, exists := middleware.GetUserIDULID(c)
+	userID, exists := middleware.GetUserIDFromContext(c)
 	if !exists {
 		response.Error(c, appErrors.NewUnauthorizedError("authentication required"))
 		return

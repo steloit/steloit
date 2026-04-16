@@ -36,7 +36,7 @@ function mapAPIKeyToFrontend(backendKey: BackendAPIKey): APIKey {
 /**
  * List API keys for a project with optional filters and pagination
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @param filters - Optional filters (status, pagination, sorting)
  * @returns Paginated list of API keys
  *
@@ -88,7 +88,7 @@ export async function listAPIKeys(
  * IMPORTANT: The full `key` field is ONLY returned once during creation.
  * Store it securely as it cannot be retrieved again.
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @param data - API key creation data (name, expiry_option)
  * @returns Created API key with full key (one-time view)
  *
@@ -121,8 +121,8 @@ export async function createAPIKey(
  * This action cannot be undone. The API key will be immediately revoked
  * and all requests using this key will fail.
  *
- * @param projectId - Project ULID
- * @param keyId - API key ID (ULID)
+ * @param projectId - Project UUID
+ * @param keyId - API key ID (UUID)
  * @returns void (204 No Content)
  *
  * @example

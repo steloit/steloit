@@ -10,8 +10,9 @@ import (
 	"github.com/lib/pq"
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	playgroundDomain "brokle/internal/core/domain/playground"
-	"brokle/pkg/ulid"
 )
 
 // sessionRepository implements playgroundDomain.SessionRepository using GORM
@@ -42,7 +43,7 @@ func (r *sessionRepository) Create(ctx context.Context, session *playgroundDomai
 
 // GetByID retrieves a session by its ID.
 // Returns ErrSessionNotFound if not found.
-func (r *sessionRepository) GetByID(ctx context.Context, id ulid.ULID) (*playgroundDomain.Session, error) {
+func (r *sessionRepository) GetByID(ctx context.Context, id uuid.UUID) (*playgroundDomain.Session, error) {
 	var session playgroundDomain.Session
 	err := r.db.WithContext(ctx).
 		Where("id = ?", id).
@@ -59,7 +60,7 @@ func (r *sessionRepository) GetByID(ctx context.Context, id ulid.ULID) (*playgro
 
 // List retrieves sessions for a project (for sidebar).
 // Ordered by last_used_at DESC.
-func (r *sessionRepository) List(ctx context.Context, projectID ulid.ULID, limit int) ([]*playgroundDomain.Session, error) {
+func (r *sessionRepository) List(ctx context.Context, projectID uuid.UUID, limit int) ([]*playgroundDomain.Session, error) {
 	if limit <= 0 {
 		limit = 20
 	}
@@ -81,7 +82,7 @@ func (r *sessionRepository) List(ctx context.Context, projectID ulid.ULID, limit
 
 // ListByTags retrieves sessions filtered by tags.
 // Returns sessions where tags contains any of the provided tags.
-func (r *sessionRepository) ListByTags(ctx context.Context, projectID ulid.ULID, tags []string, limit int) ([]*playgroundDomain.Session, error) {
+func (r *sessionRepository) ListByTags(ctx context.Context, projectID uuid.UUID, tags []string, limit int) ([]*playgroundDomain.Session, error) {
 	if limit <= 0 {
 		limit = 20
 	}
@@ -115,7 +116,7 @@ func (r *sessionRepository) Update(ctx context.Context, session *playgroundDomai
 }
 
 // UpdateLastRun updates only the last_run and last_used_at fields.
-func (r *sessionRepository) UpdateLastRun(ctx context.Context, id ulid.ULID, lastRun playgroundDomain.JSON) error {
+func (r *sessionRepository) UpdateLastRun(ctx context.Context, id uuid.UUID, lastRun playgroundDomain.JSON) error {
 	now := time.Now()
 
 	result := r.db.WithContext(ctx).
@@ -138,7 +139,7 @@ func (r *sessionRepository) UpdateLastRun(ctx context.Context, id ulid.ULID, las
 }
 
 // UpdateWindows updates only the windows JSONB field.
-func (r *sessionRepository) UpdateWindows(ctx context.Context, id ulid.ULID, windows playgroundDomain.JSON) error {
+func (r *sessionRepository) UpdateWindows(ctx context.Context, id uuid.UUID, windows playgroundDomain.JSON) error {
 	now := time.Now()
 	result := r.db.WithContext(ctx).
 		Model(&playgroundDomain.Session{}).
@@ -157,7 +158,7 @@ func (r *sessionRepository) UpdateWindows(ctx context.Context, id ulid.ULID, win
 }
 
 // Delete removes a session by ID.
-func (r *sessionRepository) Delete(ctx context.Context, id ulid.ULID) error {
+func (r *sessionRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	result := r.db.WithContext(ctx).
 		Where("id = ?", id).
 		Delete(&playgroundDomain.Session{})
@@ -171,7 +172,7 @@ func (r *sessionRepository) Delete(ctx context.Context, id ulid.ULID) error {
 }
 
 // Exists checks if a session exists.
-func (r *sessionRepository) Exists(ctx context.Context, id ulid.ULID) (bool, error) {
+func (r *sessionRepository) Exists(ctx context.Context, id uuid.UUID) (bool, error) {
 	var count int64
 	err := r.db.WithContext(ctx).
 		Model(&playgroundDomain.Session{}).
@@ -184,7 +185,7 @@ func (r *sessionRepository) Exists(ctx context.Context, id ulid.ULID) (bool, err
 }
 
 // ExistsByProjectID checks if a session exists for a specific project.
-func (r *sessionRepository) ExistsByProjectID(ctx context.Context, id ulid.ULID, projectID ulid.ULID) (bool, error) {
+func (r *sessionRepository) ExistsByProjectID(ctx context.Context, id uuid.UUID, projectID uuid.UUID) (bool, error) {
 	var count int64
 	err := r.db.WithContext(ctx).
 		Model(&playgroundDomain.Session{}).

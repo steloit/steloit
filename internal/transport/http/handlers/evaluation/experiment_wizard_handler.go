@@ -5,11 +5,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/google/uuid"
+
 	evaluationDomain "brokle/internal/core/domain/evaluation"
 	"brokle/internal/transport/http/middleware"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 )
 
 type ExperimentWizardHandler struct {
@@ -48,8 +49,8 @@ func (h *ExperimentWizardHandler) CreateFromWizard(c *gin.Context) {
 	}
 
 	// Get optional user ID for audit purposes
-	var userID *ulid.ULID
-	if uid, exists := middleware.GetUserIDULID(c); exists {
+	var userID *uuid.UUID
+	if uid, exists := middleware.GetUserIDFromContext(c); exists {
 		userID = &uid
 	}
 
@@ -156,9 +157,9 @@ func (h *ExperimentWizardHandler) GetDatasetFields(c *gin.Context) {
 		return
 	}
 
-	datasetID, err := ulid.Parse(c.Param("datasetId"))
+	datasetID, err := uuid.Parse(c.Param("datasetId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid UUID"))
 		return
 	}
 
@@ -190,9 +191,9 @@ func (h *ExperimentWizardHandler) GetExperimentConfig(c *gin.Context) {
 		return
 	}
 
-	experimentID, err := ulid.Parse(c.Param("experimentId"))
+	experimentID, err := uuid.Parse(c.Param("experimentId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid experiment ID", "experimentId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid experiment ID", "experimentId must be a valid UUID"))
 		return
 	}
 

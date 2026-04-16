@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS otel_resources (
     resource_fingerprint String CODEC(ZSTD(1)),
-    project_id String CODEC(ZSTD(1)),
+    project_id UUID CODEC(ZSTD(1)),
     service_name LowCardinality(String) CODEC(ZSTD(1)),
     service_namespace LowCardinality(String) CODEC(ZSTD(1)),
     service_version LowCardinality(String) CODEC(ZSTD(1)),

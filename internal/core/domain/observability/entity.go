@@ -9,7 +9,7 @@ import (
 
 	"github.com/shopspring/decimal"
 
-	"brokle/pkg/ulid"
+	"github.com/google/uuid"
 )
 
 // SpanEvent represents an OTLP span event (Nested type for ClickHouse)
@@ -53,8 +53,8 @@ type TraceSummary struct {
 	ProviderName   *string         `json:"provider_name,omitempty" db:"provider_name"`
 	UserID         *string         `json:"user_id,omitempty" db:"user_id"`
 	SessionID      *string         `json:"session_id,omitempty" db:"session_id"`
-	Tags           []string        `json:"tags,omitempty" db:"tags"`       // User-managed tags for organization
-	Bookmarked     bool            `json:"bookmarked" db:"bookmarked"`     // User-managed bookmark status
+	Tags           []string        `json:"tags,omitempty" db:"tags"`   // User-managed tags for organization
+	Bookmarked     bool            `json:"bookmarked" db:"bookmarked"` // User-managed bookmark status
 }
 
 // Span represents an OTEL span with Gen AI semantic conventions and Brokle extensions
@@ -65,14 +65,14 @@ type Span struct {
 	StatusMessage *string    `json:"status_message,omitempty" db:"status_message"`
 	ParentSpanID  *string    `json:"parent_span_id,omitempty" db:"parent_span_id"`
 
-	TraceState *string `json:"trace_state,omitempty" db:"trace_state"`
-	Input      *string `json:"input,omitempty" db:"input"`
-	Output     *string `json:"output,omitempty" db:"output"`
-	TraceID    string  `json:"trace_id" db:"trace_id"`
-	SpanName   string  `json:"span_name" db:"span_name"`
-	SpanID     string  `json:"span_id" db:"span_id"`
-	ProjectID  string  `json:"project_id" db:"project_id"`
-	OrganizationID string `json:"organization_id" db:"organization_id"`
+	TraceState     *string `json:"trace_state,omitempty" db:"trace_state"`
+	Input          *string `json:"input,omitempty" db:"input"`
+	Output         *string `json:"output,omitempty" db:"output"`
+	TraceID        string  `json:"trace_id" db:"trace_id"`
+	SpanName       string  `json:"span_name" db:"span_name"`
+	SpanID         string  `json:"span_id" db:"span_id"`
+	ProjectID      string  `json:"project_id" db:"project_id"`
+	OrganizationID string  `json:"organization_id" db:"organization_id"`
 
 	Events []SpanEvent `json:"events,omitempty" db:"events"`
 	Links  []SpanLink  `json:"links,omitempty" db:"links"`
@@ -128,7 +128,7 @@ type Score struct {
 	Source      string   `json:"source" db:"source"`
 
 	// Additional fields
-	Reason   *string `json:"reason,omitempty" db:"reason"`
+	Reason   *string         `json:"reason,omitempty" db:"reason"`
 	Metadata json.RawMessage `json:"metadata" db:"metadata"`
 
 	// Experiment tracking
@@ -607,8 +607,8 @@ type TelemetryEventDeduplication struct {
 	FirstSeenAt time.Time `json:"first_seen_at" db:"first_seen_at"`
 	ExpiresAt   time.Time `json:"expires_at" db:"expires_at"`
 	EventID     string    `json:"event_id" db:"event_id"`
-	BatchID     ulid.ULID `json:"batch_id" db:"batch_id"`
-	ProjectID   ulid.ULID `json:"project_id" db:"project_id"`
+	BatchID     uuid.UUID `json:"batch_id" db:"batch_id"`
+	ProjectID   uuid.UUID `json:"project_id" db:"project_id"`
 }
 
 func (d *TelemetryEventDeduplication) IsExpired() bool                { return time.Now().After(d.ExpiresAt) }
@@ -619,10 +619,10 @@ func (d *TelemetryEventDeduplication) Validate() []ValidationError {
 	if d.EventID == "" {
 		errors = append(errors, ValidationError{Field: "event_id", Message: "event_id is required"})
 	}
-	if d.BatchID.IsZero() {
+	if d.BatchID == uuid.Nil {
 		errors = append(errors, ValidationError{Field: "batch_id", Message: "batch_id is required"})
 	}
-	if d.ProjectID.IsZero() {
+	if d.ProjectID == uuid.Nil {
 		errors = append(errors, ValidationError{Field: "project_id", Message: "project_id is required"})
 	}
 	return errors

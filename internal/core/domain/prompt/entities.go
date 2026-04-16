@@ -11,7 +11,9 @@ import (
 
 	"github.com/lib/pq"
 
-	"brokle/pkg/ulid"
+	"github.com/google/uuid"
+
+	"brokle/pkg/uid"
 
 	"gorm.io/gorm"
 )
@@ -35,8 +37,8 @@ type Prompt struct {
 	Tags        pq.StringArray `json:"tags" gorm:"type:text[];default:'{}'"`
 	Versions    []Version      `json:"versions,omitempty" gorm:"foreignKey:PromptID"`
 	Labels      []Label        `json:"labels,omitempty" gorm:"foreignKey:PromptID"`
-	ID          ulid.ULID      `json:"id" gorm:"type:char(26);primaryKey"`
-	ProjectID   ulid.ULID      `json:"project_id" gorm:"type:char(26);not null"`
+	ID          uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey"`
+	ProjectID   uuid.UUID      `json:"project_id" gorm:"type:uuid;not null"`
 }
 
 // Version represents an immutable version snapshot of a prompt.
@@ -47,9 +49,9 @@ type Version struct {
 	Variables     pq.StringArray `json:"variables" gorm:"type:text[];default:'{}'"`
 	CommitMessage string         `json:"commit_message,omitempty" gorm:"type:text"`
 	Labels        []Label        `json:"labels,omitempty" gorm:"foreignKey:VersionID"`
-	ID            ulid.ULID      `json:"id" gorm:"type:char(26);primaryKey"`
-	PromptID      ulid.ULID      `json:"prompt_id" gorm:"type:char(26);not null"`
-	CreatedBy     *ulid.ULID     `json:"created_by,omitempty" gorm:"type:char(26)"`
+	ID            uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey"`
+	PromptID      uuid.UUID      `json:"prompt_id" gorm:"type:uuid;not null"`
+	CreatedBy     *uuid.UUID     `json:"created_by,omitempty" gorm:"type:uuid"`
 	Version       int            `json:"version" gorm:"not null"`
 }
 
@@ -58,19 +60,19 @@ type Label struct {
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at"`
 	Name      string     `json:"name" gorm:"size:50;not null"`
-	ID        ulid.ULID  `json:"id" gorm:"type:char(26);primaryKey"`
-	PromptID  ulid.ULID  `json:"prompt_id" gorm:"type:char(26);not null"`
-	VersionID ulid.ULID  `json:"version_id" gorm:"type:char(26);not null"`
-	CreatedBy *ulid.ULID `json:"created_by,omitempty" gorm:"type:char(26)"`
+	ID        uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey"`
+	PromptID  uuid.UUID  `json:"prompt_id" gorm:"type:uuid;not null"`
+	VersionID uuid.UUID  `json:"version_id" gorm:"type:uuid;not null"`
+	CreatedBy *uuid.UUID `json:"created_by,omitempty" gorm:"type:uuid"`
 }
 
 // ProtectedLabel represents a project-level protected label configuration.
 type ProtectedLabel struct {
 	CreatedAt time.Time  `json:"created_at"`
 	LabelName string     `json:"label_name" gorm:"size:50;not null"`
-	ID        ulid.ULID  `json:"id" gorm:"type:char(26);primaryKey"`
-	ProjectID ulid.ULID  `json:"project_id" gorm:"type:char(26);not null"`
-	CreatedBy *ulid.ULID `json:"created_by,omitempty" gorm:"type:char(26)"`
+	ID        uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey"`
+	ProjectID uuid.UUID  `json:"project_id" gorm:"type:uuid;not null"`
+	CreatedBy *uuid.UUID `json:"created_by,omitempty" gorm:"type:uuid"`
 }
 
 // ChatMessage represents a single message in a chat prompt template.
@@ -84,8 +86,8 @@ type ChatMessage struct {
 // ModelConfig represents optional model configuration for a prompt version.
 type ModelConfig struct {
 	Model            string   `json:"model,omitempty"`
-	Provider         string   `json:"provider,omitempty"`       // Adapter type (openai, anthropic, azure, gemini, openrouter, custom)
-	CredentialID     *string  `json:"credential_id,omitempty"`  // Specific credential config ID (optional, falls back to adapter-based lookup)
+	Provider         string   `json:"provider,omitempty"`      // Adapter type (openai, anthropic, azure, gemini, openrouter, custom)
+	CredentialID     *string  `json:"credential_id,omitempty"` // Specific credential config ID (optional, falls back to adapter-based lookup)
 	Temperature      *float64 `json:"temperature,omitempty"`
 	MaxTokens        *int     `json:"max_tokens,omitempty"`
 	TopP             *float64 `json:"top_p,omitempty"`
@@ -253,7 +255,7 @@ type PromptResponse struct {
 	Description   string          `json:"description,omitempty"`
 	Tags          []string        `json:"tags"`
 	Version       int             `json:"version"`
-	VersionID     string          `json:"version_id"` // ULID of the specific version (for linking)
+	VersionID     string          `json:"version_id"` // UUID of the specific version (for linking)
 	Labels        []string        `json:"labels"`
 	Template      interface{}     `json:"template"`
 	Config        *ModelConfig    `json:"config,omitempty"`
@@ -268,15 +270,15 @@ type PromptResponse struct {
 
 // PromptListItem is a summary item for prompt listing.
 type PromptListItem struct {
-	ID            string                 `json:"id"`
-	Name          string                 `json:"name"`
-	Type          PromptType             `json:"type"`
-	Description   string                 `json:"description,omitempty"`
-	Tags          []string               `json:"tags"`
-	LatestVersion int                    `json:"latest_version"`
-	Labels        []PromptListLabelInfo  `json:"labels"`
-	CreatedAt     time.Time              `json:"created_at"`
-	UpdatedAt     time.Time              `json:"updated_at"`
+	ID            string                `json:"id"`
+	Name          string                `json:"name"`
+	Type          PromptType            `json:"type"`
+	Description   string                `json:"description,omitempty"`
+	Tags          []string              `json:"tags"`
+	LatestVersion int                   `json:"latest_version"`
+	Labels        []PromptListLabelInfo `json:"labels"`
+	CreatedAt     time.Time             `json:"created_at"`
+	UpdatedAt     time.Time             `json:"updated_at"`
 }
 
 // PromptListLabelInfo shows label-to-version mapping in list view.
@@ -308,10 +310,10 @@ type VersionDiffResponse struct {
 }
 
 type ExecutePromptResponse struct {
-	CompiledPrompt interface{}            `json:"compiled_prompt"`
-	Response       *LLMResponse           `json:"response,omitempty"`
-	LatencyMs      int64                  `json:"latency_ms"`
-	Error          string                 `json:"error,omitempty"`
+	CompiledPrompt interface{}  `json:"compiled_prompt"`
+	Response       *LLMResponse `json:"response,omitempty"`
+	LatencyMs      int64        `json:"latency_ms"`
+	Error          string       `json:"error,omitempty"`
 }
 
 type LLMResponse struct {
@@ -347,31 +349,31 @@ type StreamEvent struct {
 
 // StreamResult contains the final metrics after streaming completes.
 type StreamResult struct {
-	Content       string            `json:"content"`                     // Full accumulated content
-	Model         string            `json:"model"`                       // Model used
-	Usage         *LLMUsage         `json:"usage,omitempty"`             // Token usage
-	Cost          *float64          `json:"cost,omitempty"`              // Calculated cost
-	FinishReason  string            `json:"finish_reason,omitempty"`     // Completion reason
-	TTFTMs        *float64          `json:"ttft_ms,omitempty"`           // Time to first token (ms)
-	TotalDuration int64             `json:"total_duration_ms,omitempty"` // Total execution time (ms)
+	Content       string            `json:"content"`                                         // Full accumulated content
+	Model         string            `json:"model"`                                           // Model used
+	Usage         *LLMUsage         `json:"usage,omitempty"`                                 // Token usage
+	Cost          *float64          `json:"cost,omitempty"`                                  // Calculated cost
+	FinishReason  string            `json:"finish_reason,omitempty"`                         // Completion reason
+	TTFTMs        *float64          `json:"ttft_ms,omitempty"`                               // Time to first token (ms)
+	TotalDuration int64             `json:"total_duration_ms,omitempty"`                     // Total execution time (ms)
 	ToolCalls     []json.RawMessage `json:"tool_calls,omitempty" swaggertype:"array,object"` // Tool calls if finish_reason is "tool_calls"
 }
 
 // UpsertResponse is the response for the SDK upsert endpoint.
 type UpsertResponse struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
+	ID          string     `json:"id"`
+	Name        string     `json:"name"`
 	Type        PromptType `json:"type"`
-	Version     int       `json:"version"`
-	IsNewPrompt bool      `json:"is_new_prompt"`
-	Labels      []string  `json:"labels"`
-	CreatedAt   time.Time `json:"created_at"`
+	Version     int        `json:"version"`
+	IsNewPrompt bool       `json:"is_new_prompt"`
+	Labels      []string   `json:"labels"`
+	CreatedAt   time.Time  `json:"created_at"`
 }
 
-func NewPrompt(projectID ulid.ULID, name string, promptType PromptType, description string, tags []string) *Prompt {
+func NewPrompt(projectID uuid.UUID, name string, promptType PromptType, description string, tags []string) *Prompt {
 	now := time.Now()
 	return &Prompt{
-		ID:          ulid.New(),
+		ID:          uid.New(),
 		ProjectID:   projectID,
 		Name:        name,
 		Type:        promptType,
@@ -382,9 +384,9 @@ func NewPrompt(projectID ulid.ULID, name string, promptType PromptType, descript
 	}
 }
 
-func NewVersion(promptID ulid.ULID, version int, template JSON, config *ModelConfig, variables []string, commitMessage string, createdBy *ulid.ULID) *Version {
+func NewVersion(promptID uuid.UUID, version int, template JSON, config *ModelConfig, variables []string, commitMessage string, createdBy *uuid.UUID) *Version {
 	return &Version{
-		ID:            ulid.New(),
+		ID:            uid.New(),
 		PromptID:      promptID,
 		Version:       version,
 		Template:      template,
@@ -396,10 +398,10 @@ func NewVersion(promptID ulid.ULID, version int, template JSON, config *ModelCon
 	}
 }
 
-func NewLabel(promptID, versionID ulid.ULID, name string, createdBy *ulid.ULID) *Label {
+func NewLabel(promptID, versionID uuid.UUID, name string, createdBy *uuid.UUID) *Label {
 	now := time.Now()
 	return &Label{
-		ID:        ulid.New(),
+		ID:        uid.New(),
 		PromptID:  promptID,
 		VersionID: versionID,
 		Name:      name,
@@ -409,9 +411,9 @@ func NewLabel(promptID, versionID ulid.ULID, name string, createdBy *ulid.ULID) 
 	}
 }
 
-func NewProtectedLabel(projectID ulid.ULID, labelName string, createdBy *ulid.ULID) *ProtectedLabel {
+func NewProtectedLabel(projectID uuid.UUID, labelName string, createdBy *uuid.UUID) *ProtectedLabel {
 	return &ProtectedLabel{
-		ID:        ulid.New(),
+		ID:        uid.New(),
 		ProjectID: projectID,
 		LabelName: labelName,
 		CreatedBy: createdBy,

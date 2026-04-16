@@ -5,8 +5,9 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	authDomain "brokle/internal/core/domain/auth"
-	"brokle/pkg/ulid"
 	"brokle/internal/infrastructure/shared"
 )
 
@@ -33,7 +34,7 @@ func (r *roleRepository) Create(ctx context.Context, role *authDomain.Role) erro
 	return r.getDB(ctx).WithContext(ctx).Create(role).Error
 }
 
-func (r *roleRepository) GetByID(ctx context.Context, id ulid.ULID) (*authDomain.Role, error) {
+func (r *roleRepository) GetByID(ctx context.Context, id uuid.UUID) (*authDomain.Role, error) {
 	var role authDomain.Role
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("id = ?", id).
@@ -63,7 +64,7 @@ func (r *roleRepository) Update(ctx context.Context, role *authDomain.Role) erro
 	return r.getDB(ctx).WithContext(ctx).Save(role).Error
 }
 
-func (r *roleRepository) Delete(ctx context.Context, id ulid.ULID) error {
+func (r *roleRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).Delete(&authDomain.Role{}, id).Error
 }
 
@@ -90,7 +91,7 @@ func (r *roleRepository) GetAllRoles(ctx context.Context) ([]*authDomain.Role, e
 
 // Permission management for roles
 
-func (r *roleRepository) GetRolePermissions(ctx context.Context, roleID ulid.ULID) ([]*authDomain.Permission, error) {
+func (r *roleRepository) GetRolePermissions(ctx context.Context, roleID uuid.UUID) ([]*authDomain.Permission, error) {
 	var permissions []*authDomain.Permission
 	err := r.getDB(ctx).WithContext(ctx).
 		Joins("JOIN role_permissions ON permissions.id = role_permissions.permission_id").
@@ -100,7 +101,7 @@ func (r *roleRepository) GetRolePermissions(ctx context.Context, roleID ulid.ULI
 	return permissions, err
 }
 
-func (r *roleRepository) AssignRolePermissions(ctx context.Context, roleID ulid.ULID, permissionIDs []ulid.ULID, grantedBy *ulid.ULID) error {
+func (r *roleRepository) AssignRolePermissions(ctx context.Context, roleID uuid.UUID, permissionIDs []uuid.UUID, grantedBy *uuid.UUID) error {
 	var rolePermissions []authDomain.RolePermission
 	for _, permissionID := range permissionIDs {
 		rolePermissions = append(rolePermissions, authDomain.RolePermission{
@@ -112,13 +113,13 @@ func (r *roleRepository) AssignRolePermissions(ctx context.Context, roleID ulid.
 	return r.getDB(ctx).WithContext(ctx).Create(&rolePermissions).Error
 }
 
-func (r *roleRepository) RevokeRolePermissions(ctx context.Context, roleID ulid.ULID, permissionIDs []ulid.ULID) error {
+func (r *roleRepository) RevokeRolePermissions(ctx context.Context, roleID uuid.UUID, permissionIDs []uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).
 		Where("role_id = ? AND permission_id IN ?", roleID, permissionIDs).
 		Delete(&authDomain.RolePermission{}).Error
 }
 
-func (r *roleRepository) UpdateRolePermissions(ctx context.Context, roleID ulid.ULID, permissionIDs []ulid.ULID, grantedBy *ulid.ULID) error {
+func (r *roleRepository) UpdateRolePermissions(ctx context.Context, roleID uuid.UUID, permissionIDs []uuid.UUID, grantedBy *uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// Remove all existing permissions
 		if err := tx.Where("role_id = ?", roleID).Delete(&authDomain.RolePermission{}).Error; err != nil {
@@ -215,7 +216,7 @@ func (r *roleRepository) GetSystemRoles(ctx context.Context) ([]*authDomain.Role
 
 // Custom scoped role methods
 
-func (r *roleRepository) GetCustomRolesByScopeID(ctx context.Context, scopeType string, scopeID ulid.ULID) ([]*authDomain.Role, error) {
+func (r *roleRepository) GetCustomRolesByScopeID(ctx context.Context, scopeType string, scopeID uuid.UUID) ([]*authDomain.Role, error) {
 	var roles []*authDomain.Role
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("scope_type = ? AND scope_id = ?", scopeType, scopeID).
@@ -225,7 +226,7 @@ func (r *roleRepository) GetCustomRolesByScopeID(ctx context.Context, scopeType 
 	return roles, err
 }
 
-func (r *roleRepository) GetByNameScopeAndID(ctx context.Context, name, scopeType string, scopeID *ulid.ULID) (*authDomain.Role, error) {
+func (r *roleRepository) GetByNameScopeAndID(ctx context.Context, name, scopeType string, scopeID *uuid.UUID) (*authDomain.Role, error) {
 	var role authDomain.Role
 	query := r.getDB(ctx).WithContext(ctx).
 		Where("name = ? AND scope_type = ?", name, scopeType)
@@ -243,7 +244,7 @@ func (r *roleRepository) GetByNameScopeAndID(ctx context.Context, name, scopeTyp
 	return &role, nil
 }
 
-func (r *roleRepository) GetCustomRolesByOrganization(ctx context.Context, organizationID ulid.ULID) ([]*authDomain.Role, error) {
+func (r *roleRepository) GetCustomRolesByOrganization(ctx context.Context, organizationID uuid.UUID) ([]*authDomain.Role, error) {
 	var roles []*authDomain.Role
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("scope_type = ? AND scope_id = ?", authDomain.ScopeOrganization, organizationID).

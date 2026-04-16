@@ -6,12 +6,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/config"
 	"brokle/internal/core/domain/organization"
 	"brokle/internal/core/domain/user"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 	"brokle/pkg/utils"
 )
 
@@ -40,7 +41,7 @@ func NewHandler(config *config.Config, logger *slog.Logger, userService user.Use
 type UserProfileResponse struct {
 	CreatedAt             time.Time        `json:"created_at" example:"2025-01-01T00:00:00Z" description:"Account creation timestamp"`
 	Profile               *UserProfileData `json:"profile,omitempty" description:"Extended profile information"`
-	DefaultOrganizationID *ulid.ULID       `json:"default_organization_id,omitempty" example:"01K4FHGHT3XX9WFM293QPZ5G9V" description:"Default organization ID" swaggertype:"string"`
+	DefaultOrganizationID *uuid.UUID       `json:"default_organization_id,omitempty" example:"01K4FHGHT3XX9WFM293QPZ5G9V" description:"Default organization ID" swaggertype:"string"`
 	LastLoginAt           *time.Time       `json:"last_login_at,omitempty" example:"2025-01-02T10:30:00Z" description:"Last login timestamp"`
 	FirstName             string           `json:"first_name" example:"John" description:"User first name"`
 	AvatarURL             string           `json:"avatar_url" example:"https://example.com/avatar.jpg" description:"Profile avatar URL"`
@@ -48,7 +49,7 @@ type UserProfileResponse struct {
 	Name                  string           `json:"name" example:"John Doe" description:"User full name"`
 	Email                 string           `json:"email" example:"user@example.com" description:"User email address"`
 	Completeness          int              `json:"completeness" example:"85" description:"Profile completeness percentage"`
-	ID                    ulid.ULID        `json:"id" example:"01K4FHGHT3XX9WFM293QPZ5G9V" description:"User unique identifier" swaggertype:"string"`
+	ID                    uuid.UUID        `json:"id" example:"01K4FHGHT3XX9WFM293QPZ5G9V" description:"User unique identifier" swaggertype:"string"`
 	IsEmailVerified       bool             `json:"is_email_verified" example:"true" description:"Email verification status"`
 	IsActive              bool             `json:"is_active" example:"true" description:"Account active status"`
 }
@@ -117,7 +118,7 @@ func (h *Handler) GetProfile(c *gin.Context) {
 		return
 	}
 
-	userID, ok := userIDInterface.(ulid.ULID)
+	userID, ok := userIDInterface.(uuid.UUID)
 	if !ok {
 		h.logger.Error("Invalid user ID type")
 		response.InternalServerError(c, "Authentication error")
@@ -271,7 +272,7 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	userID, ok := userIDInterface.(ulid.ULID)
+	userID, ok := userIDInterface.(uuid.UUID)
 	if !ok {
 		h.logger.Error("Invalid user ID type")
 		response.InternalServerError(c, "Authentication error")
@@ -351,7 +352,7 @@ func (h *Handler) SetDefaultOrganization(c *gin.Context) {
 		return
 	}
 
-	userID, ok := userIDInterface.(ulid.ULID)
+	userID, ok := userIDInterface.(uuid.UUID)
 	if !ok {
 		h.logger.Error("Invalid user ID type")
 		response.InternalServerError(c, "Authentication error")
@@ -366,7 +367,7 @@ func (h *Handler) SetDefaultOrganization(c *gin.Context) {
 	}
 
 	// Parse organization ID
-	orgID, err := ulid.Parse(req.OrganizationID)
+	orgID, err := uuid.Parse(req.OrganizationID)
 	if err != nil {
 		h.logger.Error("Invalid organization ID format", "error", err, "organization_id", req.OrganizationID)
 		response.Error(c, appErrors.NewValidationError("Invalid organization ID format", err.Error()))

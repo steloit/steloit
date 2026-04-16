@@ -12,8 +12,8 @@ type SpanQueryRequest struct {
 	Filter    string     `json:"filter" validate:"required,max=2000"`
 	StartTime *time.Time `json:"start_time,omitempty"`
 	EndTime   *time.Time `json:"end_time,omitempty"`
-	Limit int `json:"limit,omitempty"` // default 100, max 10000
-	Page  int `json:"page,omitempty"`  // 1-indexed page number
+	Limit     int        `json:"limit,omitempty"` // default 100, max 10000
+	Page      int        `json:"page,omitempty"`  // 1-indexed page number
 }
 
 // SpanQueryResponse represents the response containing queried spans.
@@ -99,13 +99,13 @@ const (
 	FilterOpNotIn          FilterOperator = "NOT IN"
 	FilterOpExists         FilterOperator = "EXISTS"
 	FilterOpNotExists      FilterOperator = "NOT EXISTS"
-	FilterOpStartsWith  FilterOperator = "STARTS WITH"
-	FilterOpEndsWith    FilterOperator = "ENDS WITH"
-	FilterOpRegex       FilterOperator = "REGEX"
-	FilterOpNotRegex    FilterOperator = "NOT REGEX"
-	FilterOpIsEmpty     FilterOperator = "IS EMPTY"
-	FilterOpIsNotEmpty  FilterOperator = "IS NOT EMPTY"
-	FilterOpSearch      FilterOperator = "~" // Full-text search operator
+	FilterOpStartsWith     FilterOperator = "STARTS WITH"
+	FilterOpEndsWith       FilterOperator = "ENDS WITH"
+	FilterOpRegex          FilterOperator = "REGEX"
+	FilterOpNotRegex       FilterOperator = "NOT REGEX"
+	FilterOpIsEmpty        FilterOperator = "IS EMPTY"
+	FilterOpIsNotEmpty     FilterOperator = "IS NOT EMPTY"
+	FilterOpSearch         FilterOperator = "~" // Full-text search operator
 )
 
 // IsComparisonOperator returns true for numeric comparison operators.
@@ -205,7 +205,7 @@ var (
 	ErrReservedKeywordAsName = errors.New("reserved keyword used as field name")
 
 	// Query execution errors
-	ErrQueryTimeout       = errors.New("query execution timeout")
+	ErrQueryTimeout        = errors.New("query execution timeout")
 	ErrResultLimitExceeded = errors.New("result limit exceeded")
 )
 
@@ -360,10 +360,10 @@ type AttributeKey struct {
 
 // AttributeDiscoveryRequest represents a request for discovering attribute keys.
 type AttributeDiscoveryRequest struct {
-	ProjectID   string           `json:"project_id"`
-	Sources     []AttributeSource `json:"sources,omitempty"` // defaults to all sources
-	Prefix      string           `json:"prefix,omitempty"`  // filter by key prefix
-	Limit       int              `json:"limit,omitempty"`   // default 100, max 500
+	ProjectID string            `json:"project_id"`
+	Sources   []AttributeSource `json:"sources,omitempty"` // defaults to all sources
+	Prefix    string            `json:"prefix,omitempty"`  // filter by key prefix
+	Limit     int               `json:"limit,omitempty"`   // default 100, max 500
 }
 
 // AttributeDiscoveryResponse represents the response containing discovered attributes.

@@ -1,11 +1,11 @@
 package observability
 
 import (
-	"log/slog"
 	"bytes"
 	"compress/gzip"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -19,7 +19,7 @@ import (
 	"brokle/internal/infrastructure/streams"
 	"brokle/internal/transport/http/middleware"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 // OTLPLogsHandler handles OTLP logs HTTP requests
@@ -128,7 +128,7 @@ func (h *OTLPLogsHandler) HandleLogs(c *gin.Context) {
 			return
 		}
 
-		h.logger.Info("Gzip decompression successful", "original_size", originalSize, "decompressed_size", len(body), "compression_ratio", float64(originalSize) / float64(len(body)))
+		h.logger.Info("Gzip decompression successful", "original_size", originalSize, "decompressed_size", len(body), "compression_ratio", float64(originalSize)/float64(len(body)))
 	}
 
 	// Parse request based on content type (already validated above)
@@ -204,12 +204,12 @@ func (h *OTLPLogsHandler) HandleLogs(c *gin.Context) {
 	}
 
 	// Create batch for stream publishing
-	batchID := ulid.New()
+	batchID := uid.New()
 	streamMessage := &streams.TelemetryStreamMessage{
 		BatchID:   batchID,
 		ProjectID: *projectIDPtr,
 		Events:    eventData,
-		Timestamp: batchID.Time(), // Use batch ID timestamp (monotonic)
+		Timestamp: uid.TimeFromID(batchID), // Use batch ID timestamp (monotonic)
 	}
 
 	// Publish batch to Redis Streams (single stream per project with event_type routing)

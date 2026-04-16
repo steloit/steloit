@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS otel_logs (
     scope_name String CODEC(ZSTD(1)),
     scope_attributes Map(LowCardinality(String), String) CODEC(ZSTD(1)),
     log_attributes Map(LowCardinality(String), String) CODEC(ZSTD(1)),
-    project_id String CODEC(ZSTD(1)),
+    project_id UUID CODEC(ZSTD(1)),
     INDEX idx_trace_id trace_id TYPE bloom_filter(0.001) GRANULARITY 1,
     INDEX idx_span_id span_id TYPE bloom_filter(0.001) GRANULARITY 1,
     INDEX idx_service_name service_name TYPE bloom_filter(0.01) GRANULARITY 1,

@@ -8,10 +8,11 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	userDomain "brokle/internal/core/domain/user"
-	"brokle/pkg/pagination"
-	"brokle/pkg/ulid"
 	"brokle/internal/infrastructure/shared"
+	"brokle/pkg/pagination"
 )
 
 // userRepository implements the userDomain.Repository interface using GORM
@@ -37,7 +38,7 @@ func (r *userRepository) Create(ctx context.Context, u *userDomain.User) error {
 }
 
 // GetByID retrieves a user by ID
-func (r *userRepository) GetByID(ctx context.Context, id ulid.ULID) (*userDomain.User, error) {
+func (r *userRepository) GetByID(ctx context.Context, id uuid.UUID) (*userDomain.User, error) {
 	var u userDomain.User
 	err := r.getDB(ctx).WithContext(ctx).Where("id = ? AND deleted_at IS NULL", id).First(&u).Error
 	if err != nil {
@@ -81,7 +82,7 @@ func (r *userRepository) Update(ctx context.Context, u *userDomain.User) error {
 }
 
 // Delete soft deletes a user
-func (r *userRepository) Delete(ctx context.Context, id ulid.ULID) error {
+func (r *userRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).Model(&userDomain.User{}).Where("id = ?", id).Update("deleted_at", time.Now()).Error
 }
 
@@ -108,7 +109,7 @@ func (r *userRepository) Count(ctx context.Context) (int64, error) {
 }
 
 // UpdatePassword updates a user's password
-func (r *userRepository) UpdatePassword(ctx context.Context, userID ulid.ULID, hashedPassword string) error {
+func (r *userRepository) UpdatePassword(ctx context.Context, userID uuid.UUID, hashedPassword string) error {
 	return r.getDB(ctx).WithContext(ctx).
 		Model(&userDomain.User{}).
 		Where("id = ?", userID).
@@ -116,7 +117,7 @@ func (r *userRepository) UpdatePassword(ctx context.Context, userID ulid.ULID, h
 }
 
 // UpdateLastLogin updates the user's last login timestamp
-func (r *userRepository) UpdateLastLogin(ctx context.Context, userID ulid.ULID) error {
+func (r *userRepository) UpdateLastLogin(ctx context.Context, userID uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).
 		Model(&userDomain.User{}).
 		Where("id = ?", userID).
@@ -124,7 +125,7 @@ func (r *userRepository) UpdateLastLogin(ctx context.Context, userID ulid.ULID) 
 }
 
 // MarkEmailAsVerified marks the user's email as verified
-func (r *userRepository) MarkEmailAsVerified(ctx context.Context, userID ulid.ULID) error {
+func (r *userRepository) MarkEmailAsVerified(ctx context.Context, userID uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).
 		Model(&userDomain.User{}).
 		Where("id = ?", userID).
@@ -135,9 +136,9 @@ func (r *userRepository) MarkEmailAsVerified(ctx context.Context, userID ulid.UL
 }
 
 // SetDefaultOrganization sets the user's default organization
-func (r *userRepository) SetDefaultOrganization(ctx context.Context, userID ulid.ULID, orgID ulid.ULID) error {
-	var orgIDPtr *ulid.ULID
-	if orgID != (ulid.ULID{}) { // Check if not zero value
+func (r *userRepository) SetDefaultOrganization(ctx context.Context, userID uuid.UUID, orgID uuid.UUID) error {
+	var orgIDPtr *uuid.UUID
+	if orgID != (uuid.UUID{}) { // Check if not zero value
 		orgIDPtr = &orgID
 	}
 	return r.getDB(ctx).WithContext(ctx).
@@ -171,7 +172,7 @@ func (r *userRepository) GetActiveUsers(ctx context.Context, limit, offset int) 
 }
 
 // GetUsersByIDs retrieves multiple users by their IDs
-func (r *userRepository) GetUsersByIDs(ctx context.Context, ids []ulid.ULID) ([]*userDomain.User, error) {
+func (r *userRepository) GetUsersByIDs(ctx context.Context, ids []uuid.UUID) ([]*userDomain.User, error) {
 	var users []*userDomain.User
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("id IN ? AND deleted_at IS NULL", ids).
@@ -246,7 +247,7 @@ func (r *userRepository) GetUserStats(ctx context.Context) (*userDomain.UserStat
 }
 
 // UpdateUserActivity updates user activity timestamp
-func (r *userRepository) UpdateUserActivity(ctx context.Context, userID ulid.ULID) error {
+func (r *userRepository) UpdateUserActivity(ctx context.Context, userID uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).
 		Model(&userDomain.User{}).
 		Where("id = ?", userID).
@@ -254,7 +255,7 @@ func (r *userRepository) UpdateUserActivity(ctx context.Context, userID ulid.ULI
 }
 
 // Deactivate deactivates a user account
-func (r *userRepository) Deactivate(ctx context.Context, userID ulid.ULID) error {
+func (r *userRepository) Deactivate(ctx context.Context, userID uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).
 		Model(&userDomain.User{}).
 		Where("id = ?", userID).
@@ -262,7 +263,7 @@ func (r *userRepository) Deactivate(ctx context.Context, userID ulid.ULID) error
 }
 
 // Activate activates a user account
-func (r *userRepository) Activate(ctx context.Context, userID ulid.ULID) error {
+func (r *userRepository) Activate(ctx context.Context, userID uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).
 		Model(&userDomain.User{}).
 		Where("id = ?", userID).
@@ -332,7 +333,7 @@ func (r *userRepository) CreateProfile(ctx context.Context, profile *userDomain.
 	return r.getDB(ctx).WithContext(ctx).Create(profile).Error
 }
 
-func (r *userRepository) GetProfile(ctx context.Context, userID ulid.ULID) (*userDomain.UserProfile, error) {
+func (r *userRepository) GetProfile(ctx context.Context, userID uuid.UUID) (*userDomain.UserProfile, error) {
 	var profile userDomain.UserProfile
 	err := r.getDB(ctx).WithContext(ctx).Where("user_id = ?", userID).First(&profile).Error
 	if err != nil {
@@ -349,12 +350,12 @@ func (r *userRepository) UpdateProfile(ctx context.Context, profile *userDomain.
 }
 
 // Additional missing interface methods
-func (r *userRepository) VerifyEmail(ctx context.Context, userID ulid.ULID, token string) error {
+func (r *userRepository) VerifyEmail(ctx context.Context, userID uuid.UUID, token string) error {
 	// TODO: Implement token validation logic
 	return r.MarkEmailAsVerified(ctx, userID)
 }
 
-func (r *userRepository) GetDefaultOrganization(ctx context.Context, userID ulid.ULID) (*ulid.ULID, error) {
+func (r *userRepository) GetDefaultOrganization(ctx context.Context, userID uuid.UUID) (*uuid.UUID, error) {
 	var u userDomain.User
 	err := r.getDB(ctx).WithContext(ctx).Select("default_organization_id").Where("id = ?", userID).First(&u).Error
 	if err != nil {
@@ -363,11 +364,11 @@ func (r *userRepository) GetDefaultOrganization(ctx context.Context, userID ulid
 	return u.DefaultOrganizationID, nil
 }
 
-func (r *userRepository) DeactivateUser(ctx context.Context, userID ulid.ULID) error {
+func (r *userRepository) DeactivateUser(ctx context.Context, userID uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).Model(&userDomain.User{}).Where("id = ?", userID).Update("is_active", false).Error
 }
 
-func (r *userRepository) ReactivateUser(ctx context.Context, userID ulid.ULID) error {
+func (r *userRepository) ReactivateUser(ctx context.Context, userID uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).Model(&userDomain.User{}).Where("id = ?", userID).Update("is_active", true).Error
 }
 
@@ -378,7 +379,7 @@ func (r *userRepository) GetNewUsersCount(ctx context.Context, since time.Time) 
 }
 
 // GetUsersByOrganization returns users who belong to an organization
-func (r *userRepository) GetUsersByOrganization(ctx context.Context, organizationID ulid.ULID) ([]*userDomain.User, error) {
+func (r *userRepository) GetUsersByOrganization(ctx context.Context, organizationID uuid.UUID) ([]*userDomain.User, error) {
 	var users []*userDomain.User
 	// This would require a join with the organization_members table
 	// For now, return empty slice as this requires cross-domain queries
@@ -416,7 +417,7 @@ func (r *userRepository) Search(ctx context.Context, query string, limit, offset
 	return r.SearchUsers(ctx, query, limit, offset)
 }
 
-func (r *userRepository) GetByIDs(ctx context.Context, ids []ulid.ULID) ([]*userDomain.User, error) {
+func (r *userRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*userDomain.User, error) {
 	return r.GetUsersByIDs(ctx, ids)
 }
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"brokle/pkg/ulid"
+	"github.com/google/uuid"
 )
 
 // TimeRange represents the time range for overview queries
@@ -115,11 +115,11 @@ type CostByModel struct {
 
 // RecentTrace represents a trace summary for the recent traces table
 type RecentTrace struct {
-	TraceID    string    `json:"trace_id"`
-	Name       string    `json:"name"`
-	LatencyMs  float64   `json:"latency_ms"`
-	Status     string    `json:"status"` // "success", "error"
-	Timestamp  time.Time `json:"timestamp"`
+	TraceID   string    `json:"trace_id"`
+	Name      string    `json:"name"`
+	LatencyMs float64   `json:"latency_ms"`
+	Status    string    `json:"status"` // "success", "error"
+	Timestamp time.Time `json:"timestamp"`
 }
 
 // TopError represents an error summary for the top errors table
@@ -139,10 +139,10 @@ type ScoreSummary struct {
 
 // ChecklistStatus represents the onboarding checklist state
 type ChecklistStatus struct {
-	HasProject      bool `json:"has_project"`       // Always true (they're viewing the page)
-	HasTraces       bool `json:"has_traces"`        // Has sent at least one trace
-	HasAIProvider   bool `json:"has_ai_provider"`   // Has configured an AI provider
-	HasEvaluations  bool `json:"has_evaluations"`   // Has set up evaluation scores
+	HasProject     bool `json:"has_project"`     // Always true (they're viewing the page)
+	HasTraces      bool `json:"has_traces"`      // Has sent at least one trace
+	HasAIProvider  bool `json:"has_ai_provider"` // Has configured an AI provider
+	HasEvaluations bool `json:"has_evaluations"` // Has set up evaluation scores
 }
 
 // OverviewResponse is the complete response for the overview endpoint
@@ -161,14 +161,14 @@ type OverviewResponse struct {
 
 // OverviewFilter contains the filter parameters for overview queries
 type OverviewFilter struct {
-	ProjectID ulid.ULID
+	ProjectID uuid.UUID
 	TimeRange TimeRange
 	StartTime time.Time
 	EndTime   time.Time
 }
 
 // NewOverviewFilter creates a new OverviewFilter with calculated time boundaries
-func NewOverviewFilter(projectID ulid.ULID, timeRange TimeRange) *OverviewFilter {
+func NewOverviewFilter(projectID uuid.UUID, timeRange TimeRange) *OverviewFilter {
 	endTime := time.Now().UTC()
 	startTime := endTime.Add(-timeRange.Duration())
 
@@ -223,10 +223,10 @@ type OverviewRepository interface {
 	GetScoresSummary(ctx context.Context, filter *OverviewFilter, limit int) ([]ScoreSummary, error)
 
 	// HasTraces checks if the project has any traces
-	HasTraces(ctx context.Context, projectID ulid.ULID) (bool, error)
+	HasTraces(ctx context.Context, projectID uuid.UUID) (bool, error)
 
 	// HasScores checks if the project has any scores
-	HasScores(ctx context.Context, projectID ulid.ULID) (bool, error)
+	HasScores(ctx context.Context, projectID uuid.UUID) (bool, error)
 }
 
 // OverviewService defines the business logic interface for overview

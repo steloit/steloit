@@ -6,10 +6,10 @@ CREATE TYPE llm_provider AS ENUM ('openai', 'anthropic');
 
 CREATE TABLE llm_provider_credentials (
     -- Primary key using ULID (26 chars)
-    id                CHAR(26) PRIMARY KEY,
+    id                UUID PRIMARY KEY,
 
     -- Project scope (one key per provider per project)
-    project_id        CHAR(26) NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    project_id        UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
 
     -- Provider type
     provider          llm_provider NOT NULL,
@@ -26,7 +26,7 @@ CREATE TABLE llm_provider_credentials (
     base_url          TEXT,
 
     -- Audit fields
-    created_by        CHAR(26) REFERENCES users(id) ON DELETE SET NULL,
+    created_by        UUID REFERENCES users(id) ON DELETE SET NULL,
     created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 

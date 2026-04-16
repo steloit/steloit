@@ -5,14 +5,14 @@
 -- New changes require creating a new version
 
 CREATE TABLE prompt_versions (
-    id CHAR(26) PRIMARY KEY,
-    prompt_id CHAR(26) NOT NULL REFERENCES prompts(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    prompt_id UUID NOT NULL REFERENCES prompts(id) ON DELETE CASCADE,
     version INTEGER NOT NULL,
     template JSONB NOT NULL,
     config JSONB,
     variables TEXT[] DEFAULT '{}',
     commit_message TEXT,
-    created_by CHAR(26) REFERENCES users(id) ON DELETE SET NULL,
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

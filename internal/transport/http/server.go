@@ -219,7 +219,7 @@ func (s *Server) setupDashboardRoutes(router *gin.RouterGroup) {
 	// User-scoped invitation routes
 	invitations := protected.Group("/invitations")
 	{
-		invitations.GET("", s.handlers.Organization.GetUserInvitations)    // List invitations for current user
+		invitations.GET("", s.handlers.Organization.GetUserInvitations)       // List invitations for current user
 		invitations.POST("/accept", s.handlers.Organization.AcceptInvitation) // Accept an invitation
 	}
 

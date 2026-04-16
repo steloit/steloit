@@ -13,17 +13,17 @@ import (
 // Domain errors for credential management
 var (
 	// Credential errors
-	ErrCredentialNotFound     = errors.New("credential not found")
-	ErrCredentialExists       = errors.New("credential with this name already exists")
-	ErrInvalidProvider        = errors.New("invalid adapter type")
-	ErrInvalidAPIKey          = errors.New("invalid API key format")
-	ErrNoKeyConfigured        = errors.New("no API key configured")
-	ErrAdapterMismatch        = errors.New("credential adapter mismatch")
+	ErrCredentialNotFound = errors.New("credential not found")
+	ErrCredentialExists   = errors.New("credential with this name already exists")
+	ErrInvalidProvider    = errors.New("invalid adapter type")
+	ErrInvalidAPIKey      = errors.New("invalid API key format")
+	ErrNoKeyConfigured    = errors.New("no API key configured")
+	ErrAdapterMismatch    = errors.New("credential adapter mismatch")
 
 	// Encryption errors
-	ErrEncryptionFailed       = errors.New("failed to encrypt API key")
-	ErrDecryptionFailed       = errors.New("failed to decrypt API key")
-	ErrEncryptionKeyMissing   = errors.New("encryption key not configured")
+	ErrEncryptionFailed     = errors.New("failed to encrypt API key")
+	ErrDecryptionFailed     = errors.New("failed to decrypt API key")
+	ErrEncryptionKeyMissing = errors.New("encryption key not configured")
 
 	// Validation errors
 	ErrAPIKeyValidationFailed = errors.New("API key validation failed")
@@ -32,13 +32,13 @@ var (
 
 // Error codes for structured API responses
 const (
-	ErrCodeCredentialNotFound   = "CREDENTIAL_NOT_FOUND"
-	ErrCodeCredentialExists     = "CREDENTIAL_EXISTS"
-	ErrCodeInvalidProvider      = "INVALID_PROVIDER"
-	ErrCodeInvalidAPIKey        = "INVALID_API_KEY"
-	ErrCodeNoKeyConfigured      = "NO_KEY_CONFIGURED"
-	ErrCodeEncryptionFailed     = "ENCRYPTION_FAILED"
-	ErrCodeValidationFailed     = "VALIDATION_FAILED"
+	ErrCodeCredentialNotFound = "CREDENTIAL_NOT_FOUND"
+	ErrCodeCredentialExists   = "CREDENTIAL_EXISTS"
+	ErrCodeInvalidProvider    = "INVALID_PROVIDER"
+	ErrCodeInvalidAPIKey      = "INVALID_API_KEY"
+	ErrCodeNoKeyConfigured    = "NO_KEY_CONFIGURED"
+	ErrCodeEncryptionFailed   = "ENCRYPTION_FAILED"
+	ErrCodeValidationFailed   = "VALIDATION_FAILED"
 )
 
 func NewCredentialNotFoundError(identifier string, projectID string) error {

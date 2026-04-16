@@ -8,8 +8,9 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	orgDomain "brokle/internal/core/domain/organization"
-	"brokle/pkg/ulid"
 	"brokle/internal/infrastructure/shared"
 )
 
@@ -36,7 +37,7 @@ func (r *projectRepository) Create(ctx context.Context, project *orgDomain.Proje
 }
 
 // GetByID retrieves a project by ID
-func (r *projectRepository) GetByID(ctx context.Context, id ulid.ULID) (*orgDomain.Project, error) {
+func (r *projectRepository) GetByID(ctx context.Context, id uuid.UUID) (*orgDomain.Project, error) {
 	var project orgDomain.Project
 	err := r.getDB(ctx).WithContext(ctx).Where("id = ? AND deleted_at IS NULL", id).First(&project).Error
 	if err != nil {
@@ -49,7 +50,7 @@ func (r *projectRepository) GetByID(ctx context.Context, id ulid.ULID) (*orgDoma
 }
 
 // GetBySlug retrieves a project by organization and slug
-func (r *projectRepository) GetBySlug(ctx context.Context, orgID ulid.ULID, slug string) (*orgDomain.Project, error) {
+func (r *projectRepository) GetBySlug(ctx context.Context, orgID uuid.UUID, slug string) (*orgDomain.Project, error) {
 	var project orgDomain.Project
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("organization_id = ? AND slug = ? AND deleted_at IS NULL", orgID, slug).
@@ -69,12 +70,12 @@ func (r *projectRepository) Update(ctx context.Context, project *orgDomain.Proje
 }
 
 // Delete soft deletes a project
-func (r *projectRepository) Delete(ctx context.Context, id ulid.ULID) error {
+func (r *projectRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).Model(&orgDomain.Project{}).Where("id = ?", id).Update("deleted_at", time.Now()).Error
 }
 
 // GetByOrganizationID retrieves all projects in an organization
-func (r *projectRepository) GetByOrganizationID(ctx context.Context, orgID ulid.ULID) ([]*orgDomain.Project, error) {
+func (r *projectRepository) GetByOrganizationID(ctx context.Context, orgID uuid.UUID) ([]*orgDomain.Project, error) {
 	var projects []*orgDomain.Project
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("organization_id = ? AND deleted_at IS NULL", orgID).
@@ -84,7 +85,7 @@ func (r *projectRepository) GetByOrganizationID(ctx context.Context, orgID ulid.
 }
 
 // CountByOrganization counts projects in an organization
-func (r *projectRepository) CountByOrganization(ctx context.Context, orgID ulid.ULID) (int64, error) {
+func (r *projectRepository) CountByOrganization(ctx context.Context, orgID uuid.UUID) (int64, error) {
 	var count int64
 	err := r.getDB(ctx).WithContext(ctx).
 		Model(&orgDomain.Project{}).
@@ -94,7 +95,7 @@ func (r *projectRepository) CountByOrganization(ctx context.Context, orgID ulid.
 }
 
 // GetProjectCount returns the count of projects in an organization
-func (r *projectRepository) GetProjectCount(ctx context.Context, orgID ulid.ULID) (int, error) {
+func (r *projectRepository) GetProjectCount(ctx context.Context, orgID uuid.UUID) (int, error) {
 	var count int64
 	err := r.getDB(ctx).WithContext(ctx).
 		Model(&orgDomain.Project{}).
@@ -104,7 +105,7 @@ func (r *projectRepository) GetProjectCount(ctx context.Context, orgID ulid.ULID
 }
 
 // CanUserAccessProject checks if a user has access to a project
-func (r *projectRepository) CanUserAccessProject(ctx context.Context, userID, projectID ulid.ULID) (bool, error) {
+func (r *projectRepository) CanUserAccessProject(ctx context.Context, userID, projectID uuid.UUID) (bool, error) {
 	var count int64
 	err := r.getDB(ctx).WithContext(ctx).
 		Table("projects").

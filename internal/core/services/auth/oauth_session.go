@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/google/uuid"
+
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 // OAuthSession stores incomplete user data during OAuth flow
@@ -26,7 +28,7 @@ func (s *authService) CreateOAuthSession(ctx context.Context, session interface{
 	if !ok {
 		return "", appErrors.NewInternalError("Invalid session type", nil)
 	}
-	sessionID := ulid.New().String()
+	sessionID := uid.New().String()
 	key := "oauth:session:" + sessionID
 
 	// Set expiration
@@ -91,8 +93,8 @@ func (s *authService) DeleteOAuthSession(ctx context.Context, sessionID string) 
 // CreateLoginTokenSession stores login tokens temporarily for OAuth callback redirect.
 // Returns a one-time session ID that frontend can exchange for tokens.
 // Used when existing OAuth users login (not signup).
-func (s *authService) CreateLoginTokenSession(ctx context.Context, accessToken, refreshToken string, expiresIn int64, userID ulid.ULID) (string, error) {
-	sessionID := ulid.New().String()
+func (s *authService) CreateLoginTokenSession(ctx context.Context, accessToken, refreshToken string, expiresIn int64, userID uuid.UUID) (string, error) {
+	sessionID := uid.New().String()
 	key := "oauth:login:" + sessionID
 
 	sessionData := map[string]interface{}{

@@ -57,9 +57,9 @@ func (r *genaiEventsRepository) CreateGenAIEventBatch(ctx context.Context, event
 			event.OutputMessages,
 			event.InputTokens,
 			event.OutputTokens,
-			event.Temperature,  // Nullable(Float32) - pointer type
-			event.TopP,         // Nullable(Float32) - pointer type
-			event.MaxTokens,    // Nullable(UInt32) - pointer type
+			event.Temperature, // Nullable(Float32) - pointer type
+			event.TopP,        // Nullable(Float32) - pointer type
+			event.MaxTokens,   // Nullable(UInt32) - pointer type
 			event.FinishReasons,
 			event.ResponseID,
 			event.EvaluationName,        // Nullable(String) - pointer type

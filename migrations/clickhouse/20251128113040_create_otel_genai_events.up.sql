@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS otel_genai_events (
     evaluation_score Nullable(Float32) CODEC(ZSTD(1)),
     evaluation_label Nullable(String) CODEC(ZSTD(1)),
     evaluation_explanation Nullable(String) CODEC(ZSTD(3)),
-    project_id String CODEC(ZSTD(1)),
+    project_id UUID CODEC(ZSTD(1)),
     user_id LowCardinality(String) CODEC(ZSTD(1)),
     session_id LowCardinality(String) CODEC(ZSTD(1)),
     INDEX idx_event_name event_name TYPE bloom_filter(0.01) GRANULARITY 1,

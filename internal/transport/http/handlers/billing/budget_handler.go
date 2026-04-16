@@ -8,12 +8,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/config"
 	"brokle/internal/core/domain/billing"
 	"brokle/internal/transport/http/middleware"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 )
 
 type BudgetHandler struct {
@@ -212,9 +213,9 @@ func (h *BudgetHandler) CreateBudget(c *gin.Context) {
 	}
 
 	if req.ProjectID != nil {
-		projectID, err := ulid.Parse(*req.ProjectID)
+		projectID, err := uuid.Parse(*req.ProjectID)
 		if err != nil {
-			response.Error(c, appErrors.NewValidationError("Invalid project_id", "project_id must be a valid ULID"))
+			response.Error(c, appErrors.NewValidationError("Invalid project_id", "project_id must be a valid UUID"))
 			return
 		}
 		budget.ProjectID = &projectID
@@ -447,9 +448,9 @@ func (h *BudgetHandler) AcknowledgeAlert(c *gin.Context) {
 		return
 	}
 
-	alertID, err := ulid.Parse(c.Param("alertId"))
+	alertID, err := uuid.Parse(c.Param("alertId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid alert ID", "alertId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid alert ID", "alertId must be a valid UUID"))
 		return
 	}
 
@@ -472,27 +473,27 @@ func (h *BudgetHandler) AcknowledgeAlert(c *gin.Context) {
 
 // Helper methods
 
-func (h *BudgetHandler) parseOrgID(c *gin.Context) (ulid.ULID, bool) {
-	orgID, err := ulid.Parse(c.Param("orgId"))
+func (h *BudgetHandler) parseOrgID(c *gin.Context) (uuid.UUID, bool) {
+	orgID, err := uuid.Parse(c.Param("orgId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid ULID"))
-		return ulid.ULID{}, false
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid UUID"))
+		return uuid.UUID{}, false
 	}
 	return orgID, true
 }
 
-func (h *BudgetHandler) parseBudgetID(c *gin.Context) (ulid.ULID, bool) {
-	budgetID, err := ulid.Parse(c.Param("budgetId"))
+func (h *BudgetHandler) parseBudgetID(c *gin.Context) (uuid.UUID, bool) {
+	budgetID, err := uuid.Parse(c.Param("budgetId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid budget ID", "budgetId must be a valid ULID"))
-		return ulid.ULID{}, false
+		response.Error(c, appErrors.NewValidationError("Invalid budget ID", "budgetId must be a valid UUID"))
+		return uuid.UUID{}, false
 	}
 	return budgetID, true
 }
 
-func (h *BudgetHandler) verifyOrgAccess(c *gin.Context, orgID ulid.ULID) error {
+func (h *BudgetHandler) verifyOrgAccess(c *gin.Context, orgID uuid.UUID) error {
 	userOrgID := middleware.ResolveOrganizationID(c)
-	if userOrgID == nil || userOrgID.IsZero() {
+	if userOrgID == nil || *userOrgID == uuid.Nil {
 		return appErrors.NewUnauthorizedError("Organization context required")
 	}
 

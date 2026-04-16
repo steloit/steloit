@@ -15,24 +15,26 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/evaluation"
 	"brokle/internal/core/domain/observability"
 	"brokle/internal/infrastructure/database"
 	"brokle/internal/infrastructure/streams"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 const (
-	evaluationJobsStream   = "evaluation:jobs"
-	evaluatorCacheTTL      = 30 * time.Second
+	evaluationJobsStream = "evaluation:jobs"
+	evaluatorCacheTTL    = 30 * time.Second
 )
 
 // EvaluationJob represents a matched span-evaluator pair to be processed by EvaluationWorker
 type EvaluationJob struct {
-	JobID        ulid.ULID              `json:"job_id"`
-	EvaluatorID  ulid.ULID              `json:"evaluator_id"`
-	ProjectID    ulid.ULID              `json:"project_id"`
-	ExecutionID  *ulid.ULID             `json:"execution_id,omitempty"` // Optional: links job to an evaluator execution (for manual triggers)
+	JobID        uuid.UUID              `json:"job_id"`
+	EvaluatorID  uuid.UUID              `json:"evaluator_id"`
+	ProjectID    uuid.UUID              `json:"project_id"`
+	ExecutionID  *uuid.UUID             `json:"execution_id,omitempty"` // Optional: links job to an evaluator execution (for manual triggers)
 	SpanData     map[string]interface{} `json:"span_data"`
 	TraceID      string                 `json:"trace_id"`
 	SpanID       string                 `json:"span_id"`
@@ -44,22 +46,22 @@ type EvaluationJob struct {
 
 // EvaluatorWorkerConfig holds configuration for the evaluator worker
 type EvaluatorWorkerConfig struct {
-	ConsumerGroup      string
-	ConsumerID         string
-	BatchSize          int
-	BlockDuration      time.Duration
-	MaxRetries         int
-	RetryBackoff       time.Duration
-	DiscoveryInterval  time.Duration
-	MaxStreamsPerRead  int
-	EvaluatorCacheTTL  time.Duration
+	ConsumerGroup     string
+	ConsumerID        string
+	BatchSize         int
+	BlockDuration     time.Duration
+	MaxRetries        int
+	RetryBackoff      time.Duration
+	DiscoveryInterval time.Duration
+	MaxStreamsPerRead int
+	EvaluatorCacheTTL time.Duration
 }
 
 // EvaluatorCache provides thread-safe caching of active evaluators per project
 type EvaluatorCache struct {
-	cache     map[string]evaluatorCacheEntry
-	mu        sync.RWMutex
-	ttl       time.Duration
+	cache map[string]evaluatorCacheEntry
+	mu    sync.RWMutex
+	ttl   time.Duration
 }
 
 type evaluatorCacheEntry struct {
@@ -133,10 +135,10 @@ type EvaluatorWorker struct {
 	maxDiscoveryBackoff time.Duration
 
 	// Metrics
-	spansProcessed      int64
-	evaluatorsMatched   int64
-	jobsEmitted         int64
-	errorsCount         int64
+	spansProcessed    int64
+	evaluatorsMatched int64
+	jobsEmitted       int64
+	errorsCount       int64
 }
 
 // NewEvaluatorWorker creates a new evaluator worker
@@ -150,7 +152,7 @@ func NewEvaluatorWorker(
 	if config == nil {
 		config = &EvaluatorWorkerConfig{
 			ConsumerGroup:     "evaluation-evaluator-workers",
-			ConsumerID:        "evaluator-worker-" + ulid.New().String(),
+			ConsumerID:        "evaluator-worker-" + uid.New().String(),
 			BatchSize:         50,
 			BlockDuration:     time.Second,
 			MaxRetries:        3,
@@ -456,7 +458,7 @@ func (w *EvaluatorWorker) processMessage(ctx context.Context, streamKey string, 
 		return nil
 	}
 
-	jobsByEvaluator := make(map[ulid.ULID][]*EvaluationJob)
+	jobsByEvaluator := make(map[uuid.UUID][]*EvaluationJob)
 
 	for _, event := range batch.Events {
 		if event.EventType != string(observability.TelemetryEventTypeSpan) {
@@ -479,7 +481,7 @@ func (w *EvaluatorWorker) processMessage(ctx context.Context, streamKey string, 
 
 				// Create evaluation job (execution ID will be set after batch collection)
 				job := &EvaluationJob{
-					JobID:        ulid.New(),
+					JobID:        uid.New(),
 					EvaluatorID:  evaluator.ID,
 					ProjectID:    batch.ProjectID,
 					SpanData:     event.EventPayload,
@@ -503,7 +505,7 @@ func (w *EvaluatorWorker) processMessage(ctx context.Context, streamKey string, 
 		}
 
 		// Create execution record BEFORE emitting jobs to avoid race conditions
-		var executionID *ulid.ULID
+		var executionID *uuid.UUID
 		if w.executionService != nil {
 			execution, err := w.executionService.StartExecutionWithCount(
 				ctx,
@@ -579,7 +581,7 @@ func (w *EvaluatorWorker) processMessage(ctx context.Context, streamKey string, 
 	return nil
 }
 
-func (w *EvaluatorWorker) getActiveEvaluators(ctx context.Context, projectID ulid.ULID) ([]*evaluation.Evaluator, error) {
+func (w *EvaluatorWorker) getActiveEvaluators(ctx context.Context, projectID uuid.UUID) ([]*evaluation.Evaluator, error) {
 	// Check cache first
 	if evaluators, ok := w.evaluatorCache.Get(projectID.String()); ok {
 		return evaluators, nil

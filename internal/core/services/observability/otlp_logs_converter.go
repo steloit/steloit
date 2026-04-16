@@ -1,18 +1,20 @@
 package observability
 
 import (
-	"log/slog"
 	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"time"
 
 	commonpb "go.opentelemetry.io/proto/otlp/common/v1"
 	logspb "go.opentelemetry.io/proto/otlp/logs/v1"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/observability"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 // OTLPLogsConverterService handles conversion of OTLP logs to Brokle domain entities
@@ -33,7 +35,7 @@ func NewOTLPLogsConverterService(logger *slog.Logger) *OTLPLogsConverterService 
 func (s *OTLPLogsConverterService) ConvertLogsRequest(
 	ctx context.Context,
 	logsData *logspb.LogsData,
-	projectID ulid.ULID,
+	projectID uuid.UUID,
 ) ([]*observability.TelemetryEventRequest, error) {
 	var events []*observability.TelemetryEventRequest
 
@@ -60,10 +62,10 @@ func (s *OTLPLogsConverterService) ConvertLogsRequest(
 				timestamp := logEntity.Timestamp
 				events = append(events, &observability.TelemetryEventRequest{
 					EventType: observability.TelemetryEventTypeLog,
-					EventID:   ulid.New(),
+					EventID:   uid.New(),
 					Timestamp: &timestamp,
-					TraceID:   logEntity.TraceID,   // May be empty if no trace correlation
-					SpanID:    logEntity.SpanID,    // May be empty if no span correlation
+					TraceID:   logEntity.TraceID, // May be empty if no trace correlation
+					SpanID:    logEntity.SpanID,  // May be empty if no span correlation
 					Payload:   convertEntityToPayload(logEntity),
 				})
 			}
@@ -79,15 +81,15 @@ func (s *OTLPLogsConverterService) convertLogRecord(
 	resourceAttrs map[string]string,
 	scopeName string,
 	scopeAttrs map[string]string,
-	projectID ulid.ULID,
+	projectID uuid.UUID,
 ) *observability.Log {
 	// Extract timestamps (nanosecond precision)
 	timestamp := time.Unix(0, int64(logRecord.GetTimeUnixNano()))
 	observedTimestamp := time.Unix(0, int64(logRecord.GetObservedTimeUnixNano()))
 
 	// Extract trace/span IDs for correlation (hex strings, auto-padded)
-	traceID := hex.EncodeToString(logRecord.GetTraceId())   // 32 hex chars
-	spanID := hex.EncodeToString(logRecord.GetSpanId())     // 16 hex chars
+	traceID := hex.EncodeToString(logRecord.GetTraceId()) // 32 hex chars
+	spanID := hex.EncodeToString(logRecord.GetSpanId())   // 16 hex chars
 
 	// Extract severity (number and text)
 	severityNumber := logRecord.GetSeverityNumber()

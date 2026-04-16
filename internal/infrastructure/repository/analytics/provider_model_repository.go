@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/analytics"
-	"brokle/pkg/ulid"
 
 	"gorm.io/gorm"
 )
@@ -24,7 +25,7 @@ func (r *ProviderModelRepositoryImpl) CreateProviderModel(ctx context.Context, m
 	return r.db.WithContext(ctx).Create(model).Error
 }
 
-func (r *ProviderModelRepositoryImpl) GetProviderModel(ctx context.Context, modelID ulid.ULID) (*analytics.ProviderModel, error) {
+func (r *ProviderModelRepositoryImpl) GetProviderModel(ctx context.Context, modelID uuid.UUID) (*analytics.ProviderModel, error) {
 	var model analytics.ProviderModel
 	err := r.db.WithContext(ctx).Where("id = ?", modelID).First(&model).Error
 	if err != nil {
@@ -35,7 +36,7 @@ func (r *ProviderModelRepositoryImpl) GetProviderModel(ctx context.Context, mode
 
 func (r *ProviderModelRepositoryImpl) GetProviderModelByName(
 	ctx context.Context,
-	projectID *ulid.ULID,
+	projectID *uuid.UUID,
 	modelName string,
 ) (*analytics.ProviderModel, error) {
 	return r.GetProviderModelAtTime(ctx, projectID, modelName, time.Now())
@@ -44,7 +45,7 @@ func (r *ProviderModelRepositoryImpl) GetProviderModelByName(
 // Project-specific pricing takes precedence over global pricing.
 func (r *ProviderModelRepositoryImpl) GetProviderModelAtTime(
 	ctx context.Context,
-	projectID *ulid.ULID,
+	projectID *uuid.UUID,
 	modelName string,
 	atTime time.Time,
 ) (*analytics.ProviderModel, error) {
@@ -76,7 +77,7 @@ func (r *ProviderModelRepositoryImpl) GetProviderModelAtTime(
 	return &model, nil
 }
 
-func (r *ProviderModelRepositoryImpl) ListProviderModels(ctx context.Context, projectID *ulid.ULID) ([]*analytics.ProviderModel, error) {
+func (r *ProviderModelRepositoryImpl) ListProviderModels(ctx context.Context, projectID *uuid.UUID) ([]*analytics.ProviderModel, error) {
 	var models []*analytics.ProviderModel
 
 	query := r.db.WithContext(ctx)
@@ -105,12 +106,12 @@ func (r *ProviderModelRepositoryImpl) ListByProviders(ctx context.Context, provi
 	return models, err
 }
 
-func (r *ProviderModelRepositoryImpl) UpdateProviderModel(ctx context.Context, modelID ulid.ULID, model *analytics.ProviderModel) error {
+func (r *ProviderModelRepositoryImpl) UpdateProviderModel(ctx context.Context, modelID uuid.UUID, model *analytics.ProviderModel) error {
 	return r.db.WithContext(ctx).Where("id = ?", modelID).Updates(model).Error
 }
 
 // Cascade deletes prices.
-func (r *ProviderModelRepositoryImpl) DeleteProviderModel(ctx context.Context, modelID ulid.ULID) error {
+func (r *ProviderModelRepositoryImpl) DeleteProviderModel(ctx context.Context, modelID uuid.UUID) error {
 	return r.db.WithContext(ctx).Where("id = ?", modelID).Delete(&analytics.ProviderModel{}).Error
 }
 
@@ -121,8 +122,8 @@ func (r *ProviderModelRepositoryImpl) CreateProviderPrice(ctx context.Context, p
 // Project-specific prices override global prices.
 func (r *ProviderModelRepositoryImpl) GetProviderPrices(
 	ctx context.Context,
-	modelID ulid.ULID,
-	projectID *ulid.ULID,
+	modelID uuid.UUID,
+	projectID *uuid.UUID,
 ) ([]*analytics.ProviderPrice, error) {
 	var prices []*analytics.ProviderPrice
 
@@ -169,18 +170,18 @@ func (r *ProviderModelRepositoryImpl) GetProviderPrices(
 	return prices, err
 }
 
-func (r *ProviderModelRepositoryImpl) UpdateProviderPrice(ctx context.Context, priceID ulid.ULID, price *analytics.ProviderPrice) error {
+func (r *ProviderModelRepositoryImpl) UpdateProviderPrice(ctx context.Context, priceID uuid.UUID, price *analytics.ProviderPrice) error {
 	return r.db.WithContext(ctx).Where("id = ?", priceID).Updates(price).Error
 }
 
-func (r *ProviderModelRepositoryImpl) DeleteProviderPrice(ctx context.Context, priceID ulid.ULID) error {
+func (r *ProviderModelRepositoryImpl) DeleteProviderPrice(ctx context.Context, priceID uuid.UUID) error {
 	return r.db.WithContext(ctx).Where("id = ?", priceID).Delete(&analytics.ProviderPrice{}).Error
 }
 
 func (r *ProviderModelRepositoryImpl) GetPriceForUsageType(
 	ctx context.Context,
-	modelID ulid.ULID,
-	projectID *ulid.ULID,
+	modelID uuid.UUID,
+	projectID *uuid.UUID,
 	usageType string,
 ) (*analytics.ProviderPrice, error) {
 	var price analytics.ProviderPrice

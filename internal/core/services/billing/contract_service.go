@@ -11,10 +11,12 @@ import (
 	"github.com/shopspring/decimal"
 	"gorm.io/datatypes"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/billing"
 	"brokle/internal/core/domain/common"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 type contractService struct {
@@ -94,7 +96,7 @@ func (s *contractService) CreateContract(ctx context.Context, contract *billing.
 	return nil
 }
 
-func (s *contractService) GetContract(ctx context.Context, contractID ulid.ULID) (*billing.Contract, error) {
+func (s *contractService) GetContract(ctx context.Context, contractID uuid.UUID) (*billing.Contract, error) {
 	contract, err := s.contractRepo.GetByID(ctx, contractID)
 	if err != nil {
 		// Check if it's a "not found" error vs database error
@@ -107,11 +109,11 @@ func (s *contractService) GetContract(ctx context.Context, contractID ulid.ULID)
 	return contract, nil
 }
 
-func (s *contractService) GetContractsByOrg(ctx context.Context, orgID ulid.ULID) ([]*billing.Contract, error) {
+func (s *contractService) GetContractsByOrg(ctx context.Context, orgID uuid.UUID) ([]*billing.Contract, error) {
 	return s.contractRepo.GetByOrgID(ctx, orgID)
 }
 
-func (s *contractService) GetActiveContract(ctx context.Context, orgID ulid.ULID) (*billing.Contract, error) {
+func (s *contractService) GetActiveContract(ctx context.Context, orgID uuid.UUID) (*billing.Contract, error) {
 	contract, err := s.contractRepo.GetActiveByOrgID(ctx, orgID)
 	if err != nil {
 		return nil, err // Real database error
@@ -163,7 +165,7 @@ func (s *contractService) UpdateContract(
 	return nil
 }
 
-func (s *contractService) ActivateContract(ctx context.Context, contractID ulid.ULID, userID ulid.ULID) error {
+func (s *contractService) ActivateContract(ctx context.Context, contractID uuid.UUID, userID uuid.UUID) error {
 	// Use transaction for atomic deactivation + activation + history logging
 	return s.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		// 1. Get contract to activate
@@ -234,7 +236,7 @@ func (s *contractService) ActivateContract(ctx context.Context, contractID ulid.
 	})
 }
 
-func (s *contractService) CancelContract(ctx context.Context, contractID ulid.ULID, reason string, userID ulid.ULID) error {
+func (s *contractService) CancelContract(ctx context.Context, contractID uuid.UUID, reason string, userID uuid.UUID) error {
 	contract, err := s.contractRepo.GetByID(ctx, contractID)
 	if err != nil {
 		return appErrors.NewNotFoundError(fmt.Sprintf("Contract %s not found", contractID))
@@ -261,7 +263,7 @@ func (s *contractService) CancelContract(ctx context.Context, contractID ulid.UL
 	return nil
 }
 
-func (s *contractService) ExpireContract(ctx context.Context, contractID ulid.ULID) error {
+func (s *contractService) ExpireContract(ctx context.Context, contractID uuid.UUID) error {
 	// Fetch contract to validate state
 	contract, err := s.contractRepo.GetByID(ctx, contractID)
 	if err != nil {
@@ -294,7 +296,7 @@ func (s *contractService) ExpireContract(ctx context.Context, contractID ulid.UL
 	return nil
 }
 
-func (s *contractService) AddVolumeTiers(ctx context.Context, contractID ulid.ULID, tiers []*billing.VolumeDiscountTier) error {
+func (s *contractService) AddVolumeTiers(ctx context.Context, contractID uuid.UUID, tiers []*billing.VolumeDiscountTier) error {
 	// 1. Verify contract exists
 	_, err := s.contractRepo.GetByID(ctx, contractID)
 	if err != nil {
@@ -311,7 +313,7 @@ func (s *contractService) AddVolumeTiers(ctx context.Context, contractID ulid.UL
 		// Set tier IDs and timestamps
 		now := time.Now()
 		for _, tier := range tiers {
-			tier.ID = ulid.New()
+			tier.ID = uid.New()
 			tier.ContractID = contractID
 			tier.CreatedAt = now
 		}
@@ -342,7 +344,7 @@ func (s *contractService) AddVolumeTiers(ctx context.Context, contractID ulid.UL
 	})
 }
 
-func (s *contractService) UpdateVolumeTiers(ctx context.Context, contractID ulid.ULID, tiers []*billing.VolumeDiscountTier) error {
+func (s *contractService) UpdateVolumeTiers(ctx context.Context, contractID uuid.UUID, tiers []*billing.VolumeDiscountTier) error {
 	// 1. Verify contract exists
 	_, err := s.contractRepo.GetByID(ctx, contractID)
 	if err != nil {
@@ -365,7 +367,7 @@ func (s *contractService) UpdateVolumeTiers(ctx context.Context, contractID ulid
 		if len(tiers) > 0 {
 			now := time.Now()
 			for _, tier := range tiers {
-				tier.ID = ulid.New()
+				tier.ID = uid.New()
 				tier.ContractID = contractID
 				tier.CreatedAt = now
 			}
@@ -396,7 +398,7 @@ func (s *contractService) UpdateVolumeTiers(ctx context.Context, contractID ulid
 	})
 }
 
-func (s *contractService) GetContractHistory(ctx context.Context, contractID ulid.ULID) ([]*billing.ContractHistory, error) {
+func (s *contractService) GetContractHistory(ctx context.Context, contractID uuid.UUID) ([]*billing.ContractHistory, error) {
 	return s.historyRepo.GetByContractID(ctx, contractID)
 }
 
@@ -406,11 +408,11 @@ func (s *contractService) GetExpiringContracts(ctx context.Context, days int) ([
 
 // Helper methods
 
-func (s *contractService) logContractAction(ctx context.Context, contractID ulid.ULID, action billing.ContractAction, changedBy string, changes map[string]interface{}, reason string) {
+func (s *contractService) logContractAction(ctx context.Context, contractID uuid.UUID, action billing.ContractAction, changedBy string, changes map[string]interface{}, reason string) {
 	changesJSON, _ := json.Marshal(changes)
 
 	history := &billing.ContractHistory{
-		ID:         ulid.New(),
+		ID:         uid.New(),
 		ContractID: contractID,
 		Action:     action,
 		ChangedBy:  changedBy,
@@ -559,12 +561,11 @@ func validateDimensionTiers(dimension billing.TierDimension, tiers []*billing.Vo
 	return nil
 }
 
-
 // logContractActionTx logs contract action within a transaction
 func (s *contractService) logContractActionTx(
 	ctx context.Context,
 	historyRepo billing.ContractHistoryRepository,
-	contractID ulid.ULID,
+	contractID uuid.UUID,
 	action billing.ContractAction,
 	changedBy string,
 	reason string,
@@ -573,7 +574,7 @@ func (s *contractService) logContractActionTx(
 	changesJSON, _ := json.Marshal(changes)
 
 	history := &billing.ContractHistory{
-		ID:         ulid.New(),
+		ID:         uid.New(),
 		ContractID: contractID,
 		Action:     action,
 		ChangedBy:  changedBy,
@@ -603,4 +604,3 @@ func extractDimensions(tiers []*billing.VolumeDiscountTier) []string {
 	sort.Strings(dimensions)
 	return dimensions
 }
-

@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/google/uuid"
+
 	prompt "brokle/internal/core/domain/prompt"
-	"brokle/pkg/ulid"
 )
 
 // ----------------------------
@@ -16,10 +17,10 @@ import (
 // Name is required for all sessions (no ephemeral sessions).
 type CreateSessionRequest struct {
 	// ProjectID is set from the URL path parameter
-	ProjectID ulid.ULID `json:"-"`
+	ProjectID uuid.UUID `json:"-"`
 
 	// CreatedBy is set from the auth context
-	CreatedBy *ulid.ULID `json:"-"`
+	CreatedBy *uuid.UUID `json:"-"`
 
 	// Session metadata
 	Name        string   `json:"name" validate:"required,max=200"`
@@ -35,7 +36,7 @@ type CreateSessionRequest struct {
 // UpdateSessionRequest represents a request to update a session
 type UpdateSessionRequest struct {
 	// SessionID is set from the URL path parameter
-	SessionID ulid.ULID `json:"-"`
+	SessionID uuid.UUID `json:"-"`
 
 	// Session metadata (optional updates)
 	Name        *string  `json:"name,omitempty" validate:"omitempty,max=200"`
@@ -51,7 +52,7 @@ type UpdateSessionRequest struct {
 // UpdateLastRunRequest represents a request to update the last run
 type UpdateLastRunRequest struct {
 	// SessionID is set from the URL path parameter
-	SessionID ulid.ULID `json:"-"`
+	SessionID uuid.UUID `json:"-"`
 
 	// LastRun is the execution result to store
 	LastRun *LastRun `json:"last_run" validate:"required"`
@@ -60,7 +61,7 @@ type UpdateLastRunRequest struct {
 // ListSessionsRequest represents a request to list sessions
 type ListSessionsRequest struct {
 	// ProjectID is set from the URL path parameter
-	ProjectID ulid.ULID `json:"-"`
+	ProjectID uuid.UUID `json:"-"`
 
 	// Limit is the maximum number of sessions to return (default 20, max 100)
 	Limit int `json:"limit,omitempty" validate:"omitempty,min=1,max=100"`
@@ -75,9 +76,9 @@ type ListSessionsRequest struct {
 
 // ExecuteRequest represents a playground execution request.
 type ExecuteRequest struct {
-	ProjectID       ulid.ULID
-	OrganizationID  ulid.ULID // Required for organization-scoped credential resolution
-	SessionID       *ulid.ULID
+	ProjectID       uuid.UUID
+	OrganizationID  uuid.UUID // Required for organization-scoped credential resolution
+	SessionID       *uuid.UUID
 	Template        interface{}
 	PromptType      prompt.PromptType
 	Variables       map[string]string
@@ -86,17 +87,17 @@ type ExecuteRequest struct {
 
 // ExecuteResponse wraps execution result with metadata.
 type ExecuteResponse struct {
-	CompiledPrompt interface{}               `json:"compiled_prompt"`
+	CompiledPrompt interface{}         `json:"compiled_prompt"`
 	Response       *prompt.LLMResponse `json:"response,omitempty"`
-	LatencyMs      int64                     `json:"latency_ms"`
-	Error          string                    `json:"error,omitempty"`
+	LatencyMs      int64               `json:"latency_ms"`
+	Error          string              `json:"error,omitempty"`
 }
 
 // StreamRequest represents a streaming execution request.
 type StreamRequest struct {
-	ProjectID       ulid.ULID
-	OrganizationID  ulid.ULID // Required for organization-scoped credential resolution
-	SessionID       *ulid.ULID
+	ProjectID       uuid.UUID
+	OrganizationID  uuid.UUID // Required for organization-scoped credential resolution
+	SessionID       *uuid.UUID
 	Template        interface{}
 	PromptType      prompt.PromptType
 	Variables       map[string]string
@@ -121,7 +122,7 @@ type PlaygroundService interface {
 
 	// GetSession retrieves a session by ID.
 	// Returns ErrSessionNotFound if not found.
-	GetSession(ctx context.Context, sessionID ulid.ULID) (*SessionResponse, error)
+	GetSession(ctx context.Context, sessionID uuid.UUID) (*SessionResponse, error)
 
 	// ListSessions retrieves sessions for a project (sidebar list).
 	ListSessions(ctx context.Context, req *ListSessionsRequest) ([]*SessionSummary, error)
@@ -130,17 +131,17 @@ type PlaygroundService interface {
 	UpdateSession(ctx context.Context, req *UpdateSessionRequest) (*SessionResponse, error)
 
 	// DeleteSession removes a session.
-	DeleteSession(ctx context.Context, sessionID ulid.ULID) error
+	DeleteSession(ctx context.Context, sessionID uuid.UUID) error
 
 	// UpdateLastRun updates the last execution result.
 	UpdateLastRun(ctx context.Context, req *UpdateLastRunRequest) error
 
 	// UpdateWindows updates the multi-window comparison state.
-	UpdateWindows(ctx context.Context, sessionID ulid.ULID, windows json.RawMessage) error
+	UpdateWindows(ctx context.Context, sessionID uuid.UUID, windows json.RawMessage) error
 
 	// ValidateProjectAccess checks if a session belongs to the given project.
 	// Returns ErrSessionNotFound if not found or doesn't belong to project.
-	ValidateProjectAccess(ctx context.Context, sessionID ulid.ULID, projectID ulid.ULID) error
+	ValidateProjectAccess(ctx context.Context, sessionID uuid.UUID, projectID uuid.UUID) error
 
 	// ExecutePrompt executes a prompt with full orchestration:
 	// credential resolution → variable extraction → execution → session update

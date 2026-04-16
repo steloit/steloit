@@ -3,7 +3,7 @@
 -- while maintaining existing template roles
 
 -- Add scope_id column for custom role scoping
-ALTER TABLE roles ADD COLUMN scope_id CHAR(26);
+ALTER TABLE roles ADD COLUMN scope_id UUID;
 
 -- Drop existing unique constraint that only considered name + scope_type
 ALTER TABLE roles DROP CONSTRAINT IF EXISTS idx_role_name_scope;

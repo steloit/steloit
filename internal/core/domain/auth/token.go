@@ -3,8 +3,10 @@ package auth
 import (
 	"time"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/user"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 // TokenType represents different types of JWT tokens
@@ -21,8 +23,8 @@ const (
 
 // JWTClaims represents the clean JWT claims structure for user identity only
 type JWTClaims struct {
-	APIKeyID  *ulid.ULID `json:"api_key_id,omitempty"`
-	SessionID *ulid.ULID `json:"session_id,omitempty"`
+	APIKeyID  *uuid.UUID `json:"api_key_id,omitempty"`
+	SessionID *uuid.UUID `json:"session_id,omitempty"`
 	Issuer    string     `json:"iss"`
 	Subject   string     `json:"sub"`
 	Audience  string     `json:"aud,omitempty"`
@@ -32,7 +34,7 @@ type JWTClaims struct {
 	ExpiresAt int64      `json:"exp"`
 	NotBefore int64      `json:"nbf"`
 	IssuedAt  int64      `json:"iat"`
-	UserID    ulid.ULID  `json:"user_id"`
+	UserID    uuid.UUID  `json:"user_id"`
 }
 
 // TokenConfig represents configuration for JWT tokens
@@ -79,12 +81,12 @@ type TokenValidationResult struct {
 
 // TokenGenerationRequest represents a request to generate a new token
 type TokenGenerationRequest struct {
-	APIKeyID  *ulid.ULID     `json:"api_key_id,omitempty"`
-	SessionID *ulid.ULID     `json:"session_id,omitempty"`
+	APIKeyID  *uuid.UUID     `json:"api_key_id,omitempty"`
+	SessionID *uuid.UUID     `json:"session_id,omitempty"`
 	TTL       *time.Duration `json:"ttl,omitempty"`
 	TokenType TokenType      `json:"token_type"`
 	Email     string         `json:"email"`
-	UserID    ulid.ULID      `json:"user_id"`
+	UserID    uuid.UUID      `json:"user_id"`
 }
 
 // NewJWTClaims creates a new JWT claims structure with default values
@@ -94,7 +96,7 @@ func NewJWTClaims(req *TokenGenerationRequest) *JWTClaims {
 	return &JWTClaims{
 		Issuer:    "brokle-platform",
 		Subject:   req.UserID.String(),
-		JWTID:     ulid.New().String(),
+		JWTID:     uid.New().String(),
 		IssuedAt:  now.Unix(),
 		NotBefore: now.Unix(),
 		TokenType: req.TokenType,
@@ -137,16 +139,16 @@ type EmailVerificationToken struct {
 	UpdatedAt time.Time `json:"updated_at"`
 	User      user.User `json:"user,omitempty" gorm:"foreignKey:UserID"`
 	Token     string    `json:"token" gorm:"size:255;not null;uniqueIndex"`
-	ID        ulid.ULID `json:"id" gorm:"type:char(26);primaryKey"`
-	UserID    ulid.ULID `json:"user_id" gorm:"type:char(26);not null"`
+	ID        uuid.UUID `json:"id" gorm:"type:uuid;primaryKey"`
+	UserID    uuid.UUID `json:"user_id" gorm:"type:uuid;not null"`
 	Used      bool      `json:"used" gorm:"default:false"`
 }
 
 // Token creation helpers
 
-func NewEmailVerificationToken(userID ulid.ULID, token string, expiresAt time.Time) *EmailVerificationToken {
+func NewEmailVerificationToken(userID uuid.UUID, token string, expiresAt time.Time) *EmailVerificationToken {
 	return &EmailVerificationToken{
-		ID:        ulid.New(),
+		ID:        uid.New(),
 		UserID:    userID,
 		Token:     token,
 		ExpiresAt: expiresAt,

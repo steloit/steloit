@@ -8,9 +8,10 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/observability"
 	"brokle/internal/infrastructure/database"
-	"brokle/pkg/ulid"
 )
 
 // telemetryDeduplicationRepository implements Redis-based deduplication for OTLP telemetry
@@ -28,16 +29,16 @@ func NewTelemetryDeduplicationRepository(redis *database.RedisDB) *telemetryDedu
 
 // ClaimEvents atomically claims dedup IDs using Redis SET NX (set if not exists)
 // Returns: (claimedIDs, duplicateIDs, error)
-func (r *telemetryDeduplicationRepository) ClaimEvents(ctx context.Context, projectID ulid.ULID, batchID ulid.ULID, dedupIDs []string, ttl time.Duration) ([]string, []string, error) {
+func (r *telemetryDeduplicationRepository) ClaimEvents(ctx context.Context, projectID uuid.UUID, batchID uuid.UUID, dedupIDs []string, ttl time.Duration) ([]string, []string, error) {
 	if len(dedupIDs) == 0 {
 		return nil, nil, nil
 	}
 
-	if projectID.IsZero() {
+	if projectID == uuid.Nil {
 		return nil, nil, errors.New("project ID cannot be zero")
 	}
 
-	if batchID.IsZero() {
+	if batchID == uuid.Nil {
 		return nil, nil, errors.New("batch ID cannot be zero")
 	}
 
@@ -115,7 +116,7 @@ func (r *telemetryDeduplicationRepository) Create(ctx context.Context, dedup *ob
 		return errors.New("event ID is required")
 	}
 
-	if dedup.BatchID.IsZero() {
+	if dedup.BatchID == uuid.Nil {
 		return errors.New("batch ID is required")
 	}
 
@@ -156,7 +157,7 @@ func (r *telemetryDeduplicationRepository) CheckDuplicate(ctx context.Context, e
 }
 
 // RegisterEvent registers a new event for deduplication (alias for Create with simplified params)
-func (r *telemetryDeduplicationRepository) RegisterEvent(ctx context.Context, dedupID string, batchID ulid.ULID, projectID ulid.ULID, ttl time.Duration) error {
+func (r *telemetryDeduplicationRepository) RegisterEvent(ctx context.Context, dedupID string, batchID uuid.UUID, projectID uuid.UUID, ttl time.Duration) error {
 	dedup := &observability.TelemetryEventDeduplication{
 		EventID:     dedupID,
 		BatchID:     batchID,
@@ -273,7 +274,7 @@ func (r *telemetryDeduplicationRepository) GetByEventID(ctx context.Context, ded
 	expiresAt := now.Add(ttl)
 
 	// Parse batch ID from string
-	batchID, err := ulid.Parse(batchIDStr)
+	batchID, err := uuid.Parse(batchIDStr)
 	if err != nil {
 		return nil, fmt.Errorf("invalid batch ID stored in Redis: %w", err)
 	}
@@ -281,7 +282,7 @@ func (r *telemetryDeduplicationRepository) GetByEventID(ctx context.Context, ded
 	return &observability.TelemetryEventDeduplication{
 		EventID:     dedupID,
 		BatchID:     batchID,
-		ProjectID:   ulid.ULID{},         // Not stored in Redis (optimization)
+		ProjectID:   uuid.UUID{},         // Not stored in Redis (optimization)
 		FirstSeenAt: now.Add(-time.Hour), // Approximate (not critical for dedup)
 		ExpiresAt:   expiresAt,
 	}, nil
@@ -289,7 +290,7 @@ func (r *telemetryDeduplicationRepository) GetByEventID(ctx context.Context, ded
 
 // CountByProjectID returns count (not supported in Redis-only, returns 0)
 // This method is kept for interface compatibility but returns 0 as Redis doesn't store project-level counts
-func (r *telemetryDeduplicationRepository) CountByProjectID(ctx context.Context, projectID ulid.ULID) (int64, error) {
+func (r *telemetryDeduplicationRepository) CountByProjectID(ctx context.Context, projectID uuid.UUID) (int64, error) {
 	// Not supported in Redis-only mode (would require scanning all keys)
 	// Return 0 for compatibility
 	return 0, nil
@@ -342,18 +343,18 @@ func (r *telemetryDeduplicationRepository) ExistsWithRedisCheck(ctx context.Cont
 }
 
 // StoreInRedis stores event in Redis (equivalent to Create)
-func (r *telemetryDeduplicationRepository) StoreInRedis(ctx context.Context, dedupID string, batchID ulid.ULID, ttl time.Duration) error {
+func (r *telemetryDeduplicationRepository) StoreInRedis(ctx context.Context, dedupID string, batchID uuid.UUID, ttl time.Duration) error {
 	dedup := &observability.TelemetryEventDeduplication{
 		EventID:   dedupID,
 		BatchID:   batchID,
-		ProjectID: ulid.ULID{}, // Not required for Redis storage
+		ProjectID: uuid.UUID{}, // Not required for Redis storage
 		ExpiresAt: time.Now().Add(ttl),
 	}
 	return r.Create(ctx, dedup)
 }
 
 // GetFromRedis retrieves batch ID from Redis
-func (r *telemetryDeduplicationRepository) GetFromRedis(ctx context.Context, dedupID string) (*ulid.ULID, error) {
+func (r *telemetryDeduplicationRepository) GetFromRedis(ctx context.Context, dedupID string) (*uuid.UUID, error) {
 	dedup, err := r.GetByEventID(ctx, dedupID)
 	if err != nil {
 		return nil, err

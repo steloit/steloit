@@ -6,11 +6,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/google/uuid"
+
 	promptDomain "brokle/internal/core/domain/prompt"
 	"brokle/internal/transport/http/middleware"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 )
 
 // ListPrompts handles GET /api/v1/projects/:projectId/prompts
@@ -32,9 +33,9 @@ import (
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/projects/{projectId}/prompts [get]
 func (h *Handler) ListPrompts(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
@@ -92,9 +93,9 @@ func (h *Handler) ListPrompts(c *gin.Context) {
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/projects/{projectId}/prompts [post]
 func (h *Handler) CreatePrompt(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
@@ -113,8 +114,8 @@ func (h *Handler) CreatePrompt(c *gin.Context) {
 		return
 	}
 
-	var userID *ulid.ULID
-	if uid, ok := middleware.GetUserIDULID(c); ok {
+	var userID *uuid.UUID
+	if uid, ok := middleware.GetUserIDFromContext(c); ok {
 		userID = &uid
 	}
 
@@ -145,15 +146,15 @@ func (h *Handler) CreatePrompt(c *gin.Context) {
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/projects/{projectId}/prompts/{promptId} [get]
 func (h *Handler) GetPrompt(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	promptID, err := ulid.Parse(c.Param("promptId"))
+	promptID, err := uuid.Parse(c.Param("promptId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid prompt ID", "promptId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid prompt ID", "promptId must be a valid UUID"))
 		return
 	}
 
@@ -192,15 +193,15 @@ func (h *Handler) GetPrompt(c *gin.Context) {
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/projects/{projectId}/prompts/{promptId} [put]
 func (h *Handler) UpdatePrompt(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	promptID, err := ulid.Parse(c.Param("promptId"))
+	promptID, err := uuid.Parse(c.Param("promptId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid prompt ID", "promptId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid prompt ID", "promptId must be a valid UUID"))
 		return
 	}
 
@@ -236,15 +237,15 @@ func (h *Handler) UpdatePrompt(c *gin.Context) {
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/projects/{projectId}/prompts/{promptId} [delete]
 func (h *Handler) DeletePrompt(c *gin.Context) {
-	projectID, err := ulid.Parse(c.Param("projectId"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
-	promptID, err := ulid.Parse(c.Param("promptId"))
+	promptID, err := uuid.Parse(c.Param("promptId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid prompt ID", "promptId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid prompt ID", "promptId must be a valid UUID"))
 		return
 	}
 

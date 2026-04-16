@@ -6,11 +6,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/config"
 	"brokle/internal/core/domain/auth"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
-	"brokle/pkg/ulid"
 )
 
 // Handler handles RBAC-related HTTP requests (roles and permissions) - Clean version
@@ -67,9 +68,9 @@ func (h *Handler) CreateRole(c *gin.Context) {
 
 // GetRole handles GET /rbac/roles/{roleId}
 func (h *Handler) GetRole(c *gin.Context) {
-	roleID, err := ulid.Parse(c.Param("roleId"))
+	roleID, err := uuid.Parse(c.Param("roleId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid role ID", "roleId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid role ID", "roleId must be a valid UUID"))
 		return
 	}
 
@@ -86,9 +87,9 @@ func (h *Handler) GetRole(c *gin.Context) {
 
 // UpdateRole handles PUT /rbac/roles/{roleId}
 func (h *Handler) UpdateRole(c *gin.Context) {
-	roleID, err := ulid.Parse(c.Param("roleId"))
+	roleID, err := uuid.Parse(c.Param("roleId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid role ID", "roleId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid role ID", "roleId must be a valid UUID"))
 		return
 	}
 
@@ -111,9 +112,9 @@ func (h *Handler) UpdateRole(c *gin.Context) {
 
 // DeleteRole handles DELETE /rbac/roles/{roleId}
 func (h *Handler) DeleteRole(c *gin.Context) {
-	roleID, err := ulid.Parse(c.Param("roleId"))
+	roleID, err := uuid.Parse(c.Param("roleId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid role ID", "roleId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid role ID", "roleId must be a valid UUID"))
 		return
 	}
 
@@ -176,9 +177,9 @@ func (h *Handler) ListRoles(c *gin.Context) {
 
 // GetUserRoles handles GET /rbac/users/{userId}/roles
 func (h *Handler) GetUserRoles(c *gin.Context) {
-	userID, err := ulid.Parse(c.Param("userId"))
+	userID, err := uuid.Parse(c.Param("userId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid user ID", "userId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid user ID", "userId must be a valid UUID"))
 		return
 	}
 
@@ -195,9 +196,9 @@ func (h *Handler) GetUserRoles(c *gin.Context) {
 
 // GetUserPermissions handles GET /rbac/users/{userId}/permissions
 func (h *Handler) GetUserPermissions(c *gin.Context) {
-	userID, err := ulid.Parse(c.Param("userId"))
+	userID, err := uuid.Parse(c.Param("userId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid user ID", "userId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid user ID", "userId must be a valid UUID"))
 		return
 	}
 
@@ -214,15 +215,15 @@ func (h *Handler) GetUserPermissions(c *gin.Context) {
 
 // AssignOrganizationRole handles POST /rbac/users/{userId}/organizations/{orgId}/roles
 func (h *Handler) AssignOrganizationRole(c *gin.Context) {
-	userID, err := ulid.Parse(c.Param("userId"))
+	userID, err := uuid.Parse(c.Param("userId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid user ID", "userId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid user ID", "userId must be a valid UUID"))
 		return
 	}
 
-	orgID, err := ulid.Parse(c.Param("orgId"))
+	orgID, err := uuid.Parse(c.Param("orgId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid UUID"))
 		return
 	}
 
@@ -246,15 +247,15 @@ func (h *Handler) AssignOrganizationRole(c *gin.Context) {
 
 // RemoveOrganizationMember handles DELETE /rbac/users/{userId}/organizations/{orgId}
 func (h *Handler) RemoveOrganizationMember(c *gin.Context) {
-	userID, err := ulid.Parse(c.Param("userId"))
+	userID, err := uuid.Parse(c.Param("userId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid user ID", "userId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid user ID", "userId must be a valid UUID"))
 		return
 	}
 
-	orgID, err := ulid.Parse(c.Param("orgId"))
+	orgID, err := uuid.Parse(c.Param("orgId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid UUID"))
 		return
 	}
 
@@ -270,9 +271,9 @@ func (h *Handler) RemoveOrganizationMember(c *gin.Context) {
 
 // CheckUserPermissions handles POST /rbac/users/{userId}/permissions/check
 func (h *Handler) CheckUserPermissions(c *gin.Context) {
-	userID, err := ulid.Parse(c.Param("userId"))
+	userID, err := uuid.Parse(c.Param("userId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid user ID", "userId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid user ID", "userId must be a valid UUID"))
 		return
 	}
 
@@ -350,9 +351,9 @@ func (h *Handler) CreatePermission(c *gin.Context) {
 
 // GetPermission handles GET /rbac/permissions/{permissionId}
 func (h *Handler) GetPermission(c *gin.Context) {
-	permissionID, err := ulid.Parse(c.Param("permissionId"))
+	permissionID, err := uuid.Parse(c.Param("permissionId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid permission ID", "permissionId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid permission ID", "permissionId must be a valid UUID"))
 		return
 	}
 
@@ -402,9 +403,9 @@ func (h *Handler) GetActionsForResource(c *gin.Context) {
 // Legacy method for backward compatibility
 func (h *Handler) GetUserRole(c *gin.Context) {
 	// This is a legacy endpoint that should redirect to the new GetUserRoles endpoint
-	userID, err := ulid.Parse(c.Param("userId"))
+	userID, err := uuid.Parse(c.Param("userId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid user ID", "userId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid user ID", "userId must be a valid UUID"))
 		return
 	}
 
@@ -429,9 +430,9 @@ func (h *Handler) GetUserRole(c *gin.Context) {
 // CreateCustomRole creates a custom role for an organization
 func (h *Handler) CreateCustomRole(c *gin.Context) {
 	// Get organization ID from URL
-	orgID, err := ulid.Parse(c.Param("orgId"))
+	orgID, err := uuid.Parse(c.Param("orgId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid UUID"))
 		return
 	}
 
@@ -468,9 +469,9 @@ func (h *Handler) CreateCustomRole(c *gin.Context) {
 // GetCustomRoles lists all custom roles for an organization
 func (h *Handler) GetCustomRoles(c *gin.Context) {
 	// Get organization ID from URL
-	orgID, err := ulid.Parse(c.Param("orgId"))
+	orgID, err := uuid.Parse(c.Param("orgId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid UUID"))
 		return
 	}
 
@@ -489,9 +490,9 @@ func (h *Handler) GetCustomRoles(c *gin.Context) {
 
 // GetCustomRole retrieves a specific custom role
 func (h *Handler) GetCustomRole(c *gin.Context) {
-	roleID, err := ulid.Parse(c.Param("roleId"))
+	roleID, err := uuid.Parse(c.Param("roleId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid role ID", "roleId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid role ID", "roleId must be a valid UUID"))
 		return
 	}
 
@@ -513,9 +514,9 @@ func (h *Handler) GetCustomRole(c *gin.Context) {
 
 // UpdateCustomRole updates a custom role
 func (h *Handler) UpdateCustomRole(c *gin.Context) {
-	roleID, err := ulid.Parse(c.Param("roleId"))
+	roleID, err := uuid.Parse(c.Param("roleId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid role ID", "roleId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid role ID", "roleId must be a valid UUID"))
 		return
 	}
 
@@ -545,9 +546,9 @@ func (h *Handler) UpdateCustomRole(c *gin.Context) {
 
 // DeleteCustomRole deletes a custom role
 func (h *Handler) DeleteCustomRole(c *gin.Context) {
-	roleID, err := ulid.Parse(c.Param("roleId"))
+	roleID, err := uuid.Parse(c.Param("roleId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid role ID", "roleId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid role ID", "roleId must be a valid UUID"))
 		return
 	}
 
@@ -581,9 +582,9 @@ type CheckUserScopesRequest struct {
 
 // CheckUserScopes handles POST /rbac/users/{userId}/scopes/check
 func (h *Handler) CheckUserScopes(c *gin.Context) {
-	userID, err := ulid.Parse(c.Param("userId"))
+	userID, err := uuid.Parse(c.Param("userId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid user ID", "userId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid user ID", "userId must be a valid UUID"))
 		return
 	}
 
@@ -594,9 +595,9 @@ func (h *Handler) CheckUserScopes(c *gin.Context) {
 	}
 
 	// Parse organization ID
-	var orgID *ulid.ULID
+	var orgID *uuid.UUID
 	if req.OrganizationID != nil && *req.OrganizationID != "" {
-		parsedOrgID, err := ulid.Parse(*req.OrganizationID)
+		parsedOrgID, err := uuid.Parse(*req.OrganizationID)
 		if err != nil {
 			response.Error(c, appErrors.NewValidationError("Invalid organization ID", err.Error()))
 			return
@@ -605,9 +606,9 @@ func (h *Handler) CheckUserScopes(c *gin.Context) {
 	}
 
 	// Parse project ID
-	var projectID *ulid.ULID
+	var projectID *uuid.UUID
 	if req.ProjectID != nil && *req.ProjectID != "" {
-		parsedProjectID, err := ulid.Parse(*req.ProjectID)
+		parsedProjectID, err := uuid.Parse(*req.ProjectID)
 		if err != nil {
 			response.Error(c, appErrors.NewValidationError("Invalid project ID", err.Error()))
 			return
@@ -635,16 +636,16 @@ func (h *Handler) CheckUserScopes(c *gin.Context) {
 
 // GetUserScopes handles GET /rbac/users/{userId}/scopes
 func (h *Handler) GetUserScopes(c *gin.Context) {
-	userID, err := ulid.Parse(c.Param("userId"))
+	userID, err := uuid.Parse(c.Param("userId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid user ID", "userId must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid user ID", "userId must be a valid UUID"))
 		return
 	}
 
 	// Parse organization ID from query
-	var orgID *ulid.ULID
+	var orgID *uuid.UUID
 	if orgIDStr := c.Query("organization_id"); orgIDStr != "" {
-		parsedOrgID, err := ulid.Parse(orgIDStr)
+		parsedOrgID, err := uuid.Parse(orgIDStr)
 		if err != nil {
 			response.Error(c, appErrors.NewValidationError("Invalid organization ID", err.Error()))
 			return
@@ -653,9 +654,9 @@ func (h *Handler) GetUserScopes(c *gin.Context) {
 	}
 
 	// Parse project ID from query
-	var projectID *ulid.ULID
+	var projectID *uuid.UUID
 	if projectIDStr := c.Query("project_id"); projectIDStr != "" {
-		parsedProjectID, err := ulid.Parse(projectIDStr)
+		parsedProjectID, err := uuid.Parse(projectIDStr)
 		if err != nil {
 			response.Error(c, appErrors.NewValidationError("Invalid project ID", err.Error()))
 			return

@@ -10,7 +10,7 @@
 
 -- Recreate user_preferences table with original structure
 CREATE TABLE user_preferences (
-    user_id CHAR(26) PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     email_notifications BOOLEAN DEFAULT true,
     push_notifications BOOLEAN DEFAULT true,
     marketing_emails BOOLEAN DEFAULT false,

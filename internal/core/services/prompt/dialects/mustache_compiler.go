@@ -12,7 +12,7 @@ import (
 
 var (
 	mustacheVarPattern          = regexp.MustCompile(`\{\{[{]?([a-zA-Z][a-zA-Z0-9_.]*)[\}]?\}\}`) // {{variable}} or {{{unescaped}}}
-	mustacheSectionStartPattern = regexp.MustCompile(`\{\{[#^]([a-zA-Z][a-zA-Z0-9_.]*)\}\}`)     // {{#section}} or {{^inverted}}
+	mustacheSectionStartPattern = regexp.MustCompile(`\{\{[#^]([a-zA-Z][a-zA-Z0-9_.]*)\}\}`)      // {{#section}} or {{^inverted}}
 	mustacheSectionEndPattern   = regexp.MustCompile(`\{\{/([a-zA-Z][a-zA-Z0-9_.]*)\}\}`)
 	mustachePartialPattern      = regexp.MustCompile(`\{\{>([a-zA-Z][a-zA-Z0-9_.]*)\}\}`)
 	mustacheCommentPattern      = regexp.MustCompile(`\{\{!.*?\}\}`)

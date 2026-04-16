@@ -24,7 +24,7 @@ DROP TABLE IF EXISTS user_roles CASCADE;
 
 -- Restore the exact schema from AFTER 20250907172224
 -- Step 1: Add organization_id and is_system_role columns FIRST (before dropping scope fields)
-ALTER TABLE roles ADD COLUMN organization_id CHAR(26);
+ALTER TABLE roles ADD COLUMN organization_id UUID;
 ALTER TABLE roles ADD COLUMN is_system_role BOOLEAN DEFAULT FALSE;
 
 -- Step 2: Migrate data from scope_type/scope_id to organization_id/is_system_role
@@ -80,10 +80,10 @@ CREATE INDEX idx_role_permissions_lookup ON role_permissions(role_id);
 -- Step 11: Recreate organization_members table with EXACT schema from initial_schema
 -- (includes id, created_at, updated_at, deleted_at, and correct unique constraint)
 CREATE TABLE organization_members (
-    id CHAR(26) PRIMARY KEY,
-    organization_id CHAR(26) NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    user_id CHAR(26) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    role_id CHAR(26) NOT NULL,
+    id UUID PRIMARY KEY,
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role_id UUID NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     deleted_at TIMESTAMP WITH TIME ZONE,

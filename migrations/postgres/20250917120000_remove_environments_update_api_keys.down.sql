@@ -6,8 +6,8 @@
 
 -- Step 1: Recreate the environments table
 CREATE TABLE environments (
-    id CHAR(26) PRIMARY KEY,
-    project_id CHAR(26) NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY,
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     slug VARCHAR(255) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -19,7 +19,7 @@ CREATE TABLE environments (
 -- Step 2: Create default environments for existing projects
 INSERT INTO environments (id, project_id, name, slug, created_at, updated_at)
 SELECT
-    'env_' || substr(md5(p.id || 'default'), 1, 22),  -- Generate deterministic ULID-like ID
+    md5(p.id::text || 'default-environment')::uuid,  -- Generate deterministic UUID from project ID
     p.id,
     'Default',
     'default',
@@ -33,7 +33,7 @@ DROP INDEX IF EXISTS idx_api_keys_default_environment;
 ALTER TABLE api_keys DROP CONSTRAINT IF EXISTS chk_environment_name;
 
 -- Add environment_id column back
-ALTER TABLE api_keys ADD COLUMN environment_id CHAR(26);
+ALTER TABLE api_keys ADD COLUMN environment_id UUID;
 
 -- Map API keys to the default environments based on their project
 UPDATE api_keys

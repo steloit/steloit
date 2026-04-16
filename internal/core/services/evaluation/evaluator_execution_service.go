@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/evaluation"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/pagination"
-	"brokle/pkg/ulid"
 )
 
 type evaluatorExecutionService struct {
@@ -29,8 +30,8 @@ func NewEvaluatorExecutionService(
 
 func (s *evaluatorExecutionService) StartExecution(
 	ctx context.Context,
-	evaluatorID ulid.ULID,
-	projectID ulid.ULID,
+	evaluatorID uuid.UUID,
+	projectID uuid.UUID,
 	triggerType evaluation.TriggerType,
 ) (*evaluation.EvaluatorExecution, error) {
 	execution := evaluation.NewEvaluatorExecution(evaluatorID, projectID, triggerType)
@@ -52,8 +53,8 @@ func (s *evaluatorExecutionService) StartExecution(
 
 func (s *evaluatorExecutionService) CompleteExecution(
 	ctx context.Context,
-	executionID ulid.ULID,
-	projectID ulid.ULID,
+	executionID uuid.UUID,
+	projectID uuid.UUID,
 	spansMatched, spansScored, errorsCount int,
 ) error {
 	execution, err := s.repo.GetByID(ctx, executionID, projectID)
@@ -89,8 +90,8 @@ func (s *evaluatorExecutionService) CompleteExecution(
 
 func (s *evaluatorExecutionService) FailExecution(
 	ctx context.Context,
-	executionID ulid.ULID,
-	projectID ulid.ULID,
+	executionID uuid.UUID,
+	projectID uuid.UUID,
 	errorMessage string,
 ) error {
 	execution, err := s.repo.GetByID(ctx, executionID, projectID)
@@ -124,8 +125,8 @@ func (s *evaluatorExecutionService) FailExecution(
 
 func (s *evaluatorExecutionService) CancelExecution(
 	ctx context.Context,
-	executionID ulid.ULID,
-	projectID ulid.ULID,
+	executionID uuid.UUID,
+	projectID uuid.UUID,
 ) error {
 	execution, err := s.repo.GetByID(ctx, executionID, projectID)
 	if err != nil {
@@ -156,8 +157,8 @@ func (s *evaluatorExecutionService) CancelExecution(
 
 func (s *evaluatorExecutionService) GetByID(
 	ctx context.Context,
-	id ulid.ULID,
-	projectID ulid.ULID,
+	id uuid.UUID,
+	projectID uuid.UUID,
 ) (*evaluation.EvaluatorExecution, error) {
 	execution, err := s.repo.GetByID(ctx, id, projectID)
 	if err != nil {
@@ -171,8 +172,8 @@ func (s *evaluatorExecutionService) GetByID(
 
 func (s *evaluatorExecutionService) ListByEvaluatorID(
 	ctx context.Context,
-	evaluatorID ulid.ULID,
-	projectID ulid.ULID,
+	evaluatorID uuid.UUID,
+	projectID uuid.UUID,
 	filter *evaluation.ExecutionFilter,
 	params pagination.Params,
 ) ([]*evaluation.EvaluatorExecution, int64, error) {
@@ -185,8 +186,8 @@ func (s *evaluatorExecutionService) ListByEvaluatorID(
 
 func (s *evaluatorExecutionService) GetLatestByEvaluatorID(
 	ctx context.Context,
-	evaluatorID ulid.ULID,
-	projectID ulid.ULID,
+	evaluatorID uuid.UUID,
+	projectID uuid.UUID,
 ) (*evaluation.EvaluatorExecution, error) {
 	execution, err := s.repo.GetLatestByEvaluatorID(ctx, evaluatorID, projectID)
 	if err != nil {
@@ -198,10 +199,10 @@ func (s *evaluatorExecutionService) GetLatestByEvaluatorID(
 func (s *evaluatorExecutionService) IncrementCounters(
 	ctx context.Context,
 	executionID string,
-	projectID ulid.ULID,
+	projectID uuid.UUID,
 	spansScored, errorsCount int,
 ) error {
-	id, err := ulid.Parse(executionID)
+	id, err := uuid.Parse(executionID)
 	if err != nil {
 		return appErrors.NewValidationError("invalid execution ID format", executionID)
 	}
@@ -225,8 +226,8 @@ func (s *evaluatorExecutionService) IncrementCounters(
 
 func (s *evaluatorExecutionService) StartExecutionWithCount(
 	ctx context.Context,
-	evaluatorID ulid.ULID,
-	projectID ulid.ULID,
+	evaluatorID uuid.UUID,
+	projectID uuid.UUID,
 	triggerType evaluation.TriggerType,
 	spansMatched int,
 ) (*evaluation.EvaluatorExecution, error) {
@@ -251,8 +252,8 @@ func (s *evaluatorExecutionService) StartExecutionWithCount(
 
 func (s *evaluatorExecutionService) IncrementAndCheckCompletion(
 	ctx context.Context,
-	executionID ulid.ULID,
-	projectID ulid.ULID,
+	executionID uuid.UUID,
+	projectID uuid.UUID,
 	spansScored, errorsCount int,
 ) (bool, error) {
 	completed, err := s.repo.IncrementCountersAndComplete(ctx, executionID, projectID, spansScored, errorsCount)
@@ -281,8 +282,8 @@ func (s *evaluatorExecutionService) IncrementAndCheckCompletion(
 
 func (s *evaluatorExecutionService) UpdateSpansMatched(
 	ctx context.Context,
-	executionID ulid.ULID,
-	projectID ulid.ULID,
+	executionID uuid.UUID,
+	projectID uuid.UUID,
 	spansMatched int,
 ) error {
 	if err := s.repo.UpdateSpansMatched(ctx, executionID, projectID, spansMatched); err != nil {
@@ -296,9 +297,9 @@ func (s *evaluatorExecutionService) UpdateSpansMatched(
 
 func (s *evaluatorExecutionService) GetExecutionDetail(
 	ctx context.Context,
-	executionID ulid.ULID,
-	projectID ulid.ULID,
-	evaluatorID ulid.ULID,
+	executionID uuid.UUID,
+	projectID uuid.UUID,
+	evaluatorID uuid.UUID,
 ) (*evaluation.ExecutionDetailResponse, error) {
 	// Get the execution record
 	execution, err := s.repo.GetByID(ctx, executionID, projectID)

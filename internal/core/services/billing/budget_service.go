@@ -10,10 +10,12 @@ import (
 
 	"github.com/shopspring/decimal"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/billing"
 	orgDomain "brokle/internal/core/domain/organization"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 type budgetService struct {
@@ -39,7 +41,7 @@ func NewBudgetService(
 
 func (s *budgetService) CreateBudget(ctx context.Context, budget *billing.UsageBudget) error {
 	// Validate project ownership if project_id is provided
-	if budget.ProjectID != nil && !budget.ProjectID.IsZero() {
+	if budget.ProjectID != nil && *budget.ProjectID != uuid.Nil {
 		project, err := s.projectRepo.GetByID(ctx, *budget.ProjectID)
 		if err != nil {
 			if errors.Is(err, orgDomain.ErrProjectNotFound) {
@@ -69,8 +71,8 @@ func (s *budgetService) CreateBudget(ctx context.Context, budget *billing.UsageB
 		}
 	}
 
-	if budget.ID.IsZero() {
-		budget.ID = ulid.New()
+	if budget.ID == uuid.Nil {
+		budget.ID = uid.New()
 	}
 	budget.CreatedAt = time.Now()
 	budget.UpdatedAt = time.Now()
@@ -94,11 +96,11 @@ func (s *budgetService) CreateBudget(ctx context.Context, budget *billing.UsageB
 	return nil
 }
 
-func (s *budgetService) GetBudget(ctx context.Context, id ulid.ULID) (*billing.UsageBudget, error) {
+func (s *budgetService) GetBudget(ctx context.Context, id uuid.UUID) (*billing.UsageBudget, error) {
 	return s.budgetRepo.GetByID(ctx, id)
 }
 
-func (s *budgetService) GetBudgetsByOrg(ctx context.Context, orgID ulid.ULID) ([]*billing.UsageBudget, error) {
+func (s *budgetService) GetBudgetsByOrg(ctx context.Context, orgID uuid.UUID) ([]*billing.UsageBudget, error) {
 	return s.budgetRepo.GetByOrgID(ctx, orgID)
 }
 
@@ -121,7 +123,7 @@ func (s *budgetService) UpdateBudget(ctx context.Context, budget *billing.UsageB
 	return nil
 }
 
-func (s *budgetService) DeleteBudget(ctx context.Context, id ulid.ULID) error {
+func (s *budgetService) DeleteBudget(ctx context.Context, id uuid.UUID) error {
 	if err := s.budgetRepo.Delete(ctx, id); err != nil {
 		s.logger.Error("failed to delete budget",
 			"error", err,
@@ -137,7 +139,7 @@ func (s *budgetService) DeleteBudget(ctx context.Context, id ulid.ULID) error {
 	return nil
 }
 
-func (s *budgetService) CheckBudgets(ctx context.Context, orgID ulid.ULID) ([]*billing.UsageAlert, error) {
+func (s *budgetService) CheckBudgets(ctx context.Context, orgID uuid.UUID) ([]*billing.UsageAlert, error) {
 	budgets, err := s.budgetRepo.GetActive(ctx, orgID)
 	if err != nil {
 		return nil, err
@@ -218,7 +220,7 @@ func (s *budgetService) evaluateBudget(budget *billing.UsageBudget) []*billing.U
 			threshold := budget.AlertThresholds[i]
 			if percentUsed >= float64(threshold) {
 				alert := &billing.UsageAlert{
-					ID:             ulid.New(),
+					ID:             uid.New(),
 					BudgetID:       &budget.ID,
 					OrganizationID: budget.OrganizationID,
 					ProjectID:      budget.ProjectID,
@@ -251,11 +253,11 @@ func getSeverityForThreshold(threshold int64) billing.AlertSeverity {
 	}
 }
 
-func (s *budgetService) GetAlerts(ctx context.Context, orgID ulid.ULID, limit int) ([]*billing.UsageAlert, error) {
+func (s *budgetService) GetAlerts(ctx context.Context, orgID uuid.UUID, limit int) ([]*billing.UsageAlert, error) {
 	return s.alertRepo.GetByOrgID(ctx, orgID, limit)
 }
 
-func (s *budgetService) AcknowledgeAlert(ctx context.Context, orgID, alertID ulid.ULID) error {
+func (s *budgetService) AcknowledgeAlert(ctx context.Context, orgID, alertID uuid.UUID) error {
 	// Fetch alert and verify organization ownership
 	alert, err := s.alertRepo.GetByID(ctx, alertID)
 	if err != nil {

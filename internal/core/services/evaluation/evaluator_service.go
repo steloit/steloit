@@ -14,12 +14,14 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/evaluation"
 	"brokle/internal/core/domain/observability"
 	"brokle/internal/infrastructure/database"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/pagination"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 const (
@@ -50,7 +52,7 @@ func NewEvaluatorService(
 	}
 }
 
-func (s *evaluatorService) Create(ctx context.Context, projectID ulid.ULID, userID *ulid.ULID, req *evaluation.CreateEvaluatorRequest) (*evaluation.Evaluator, error) {
+func (s *evaluatorService) Create(ctx context.Context, projectID uuid.UUID, userID *uuid.UUID, req *evaluation.CreateEvaluatorRequest) (*evaluation.Evaluator, error) {
 	rule := evaluation.NewEvaluator(projectID, req.Name, req.ScorerType, req.ScorerConfig)
 
 	if req.Description != nil {
@@ -112,7 +114,7 @@ func (s *evaluatorService) Create(ctx context.Context, projectID ulid.ULID, user
 	return rule, nil
 }
 
-func (s *evaluatorService) Update(ctx context.Context, id ulid.ULID, projectID ulid.ULID, req *evaluation.UpdateEvaluatorRequest) (*evaluation.Evaluator, error) {
+func (s *evaluatorService) Update(ctx context.Context, id uuid.UUID, projectID uuid.UUID, req *evaluation.UpdateEvaluatorRequest) (*evaluation.Evaluator, error) {
 	rule, err := s.repo.GetByID(ctx, id, projectID)
 	if err != nil {
 		if errors.Is(err, evaluation.ErrEvaluatorNotFound) {
@@ -187,7 +189,7 @@ func (s *evaluatorService) Update(ctx context.Context, id ulid.ULID, projectID u
 	return rule, nil
 }
 
-func (s *evaluatorService) Delete(ctx context.Context, id ulid.ULID, projectID ulid.ULID) error {
+func (s *evaluatorService) Delete(ctx context.Context, id uuid.UUID, projectID uuid.UUID) error {
 	rule, err := s.repo.GetByID(ctx, id, projectID)
 	if err != nil {
 		if errors.Is(err, evaluation.ErrEvaluatorNotFound) {
@@ -212,7 +214,7 @@ func (s *evaluatorService) Delete(ctx context.Context, id ulid.ULID, projectID u
 	return nil
 }
 
-func (s *evaluatorService) GetByID(ctx context.Context, id ulid.ULID, projectID ulid.ULID) (*evaluation.Evaluator, error) {
+func (s *evaluatorService) GetByID(ctx context.Context, id uuid.UUID, projectID uuid.UUID) (*evaluation.Evaluator, error) {
 	rule, err := s.repo.GetByID(ctx, id, projectID)
 	if err != nil {
 		if errors.Is(err, evaluation.ErrEvaluatorNotFound) {
@@ -223,7 +225,7 @@ func (s *evaluatorService) GetByID(ctx context.Context, id ulid.ULID, projectID 
 	return rule, nil
 }
 
-func (s *evaluatorService) List(ctx context.Context, projectID ulid.ULID, filter *evaluation.EvaluatorFilter, params pagination.Params) ([]*evaluation.Evaluator, int64, error) {
+func (s *evaluatorService) List(ctx context.Context, projectID uuid.UUID, filter *evaluation.EvaluatorFilter, params pagination.Params) ([]*evaluation.Evaluator, int64, error) {
 	rules, total, err := s.repo.GetByProjectID(ctx, projectID, filter, params)
 	if err != nil {
 		return nil, 0, appErrors.NewInternalError("failed to list evaluation rules", err)
@@ -231,7 +233,7 @@ func (s *evaluatorService) List(ctx context.Context, projectID ulid.ULID, filter
 	return rules, total, nil
 }
 
-func (s *evaluatorService) Activate(ctx context.Context, id ulid.ULID, projectID ulid.ULID) error {
+func (s *evaluatorService) Activate(ctx context.Context, id uuid.UUID, projectID uuid.UUID) error {
 	rule, err := s.repo.GetByID(ctx, id, projectID)
 	if err != nil {
 		if errors.Is(err, evaluation.ErrEvaluatorNotFound) {
@@ -260,7 +262,7 @@ func (s *evaluatorService) Activate(ctx context.Context, id ulid.ULID, projectID
 	return nil
 }
 
-func (s *evaluatorService) Deactivate(ctx context.Context, id ulid.ULID, projectID ulid.ULID) error {
+func (s *evaluatorService) Deactivate(ctx context.Context, id uuid.UUID, projectID uuid.UUID) error {
 	rule, err := s.repo.GetByID(ctx, id, projectID)
 	if err != nil {
 		if errors.Is(err, evaluation.ErrEvaluatorNotFound) {
@@ -289,7 +291,7 @@ func (s *evaluatorService) Deactivate(ctx context.Context, id ulid.ULID, project
 	return nil
 }
 
-func (s *evaluatorService) GetActiveByProjectID(ctx context.Context, projectID ulid.ULID) ([]*evaluation.Evaluator, error) {
+func (s *evaluatorService) GetActiveByProjectID(ctx context.Context, projectID uuid.UUID) ([]*evaluation.Evaluator, error) {
 	rules, err := s.repo.GetActiveByProjectID(ctx, projectID)
 	if err != nil {
 		return nil, appErrors.NewInternalError("failed to get active evaluation rules", err)
@@ -297,7 +299,7 @@ func (s *evaluatorService) GetActiveByProjectID(ctx context.Context, projectID u
 	return rules, nil
 }
 
-func (s *evaluatorService) TriggerEvaluator(ctx context.Context, evaluatorID ulid.ULID, projectID ulid.ULID, opts *evaluation.TriggerOptions) (*evaluation.TriggerResponse, error) {
+func (s *evaluatorService) TriggerEvaluator(ctx context.Context, evaluatorID uuid.UUID, projectID uuid.UUID, opts *evaluation.TriggerOptions) (*evaluation.TriggerResponse, error) {
 	// Validate evaluator exists (can trigger inactive evaluators for testing)
 	evaluator, err := s.repo.GetByID(ctx, evaluatorID, projectID)
 	if err != nil {
@@ -372,7 +374,7 @@ func (s *evaluatorService) TriggerEvaluator(ctx context.Context, evaluatorID uli
 	}, nil
 }
 
-func (s *evaluatorService) TestEvaluator(ctx context.Context, evaluatorID ulid.ULID, projectID ulid.ULID, req *evaluation.TestEvaluatorRequest) (*evaluation.TestEvaluatorResponse, error) {
+func (s *evaluatorService) TestEvaluator(ctx context.Context, evaluatorID uuid.UUID, projectID uuid.UUID, req *evaluation.TestEvaluatorRequest) (*evaluation.TestEvaluatorResponse, error) {
 	// Validate evaluator exists
 	evaluator, err := s.repo.GetByID(ctx, evaluatorID, projectID)
 	if err != nil {
@@ -737,7 +739,7 @@ func splitPath(path string) []string {
 	return result
 }
 
-func (s *evaluatorService) GetAnalytics(ctx context.Context, evaluatorID ulid.ULID, projectID ulid.ULID, params *evaluation.EvaluatorAnalyticsParams) (*evaluation.EvaluatorAnalyticsResponse, error) {
+func (s *evaluatorService) GetAnalytics(ctx context.Context, evaluatorID uuid.UUID, projectID uuid.UUID, params *evaluation.EvaluatorAnalyticsParams) (*evaluation.EvaluatorAnalyticsResponse, error) {
 	// Validate evaluator exists
 	_, err := s.repo.GetByID(ctx, evaluatorID, projectID)
 	if err != nil {
@@ -898,7 +900,7 @@ func (s *evaluatorService) testWithSampleInput(
 // createSyntheticSpan creates an in-memory span from TestSampleInput for dry-run testing.
 func (s *evaluatorService) createSyntheticSpan(projectID string, sample *evaluation.TestSampleInput) *observability.Span {
 	now := time.Now()
-	syntheticID := ulid.New().String()
+	syntheticID := uid.New().String()
 
 	span := &observability.Span{
 		SpanID:     "synthetic-" + syntheticID[:8],
@@ -1248,9 +1250,9 @@ func toFloat64(v interface{}) (float64, bool) {
 
 // ManualTriggerMessage is the message format for the manual trigger stream
 type ManualTriggerMessage struct {
-	ExecutionID     ulid.ULID                 `json:"execution_id"`
-	EvaluatorID     ulid.ULID                 `json:"evaluator_id"`
-	ProjectID       ulid.ULID                 `json:"project_id"`
+	ExecutionID     uuid.UUID                 `json:"execution_id"`
+	EvaluatorID     uuid.UUID                 `json:"evaluator_id"`
+	ProjectID       uuid.UUID                 `json:"project_id"`
 	ScorerType      evaluation.ScorerType     `json:"scorer_type"`
 	ScorerConfig    map[string]any            `json:"scorer_config"`
 	TargetScope     evaluation.TargetScope    `json:"target_scope"`

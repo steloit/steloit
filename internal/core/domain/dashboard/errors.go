@@ -19,11 +19,11 @@ var (
 	ErrDuplicateWidgetID  = errors.New("duplicate widget ID in dashboard")
 
 	// Query errors
-	ErrInvalidViewType     = errors.New("invalid view type")
-	ErrInvalidMeasure      = errors.New("invalid measure for view type")
-	ErrInvalidDimension    = errors.New("invalid dimension for view type")
-	ErrInvalidFilterField  = errors.New("invalid filter field")
-	ErrInvalidTimeRange    = errors.New("invalid time range configuration")
+	ErrInvalidViewType       = errors.New("invalid view type")
+	ErrInvalidMeasure        = errors.New("invalid measure for view type")
+	ErrInvalidDimension      = errors.New("invalid dimension for view type")
+	ErrInvalidFilterField    = errors.New("invalid filter field")
+	ErrInvalidTimeRange      = errors.New("invalid time range configuration")
 	ErrInvalidFilterOperator = errors.New("invalid filter operator")
 
 	// Layout errors

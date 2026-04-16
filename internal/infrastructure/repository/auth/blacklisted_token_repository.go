@@ -8,9 +8,10 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	authDomain "brokle/internal/core/domain/auth"
 	"brokle/pkg/pagination"
-	"brokle/pkg/ulid"
 )
 
 // blacklistedTokenRepository implements authDomain.BlacklistedTokenRepository using GORM
@@ -72,13 +73,13 @@ func (r *blacklistedTokenRepository) CleanupTokensOlderThan(ctx context.Context,
 }
 
 // CreateUserTimestampBlacklist creates a user-wide timestamp blacklist entry for GDPR/SOC2 compliance
-func (r *blacklistedTokenRepository) CreateUserTimestampBlacklist(ctx context.Context, userID ulid.ULID, blacklistTimestamp int64, reason string) error {
+func (r *blacklistedTokenRepository) CreateUserTimestampBlacklist(ctx context.Context, userID uuid.UUID, blacklistTimestamp int64, reason string) error {
 	blacklistedToken := authDomain.NewUserTimestampBlacklistedToken(userID, blacklistTimestamp, reason)
 	return r.db.WithContext(ctx).Create(blacklistedToken).Error
 }
 
 // IsUserBlacklistedAfterTimestamp checks if a user is blacklisted after a specific timestamp
-func (r *blacklistedTokenRepository) IsUserBlacklistedAfterTimestamp(ctx context.Context, userID ulid.ULID, tokenIssuedAt int64) (bool, error) {
+func (r *blacklistedTokenRepository) IsUserBlacklistedAfterTimestamp(ctx context.Context, userID uuid.UUID, tokenIssuedAt int64) (bool, error) {
 	var count int64
 	err := r.db.WithContext(ctx).Model(&authDomain.BlacklistedToken{}).
 		Where("user_id = ? AND token_type = ? AND blacklist_timestamp IS NOT NULL AND ? < blacklist_timestamp AND expires_at > ?",
@@ -93,7 +94,7 @@ func (r *blacklistedTokenRepository) IsUserBlacklistedAfterTimestamp(ctx context
 }
 
 // GetUserBlacklistTimestamp gets the latest blacklist timestamp for a user
-func (r *blacklistedTokenRepository) GetUserBlacklistTimestamp(ctx context.Context, userID ulid.ULID) (*int64, error) {
+func (r *blacklistedTokenRepository) GetUserBlacklistTimestamp(ctx context.Context, userID uuid.UUID) (*int64, error) {
 	var token authDomain.BlacklistedToken
 	err := r.db.WithContext(ctx).
 		Where("user_id = ? AND token_type = ? AND blacklist_timestamp IS NOT NULL AND expires_at > ?",
@@ -112,7 +113,7 @@ func (r *blacklistedTokenRepository) GetUserBlacklistTimestamp(ctx context.Conte
 }
 
 // BlacklistUserTokens adds all active tokens for a user to blacklist (legacy method, now replaced by timestamp approach)
-func (r *blacklistedTokenRepository) BlacklistUserTokens(ctx context.Context, userID ulid.ULID, reason string) error {
+func (r *blacklistedTokenRepository) BlacklistUserTokens(ctx context.Context, userID uuid.UUID, reason string) error {
 	// DEPRECATED: This method is now replaced by CreateUserTimestampBlacklist for GDPR/SOC2 compliance
 	// Create a user-wide timestamp blacklist instead of trying to track individual JTIs
 	blacklistTimestamp := time.Now().Unix()

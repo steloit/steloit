@@ -6,8 +6,9 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/google/uuid"
+
 	authDomain "brokle/internal/core/domain/auth"
-	"brokle/pkg/ulid"
 	"brokle/internal/infrastructure/shared"
 )
 
@@ -34,7 +35,7 @@ func (r *organizationMemberRepository) Create(ctx context.Context, member *authD
 	return r.getDB(ctx).WithContext(ctx).Create(member).Error
 }
 
-func (r *organizationMemberRepository) GetByUserAndOrganization(ctx context.Context, userID, orgID ulid.ULID) (*authDomain.OrganizationMember, error) {
+func (r *organizationMemberRepository) GetByUserAndOrganization(ctx context.Context, userID, orgID uuid.UUID) (*authDomain.OrganizationMember, error) {
 	var member authDomain.OrganizationMember
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("user_id = ? AND organization_id = ?", userID, orgID).
@@ -51,7 +52,7 @@ func (r *organizationMemberRepository) Update(ctx context.Context, member *authD
 	return r.getDB(ctx).WithContext(ctx).Save(member).Error
 }
 
-func (r *organizationMemberRepository) Delete(ctx context.Context, userID, orgID ulid.ULID) error {
+func (r *organizationMemberRepository) Delete(ctx context.Context, userID, orgID uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).
 		Where("user_id = ? AND organization_id = ?", userID, orgID).
 		Delete(&authDomain.OrganizationMember{}).Error
@@ -59,7 +60,7 @@ func (r *organizationMemberRepository) Delete(ctx context.Context, userID, orgID
 
 // Membership queries
 
-func (r *organizationMemberRepository) GetByUserID(ctx context.Context, userID ulid.ULID) ([]*authDomain.OrganizationMember, error) {
+func (r *organizationMemberRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]*authDomain.OrganizationMember, error) {
 	var members []*authDomain.OrganizationMember
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("user_id = ?", userID).
@@ -69,7 +70,7 @@ func (r *organizationMemberRepository) GetByUserID(ctx context.Context, userID u
 	return members, err
 }
 
-func (r *organizationMemberRepository) GetByOrganizationID(ctx context.Context, orgID ulid.ULID) ([]*authDomain.OrganizationMember, error) {
+func (r *organizationMemberRepository) GetByOrganizationID(ctx context.Context, orgID uuid.UUID) ([]*authDomain.OrganizationMember, error) {
 	var members []*authDomain.OrganizationMember
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("organization_id = ?", orgID).
@@ -79,7 +80,7 @@ func (r *organizationMemberRepository) GetByOrganizationID(ctx context.Context, 
 	return members, err
 }
 
-func (r *organizationMemberRepository) GetByRole(ctx context.Context, roleID ulid.ULID) ([]*authDomain.OrganizationMember, error) {
+func (r *organizationMemberRepository) GetByRole(ctx context.Context, roleID uuid.UUID) ([]*authDomain.OrganizationMember, error) {
 	var members []*authDomain.OrganizationMember
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("role_id = ?", roleID).
@@ -89,7 +90,7 @@ func (r *organizationMemberRepository) GetByRole(ctx context.Context, roleID uli
 	return members, err
 }
 
-func (r *organizationMemberRepository) Exists(ctx context.Context, userID, orgID ulid.ULID) (bool, error) {
+func (r *organizationMemberRepository) Exists(ctx context.Context, userID, orgID uuid.UUID) (bool, error) {
 	var count int64
 	err := r.getDB(ctx).WithContext(ctx).
 		Model(&authDomain.OrganizationMember{}).
@@ -101,7 +102,7 @@ func (r *organizationMemberRepository) Exists(ctx context.Context, userID, orgID
 
 // Permission queries
 
-func (r *organizationMemberRepository) GetUserEffectivePermissions(ctx context.Context, userID ulid.ULID) ([]string, error) {
+func (r *organizationMemberRepository) GetUserEffectivePermissions(ctx context.Context, userID uuid.UUID) ([]string, error) {
 	var permissions []string
 
 	err := r.getDB(ctx).WithContext(ctx).Raw(`
@@ -116,7 +117,7 @@ func (r *organizationMemberRepository) GetUserEffectivePermissions(ctx context.C
 	return permissions, err
 }
 
-func (r *organizationMemberRepository) HasUserPermission(ctx context.Context, userID ulid.ULID, permission string) (bool, error) {
+func (r *organizationMemberRepository) HasUserPermission(ctx context.Context, userID uuid.UUID, permission string) (bool, error) {
 	var count int64
 
 	err := r.getDB(ctx).WithContext(ctx).Raw(`
@@ -131,7 +132,7 @@ func (r *organizationMemberRepository) HasUserPermission(ctx context.Context, us
 	return count > 0, err
 }
 
-func (r *organizationMemberRepository) CheckUserPermissions(ctx context.Context, userID ulid.ULID, permissions []string) (map[string]bool, error) {
+func (r *organizationMemberRepository) CheckUserPermissions(ctx context.Context, userID uuid.UUID, permissions []string) (map[string]bool, error) {
 	result := make(map[string]bool)
 
 	for _, permission := range permissions {
@@ -145,7 +146,7 @@ func (r *organizationMemberRepository) CheckUserPermissions(ctx context.Context,
 	return result, nil
 }
 
-func (r *organizationMemberRepository) GetUserPermissionsInOrganization(ctx context.Context, userID, orgID ulid.ULID) ([]string, error) {
+func (r *organizationMemberRepository) GetUserPermissionsInOrganization(ctx context.Context, userID, orgID uuid.UUID) ([]string, error) {
 	var permissions []string
 
 	err := r.getDB(ctx).WithContext(ctx).Raw(`
@@ -162,21 +163,21 @@ func (r *organizationMemberRepository) GetUserPermissionsInOrganization(ctx cont
 
 // Status management
 
-func (r *organizationMemberRepository) ActivateMember(ctx context.Context, userID, orgID ulid.ULID) error {
+func (r *organizationMemberRepository) ActivateMember(ctx context.Context, userID, orgID uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).
 		Model(&authDomain.OrganizationMember{}).
 		Where("user_id = ? AND organization_id = ?", userID, orgID).
 		Update("status", authDomain.MemberStatusActive).Error
 }
 
-func (r *organizationMemberRepository) SuspendMember(ctx context.Context, userID, orgID ulid.ULID) error {
+func (r *organizationMemberRepository) SuspendMember(ctx context.Context, userID, orgID uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).
 		Model(&authDomain.OrganizationMember{}).
 		Where("user_id = ? AND organization_id = ?", userID, orgID).
 		Update("status", authDomain.MemberStatusSuspended).Error
 }
 
-func (r *organizationMemberRepository) GetActiveMembers(ctx context.Context, orgID ulid.ULID) ([]*authDomain.OrganizationMember, error) {
+func (r *organizationMemberRepository) GetActiveMembers(ctx context.Context, orgID uuid.UUID) ([]*authDomain.OrganizationMember, error) {
 	var members []*authDomain.OrganizationMember
 	err := r.getDB(ctx).WithContext(ctx).
 		Where("organization_id = ? AND status = ?", orgID, authDomain.MemberStatusActive).
@@ -188,7 +189,7 @@ func (r *organizationMemberRepository) GetActiveMembers(ctx context.Context, org
 
 // Role management
 
-func (r *organizationMemberRepository) UpdateMemberRole(ctx context.Context, userID, orgID, roleID ulid.ULID) error {
+func (r *organizationMemberRepository) UpdateMemberRole(ctx context.Context, userID, orgID, roleID uuid.UUID) error {
 	return r.getDB(ctx).WithContext(ctx).
 		Model(&authDomain.OrganizationMember{}).
 		Where("user_id = ? AND organization_id = ?", userID, orgID).
@@ -216,7 +217,7 @@ func (r *organizationMemberRepository) BulkUpdateRoles(ctx context.Context, upda
 
 // Statistics
 
-func (r *organizationMemberRepository) GetMemberCount(ctx context.Context, orgID ulid.ULID) (int, error) {
+func (r *organizationMemberRepository) GetMemberCount(ctx context.Context, orgID uuid.UUID) (int, error) {
 	var count int64
 	err := r.getDB(ctx).WithContext(ctx).
 		Model(&authDomain.OrganizationMember{}).
@@ -226,7 +227,7 @@ func (r *organizationMemberRepository) GetMemberCount(ctx context.Context, orgID
 	return int(count), err
 }
 
-func (r *organizationMemberRepository) GetMembersByRole(ctx context.Context, orgID ulid.ULID) (map[string]int, error) {
+func (r *organizationMemberRepository) GetMembersByRole(ctx context.Context, orgID uuid.UUID) (map[string]int, error) {
 	var results []struct {
 		RoleName string
 		Count    int64

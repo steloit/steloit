@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/common"
 	"brokle/internal/core/domain/evaluation"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
 )
 
 type datasetVersionService struct {
@@ -37,7 +38,7 @@ func NewDatasetVersionService(
 }
 
 // CreateVersion creates a new version snapshot of the current dataset items
-func (s *datasetVersionService) CreateVersion(ctx context.Context, datasetID ulid.ULID, projectID ulid.ULID, req *evaluation.CreateDatasetVersionRequest) (*evaluation.DatasetVersion, error) {
+func (s *datasetVersionService) CreateVersion(ctx context.Context, datasetID uuid.UUID, projectID uuid.UUID, req *evaluation.CreateDatasetVersionRequest) (*evaluation.DatasetVersion, error) {
 	// Verify dataset exists (outside transaction - read-only)
 	_, err := s.datasetRepo.GetByID(ctx, datasetID, projectID)
 	if err != nil {
@@ -89,7 +90,7 @@ func (s *datasetVersionService) CreateVersion(ctx context.Context, datasetID uli
 
 		// Associate items with this version
 		if len(items) > 0 {
-			itemIDs := make([]ulid.ULID, len(items))
+			itemIDs := make([]uuid.UUID, len(items))
 			for i, item := range items {
 				itemIDs[i] = item.ID
 			}
@@ -115,7 +116,7 @@ func (s *datasetVersionService) CreateVersion(ctx context.Context, datasetID uli
 }
 
 // GetVersion gets a specific version by ID
-func (s *datasetVersionService) GetVersion(ctx context.Context, versionID ulid.ULID, datasetID ulid.ULID, projectID ulid.ULID) (*evaluation.DatasetVersion, error) {
+func (s *datasetVersionService) GetVersion(ctx context.Context, versionID uuid.UUID, datasetID uuid.UUID, projectID uuid.UUID) (*evaluation.DatasetVersion, error) {
 	// Verify dataset exists and belongs to project
 	_, err := s.datasetRepo.GetByID(ctx, datasetID, projectID)
 	if err != nil {
@@ -137,7 +138,7 @@ func (s *datasetVersionService) GetVersion(ctx context.Context, versionID ulid.U
 }
 
 // ListVersions lists all versions for a dataset
-func (s *datasetVersionService) ListVersions(ctx context.Context, datasetID ulid.ULID, projectID ulid.ULID) ([]*evaluation.DatasetVersion, error) {
+func (s *datasetVersionService) ListVersions(ctx context.Context, datasetID uuid.UUID, projectID uuid.UUID) ([]*evaluation.DatasetVersion, error) {
 	// Verify dataset exists and belongs to project
 	_, err := s.datasetRepo.GetByID(ctx, datasetID, projectID)
 	if err != nil {
@@ -156,7 +157,7 @@ func (s *datasetVersionService) ListVersions(ctx context.Context, datasetID ulid
 }
 
 // GetLatestVersion gets the most recent version
-func (s *datasetVersionService) GetLatestVersion(ctx context.Context, datasetID ulid.ULID, projectID ulid.ULID) (*evaluation.DatasetVersion, error) {
+func (s *datasetVersionService) GetLatestVersion(ctx context.Context, datasetID uuid.UUID, projectID uuid.UUID) (*evaluation.DatasetVersion, error) {
 	// Verify dataset exists and belongs to project
 	_, err := s.datasetRepo.GetByID(ctx, datasetID, projectID)
 	if err != nil {
@@ -178,7 +179,7 @@ func (s *datasetVersionService) GetLatestVersion(ctx context.Context, datasetID 
 }
 
 // GetVersionItems gets items for a specific version with pagination
-func (s *datasetVersionService) GetVersionItems(ctx context.Context, versionID ulid.ULID, datasetID ulid.ULID, projectID ulid.ULID, limit, offset int) ([]*evaluation.DatasetItem, int64, error) {
+func (s *datasetVersionService) GetVersionItems(ctx context.Context, versionID uuid.UUID, datasetID uuid.UUID, projectID uuid.UUID, limit, offset int) ([]*evaluation.DatasetItem, int64, error) {
 	// Verify dataset exists and belongs to project
 	_, err := s.datasetRepo.GetByID(ctx, datasetID, projectID)
 	if err != nil {
@@ -206,7 +207,7 @@ func (s *datasetVersionService) GetVersionItems(ctx context.Context, versionID u
 }
 
 // PinVersion pins the dataset to a specific version (nil to unpin)
-func (s *datasetVersionService) PinVersion(ctx context.Context, datasetID ulid.ULID, projectID ulid.ULID, versionID *ulid.ULID) (*evaluation.Dataset, error) {
+func (s *datasetVersionService) PinVersion(ctx context.Context, datasetID uuid.UUID, projectID uuid.UUID, versionID *uuid.UUID) (*evaluation.Dataset, error) {
 	dataset, err := s.datasetRepo.GetByID(ctx, datasetID, projectID)
 	if err != nil {
 		if errors.Is(err, evaluation.ErrDatasetNotFound) {
@@ -245,7 +246,7 @@ func (s *datasetVersionService) PinVersion(ctx context.Context, datasetID ulid.U
 }
 
 // GetDatasetWithVersionInfo gets a dataset with its version information
-func (s *datasetVersionService) GetDatasetWithVersionInfo(ctx context.Context, datasetID ulid.ULID, projectID ulid.ULID) (*evaluation.DatasetWithVersionResponse, error) {
+func (s *datasetVersionService) GetDatasetWithVersionInfo(ctx context.Context, datasetID uuid.UUID, projectID uuid.UUID) (*evaluation.DatasetWithVersionResponse, error) {
 	dataset, err := s.datasetRepo.GetByID(ctx, datasetID, projectID)
 	if err != nil {
 		if errors.Is(err, evaluation.ErrDatasetNotFound) {

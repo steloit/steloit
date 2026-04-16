@@ -11,7 +11,7 @@ import (
 	"gorm.io/gorm"
 
 	"brokle/internal/core/domain/billing"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 // setupTestDB creates an in-memory SQLite database for testing
@@ -36,13 +36,13 @@ func TestContractRepository_GetExpiring_Today(t *testing.T) {
 	oneHourAgo := now.Add(-1 * time.Hour)
 
 	contract := &billing.Contract{
-		ID:             ulid.New(),
-		OrganizationID: ulid.New(),
+		ID:             uid.New(),
+		OrganizationID: uid.New(),
 		ContractName:   "Test Contract Already Expired",
 		ContractNumber: "TEST-001",
 		Status:         billing.ContractStatusActive,
 		StartDate:      oneHourAgo.AddDate(0, -1, 0), // Started 1 month ago
-		EndDate:        &oneHourAgo,                   // Expired 1 hour ago
+		EndDate:        &oneHourAgo,                  // Expired 1 hour ago
 		Currency:       "USD",
 	}
 
@@ -57,7 +57,6 @@ func TestContractRepository_GetExpiring_Today(t *testing.T) {
 	assert.Equal(t, contract.ID, contracts[0].ID)
 }
 
-
 func TestContractRepository_GetExpiring_Tomorrow(t *testing.T) {
 	db := setupTestDB(t)
 	repo := NewContractRepository(db)
@@ -68,8 +67,8 @@ func TestContractRepository_GetExpiring_Tomorrow(t *testing.T) {
 	twoHoursFromNow := now.Add(2 * time.Hour)
 
 	contract := &billing.Contract{
-		ID:             ulid.New(),
-		OrganizationID: ulid.New(),
+		ID:             uid.New(),
+		OrganizationID: uid.New(),
 		ContractName:   "Test Contract Expiring Soon",
 		ContractNumber: "TEST-003",
 		Status:         billing.ContractStatusActive,
@@ -109,8 +108,8 @@ func TestContractRepository_GetExpiring_TimestampPrecision(t *testing.T) {
 	twoHoursFromNow := now.Add(2 * time.Hour)
 
 	contract1 := &billing.Contract{
-		ID:             ulid.New(),
-		OrganizationID: ulid.New(),
+		ID:             uid.New(),
+		OrganizationID: uid.New(),
 		ContractName:   "Contract Expired Yesterday",
 		ContractNumber: "PREC-001",
 		Status:         billing.ContractStatusActive,
@@ -120,8 +119,8 @@ func TestContractRepository_GetExpiring_TimestampPrecision(t *testing.T) {
 	}
 
 	contract2 := &billing.Contract{
-		ID:             ulid.New(),
-		OrganizationID: ulid.New(),
+		ID:             uid.New(),
+		OrganizationID: uid.New(),
 		ContractName:   "Contract Expired 1 Hour Ago",
 		ContractNumber: "PREC-002",
 		Status:         billing.ContractStatusActive,
@@ -131,8 +130,8 @@ func TestContractRepository_GetExpiring_TimestampPrecision(t *testing.T) {
 	}
 
 	contract3 := &billing.Contract{
-		ID:             ulid.New(),
-		OrganizationID: ulid.New(),
+		ID:             uid.New(),
+		OrganizationID: uid.New(),
 		ContractName:   "Contract Expires in 2 Hours",
 		ContractNumber: "PREC-003",
 		Status:         billing.ContractStatusActive,

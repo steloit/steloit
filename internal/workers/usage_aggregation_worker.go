@@ -11,13 +11,15 @@ import (
 
 	"github.com/shopspring/decimal"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/config"
 	"brokle/internal/core/domain/billing"
 	"brokle/internal/core/domain/common"
 	"brokle/internal/core/domain/organization"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/pagination"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 	"brokle/pkg/units"
 )
 
@@ -196,7 +198,7 @@ func (w *UsageAggregationWorker) run() {
 }
 
 // syncOrganizationUsage syncs ClickHouse usage to PostgreSQL billing state
-func (w *UsageAggregationWorker) syncOrganizationUsage(ctx context.Context, orgID ulid.ULID) error {
+func (w *UsageAggregationWorker) syncOrganizationUsage(ctx context.Context, orgID uuid.UUID) error {
 	// Get current billing state
 	orgBilling, err := w.billingRepo.GetByOrgID(ctx, orgID)
 	if err != nil {
@@ -266,7 +268,7 @@ func (w *UsageAggregationWorker) syncOrganizationUsage(ctx context.Context, orgI
 }
 
 // resetBillingPeriod resets the billing period for an organization
-func (w *UsageAggregationWorker) resetBillingPeriod(ctx context.Context, orgID ulid.ULID, current *billing.OrganizationBilling) error {
+func (w *UsageAggregationWorker) resetBillingPeriod(ctx context.Context, orgID uuid.UUID, current *billing.OrganizationBilling) error {
 	w.logger.Info("Resetting billing period",
 		"organization_id", orgID,
 		"old_cycle_start", current.BillingCycleStart,
@@ -279,7 +281,7 @@ func (w *UsageAggregationWorker) resetBillingPeriod(ctx context.Context, orgID u
 }
 
 // syncBudgetUsage syncs usage to all budgets for an organization
-func (w *UsageAggregationWorker) syncBudgetUsage(ctx context.Context, orgID ulid.ULID, summary *billing.BillableUsageSummary, cost decimal.Decimal, effectivePricing *billing.EffectivePricing) error {
+func (w *UsageAggregationWorker) syncBudgetUsage(ctx context.Context, orgID uuid.UUID, summary *billing.BillableUsageSummary, cost decimal.Decimal, effectivePricing *billing.EffectivePricing) error {
 	budgets, err := w.budgetRepo.GetActive(ctx, orgID)
 	if err != nil {
 		return err
@@ -338,7 +340,7 @@ func (w *UsageAggregationWorker) syncBudgetUsage(ctx context.Context, orgID ulid
 }
 
 // checkBudgets checks all budgets and returns any new alerts
-func (w *UsageAggregationWorker) checkBudgets(ctx context.Context, orgID ulid.ULID) ([]*billing.UsageAlert, error) {
+func (w *UsageAggregationWorker) checkBudgets(ctx context.Context, orgID uuid.UUID) ([]*billing.UsageAlert, error) {
 	budgets, err := w.budgetRepo.GetActive(ctx, orgID)
 	if err != nil {
 		return nil, err
@@ -435,7 +437,7 @@ func (w *UsageAggregationWorker) evaluateBudget(budget *billing.UsageBudget) []*
 			threshold := budget.AlertThresholds[i]
 			if percentUsed >= float64(threshold) {
 				alert := &billing.UsageAlert{
-					ID:             ulid.New(),
+					ID:             uid.New(),
 					BudgetID:       &budget.ID,
 					OrganizationID: budget.OrganizationID,
 					ProjectID:      budget.ProjectID,
@@ -470,7 +472,7 @@ func getSeverityForThreshold(threshold int64) billing.AlertSeverity {
 }
 
 // hasRecentAlert checks if there's a recent unresolved alert for the same budget/threshold/dimension
-func (w *UsageAggregationWorker) hasRecentAlert(ctx context.Context, budgetID ulid.ULID, alertThreshold int64, dimension billing.AlertDimension) bool {
+func (w *UsageAggregationWorker) hasRecentAlert(ctx context.Context, budgetID uuid.UUID, alertThreshold int64, dimension billing.AlertDimension) bool {
 	alerts, err := w.alertRepo.GetByBudgetID(ctx, budgetID)
 	if err != nil {
 		return false
@@ -695,7 +697,7 @@ type budgetCostResult struct {
 // This correctly attributes the cost increase to the budget period that caused it.
 func (w *UsageAggregationWorker) calculateBudgetCost(
 	ctx context.Context,
-	orgID ulid.ULID,
+	orgID uuid.UUID,
 	budget *billing.UsageBudget,
 	summary *billing.BillableUsageSummary,
 	totalCycleCost decimal.Decimal,
@@ -728,7 +730,7 @@ func (w *UsageAggregationWorker) calculateBudgetCost(
 // This ensures free tier is properly allocated to earlier periods.
 func (w *UsageAggregationWorker) getBudgetUsageMarginal(
 	ctx context.Context,
-	orgID ulid.ULID,
+	orgID uuid.UUID,
 	budget *billing.UsageBudget,
 	budgetStart time.Time,
 	cycleStart time.Time,

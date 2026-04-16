@@ -1,14 +1,14 @@
 package auth
 
 import (
-	"log/slog"
 	"context"
 	"fmt"
+	"log/slog"
 
+	"github.com/google/uuid"
 
 	authDomain "brokle/internal/core/domain/auth"
 	appErrors "brokle/pkg/errors"
-	"brokle/pkg/ulid"
 )
 
 // auditDecorator wraps an AuthService to provide automatic audit logging
@@ -34,7 +34,7 @@ func (a *auditDecorator) Login(ctx context.Context, req *authDomain.LoginRequest
 	// Audit based on result
 	if err != nil {
 		var reason string
-		var userID *ulid.ULID
+		var userID *uuid.UUID
 
 		// Determine reason based on error type
 		if appErr, ok := appErrors.IsAppError(err); ok {
@@ -104,7 +104,7 @@ func (a *auditDecorator) RefreshToken(ctx context.Context, req *authDomain.Refre
 }
 
 // Logout handles user logout with audit logging
-func (a *auditDecorator) Logout(ctx context.Context, jti string, userID ulid.ULID) error {
+func (a *auditDecorator) Logout(ctx context.Context, jti string, userID uuid.UUID) error {
 	err := a.authService.Logout(ctx, jti, userID)
 
 	// Audit based on result
@@ -128,7 +128,7 @@ func (a *auditDecorator) Logout(ctx context.Context, jti string, userID ulid.ULI
 
 // Delegate all other methods to the wrapped service without audit (for now)
 
-func (a *auditDecorator) ChangePassword(ctx context.Context, userID ulid.ULID, currentPassword, newPassword string) error {
+func (a *auditDecorator) ChangePassword(ctx context.Context, userID uuid.UUID, currentPassword, newPassword string) error {
 	return a.authService.ChangePassword(ctx, userID, currentPassword, newPassword)
 }
 
@@ -140,7 +140,7 @@ func (a *auditDecorator) ConfirmPasswordReset(ctx context.Context, token, newPas
 	return a.authService.ConfirmPasswordReset(ctx, token, newPassword)
 }
 
-func (a *auditDecorator) SendEmailVerification(ctx context.Context, userID ulid.ULID) error {
+func (a *auditDecorator) SendEmailVerification(ctx context.Context, userID uuid.UUID) error {
 	return a.authService.SendEmailVerification(ctx, userID)
 }
 
@@ -152,23 +152,23 @@ func (a *auditDecorator) ValidateAuthToken(ctx context.Context, token string) (*
 	return a.authService.ValidateAuthToken(ctx, token)
 }
 
-func (a *auditDecorator) GetUserSessions(ctx context.Context, userID ulid.ULID) ([]*authDomain.UserSession, error) {
+func (a *auditDecorator) GetUserSessions(ctx context.Context, userID uuid.UUID) ([]*authDomain.UserSession, error) {
 	return a.authService.GetUserSessions(ctx, userID)
 }
 
-func (a *auditDecorator) RevokeSession(ctx context.Context, userID ulid.ULID, sessionID ulid.ULID) error {
+func (a *auditDecorator) RevokeSession(ctx context.Context, userID uuid.UUID, sessionID uuid.UUID) error {
 	return a.authService.RevokeSession(ctx, userID, sessionID)
 }
 
-func (a *auditDecorator) RevokeAllSessions(ctx context.Context, userID ulid.ULID) error {
+func (a *auditDecorator) RevokeAllSessions(ctx context.Context, userID uuid.UUID) error {
 	return a.authService.RevokeAllSessions(ctx, userID)
 }
 
-func (a *auditDecorator) RevokeUserAccessTokens(ctx context.Context, userID ulid.ULID, reason string) error {
+func (a *auditDecorator) RevokeUserAccessTokens(ctx context.Context, userID uuid.UUID, reason string) error {
 	return a.authService.RevokeUserAccessTokens(ctx, userID, reason)
 }
 
-func (a *auditDecorator) RevokeAccessToken(ctx context.Context, jti string, userID ulid.ULID, reason string) error {
+func (a *auditDecorator) RevokeAccessToken(ctx context.Context, jti string, userID uuid.UUID, reason string) error {
 	return a.authService.RevokeAccessToken(ctx, jti, userID, reason)
 }
 
@@ -194,12 +194,12 @@ func (a *auditDecorator) DeleteOAuthSession(ctx context.Context, sessionID strin
 }
 
 // GenerateTokensForUser delegates to wrapped service (no audit - same as Login success)
-func (a *auditDecorator) GenerateTokensForUser(ctx context.Context, userID ulid.ULID) (*authDomain.LoginResponse, error) {
+func (a *auditDecorator) GenerateTokensForUser(ctx context.Context, userID uuid.UUID) (*authDomain.LoginResponse, error) {
 	return a.authService.GenerateTokensForUser(ctx, userID)
 }
 
 // OAuth login token session methods - delegate without audit
-func (a *auditDecorator) CreateLoginTokenSession(ctx context.Context, accessToken, refreshToken string, expiresIn int64, userID ulid.ULID) (string, error) {
+func (a *auditDecorator) CreateLoginTokenSession(ctx context.Context, accessToken, refreshToken string, expiresIn int64, userID uuid.UUID) (string, error) {
 	return a.authService.CreateLoginTokenSession(ctx, accessToken, refreshToken, expiresIn, userID)
 }
 

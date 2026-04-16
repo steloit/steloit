@@ -1,20 +1,19 @@
 package storage
 
 import (
-	"log/slog"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
-
 
 	"brokle/internal/config"
 	"brokle/internal/core/domain/storage"
 	infraStorage "brokle/internal/infrastructure/storage"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/preview"
-	"brokle/pkg/ulid"
+	"brokle/pkg/uid"
 )
 
 // Ensure BlobStorageService implements the interface
@@ -62,10 +61,10 @@ func (s *BlobStorageService) CreateBlobReference(ctx context.Context, blob *stor
 	}
 
 	if blob.ID == "" {
-		blob.ID = ulid.New().String()
+		blob.ID = uid.New().String()
 	}
 	if blob.EventID == "" {
-		blob.EventID = ulid.New().String()
+		blob.EventID = uid.New().String()
 	}
 	if blob.CreatedAt.IsZero() {
 		blob.CreatedAt = time.Now()
@@ -165,7 +164,7 @@ func (s *BlobStorageService) UploadToS3(ctx context.Context, content string, pro
 		return nil, appErrors.NewInternalError("S3 client not initialized - check BLOB_STORAGE configuration in environment", nil)
 	}
 
-	blobID := ulid.New().String()
+	blobID := uid.New().String()
 	s3Key := fmt.Sprintf("%s/%s/%s.json", entityType, entityID, blobID)
 
 	contentBytes := []byte(content)

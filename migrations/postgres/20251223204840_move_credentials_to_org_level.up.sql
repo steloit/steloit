@@ -5,7 +5,7 @@
 -- ============================================
 -- Phase 1: Add organization_id column
 -- ============================================
-ALTER TABLE provider_credentials ADD COLUMN organization_id CHAR(26);
+ALTER TABLE provider_credentials ADD COLUMN organization_id UUID;
 
 -- ============================================
 -- Phase 2: Migrate existing data

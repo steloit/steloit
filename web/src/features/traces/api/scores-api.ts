@@ -47,7 +47,7 @@ export interface UpdateAnnotationRequest {
  *
  * Backend endpoint: GET /api/v1/traces/:trace_id/scores
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @param traceId - Trace ID
  * @returns List of scores/annotations
  */
@@ -67,7 +67,7 @@ export const getTraceScores = async (
  *
  * Backend endpoint: POST /api/v1/traces/:trace_id/scores
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @param traceId - Trace ID
  * @param data - Annotation data
  * @returns Created annotation
@@ -89,7 +89,7 @@ export const createAnnotation = async (
  *
  * Backend endpoint: PUT /api/v1/traces/:trace_id/scores/:score_id
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @param traceId - Trace ID
  * @param scoreId - Score ID
  * @param data - Update data
@@ -113,7 +113,7 @@ export const updateAnnotation = async (
  *
  * Backend endpoint: DELETE /api/v1/traces/:trace_id/scores/:score_id
  *
- * @param projectId - Project ULID
+ * @param projectId - Project UUID
  * @param traceId - Trace ID
  * @param scoreId - Score ID
  */

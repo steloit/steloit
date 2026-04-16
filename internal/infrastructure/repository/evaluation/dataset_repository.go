@@ -5,10 +5,11 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/evaluation"
 	"brokle/internal/infrastructure/shared"
 	"brokle/pkg/pagination"
-	"brokle/pkg/ulid"
 
 	"gorm.io/gorm"
 )
@@ -37,7 +38,7 @@ func (r *DatasetRepository) Create(ctx context.Context, dataset *evaluation.Data
 	return nil
 }
 
-func (r *DatasetRepository) GetByID(ctx context.Context, id ulid.ULID, projectID ulid.ULID) (*evaluation.Dataset, error) {
+func (r *DatasetRepository) GetByID(ctx context.Context, id uuid.UUID, projectID uuid.UUID) (*evaluation.Dataset, error) {
 	var dataset evaluation.Dataset
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("id = ? AND project_id = ?", id.String(), projectID.String()).
@@ -52,7 +53,7 @@ func (r *DatasetRepository) GetByID(ctx context.Context, id ulid.ULID, projectID
 	return &dataset, nil
 }
 
-func (r *DatasetRepository) GetByName(ctx context.Context, projectID ulid.ULID, name string) (*evaluation.Dataset, error) {
+func (r *DatasetRepository) GetByName(ctx context.Context, projectID uuid.UUID, name string) (*evaluation.Dataset, error) {
 	var dataset evaluation.Dataset
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("project_id = ? AND name = ?", projectID.String(), name).
@@ -67,7 +68,7 @@ func (r *DatasetRepository) GetByName(ctx context.Context, projectID ulid.ULID, 
 	return &dataset, nil
 }
 
-func (r *DatasetRepository) List(ctx context.Context, projectID ulid.ULID, filter *evaluation.DatasetFilter, offset, limit int) ([]*evaluation.Dataset, int64, error) {
+func (r *DatasetRepository) List(ctx context.Context, projectID uuid.UUID, filter *evaluation.DatasetFilter, offset, limit int) ([]*evaluation.Dataset, int64, error) {
 	var datasets []*evaluation.Dataset
 	var total int64
 
@@ -95,7 +96,7 @@ func (r *DatasetRepository) List(ctx context.Context, projectID ulid.ULID, filte
 	return datasets, total, nil
 }
 
-func (r *DatasetRepository) Update(ctx context.Context, dataset *evaluation.Dataset, projectID ulid.ULID) error {
+func (r *DatasetRepository) Update(ctx context.Context, dataset *evaluation.Dataset, projectID uuid.UUID) error {
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("id = ? AND project_id = ?", dataset.ID.String(), projectID.String()).
 		Save(dataset)
@@ -113,7 +114,7 @@ func (r *DatasetRepository) Update(ctx context.Context, dataset *evaluation.Data
 	return nil
 }
 
-func (r *DatasetRepository) Delete(ctx context.Context, id ulid.ULID, projectID ulid.ULID) error {
+func (r *DatasetRepository) Delete(ctx context.Context, id uuid.UUID, projectID uuid.UUID) error {
 	result := r.getDB(ctx).WithContext(ctx).
 		Where("id = ? AND project_id = ?", id.String(), projectID.String()).
 		Delete(&evaluation.Dataset{})
@@ -128,7 +129,7 @@ func (r *DatasetRepository) Delete(ctx context.Context, id ulid.ULID, projectID 
 	return nil
 }
 
-func (r *DatasetRepository) ExistsByName(ctx context.Context, projectID ulid.ULID, name string) (bool, error) {
+func (r *DatasetRepository) ExistsByName(ctx context.Context, projectID uuid.UUID, name string) (bool, error) {
 	var count int64
 	result := r.getDB(ctx).WithContext(ctx).
 		Model(&evaluation.Dataset{}).
@@ -145,7 +146,7 @@ func (r *DatasetRepository) ExistsByName(ctx context.Context, projectID ulid.ULI
 // Allowed sort fields: name, created_at, updated_at, item_count
 func (r *DatasetRepository) ListWithFilters(
 	ctx context.Context,
-	projectID ulid.ULID,
+	projectID uuid.UUID,
 	filter *evaluation.DatasetFilter,
 	params pagination.Params,
 ) ([]*evaluation.DatasetWithItemCount, int64, error) {
