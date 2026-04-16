@@ -41,13 +41,13 @@ func NewQueueHandler(logger *slog.Logger, service annotationDomain.QueueService)
 func (h *QueueHandler) Create(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	var req CreateQueueRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -101,7 +101,7 @@ func (h *QueueHandler) Create(c *gin.Context) {
 func (h *QueueHandler) List(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
@@ -151,13 +151,13 @@ func (h *QueueHandler) List(c *gin.Context) {
 func (h *QueueHandler) Get(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	queueID, err := ulid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("queueId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
 		return
 	}
 
@@ -184,13 +184,13 @@ func (h *QueueHandler) Get(c *gin.Context) {
 func (h *QueueHandler) GetWithStats(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	queueID, err := ulid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("queueId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
 		return
 	}
 
@@ -223,19 +223,19 @@ func (h *QueueHandler) GetWithStats(c *gin.Context) {
 func (h *QueueHandler) Update(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	queueID, err := ulid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("queueId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
 		return
 	}
 
 	var req UpdateQueueRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -279,13 +279,13 @@ func (h *QueueHandler) Update(c *gin.Context) {
 func (h *QueueHandler) Delete(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	queueID, err := ulid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("queueId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
 		return
 	}
 

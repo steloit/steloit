@@ -103,7 +103,7 @@ type OrganizationSettingsService interface {
 	CreateSetting(ctx context.Context, orgID ulid.ULID, userID ulid.ULID, req *CreateOrganizationSettingRequest) (*OrganizationSettings, error)
 	GetSetting(ctx context.Context, orgID ulid.ULID, key string) (*OrganizationSettings, error)
 	GetAllSettings(ctx context.Context, orgID ulid.ULID) (map[string]interface{}, error)
-	UpdateSetting(ctx context.Context, orgID ulid.ULID, key string, userID ulid.ULID, req *UpdateOrganizationSettingRequest) error
+	UpdateSetting(ctx context.Context, orgID ulid.ULID, key string, userID ulid.ULID, req *UpdateOrganizationSettingRequest) (*OrganizationSettings, error)
 	DeleteSetting(ctx context.Context, orgID ulid.ULID, key string, userID ulid.ULID) error
 
 	// Bulk operations

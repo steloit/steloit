@@ -121,7 +121,7 @@ type UpdateVolumeTiersRequest struct {
 func (h *ContractHandler) CreateContract(c *gin.Context) {
 	var req CreateContractRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "invalid request", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -232,9 +232,8 @@ func (h *ContractHandler) CreateContract(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/billing/contracts/{contractId} [get]
 func (h *ContractHandler) GetContract(c *gin.Context) {
-	contractID, err := h.parseContractID(c)
-	if err != nil {
-		response.Error(c, err)
+	contractID, ok := h.parseContractID(c)
+	if !ok {
 		return
 	}
 
@@ -266,9 +265,8 @@ func (h *ContractHandler) GetContract(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/billing/organizations/{orgId}/contracts [get]
 func (h *ContractHandler) GetContractsByOrg(c *gin.Context) {
-	orgID, err := h.parseOrgID(c)
-	if err != nil {
-		response.Error(c, err)
+	orgID, ok := h.parseOrgID(c)
+	if !ok {
 		return
 	}
 
@@ -306,15 +304,14 @@ func (h *ContractHandler) GetContractsByOrg(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/billing/contracts/{contractId} [put]
 func (h *ContractHandler) UpdateContract(c *gin.Context) {
-	contractID, err := h.parseContractID(c)
-	if err != nil {
-		response.Error(c, err)
+	contractID, ok := h.parseContractID(c)
+	if !ok {
 		return
 	}
 
 	var req UpdateContractRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "invalid request", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -400,9 +397,8 @@ func (h *ContractHandler) UpdateContract(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/billing/contracts/{contractId}/activate [put]
 func (h *ContractHandler) ActivateContract(c *gin.Context) {
-	contractID, err := h.parseContractID(c)
-	if err != nil {
-		response.Error(c, err)
+	contractID, ok := h.parseContractID(c)
+	if !ok {
 		return
 	}
 
@@ -454,15 +450,14 @@ func (h *ContractHandler) ActivateContract(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/billing/contracts/{contractId} [delete]
 func (h *ContractHandler) CancelContract(c *gin.Context) {
-	contractID, err := h.parseContractID(c)
-	if err != nil {
-		response.Error(c, err)
+	contractID, ok := h.parseContractID(c)
+	if !ok {
 		return
 	}
 
 	var req CancelContractRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "invalid request", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -514,15 +509,14 @@ func (h *ContractHandler) CancelContract(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/billing/contracts/{contractId}/tiers [put]
 func (h *ContractHandler) UpdateVolumeTiers(c *gin.Context) {
-	contractID, err := h.parseContractID(c)
-	if err != nil {
-		response.Error(c, err)
+	contractID, ok := h.parseContractID(c)
+	if !ok {
 		return
 	}
 
 	var req UpdateVolumeTiersRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "invalid request", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -582,9 +576,8 @@ func (h *ContractHandler) UpdateVolumeTiers(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/billing/contracts/{contractId}/history [get]
 func (h *ContractHandler) GetContractHistory(c *gin.Context) {
-	contractID, err := h.parseContractID(c)
-	if err != nil {
-		response.Error(c, err)
+	contractID, ok := h.parseContractID(c)
+	if !ok {
 		return
 	}
 
@@ -627,9 +620,8 @@ func (h *ContractHandler) GetContractHistory(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/billing/organizations/{orgId}/effective-pricing [get]
 func (h *ContractHandler) GetEffectivePricing(c *gin.Context) {
-	orgID, err := h.parseOrgID(c)
-	if err != nil {
-		response.Error(c, err)
+	orgID, ok := h.parseOrgID(c)
+	if !ok {
 		return
 	}
 
@@ -653,32 +645,22 @@ func (h *ContractHandler) GetEffectivePricing(c *gin.Context) {
 
 // Helper methods
 
-func (h *ContractHandler) parseContractID(c *gin.Context) (ulid.ULID, error) {
-	contractIDStr := c.Param("contractId")
-	if contractIDStr == "" {
-		return ulid.ULID{}, appErrors.NewValidationError("contract_id is required", "contractId path parameter is missing")
-	}
-
-	contractID, err := ulid.Parse(contractIDStr)
+func (h *ContractHandler) parseContractID(c *gin.Context) (ulid.ULID, bool) {
+	contractID, err := ulid.Parse(c.Param("contractId"))
 	if err != nil {
-		return ulid.ULID{}, appErrors.NewValidationError("Invalid contract ID", "contractId must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid contract ID", "contractId must be a valid ULID"))
+		return ulid.ULID{}, false
 	}
-
-	return contractID, nil
+	return contractID, true
 }
 
-func (h *ContractHandler) parseOrgID(c *gin.Context) (ulid.ULID, error) {
-	orgIDStr := c.Param("orgId")
-	if orgIDStr == "" {
-		return ulid.ULID{}, appErrors.NewValidationError("organization_id is required", "orgId path parameter is missing")
-	}
-
-	orgID, err := ulid.Parse(orgIDStr)
+func (h *ContractHandler) parseOrgID(c *gin.Context) (ulid.ULID, bool) {
+	orgID, err := ulid.Parse(c.Param("orgId"))
 	if err != nil {
-		return ulid.ULID{}, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid ULID"))
+		return ulid.ULID{}, false
 	}
-
-	return orgID, nil
+	return orgID, true
 }
 
 func (h *ContractHandler) verifyOrgAccess(c *gin.Context, orgID ulid.ULID) error {

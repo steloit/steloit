@@ -31,7 +31,7 @@ type TraceService interface {
 
 	DeleteSpan(ctx context.Context, spanID string) error
 	DeleteTrace(ctx context.Context, traceID string) error
-	UpdateTraceTags(ctx context.Context, projectID, traceID string, tags []string) error
+	UpdateTraceTags(ctx context.Context, projectID, traceID string, tags []string) ([]string, error)
 	UpdateTraceBookmark(ctx context.Context, projectID, traceID string, bookmarked bool) error
 }
 

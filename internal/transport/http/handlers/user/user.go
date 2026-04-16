@@ -9,6 +9,7 @@ import (
 	"brokle/internal/config"
 	"brokle/internal/core/domain/organization"
 	"brokle/internal/core/domain/user"
+	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 	"brokle/pkg/ulid"
 	"brokle/pkg/utils"
@@ -280,8 +281,7 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 	// Parse request body
 	var req UpdateProfileRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Error("Invalid profile update request", "error", err)
-		response.BadRequest(c, "Invalid request payload", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -361,8 +361,7 @@ func (h *Handler) SetDefaultOrganization(c *gin.Context) {
 	// Parse request body
 	var req SetDefaultOrgRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Error("Invalid set default organization request", "error", err)
-		response.BadRequest(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -370,7 +369,7 @@ func (h *Handler) SetDefaultOrganization(c *gin.Context) {
 	orgID, err := ulid.Parse(req.OrganizationID)
 	if err != nil {
 		h.logger.Error("Invalid organization ID format", "error", err, "organization_id", req.OrganizationID)
-		response.BadRequest(c, "Invalid organization ID format", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID format", err.Error()))
 		return
 	}
 

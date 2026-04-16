@@ -34,7 +34,7 @@ type ExecuteRequest struct {
 func (h *Handler) Execute(c *gin.Context) {
 	var req ExecuteRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 

@@ -8,6 +8,7 @@ import (
 
 	"brokle/internal/core/domain/auth"
 	"brokle/internal/transport/http/middleware"
+	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 	"brokle/pkg/ulid"
 )
@@ -86,8 +87,7 @@ type BlacklistedTokenResponse struct {
 func (h *TokenAdminHandler) RevokeToken(c *gin.Context) {
 	var req RevokeTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Warn("Invalid revoke token request", "error", err)
-		response.BadRequest(c, "Invalid request payload", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -115,7 +115,7 @@ func (h *TokenAdminHandler) RevokeToken(c *gin.Context) {
 	}
 
 	if isRevoked {
-		response.BadRequest(c, "Token is already revoked", "")
+		response.Error(c, appErrors.NewValidationError("Token is already revoked", ""))
 		return
 	}
 
@@ -157,20 +157,19 @@ func (h *TokenAdminHandler) RevokeToken(c *gin.Context) {
 func (h *TokenAdminHandler) RevokeUserTokens(c *gin.Context) {
 	userIDStr := c.Param("userID")
 	if userIDStr == "" {
-		response.BadRequest(c, "User ID is required", "")
+		response.Error(c, appErrors.NewValidationError("User ID is required", ""))
 		return
 	}
 
 	userID, err := ulid.Parse(userIDStr)
 	if err != nil {
-		response.BadRequest(c, "Invalid user ID format", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid user ID format", err.Error()))
 		return
 	}
 
 	var req RevokeUserTokensRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Warn("Invalid revoke user tokens request", "error", err)
-		response.BadRequest(c, "Invalid request payload", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -242,7 +241,7 @@ func (h *TokenAdminHandler) ListBlacklistedTokens(c *gin.Context) {
 	if userIDStr != "" {
 		userID, parseErr := ulid.Parse(userIDStr)
 		if parseErr != nil {
-			response.BadRequest(c, "Invalid user ID format", parseErr.Error())
+			response.Error(c, appErrors.NewValidationError("Invalid user ID format", parseErr.Error()))
 			return
 		}
 
@@ -276,7 +275,7 @@ func (h *TokenAdminHandler) ListBlacklistedTokens(c *gin.Context) {
 		}
 	} else {
 		// Require filters for listing blacklisted tokens
-		response.BadRequest(c, "Please specify user_id or reason filter for token listing", "")
+		response.Error(c, appErrors.NewValidationError("Please specify user_id or reason filter for token listing", ""))
 		return
 	}
 

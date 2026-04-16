@@ -43,19 +43,19 @@ func NewAssignmentHandler(logger *slog.Logger, service annotationDomain.Assignme
 func (h *AssignmentHandler) Assign(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	queueID, err := ulid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("queueId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
 		return
 	}
 
 	var req AssignUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -104,13 +104,13 @@ func (h *AssignmentHandler) Assign(c *gin.Context) {
 func (h *AssignmentHandler) List(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	queueID, err := ulid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("queueId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
 		return
 	}
 
@@ -143,19 +143,19 @@ func (h *AssignmentHandler) List(c *gin.Context) {
 func (h *AssignmentHandler) Unassign(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	queueID, err := ulid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("queueId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
 		return
 	}
 
 	userID, err := ulid.Parse(c.Param("userId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("userId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid user ID", "userId must be a valid ULID"))
 		return
 	}
 

@@ -95,7 +95,7 @@ func toScoreResponses(scores []*observability.Score) []*ScoreResponse {
 func (h *Handler) ListProjectScores(c *gin.Context) {
 	projectID := c.Param("projectId")
 	if projectID == "" {
-		response.ValidationError(c, "invalid project_id", "project_id is required")
+		response.Error(c, appErrors.NewValidationError("Missing project ID", "projectId is required"))
 		return
 	}
 
@@ -221,7 +221,7 @@ func (h *Handler) ListScores(c *gin.Context) {
 func (h *Handler) GetScore(c *gin.Context) {
 	scoreID := c.Param("id")
 	if scoreID == "" {
-		response.ValidationError(c, "invalid score_id", "score_id is required")
+		response.Error(c, appErrors.NewValidationError("Missing score ID", "id is required"))
 		return
 	}
 
@@ -264,13 +264,13 @@ type UpdateScoreRequest struct {
 func (h *Handler) UpdateScore(c *gin.Context) {
 	scoreID := c.Param("id")
 	if scoreID == "" {
-		response.ValidationError(c, "invalid score_id", "score_id is required")
+		response.Error(c, appErrors.NewValidationError("Missing score ID", "id is required"))
 		return
 	}
 
 	var req UpdateScoreRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -288,7 +288,7 @@ func (h *Handler) UpdateScore(c *gin.Context) {
 	// Validate and assign raw JSON metadata directly (no marshaling needed)
 	if len(req.Metadata) > 0 {
 		if !json.Valid(req.Metadata) {
-			response.ValidationError(c, "invalid metadata", "metadata must be valid JSON")
+			response.Error(c, appErrors.NewValidationError("Invalid metadata", "metadata must be valid JSON"))
 			return
 		}
 		score.Metadata = req.Metadata
@@ -328,13 +328,13 @@ func (h *Handler) UpdateScore(c *gin.Context) {
 func (h *Handler) GetScoreAnalytics(c *gin.Context) {
 	projectID := c.Param("projectId")
 	if projectID == "" {
-		response.ValidationError(c, "invalid project_id", "project_id is required")
+		response.Error(c, appErrors.NewValidationError("Missing project ID", "projectId is required"))
 		return
 	}
 
 	scoreName := c.Query("score_name")
 	if scoreName == "" {
-		response.ValidationError(c, "score_name is required", "score_name query parameter is required")
+		response.Error(c, appErrors.NewValidationError("Missing score name", "score_name is required"))
 		return
 	}
 
@@ -351,7 +351,7 @@ func (h *Handler) GetScoreAnalytics(c *gin.Context) {
 	if fromStr := c.Query("from_timestamp"); fromStr != "" {
 		fromTime, err := time.Parse(time.RFC3339, fromStr)
 		if err != nil {
-			response.ValidationError(c, "invalid from_timestamp", "must be RFC3339 format (e.g., 2024-01-15T00:00:00Z)")
+			response.Error(c, appErrors.NewValidationError("Invalid from_timestamp", "must be RFC3339 format (e.g., 2024-01-15T00:00:00Z)"))
 			return
 		}
 		filter.FromTimestamp = &fromTime
@@ -359,7 +359,7 @@ func (h *Handler) GetScoreAnalytics(c *gin.Context) {
 	if toStr := c.Query("to_timestamp"); toStr != "" {
 		toTime, err := time.Parse(time.RFC3339, toStr)
 		if err != nil {
-			response.ValidationError(c, "invalid to_timestamp", "must be RFC3339 format (e.g., 2024-01-15T23:59:59Z)")
+			response.Error(c, appErrors.NewValidationError("Invalid to_timestamp", "must be RFC3339 format (e.g., 2024-01-15T23:59:59Z)"))
 			return
 		}
 		filter.ToTimestamp = &toTime
@@ -389,7 +389,7 @@ func (h *Handler) GetScoreAnalytics(c *gin.Context) {
 func (h *Handler) GetScoreNames(c *gin.Context) {
 	projectID := c.Param("projectId")
 	if projectID == "" {
-		response.ValidationError(c, "invalid project_id", "project_id is required")
+		response.Error(c, appErrors.NewValidationError("Missing project ID", "projectId is required"))
 		return
 	}
 
@@ -424,14 +424,14 @@ func (h *Handler) CreateTraceScore(c *gin.Context) {
 	// Get trace ID from path
 	traceID := c.Param("id")
 	if traceID == "" {
-		response.Error(c, appErrors.NewValidationError("id", "is required"))
+		response.Error(c, appErrors.NewValidationError("Missing trace ID", "id is required"))
 		return
 	}
 
 	// Get project ID from query
 	projectIDStr := c.Query("project_id")
 	if projectIDStr == "" {
-		response.Error(c, appErrors.NewValidationError("project_id", "is required"))
+		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
 		return
 	}
 
@@ -445,7 +445,7 @@ func (h *Handler) CreateTraceScore(c *gin.Context) {
 	// Parse request body
 	var req CreateAnnotationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -531,16 +531,17 @@ func (h *Handler) GetTraceScores(c *gin.Context) {
 	// Get trace ID from path
 	traceID := c.Param("id")
 	if traceID == "" {
-		response.Error(c, appErrors.NewValidationError("id", "is required"))
+		response.Error(c, appErrors.NewValidationError("Missing trace ID", "id is required"))
 		return
 	}
 
 	// Get project ID from query (for authorization)
 	projectIDStr := c.Query("project_id")
 	if projectIDStr == "" {
-		response.Error(c, appErrors.NewValidationError("project_id", "is required"))
+		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
 		return
 	}
+	_ = projectIDStr // used for authorization context
 
 	// Get scores for the trace
 	scores, err := h.services.GetScoreService().GetScoresByTraceID(ctx, traceID)
@@ -593,23 +594,24 @@ func (h *Handler) DeleteTraceScore(c *gin.Context) {
 	// Get trace ID from path
 	traceID := c.Param("id")
 	if traceID == "" {
-		response.Error(c, appErrors.NewValidationError("id", "is required"))
+		response.Error(c, appErrors.NewValidationError("Missing trace ID", "id is required"))
 		return
 	}
 
 	// Get score ID from path
 	scoreID := c.Param("score_id")
 	if scoreID == "" {
-		response.Error(c, appErrors.NewValidationError("score_id", "is required"))
+		response.Error(c, appErrors.NewValidationError("Missing score ID", "score_id is required"))
 		return
 	}
 
 	// Get project ID from query
 	projectIDStr := c.Query("project_id")
 	if projectIDStr == "" {
-		response.Error(c, appErrors.NewValidationError("project_id", "is required"))
+		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
 		return
 	}
+	_ = projectIDStr // used for authorization context
 
 	// Get user ID from JWT
 	userID, exists := middleware.GetUserIDULID(c)

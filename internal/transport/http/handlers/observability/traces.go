@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"brokle/internal/core/domain/observability"
+	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 )
 
@@ -87,7 +88,7 @@ func filterEmptyStrings(slice []string) []string {
 func (h *Handler) ListTraces(c *gin.Context) {
 	projectID := c.Query("project_id")
 	if projectID == "" {
-		response.ValidationError(c, "project_id is required", "project_id query parameter is required")
+		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
 		return
 	}
 
@@ -131,7 +132,7 @@ func (h *Handler) ListTraces(c *gin.Context) {
 		filter.Statuses = filterEmptyStrings(strings.Split(statusStr, ","))
 		for _, s := range filter.Statuses {
 			if s != "ok" && s != "error" && s != "unset" {
-				response.ValidationError(c, "invalid status value", "status must be one of: ok, error, unset (got: "+s+")")
+				response.Error(c, appErrors.NewValidationError("Invalid status value", "status must be one of: ok, error, unset (got: "+s+")"))
 				return
 			}
 		}
@@ -141,7 +142,7 @@ func (h *Handler) ListTraces(c *gin.Context) {
 		filter.StatusesNot = filterEmptyStrings(strings.Split(statusNotStr, ","))
 		for _, s := range filter.StatusesNot {
 			if s != "ok" && s != "error" && s != "unset" {
-				response.ValidationError(c, "invalid status_not value", "status_not must be one of: ok, error, unset (got: "+s+")")
+				response.Error(c, appErrors.NewValidationError("Invalid status_not value", "status_not must be one of: ok, error, unset (got: "+s+")"))
 				return
 			}
 		}
@@ -150,7 +151,7 @@ func (h *Handler) ListTraces(c *gin.Context) {
 	if startTimeStr := c.Query("start_time"); startTimeStr != "" {
 		startTimeInt, err := strconv.ParseInt(startTimeStr, 10, 64)
 		if err != nil {
-			response.ValidationError(c, "invalid start_time", "start_time must be a Unix timestamp")
+			response.Error(c, appErrors.NewValidationError("Invalid start_time", "start_time must be a Unix timestamp"))
 			return
 		}
 		startTime := time.Unix(startTimeInt, 0)
@@ -160,7 +161,7 @@ func (h *Handler) ListTraces(c *gin.Context) {
 	if endTimeStr := c.Query("end_time"); endTimeStr != "" {
 		endTimeInt, err := strconv.ParseInt(endTimeStr, 10, 64)
 		if err != nil {
-			response.ValidationError(c, "invalid end_time", "end_time must be a Unix timestamp")
+			response.Error(c, appErrors.NewValidationError("Invalid end_time", "end_time must be a Unix timestamp"))
 			return
 		}
 		endTime := time.Unix(endTimeInt, 0)
@@ -209,7 +210,7 @@ func (h *Handler) ListTraces(c *gin.Context) {
 func (h *Handler) GetTrace(c *gin.Context) {
 	traceID := c.Param("id")
 	if traceID == "" {
-		response.ValidationError(c, "invalid trace_id", "trace_id is required")
+		response.Error(c, appErrors.NewValidationError("Missing trace ID", "id is required"))
 		return
 	}
 
@@ -238,7 +239,7 @@ func (h *Handler) GetTrace(c *gin.Context) {
 func (h *Handler) GetTraceWithSpans(c *gin.Context) {
 	traceID := c.Param("id")
 	if traceID == "" {
-		response.ValidationError(c, "invalid trace_id", "trace_id is required")
+		response.Error(c, appErrors.NewValidationError("Missing trace ID", "id is required"))
 		return
 	}
 
@@ -267,7 +268,7 @@ func (h *Handler) GetTraceWithSpans(c *gin.Context) {
 func (h *Handler) GetTraceWithScores(c *gin.Context) {
 	traceID := c.Param("id")
 	if traceID == "" {
-		response.ValidationError(c, "invalid trace_id", "trace_id is required")
+		response.Error(c, appErrors.NewValidationError("Missing trace ID", "id is required"))
 		return
 	}
 
@@ -289,14 +290,14 @@ func (h *Handler) GetTraceWithScores(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param id path string true "Trace ID"
-// @Success 200 {object} response.APIResponse "Trace deleted"
+// @Success 204 "No Content"
 // @Failure 404 {object} response.APIResponse{error=response.APIError} "Trace not found"
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/traces/{id} [delete]
 func (h *Handler) DeleteTrace(c *gin.Context) {
 	traceID := c.Param("id")
 	if traceID == "" {
-		response.ValidationError(c, "invalid trace_id", "trace_id is required")
+		response.Error(c, appErrors.NewValidationError("Missing trace ID", "id is required"))
 		return
 	}
 
@@ -306,7 +307,7 @@ func (h *Handler) DeleteTrace(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, gin.H{"message": "trace deleted successfully"})
+	response.NoContent(c)
 }
 
 // UpdateTraceTags handles PUT /api/v1/traces/:id/tags
@@ -326,37 +327,35 @@ func (h *Handler) DeleteTrace(c *gin.Context) {
 // @Router /api/v1/traces/{id}/tags [put]
 func (h *Handler) UpdateTraceTags(c *gin.Context) {
 	traceID := c.Param("id")
-	projectID := c.Query("project_id")
-
 	if traceID == "" {
-		response.ValidationError(c, "invalid trace_id", "trace_id is required")
+		response.Error(c, appErrors.NewValidationError("Missing trace ID", "id is required"))
 		return
 	}
+	projectID := c.Query("project_id")
 	if projectID == "" {
-		response.ValidationError(c, "project_id is required", "project_id query parameter is required")
+		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
 		return
 	}
 
 	var req observability.UpdateTraceTagsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
 	// Validate tags
 	if validationErrors := req.Validate(); len(validationErrors) > 0 {
-		response.ValidationError(c, "validation failed", validationErrors[0].Message)
+		response.Error(c, appErrors.NewValidationError("Validation failed", validationErrors[0].Message))
 		return
 	}
 
-	if err := h.services.GetTraceService().UpdateTraceTags(c.Request.Context(), projectID, traceID, req.Tags); err != nil {
+	tags, err := h.services.GetTraceService().UpdateTraceTags(c.Request.Context(), projectID, traceID, req.Tags)
+	if err != nil {
 		response.Error(c, err)
 		return
 	}
 
-	// Normalize tags for response (to show what was actually stored)
-	normalizedTags := observability.NormalizeTags(req.Tags)
-	response.Success(c, gin.H{"message": "tags updated", "tags": normalizedTags})
+	response.Success(c, gin.H{"tags": tags})
 }
 
 // UpdateTraceBookmarkRequest represents the request to update trace bookmark
@@ -381,20 +380,19 @@ type UpdateTraceBookmarkRequest struct {
 // @Router /api/v1/traces/{id}/bookmark [put]
 func (h *Handler) UpdateTraceBookmark(c *gin.Context) {
 	traceID := c.Param("id")
-	projectID := c.Query("project_id")
-
 	if traceID == "" {
-		response.ValidationError(c, "invalid trace_id", "trace_id is required")
+		response.Error(c, appErrors.NewValidationError("Missing trace ID", "id is required"))
 		return
 	}
+	projectID := c.Query("project_id")
 	if projectID == "" {
-		response.ValidationError(c, "project_id is required", "project_id query parameter is required")
+		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
 		return
 	}
 
 	var req UpdateTraceBookmarkRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -403,7 +401,7 @@ func (h *Handler) UpdateTraceBookmark(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, gin.H{"message": "bookmark updated", "bookmarked": req.Bookmarked})
+	response.Success(c, gin.H{"bookmarked": req.Bookmarked})
 }
 
 // GetTraceFilterOptions handles GET /api/v1/traces/filter-options
@@ -422,7 +420,7 @@ func (h *Handler) UpdateTraceBookmark(c *gin.Context) {
 func (h *Handler) GetTraceFilterOptions(c *gin.Context) {
 	projectID := c.Query("project_id")
 	if projectID == "" {
-		response.ValidationError(c, "project_id is required", "project_id query parameter is required")
+		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
 		return
 	}
 
@@ -454,7 +452,7 @@ func (h *Handler) GetTraceFilterOptions(c *gin.Context) {
 func (h *Handler) DiscoverAttributes(c *gin.Context) {
 	projectID := c.Query("project_id")
 	if projectID == "" {
-		response.ValidationError(c, "project_id is required", "project_id query parameter is required")
+		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
 		return
 	}
 
@@ -476,7 +474,7 @@ func (h *Handler) DiscoverAttributes(c *gin.Context) {
 		case "resource_attributes":
 			req.Sources = []observability.AttributeSource{observability.AttributeSourceResource}
 		default:
-			response.ValidationError(c, "invalid source", "source must be 'span_attributes' or 'resource_attributes'")
+			response.Error(c, appErrors.NewValidationError("Invalid source", "source must be 'span_attributes' or 'resource_attributes'"))
 			return
 		}
 	}

@@ -43,7 +43,7 @@ func NewExperimentWizardHandler(
 func (h *ExperimentWizardHandler) CreateFromWizard(c *gin.Context) {
 	projectID, err := extractProjectID(c)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, err)
 		return
 	}
 
@@ -55,7 +55,7 @@ func (h *ExperimentWizardHandler) CreateFromWizard(c *gin.Context) {
 
 	var req evaluationDomain.CreateExperimentFromWizardRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -83,13 +83,13 @@ func (h *ExperimentWizardHandler) CreateFromWizard(c *gin.Context) {
 func (h *ExperimentWizardHandler) ValidateStep(c *gin.Context) {
 	projectID, err := extractProjectID(c)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, err)
 		return
 	}
 
 	var req evaluationDomain.ValidateStepRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -118,13 +118,13 @@ func (h *ExperimentWizardHandler) ValidateStep(c *gin.Context) {
 func (h *ExperimentWizardHandler) EstimateCost(c *gin.Context) {
 	projectID, err := extractProjectID(c)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, err)
 		return
 	}
 
 	var req evaluationDomain.EstimateCostRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -152,14 +152,13 @@ func (h *ExperimentWizardHandler) EstimateCost(c *gin.Context) {
 func (h *ExperimentWizardHandler) GetDatasetFields(c *gin.Context) {
 	projectID, err := extractProjectID(c)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, err)
 		return
 	}
 
-	datasetIDStr := c.Param("datasetId")
-	datasetID, err := ulid.Parse(datasetIDStr)
+	datasetID, err := ulid.Parse(c.Param("datasetId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("datasetId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid ULID"))
 		return
 	}
 
@@ -187,14 +186,13 @@ func (h *ExperimentWizardHandler) GetDatasetFields(c *gin.Context) {
 func (h *ExperimentWizardHandler) GetExperimentConfig(c *gin.Context) {
 	projectID, err := extractProjectID(c)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, err)
 		return
 	}
 
-	experimentIDStr := c.Param("experimentId")
-	experimentID, err := ulid.Parse(experimentIDStr)
+	experimentID, err := ulid.Parse(c.Param("experimentId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("experimentId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid experiment ID", "experimentId must be a valid ULID"))
 		return
 	}
 

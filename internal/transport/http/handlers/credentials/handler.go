@@ -85,7 +85,7 @@ func (h *Handler) Create(c *gin.Context) {
 
 	var req CreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -147,7 +147,7 @@ func (h *Handler) Update(c *gin.Context) {
 
 	var req UpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -275,15 +275,14 @@ func (h *Handler) Delete(c *gin.Context) {
 // @Failure 401 {object} response.ErrorResponse
 // @Router /api/v1/organizations/{orgId}/credentials/ai/test [post]
 func (h *Handler) TestConnection(c *gin.Context) {
-	_, err := ulid.Parse(c.Param("orgId"))
-	if err != nil {
+	if _, err := ulid.Parse(c.Param("orgId")); err != nil {
 		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid ULID"))
 		return
 	}
 
 	var req TestConnectionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 

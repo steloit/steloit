@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"brokle/internal/core/domain/observability"
+	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 )
 
@@ -82,7 +83,7 @@ func (h *Handler) ListSpans(c *gin.Context) {
 func (h *Handler) GetSpan(c *gin.Context) {
 	spanID := c.Param("id")
 	if spanID == "" {
-		response.ValidationError(c, "invalid span_id", "span_id is required")
+		response.Error(c, appErrors.NewValidationError("Missing span ID", "id is required"))
 		return
 	}
 
@@ -104,14 +105,14 @@ func (h *Handler) GetSpan(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param id path string true "Span ID (OTEL 16-character hex)"
-// @Success 200 {object} response.APIResponse "Span deleted"
+// @Success 204 "No Content"
 // @Failure 404 {object} response.APIResponse{error=response.APIError} "Span not found"
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/spans/{id} [delete]
 func (h *Handler) DeleteSpan(c *gin.Context) {
 	spanID := c.Param("id")
 	if spanID == "" {
-		response.ValidationError(c, "invalid span_id", "span_id is required")
+		response.Error(c, appErrors.NewValidationError("Missing span ID", "id is required"))
 		return
 	}
 
@@ -121,5 +122,5 @@ func (h *Handler) DeleteSpan(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, gin.H{"message": "span deleted successfully"})
+	response.NoContent(c)
 }

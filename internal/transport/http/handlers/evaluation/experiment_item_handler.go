@@ -43,13 +43,13 @@ func NewExperimentItemHandler(
 func (h *ExperimentItemHandler) List(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	experimentID, err := ulid.Parse(c.Param("experimentId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("experimentId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid experiment ID", "experimentId must be a valid ULID"))
 		return
 	}
 

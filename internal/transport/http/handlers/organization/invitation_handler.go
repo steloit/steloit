@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"brokle/internal/core/domain/organization"
+	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 	"brokle/pkg/ulid"
 )
@@ -99,13 +100,13 @@ func (h *Handler) CreateInvitation(c *gin.Context) {
 	orgIDStr := c.Param("orgId")
 	orgID, err := ulid.Parse(orgIDStr)
 	if err != nil {
-		response.BadRequest(c, "Invalid organization ID format", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID format", err.Error()))
 		return
 	}
 
 	var req InviteMemberRequestV2
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "Invalid request payload", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -118,7 +119,7 @@ func (h *Handler) CreateInvitation(c *gin.Context) {
 	// Parse role ID
 	roleID, err := ulid.Parse(req.RoleID)
 	if err != nil {
-		response.BadRequest(c, "Invalid role ID format", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid role ID format", err.Error()))
 		return
 	}
 
@@ -188,7 +189,7 @@ func (h *Handler) GetPendingInvitations(c *gin.Context) {
 	orgIDStr := c.Param("orgId")
 	orgID, err := ulid.Parse(orgIDStr)
 	if err != nil {
-		response.BadRequest(c, "Invalid organization ID format", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID format", err.Error()))
 		return
 	}
 
@@ -280,7 +281,7 @@ func (h *Handler) ResendInvitation(c *gin.Context) {
 	invitationIDStr := c.Param("invitationId")
 	invitationID, err := ulid.Parse(invitationIDStr)
 	if err != nil {
-		response.BadRequest(c, "Invalid invitation ID format", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid invitation ID format", err.Error()))
 		return
 	}
 
@@ -350,7 +351,7 @@ func (h *Handler) RevokeInvitation(c *gin.Context) {
 	invitationIDStr := c.Param("invitationId")
 	invitationID, err := ulid.Parse(invitationIDStr)
 	if err != nil {
-		response.BadRequest(c, "Invalid invitation ID format", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid invitation ID format", err.Error()))
 		return
 	}
 
@@ -390,7 +391,7 @@ func (h *Handler) RevokeInvitation(c *gin.Context) {
 func (h *Handler) AcceptInvitation(c *gin.Context) {
 	var req AcceptInvitationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "Invalid request payload", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -431,7 +432,7 @@ func (h *Handler) AcceptInvitation(c *gin.Context) {
 func (h *Handler) DeclineInvitation(c *gin.Context) {
 	var req AcceptInvitationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "Invalid request payload", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 

@@ -10,6 +10,7 @@ import (
 
 	"brokle/internal/config"
 	"brokle/internal/core/domain/organization"
+	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 	"brokle/pkg/ulid"
 )
@@ -105,7 +106,7 @@ func (h *Handler) List(c *gin.Context) {
 	userULID, ok := userID.(ulid.ULID)
 	if !ok {
 		h.logger.Error("Invalid user ID type", "endpoint", "List", "user_id", userID)
-		response.BadRequest(c, "Invalid user ID", "")
+		response.InternalServerError(c, "Authentication error")
 		return
 	}
 
@@ -113,7 +114,7 @@ func (h *Handler) List(c *gin.Context) {
 	var req ListRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		h.logger.Error("Invalid request parameters", "endpoint", "List", "user_id", userULID.String(), "error", err.Error())
-		response.BadRequest(c, "Invalid request parameters", "")
+		response.Error(c, appErrors.NewValidationError("Invalid request parameters", ""))
 		return
 	}
 
@@ -134,7 +135,7 @@ func (h *Handler) List(c *gin.Context) {
 		orgULID, err := ulid.Parse(req.OrganizationID)
 		if err != nil {
 			h.logger.Error("Invalid organization ID format", "endpoint", "List", "user_id", userULID.String(), "organization_id", req.OrganizationID, "error", err.Error())
-			response.BadRequest(c, "Invalid organization ID", "")
+			response.Error(c, appErrors.NewValidationError("Invalid organization ID", ""))
 			return
 		}
 
@@ -285,15 +286,14 @@ func (h *Handler) Create(c *gin.Context) {
 	userULID, ok := userID.(ulid.ULID)
 	if !ok {
 		h.logger.Error("Invalid user ID type", "endpoint", "Create", "user_id", userID)
-		response.BadRequest(c, "Invalid user ID", "")
+		response.InternalServerError(c, "Authentication error")
 		return
 	}
 
 	// Bind and validate request body
 	var req CreateProjectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Error("Invalid request body", "endpoint", "Create", "user_id", userULID.String(), "error", err.Error())
-		response.BadRequest(c, "Invalid request body", "")
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -303,7 +303,7 @@ func (h *Handler) Create(c *gin.Context) {
 	orgULID, err := ulid.Parse(req.OrganizationID)
 	if err != nil {
 		h.logger.Error("Invalid organization ID format", "endpoint", "Create", "user_id", userULID.String(), "organization_id", req.OrganizationID, "error", err.Error())
-		response.BadRequest(c, "Invalid organization ID", "")
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID", ""))
 		return
 	}
 
@@ -391,22 +391,14 @@ func (h *Handler) Get(c *gin.Context) {
 	userULID, ok := userID.(ulid.ULID)
 	if !ok {
 		h.logger.Error("Invalid user ID type", "endpoint", "Get", "user_id", userID)
-		response.BadRequest(c, "Invalid user ID", "")
+		response.InternalServerError(c, "Authentication error")
 		return
 	}
 
 	// Parse and validate project ID from path parameter
-	projectIDStr := c.Param("projectId")
-	if projectIDStr == "" {
-		h.logger.Error("Project ID parameter missing", "endpoint", "Get", "user_id", userULID.String())
-		response.BadRequest(c, "Project ID is required", "")
-		return
-	}
-
-	projectID, err := ulid.Parse(projectIDStr)
+	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		h.logger.Error("Invalid project ID format", "endpoint", "Get", "user_id", userULID.String(), "project_id", projectIDStr, "error", err.Error())
-		response.BadRequest(c, "Invalid project ID", "")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
@@ -416,18 +408,18 @@ func (h *Handler) Get(c *gin.Context) {
 	err = h.projectService.ValidateProjectAccess(ctx, userULID, projectID)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			h.logger.Warn("Project not found", "endpoint", "Get", "user_id", userULID.String(), "project_id", projectIDStr, "error", err.Error())
+			h.logger.Warn("Project not found", "endpoint", "Get", "user_id", userULID.String(), "project_id", projectID.String(), "error", err.Error())
 			response.NotFound(c, "Project")
 			return
 		}
 
 		if strings.Contains(err.Error(), "access") {
-			h.logger.Warn("User attempted to access project without permission", "endpoint", "Get", "user_id", userULID.String(), "project_id", projectIDStr, "error", err.Error())
+			h.logger.Warn("User attempted to access project without permission", "endpoint", "Get", "user_id", userULID.String(), "project_id", projectID.String(), "error", err.Error())
 			response.Forbidden(c, "You don't have access to this project")
 			return
 		}
 
-		h.logger.Error("Failed to validate project access", "endpoint", "Get", "user_id", userULID.String(), "project_id", projectIDStr, "error", err.Error())
+		h.logger.Error("Failed to validate project access", "endpoint", "Get", "user_id", userULID.String(), "project_id", projectID.String(), "error", err.Error())
 		response.InternalServerError(c, "Failed to validate project access")
 		return
 	}
@@ -435,7 +427,7 @@ func (h *Handler) Get(c *gin.Context) {
 	// Get project details
 	project, err := h.projectService.GetProject(ctx, projectID)
 	if err != nil {
-		h.logger.Error("Failed to get project", "endpoint", "Get", "user_id", userULID.String(), "project_id", projectIDStr, "error", err.Error())
+		h.logger.Error("Failed to get project", "endpoint", "Get", "user_id", userULID.String(), "project_id", projectID.String(), "error", err.Error())
 		response.InternalServerError(c, "Failed to retrieve project")
 		return
 	}
@@ -486,30 +478,21 @@ func (h *Handler) Update(c *gin.Context) {
 	userULID, ok := userID.(ulid.ULID)
 	if !ok {
 		h.logger.Error("Invalid user ID type", "endpoint", "Update", "user_id", userID)
-		response.BadRequest(c, "Invalid user ID", "")
+		response.InternalServerError(c, "Authentication error")
 		return
 	}
 
 	// Parse and validate project ID from path parameter
-	projectIDStr := c.Param("projectId")
-	if projectIDStr == "" {
-		h.logger.Error("Project ID parameter missing", "endpoint", "Update", "user_id", userULID.String())
-		response.BadRequest(c, "Project ID is required", "")
-		return
-	}
-
-	projectID, err := ulid.Parse(projectIDStr)
+	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		h.logger.Error("Invalid project ID format", "endpoint", "Update", "user_id", userULID.String(), "project_id", projectIDStr, "error", err.Error())
-		response.BadRequest(c, "Invalid project ID", "")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	// Bind and validate request body
 	var req UpdateProjectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Error("Invalid request body", "endpoint", "Update", "user_id", userULID.String(), "project_id", projectIDStr, "error", err.Error())
-		response.BadRequest(c, "Invalid request body", "")
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -519,18 +502,18 @@ func (h *Handler) Update(c *gin.Context) {
 	err = h.projectService.ValidateProjectAccess(ctx, userULID, projectID)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			h.logger.Warn("Project not found", "endpoint", "Update", "user_id", userULID.String(), "project_id", projectIDStr, "error", err.Error())
+			h.logger.Warn("Project not found", "endpoint", "Update", "user_id", userULID.String(), "project_id", projectID.String(), "error", err.Error())
 			response.NotFound(c, "Project")
 			return
 		}
 
 		if strings.Contains(err.Error(), "access") {
-			h.logger.Warn("User attempted to update project without permission", "endpoint", "Update", "user_id", userULID.String(), "project_id", projectIDStr, "error", err.Error())
+			h.logger.Warn("User attempted to update project without permission", "endpoint", "Update", "user_id", userULID.String(), "project_id", projectID.String(), "error", err.Error())
 			response.Forbidden(c, "You don't have permission to update this project")
 			return
 		}
 
-		h.logger.Error("Failed to validate project access", "endpoint", "Update", "user_id", userULID.String(), "project_id", projectIDStr, "error", err.Error())
+		h.logger.Error("Failed to validate project access", "endpoint", "Update", "user_id", userULID.String(), "project_id", projectID.String(), "error", err.Error())
 		response.InternalServerError(c, "Failed to validate project access")
 		return
 	}
@@ -546,7 +529,7 @@ func (h *Handler) Update(c *gin.Context) {
 
 	err = h.projectService.UpdateProject(ctx, projectID, updateReq)
 	if err != nil {
-		h.logger.Error("Failed to update project", "endpoint", "Update", "user_id", userULID.String(), "project_id", projectIDStr, "error", err.Error())
+		h.logger.Error("Failed to update project", "endpoint", "Update", "user_id", userULID.String(), "project_id", projectID.String(), "error", err.Error())
 		response.Error(c, err)
 		return
 	}
@@ -554,7 +537,7 @@ func (h *Handler) Update(c *gin.Context) {
 	// Get updated project details
 	project, err := h.projectService.GetProject(ctx, projectID)
 	if err != nil {
-		h.logger.Error("Failed to get updated project", "endpoint", "Update", "user_id", userULID.String(), "project_id", projectIDStr, "error", err.Error())
+		h.logger.Error("Failed to get updated project", "endpoint", "Update", "user_id", userULID.String(), "project_id", projectID.String(), "error", err.Error())
 		response.InternalServerError(c, "Failed to retrieve updated project")
 		return
 	}
@@ -605,22 +588,14 @@ func (h *Handler) Delete(c *gin.Context) {
 	userULID, ok := userID.(ulid.ULID)
 	if !ok {
 		h.logger.Error("Invalid user ID type", "endpoint", "Delete", "user_id", userID)
-		response.BadRequest(c, "Invalid user ID", "")
+		response.InternalServerError(c, "Authentication error")
 		return
 	}
 
 	// Parse and validate project ID from path parameter
-	projectIDStr := c.Param("projectId")
-	if projectIDStr == "" {
-		h.logger.Error("Project ID parameter missing", "endpoint", "Delete", "user_id", userULID.String())
-		response.BadRequest(c, "Project ID is required", "")
-		return
-	}
-
-	projectID, err := ulid.Parse(projectIDStr)
+	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		h.logger.Error("Invalid project ID format", "endpoint", "Delete", "user_id", userULID.String(), "project_id", projectIDStr, "error", err.Error())
-		response.BadRequest(c, "Invalid project ID", "")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
@@ -630,18 +605,18 @@ func (h *Handler) Delete(c *gin.Context) {
 	err = h.projectService.ValidateProjectAccess(ctx, userULID, projectID)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			h.logger.Warn("Project not found", "endpoint", "Delete", "user_id", userULID.String(), "project_id", projectIDStr, "error", err.Error())
+			h.logger.Warn("Project not found", "endpoint", "Delete", "user_id", userULID.String(), "project_id", projectID.String(), "error", err.Error())
 			response.NotFound(c, "Project")
 			return
 		}
 
 		if strings.Contains(err.Error(), "access") {
-			h.logger.Warn("User attempted to delete project without permission", "endpoint", "Delete", "user_id", userULID.String(), "project_id", projectIDStr, "error", err.Error())
+			h.logger.Warn("User attempted to delete project without permission", "endpoint", "Delete", "user_id", userULID.String(), "project_id", projectID.String(), "error", err.Error())
 			response.Forbidden(c, "You don't have permission to delete this project")
 			return
 		}
 
-		h.logger.Error("Failed to validate project access", "endpoint", "Delete", "user_id", userULID.String(), "project_id", projectIDStr, "error", err.Error())
+		h.logger.Error("Failed to validate project access", "endpoint", "Delete", "user_id", userULID.String(), "project_id", projectID.String(), "error", err.Error())
 		response.InternalServerError(c, "Failed to validate project access")
 		return
 	}
@@ -649,7 +624,7 @@ func (h *Handler) Delete(c *gin.Context) {
 	// Get project details before deletion for logging
 	project, err := h.projectService.GetProject(ctx, projectID)
 	if err != nil {
-		h.logger.Error("Failed to get project for deletion", "endpoint", "Delete", "user_id", userULID.String(), "project_id", projectIDStr, "error", err.Error())
+		h.logger.Error("Failed to get project for deletion", "endpoint", "Delete", "user_id", userULID.String(), "project_id", projectID.String(), "error", err.Error())
 		response.InternalServerError(c, "Failed to get project")
 		return
 	}
@@ -663,7 +638,7 @@ func (h *Handler) Delete(c *gin.Context) {
 	// Delete project via service (soft delete)
 	err = h.projectService.DeleteProject(ctx, projectID)
 	if err != nil {
-		h.logger.Error("Failed to delete project", "endpoint", "Delete", "user_id", userULID.String(), "project_id", projectIDStr, "project_name", project.Name, "error", err.Error())
+		h.logger.Error("Failed to delete project", "endpoint", "Delete", "user_id", userULID.String(), "project_id", projectID.String(), "project_name", project.Name, "error", err.Error())
 		response.InternalServerError(c, "Failed to delete project")
 		return
 	}
@@ -700,22 +675,14 @@ func (h *Handler) Archive(c *gin.Context) {
 	userULID, ok := userID.(ulid.ULID)
 	if !ok {
 		h.logger.Error("Invalid user ID type", "endpoint", "Archive", "user_id", userID)
-		response.BadRequest(c, "Invalid user ID", "")
+		response.InternalServerError(c, "Authentication error")
 		return
 	}
 
 	// Parse and validate project ID from path parameter
-	projectIDStr := c.Param("projectId")
-	if projectIDStr == "" {
-		h.logger.Error("Project ID parameter missing", "endpoint", "Archive", "user_id", userULID.String())
-		response.BadRequest(c, "Project ID is required", "")
-		return
-	}
-
-	projectID, err := ulid.Parse(projectIDStr)
+	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		h.logger.Error("Invalid project ID format", "endpoint", "Archive", "user_id", userULID.String(), "project_id", projectIDStr, "error", err.Error())
-		response.BadRequest(c, "Invalid project ID", "")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
@@ -725,18 +692,18 @@ func (h *Handler) Archive(c *gin.Context) {
 	err = h.projectService.ValidateProjectAccess(ctx, userULID, projectID)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			h.logger.Warn("Project not found", "endpoint", "Archive", "user_id", userULID.String(), "project_id", projectIDStr, "error", err.Error())
+			h.logger.Warn("Project not found", "endpoint", "Archive", "user_id", userULID.String(), "project_id", projectID.String(), "error", err.Error())
 			response.NotFound(c, "Project")
 			return
 		}
 
 		if strings.Contains(err.Error(), "access") {
-			h.logger.Warn("User attempted to archive project without permission", "endpoint", "Archive", "user_id", userULID.String(), "project_id", projectIDStr, "error", err.Error())
+			h.logger.Warn("User attempted to archive project without permission", "endpoint", "Archive", "user_id", userULID.String(), "project_id", projectID.String(), "error", err.Error())
 			response.Forbidden(c, "You don't have permission to archive this project")
 			return
 		}
 
-		h.logger.Error("Failed to validate project access", "endpoint", "Archive", "user_id", userULID.String(), "project_id", projectIDStr, "error", err.Error())
+		h.logger.Error("Failed to validate project access", "endpoint", "Archive", "user_id", userULID.String(), "project_id", projectID.String(), "error", err.Error())
 		response.InternalServerError(c, "Failed to validate project access")
 		return
 	}
@@ -744,7 +711,7 @@ func (h *Handler) Archive(c *gin.Context) {
 	// Archive project via service
 	err = h.projectService.ArchiveProject(ctx, projectID)
 	if err != nil {
-		h.logger.Error("Failed to archive project", "endpoint", "Archive", "user_id", userULID.String(), "project_id", projectIDStr, "error", err.Error())
+		h.logger.Error("Failed to archive project", "endpoint", "Archive", "user_id", userULID.String(), "project_id", projectID.String(), "error", err.Error())
 		response.Error(c, err)
 		return
 	}
@@ -781,22 +748,14 @@ func (h *Handler) Unarchive(c *gin.Context) {
 	userULID, ok := userID.(ulid.ULID)
 	if !ok {
 		h.logger.Error("Invalid user ID type", "endpoint", "Unarchive", "user_id", userID)
-		response.BadRequest(c, "Invalid user ID", "")
+		response.InternalServerError(c, "Authentication error")
 		return
 	}
 
 	// Parse and validate project ID from path parameter
-	projectIDStr := c.Param("projectId")
-	if projectIDStr == "" {
-		h.logger.Error("Project ID parameter missing", "endpoint", "Unarchive", "user_id", userULID.String())
-		response.BadRequest(c, "Project ID is required", "")
-		return
-	}
-
-	projectID, err := ulid.Parse(projectIDStr)
+	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		h.logger.Error("Invalid project ID format", "endpoint", "Unarchive", "user_id", userULID.String(), "project_id", projectIDStr, "error", err.Error())
-		response.BadRequest(c, "Invalid project ID", "")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
@@ -806,18 +765,18 @@ func (h *Handler) Unarchive(c *gin.Context) {
 	err = h.projectService.ValidateProjectAccess(ctx, userULID, projectID)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			h.logger.Warn("Project not found", "endpoint", "Unarchive", "user_id", userULID.String(), "project_id", projectIDStr, "error", err.Error())
+			h.logger.Warn("Project not found", "endpoint", "Unarchive", "user_id", userULID.String(), "project_id", projectID.String(), "error", err.Error())
 			response.NotFound(c, "Project")
 			return
 		}
 
 		if strings.Contains(err.Error(), "access") {
-			h.logger.Warn("User attempted to unarchive project without permission", "endpoint", "Unarchive", "user_id", userULID.String(), "project_id", projectIDStr, "error", err.Error())
+			h.logger.Warn("User attempted to unarchive project without permission", "endpoint", "Unarchive", "user_id", userULID.String(), "project_id", projectID.String(), "error", err.Error())
 			response.Forbidden(c, "You don't have permission to unarchive this project")
 			return
 		}
 
-		h.logger.Error("Failed to validate project access", "endpoint", "Unarchive", "user_id", userULID.String(), "project_id", projectIDStr, "error", err.Error())
+		h.logger.Error("Failed to validate project access", "endpoint", "Unarchive", "user_id", userULID.String(), "project_id", projectID.String(), "error", err.Error())
 		response.InternalServerError(c, "Failed to validate project access")
 		return
 	}
@@ -825,7 +784,7 @@ func (h *Handler) Unarchive(c *gin.Context) {
 	// Unarchive project via service
 	err = h.projectService.UnarchiveProject(ctx, projectID)
 	if err != nil {
-		h.logger.Error("Failed to unarchive project", "endpoint", "Unarchive", "user_id", userULID.String(), "project_id", projectIDStr, "error", err.Error())
+		h.logger.Error("Failed to unarchive project", "endpoint", "Unarchive", "user_id", userULID.String(), "project_id", projectID.String(), "error", err.Error())
 		response.Error(c, err)
 		return
 	}

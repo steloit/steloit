@@ -55,7 +55,7 @@ func (h *Handler) CreateSession(c *gin.Context) {
 
 	var req CreateSessionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -203,7 +203,7 @@ func (h *Handler) UpdateSession(c *gin.Context) {
 
 	var req UpdateSessionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 

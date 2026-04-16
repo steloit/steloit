@@ -48,19 +48,19 @@ func NewItemHandler(
 func (h *ItemHandler) AddItems(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	queueID, err := ulid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("queueId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
 		return
 	}
 
 	var req AddItemsBatchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -108,13 +108,13 @@ func (h *ItemHandler) AddItems(c *gin.Context) {
 func (h *ItemHandler) ListItems(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	queueID, err := ulid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("queueId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
 		return
 	}
 
@@ -161,13 +161,13 @@ func (h *ItemHandler) ListItems(c *gin.Context) {
 func (h *ItemHandler) ClaimNext(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	queueID, err := ulid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("queueId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
 		return
 	}
 
@@ -228,19 +228,19 @@ func (h *ItemHandler) ClaimNext(c *gin.Context) {
 func (h *ItemHandler) Complete(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	queueID, err := ulid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("queueId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
 		return
 	}
 
 	itemID, err := ulid.Parse(c.Param("itemId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("itemId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid item ID", "itemId must be a valid ULID"))
 		return
 	}
 
@@ -301,19 +301,19 @@ func (h *ItemHandler) Complete(c *gin.Context) {
 func (h *ItemHandler) Skip(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	queueID, err := ulid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("queueId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
 		return
 	}
 
 	itemID, err := ulid.Parse(c.Param("itemId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("itemId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid item ID", "itemId must be a valid ULID"))
 		return
 	}
 
@@ -365,19 +365,19 @@ func (h *ItemHandler) Skip(c *gin.Context) {
 func (h *ItemHandler) ReleaseLock(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	queueID, err := ulid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("queueId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
 		return
 	}
 
 	itemID, err := ulid.Parse(c.Param("itemId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("itemId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid item ID", "itemId must be a valid ULID"))
 		return
 	}
 
@@ -421,19 +421,19 @@ func (h *ItemHandler) ReleaseLock(c *gin.Context) {
 func (h *ItemHandler) DeleteItem(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	queueID, err := ulid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("queueId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
 		return
 	}
 
 	itemID, err := ulid.Parse(c.Param("itemId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("itemId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid item ID", "itemId must be a valid ULID"))
 		return
 	}
 
@@ -459,13 +459,13 @@ func (h *ItemHandler) DeleteItem(c *gin.Context) {
 func (h *ItemHandler) GetStats(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	queueID, err := ulid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("queueId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
 		return
 	}
 
@@ -505,13 +505,13 @@ func (h *ItemHandler) AddItemsSDK(c *gin.Context) {
 
 	queueID, err := ulid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("queueId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
 		return
 	}
 
 	var req AddItemsBatchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -566,7 +566,7 @@ func (h *ItemHandler) ListItemsSDK(c *gin.Context) {
 
 	queueID, err := ulid.Parse(c.Param("queueId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("queueId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid queue ID", "queueId must be a valid ULID"))
 		return
 	}
 

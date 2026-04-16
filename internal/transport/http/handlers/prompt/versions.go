@@ -7,6 +7,7 @@ import (
 
 	promptDomain "brokle/internal/core/domain/prompt"
 	"brokle/internal/transport/http/middleware"
+	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 	"brokle/pkg/ulid"
 )
@@ -29,13 +30,13 @@ import (
 func (h *Handler) ListVersions(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	promptID, err := ulid.Parse(c.Param("promptId"))
 	if err != nil {
-		response.ValidationError(c, "invalid prompt_id", "prompt_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid prompt ID", "promptId must be a valid ULID"))
 		return
 	}
 
@@ -68,24 +69,24 @@ func (h *Handler) ListVersions(c *gin.Context) {
 func (h *Handler) CreateVersion(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	promptID, err := ulid.Parse(c.Param("promptId"))
 	if err != nil {
-		response.ValidationError(c, "invalid prompt_id", "prompt_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid prompt ID", "promptId must be a valid ULID"))
 		return
 	}
 
 	var req promptDomain.CreateVersionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
 	if req.Template == nil {
-		response.ValidationError(c, "template is required", "template is required")
+		response.Error(c, appErrors.NewValidationError("Missing template", "template is required"))
 		return
 	}
 
@@ -124,13 +125,13 @@ func (h *Handler) CreateVersion(c *gin.Context) {
 func (h *Handler) GetVersion(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	promptID, err := ulid.Parse(c.Param("promptId"))
 	if err != nil {
-		response.ValidationError(c, "invalid prompt_id", "prompt_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid prompt ID", "promptId must be a valid ULID"))
 		return
 	}
 
@@ -149,7 +150,7 @@ func (h *Handler) GetVersion(c *gin.Context) {
 
 	versionID, err := ulid.Parse(versionParam)
 	if err != nil {
-		response.ValidationError(c, "invalid version_id", "version_id must be a valid ULID or version number")
+		response.Error(c, appErrors.NewValidationError("Invalid version ID", "version_id must be a valid ULID or version number"))
 		return
 	}
 
@@ -183,13 +184,13 @@ func (h *Handler) GetVersion(c *gin.Context) {
 func (h *Handler) GetVersionDiff(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	promptID, err := ulid.Parse(c.Param("promptId"))
 	if err != nil {
-		response.ValidationError(c, "invalid prompt_id", "prompt_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid prompt ID", "promptId must be a valid ULID"))
 		return
 	}
 
@@ -197,19 +198,19 @@ func (h *Handler) GetVersionDiff(c *gin.Context) {
 	toStr := c.Query("to")
 
 	if fromStr == "" || toStr == "" {
-		response.ValidationError(c, "from and to are required", "from and to version numbers are required")
+		response.Error(c, appErrors.NewValidationError("Missing version range", "from and to version numbers are required"))
 		return
 	}
 
 	from, err := strconv.Atoi(fromStr)
 	if err != nil {
-		response.ValidationError(c, "invalid from version", "from must be an integer")
+		response.Error(c, appErrors.NewValidationError("Invalid from version", "from must be an integer"))
 		return
 	}
 
 	to, err := strconv.Atoi(toStr)
 	if err != nil {
-		response.ValidationError(c, "invalid to version", "to must be an integer")
+		response.Error(c, appErrors.NewValidationError("Invalid to version", "to must be an integer"))
 		return
 	}
 

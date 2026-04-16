@@ -12,7 +12,7 @@ type PromptService interface {
 	CreatePrompt(ctx context.Context, projectID ulid.ULID, userID *ulid.ULID, req *CreatePromptRequest) (*Prompt, *Version, []string, error)
 	GetPrompt(ctx context.Context, projectID ulid.ULID, name string, opts *GetPromptOptions) (*PromptResponse, error)
 	GetPromptByID(ctx context.Context, projectID, promptID ulid.ULID) (*Prompt, error)
-	UpdatePrompt(ctx context.Context, projectID, promptID ulid.ULID, req *UpdatePromptRequest) error
+	UpdatePrompt(ctx context.Context, projectID, promptID ulid.ULID, req *UpdatePromptRequest) (*Prompt, error)
 	DeletePrompt(ctx context.Context, projectID, promptID ulid.ULID) error
 	ListPrompts(ctx context.Context, projectID ulid.ULID, filters *PromptFilters) ([]*PromptListItem, int64, error)
 
@@ -28,13 +28,13 @@ type PromptService interface {
 	GetVersionDiff(ctx context.Context, projectID, promptID ulid.ULID, fromVersion, toVersion int) (*VersionDiffResponse, error)
 
 	// Label operations
-	SetLabels(ctx context.Context, projectID, promptID, versionID ulid.ULID, userID *ulid.ULID, labels []string) error
+	SetLabels(ctx context.Context, projectID, promptID, versionID ulid.ULID, userID *ulid.ULID, labels []string) ([]string, error)
 	RemoveLabel(ctx context.Context, projectID, promptID ulid.ULID, userID *ulid.ULID, labelName string) error
 	GetVersionByLabel(ctx context.Context, projectID, promptID ulid.ULID, label string) (*Version, error)
 
 	// Protected labels
 	GetProtectedLabels(ctx context.Context, projectID ulid.ULID) ([]string, error)
-	SetProtectedLabels(ctx context.Context, projectID ulid.ULID, userID *ulid.ULID, labels []string) error
+	SetProtectedLabels(ctx context.Context, projectID ulid.ULID, userID *ulid.ULID, labels []string) ([]string, error)
 	IsLabelProtected(ctx context.Context, projectID ulid.ULID, labelName string) (bool, error)
 
 	// Cache operations

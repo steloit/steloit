@@ -71,9 +71,8 @@ type UpdateBudgetRequest struct {
 // @Security BearerAuth
 // @Router /api/v1/organizations/{orgId}/budgets [get]
 func (h *BudgetHandler) ListBudgets(c *gin.Context) {
-	orgID, err := h.parseOrgID(c)
-	if err != nil {
-		response.Error(c, err)
+	orgID, ok := h.parseOrgID(c)
+	if !ok {
 		return
 	}
 
@@ -111,9 +110,8 @@ func (h *BudgetHandler) ListBudgets(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/organizations/{orgId}/budgets/{budgetId} [get]
 func (h *BudgetHandler) GetBudget(c *gin.Context) {
-	orgID, err := h.parseOrgID(c)
-	if err != nil {
-		response.Error(c, err)
+	orgID, ok := h.parseOrgID(c)
+	if !ok {
 		return
 	}
 
@@ -122,9 +120,8 @@ func (h *BudgetHandler) GetBudget(c *gin.Context) {
 		return
 	}
 
-	budgetID, err := h.parseBudgetID(c)
-	if err != nil {
-		response.Error(c, err)
+	budgetID, ok := h.parseBudgetID(c)
+	if !ok {
 		return
 	}
 
@@ -162,9 +159,8 @@ func (h *BudgetHandler) GetBudget(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/organizations/{orgId}/budgets [post]
 func (h *BudgetHandler) CreateBudget(c *gin.Context) {
-	orgID, err := h.parseOrgID(c)
-	if err != nil {
-		response.Error(c, err)
+	orgID, ok := h.parseOrgID(c)
+	if !ok {
 		return
 	}
 
@@ -253,9 +249,8 @@ func (h *BudgetHandler) CreateBudget(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/organizations/{orgId}/budgets/{budgetId} [put]
 func (h *BudgetHandler) UpdateBudget(c *gin.Context) {
-	orgID, err := h.parseOrgID(c)
-	if err != nil {
-		response.Error(c, err)
+	orgID, ok := h.parseOrgID(c)
+	if !ok {
 		return
 	}
 
@@ -264,9 +259,8 @@ func (h *BudgetHandler) UpdateBudget(c *gin.Context) {
 		return
 	}
 
-	budgetID, err := h.parseBudgetID(c)
-	if err != nil {
-		response.Error(c, err)
+	budgetID, ok := h.parseBudgetID(c)
+	if !ok {
 		return
 	}
 
@@ -343,9 +337,8 @@ func (h *BudgetHandler) UpdateBudget(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/organizations/{orgId}/budgets/{budgetId} [delete]
 func (h *BudgetHandler) DeleteBudget(c *gin.Context) {
-	orgID, err := h.parseOrgID(c)
-	if err != nil {
-		response.Error(c, err)
+	orgID, ok := h.parseOrgID(c)
+	if !ok {
 		return
 	}
 
@@ -354,9 +347,8 @@ func (h *BudgetHandler) DeleteBudget(c *gin.Context) {
 		return
 	}
 
-	budgetID, err := h.parseBudgetID(c)
-	if err != nil {
-		response.Error(c, err)
+	budgetID, ok := h.parseBudgetID(c)
+	if !ok {
 		return
 	}
 
@@ -399,9 +391,8 @@ func (h *BudgetHandler) DeleteBudget(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/organizations/{orgId}/budgets/alerts [get]
 func (h *BudgetHandler) GetAlerts(c *gin.Context) {
-	orgID, err := h.parseOrgID(c)
-	if err != nil {
-		response.Error(c, err)
+	orgID, ok := h.parseOrgID(c)
+	if !ok {
 		return
 	}
 
@@ -446,9 +437,8 @@ func (h *BudgetHandler) GetAlerts(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/organizations/{orgId}/budgets/alerts/{alertId}/acknowledge [post]
 func (h *BudgetHandler) AcknowledgeAlert(c *gin.Context) {
-	orgID, err := h.parseOrgID(c)
-	if err != nil {
-		response.Error(c, err)
+	orgID, ok := h.parseOrgID(c)
+	if !ok {
 		return
 	}
 
@@ -457,13 +447,7 @@ func (h *BudgetHandler) AcknowledgeAlert(c *gin.Context) {
 		return
 	}
 
-	alertIDStr := c.Param("alertId")
-	if alertIDStr == "" {
-		response.Error(c, appErrors.NewValidationError("alert_id is required", "alertId path parameter is missing"))
-		return
-	}
-
-	alertID, err := ulid.Parse(alertIDStr)
+	alertID, err := ulid.Parse(c.Param("alertId"))
 	if err != nil {
 		response.Error(c, appErrors.NewValidationError("Invalid alert ID", "alertId must be a valid ULID"))
 		return
@@ -488,32 +472,22 @@ func (h *BudgetHandler) AcknowledgeAlert(c *gin.Context) {
 
 // Helper methods
 
-func (h *BudgetHandler) parseOrgID(c *gin.Context) (ulid.ULID, error) {
-	orgIDStr := c.Param("orgId")
-	if orgIDStr == "" {
-		return ulid.ULID{}, appErrors.NewValidationError("organization_id is required", "orgId path parameter is missing")
-	}
-
-	orgID, err := ulid.Parse(orgIDStr)
+func (h *BudgetHandler) parseOrgID(c *gin.Context) (ulid.ULID, bool) {
+	orgID, err := ulid.Parse(c.Param("orgId"))
 	if err != nil {
-		return ulid.ULID{}, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid ULID"))
+		return ulid.ULID{}, false
 	}
-
-	return orgID, nil
+	return orgID, true
 }
 
-func (h *BudgetHandler) parseBudgetID(c *gin.Context) (ulid.ULID, error) {
-	budgetIDStr := c.Param("budgetId")
-	if budgetIDStr == "" {
-		return ulid.ULID{}, appErrors.NewValidationError("budget_id is required", "budgetId path parameter is missing")
-	}
-
-	budgetID, err := ulid.Parse(budgetIDStr)
+func (h *BudgetHandler) parseBudgetID(c *gin.Context) (ulid.ULID, bool) {
+	budgetID, err := ulid.Parse(c.Param("budgetId"))
 	if err != nil {
-		return ulid.ULID{}, appErrors.NewValidationError("Invalid budget ID", "budgetId must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid budget ID", "budgetId must be a valid ULID"))
+		return ulid.ULID{}, false
 	}
-
-	return budgetID, nil
+	return budgetID, true
 }
 
 func (h *BudgetHandler) verifyOrgAccess(c *gin.Context, orgID ulid.ULID) error {

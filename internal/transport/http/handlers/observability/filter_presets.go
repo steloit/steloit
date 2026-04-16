@@ -7,6 +7,7 @@ import (
 
 	"brokle/internal/core/domain/observability"
 	"brokle/internal/transport/http/middleware"
+	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 )
 
@@ -32,7 +33,7 @@ func (h *Handler) CreateFilterPreset(c *gin.Context) {
 
 	var req observability.CreateFilterPresetRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -100,7 +101,7 @@ func (h *Handler) UpdateFilterPreset(c *gin.Context) {
 
 	var req observability.UpdateFilterPresetRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 

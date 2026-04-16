@@ -5,6 +5,7 @@ import (
 
 	promptDomain "brokle/internal/core/domain/prompt"
 	"brokle/internal/transport/http/middleware"
+	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 	"brokle/pkg/ulid"
 )
@@ -30,25 +31,25 @@ import (
 func (h *Handler) SetLabels(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	promptID, err := ulid.Parse(c.Param("promptId"))
 	if err != nil {
-		response.ValidationError(c, "invalid prompt_id", "prompt_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid prompt ID", "promptId must be a valid ULID"))
 		return
 	}
 
 	versionID, err := ulid.Parse(c.Param("versionId"))
 	if err != nil {
-		response.ValidationError(c, "invalid version_id", "version_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid version ID", "versionId must be a valid ULID"))
 		return
 	}
 
 	var req promptDomain.SetLabelsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -57,13 +58,14 @@ func (h *Handler) SetLabels(c *gin.Context) {
 		userID = &uid
 	}
 
-	if err := h.promptService.SetLabels(c.Request.Context(), projectID, promptID, versionID, userID, req.Labels); err != nil {
+	labels, err := h.promptService.SetLabels(c.Request.Context(), projectID, promptID, versionID, userID, req.Labels)
+	if err != nil {
 		h.logger.Error("Failed to set labels", "version_id", versionID, "error", err)
 		response.Error(c, err)
 		return
 	}
 
-	response.Success(c, gin.H{"message": "labels set successfully"})
+	response.Success(c, gin.H{"labels": labels})
 }
 
 // GetProtectedLabels handles GET /api/v1/projects/:projectId/prompts/settings/protected-labels
@@ -82,7 +84,7 @@ func (h *Handler) SetLabels(c *gin.Context) {
 func (h *Handler) GetProtectedLabels(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
@@ -113,13 +115,13 @@ func (h *Handler) GetProtectedLabels(c *gin.Context) {
 func (h *Handler) SetProtectedLabels(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	var req promptDomain.ProtectedLabelsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -128,11 +130,12 @@ func (h *Handler) SetProtectedLabels(c *gin.Context) {
 		userID = &uid
 	}
 
-	if err := h.promptService.SetProtectedLabels(c.Request.Context(), projectID, userID, req.ProtectedLabels); err != nil {
+	labels, err := h.promptService.SetProtectedLabels(c.Request.Context(), projectID, userID, req.ProtectedLabels)
+	if err != nil {
 		h.logger.Error("Failed to set protected labels", "project_id", projectID, "error", err)
 		response.Error(c, err)
 		return
 	}
 
-	response.Success(c, gin.H{"message": "protected labels updated successfully"})
+	response.Success(c, gin.H{"protected_labels": labels})
 }

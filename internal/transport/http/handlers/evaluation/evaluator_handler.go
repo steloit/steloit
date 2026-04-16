@@ -42,13 +42,13 @@ func NewEvaluatorHandler(
 func (h *EvaluatorHandler) Create(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	var req evaluationDomain.CreateEvaluatorRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -84,7 +84,7 @@ func (h *EvaluatorHandler) Create(c *gin.Context) {
 func (h *EvaluatorHandler) List(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
@@ -164,13 +164,13 @@ func (h *EvaluatorHandler) List(c *gin.Context) {
 func (h *EvaluatorHandler) Get(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	evaluatorID, err := ulid.Parse(c.Param("evaluatorId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("evaluatorId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid evaluator ID", "evaluatorId must be a valid ULID"))
 		return
 	}
 
@@ -200,19 +200,19 @@ func (h *EvaluatorHandler) Get(c *gin.Context) {
 func (h *EvaluatorHandler) Update(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	evaluatorID, err := ulid.Parse(c.Param("evaluatorId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("evaluatorId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid evaluator ID", "evaluatorId must be a valid ULID"))
 		return
 	}
 
 	var req evaluationDomain.UpdateEvaluatorRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -239,13 +239,13 @@ func (h *EvaluatorHandler) Update(c *gin.Context) {
 func (h *EvaluatorHandler) Delete(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	evaluatorID, err := ulid.Parse(c.Param("evaluatorId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("evaluatorId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid evaluator ID", "evaluatorId must be a valid ULID"))
 		return
 	}
 
@@ -271,13 +271,13 @@ func (h *EvaluatorHandler) Delete(c *gin.Context) {
 func (h *EvaluatorHandler) Activate(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	evaluatorID, err := ulid.Parse(c.Param("evaluatorId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("evaluatorId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid evaluator ID", "evaluatorId must be a valid ULID"))
 		return
 	}
 
@@ -303,13 +303,13 @@ func (h *EvaluatorHandler) Activate(c *gin.Context) {
 func (h *EvaluatorHandler) Deactivate(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	evaluatorID, err := ulid.Parse(c.Param("evaluatorId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("evaluatorId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid evaluator ID", "evaluatorId must be a valid ULID"))
 		return
 	}
 
@@ -337,13 +337,13 @@ func (h *EvaluatorHandler) Deactivate(c *gin.Context) {
 func (h *EvaluatorHandler) Trigger(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	evaluatorID, err := ulid.Parse(c.Param("evaluatorId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("evaluatorId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid evaluator ID", "evaluatorId must be a valid ULID"))
 		return
 	}
 
@@ -351,7 +351,7 @@ func (h *EvaluatorHandler) Trigger(c *gin.Context) {
 	if c.Request.ContentLength > 0 {
 		var reqOpts evaluationDomain.TriggerOptions
 		if err := c.ShouldBindJSON(&reqOpts); err != nil {
-			response.ValidationError(c, "Invalid request body", err.Error())
+			response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 			return
 		}
 		opts = &reqOpts
@@ -383,13 +383,13 @@ func (h *EvaluatorHandler) Trigger(c *gin.Context) {
 func (h *EvaluatorHandler) Test(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	evaluatorID, err := ulid.Parse(c.Param("evaluatorId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("evaluatorId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid evaluator ID", "evaluatorId must be a valid ULID"))
 		return
 	}
 
@@ -397,7 +397,7 @@ func (h *EvaluatorHandler) Test(c *gin.Context) {
 	if c.Request.ContentLength > 0 {
 		var reqBody evaluationDomain.TestEvaluatorRequest
 		if err := c.ShouldBindJSON(&reqBody); err != nil {
-			response.ValidationError(c, "Invalid request body", err.Error())
+			response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 			return
 		}
 		req = &reqBody
@@ -429,13 +429,13 @@ func (h *EvaluatorHandler) Test(c *gin.Context) {
 func (h *EvaluatorHandler) GetAnalytics(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	evaluatorID, err := ulid.Parse(c.Param("evaluatorId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("evaluatorId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid evaluator ID", "evaluatorId must be a valid ULID"))
 		return
 	}
 

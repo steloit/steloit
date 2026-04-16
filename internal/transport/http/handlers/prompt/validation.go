@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	promptDomain "brokle/internal/core/domain/prompt"
+	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 	"brokle/pkg/ulid"
 )
@@ -54,20 +55,19 @@ type PreviewTemplateResponse struct {
 // @Router /api/v1/projects/{projectId}/prompts/validate-template [post]
 func (h *Handler) ValidateTemplate(c *gin.Context) {
 	// Validate project ID exists (for authorization)
-	_, err := ulid.Parse(c.Param("projectId"))
-	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+	if _, err := ulid.Parse(c.Param("projectId")); err != nil {
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	var req ValidateTemplateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
 	if req.Type != promptDomain.PromptTypeText && req.Type != promptDomain.PromptTypeChat {
-		response.ValidationError(c, "invalid type", "type must be 'text' or 'chat'")
+		response.Error(c, appErrors.NewValidationError("Invalid type", "type must be 'text' or 'chat'"))
 		return
 	}
 
@@ -133,20 +133,19 @@ func (h *Handler) ValidateTemplate(c *gin.Context) {
 // @Router /api/v1/projects/{projectId}/prompts/preview-template [post]
 func (h *Handler) PreviewTemplate(c *gin.Context) {
 	// Validate project ID exists (for authorization)
-	_, err := ulid.Parse(c.Param("projectId"))
-	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+	if _, err := ulid.Parse(c.Param("projectId")); err != nil {
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	var req PreviewTemplateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
 	if req.Type != promptDomain.PromptTypeText && req.Type != promptDomain.PromptTypeChat {
-		response.ValidationError(c, "invalid type", "type must be 'text' or 'chat'")
+		response.Error(c, appErrors.NewValidationError("Invalid type", "type must be 'text' or 'chat'"))
 		return
 	}
 
@@ -216,20 +215,19 @@ func (h *Handler) PreviewTemplate(c *gin.Context) {
 // @Router /api/v1/projects/{projectId}/prompts/detect-dialect [post]
 func (h *Handler) DetectDialect(c *gin.Context) {
 	// Validate project ID exists (for authorization)
-	_, err := ulid.Parse(c.Param("projectId"))
-	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+	if _, err := ulid.Parse(c.Param("projectId")); err != nil {
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	var req DetectDialectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
 	if req.Type != promptDomain.PromptTypeText && req.Type != promptDomain.PromptTypeChat {
-		response.ValidationError(c, "invalid type", "type must be 'text' or 'chat'")
+		response.Error(c, appErrors.NewValidationError("Invalid type", "type must be 'text' or 'chat'"))
 		return
 	}
 

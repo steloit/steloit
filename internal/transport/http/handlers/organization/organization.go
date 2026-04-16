@@ -13,6 +13,7 @@ import (
 	"brokle/internal/core/domain/auth"
 	"brokle/internal/core/domain/organization"
 	"brokle/internal/core/domain/user"
+	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 	"brokle/pkg/ulid"
 )
@@ -148,7 +149,7 @@ func (h *Handler) List(c *gin.Context) {
 	var req ListRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		h.logger.Error("Invalid list organizations request", "error", err)
-		response.BadRequest(c, "Invalid request parameters", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request parameters", err.Error()))
 		return
 	}
 
@@ -255,8 +256,7 @@ func (h *Handler) List(c *gin.Context) {
 func (h *Handler) Create(c *gin.Context) {
 	var req CreateOrganizationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Error("Invalid create organization request", "error", err)
-		response.BadRequest(c, "Invalid request payload", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -332,7 +332,7 @@ func (h *Handler) Get(c *gin.Context) {
 	var req GetRequest
 	if err := c.ShouldBindUri(&req); err != nil {
 		h.logger.Error("Invalid get organization request", "error", err)
-		response.BadRequest(c, "Invalid organization ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID", err.Error()))
 		return
 	}
 
@@ -355,7 +355,7 @@ func (h *Handler) Get(c *gin.Context) {
 	orgID, err := ulid.Parse(req.OrgID)
 	if err != nil {
 		h.logger.Error("Invalid organization ID format", "error", err, "org_id", req.OrgID)
-		response.BadRequest(c, "Invalid organization ID format", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID format", err.Error()))
 		return
 	}
 
@@ -420,14 +420,13 @@ func (h *Handler) Update(c *gin.Context) {
 	var uriReq GetRequest
 	if err := c.ShouldBindUri(&uriReq); err != nil {
 		h.logger.Error("Invalid update organization URI request", "error", err)
-		response.BadRequest(c, "Invalid organization ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID", err.Error()))
 		return
 	}
 
 	var req UpdateOrganizationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Error("Invalid update organization request", "error", err)
-		response.BadRequest(c, "Invalid request payload", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -450,7 +449,7 @@ func (h *Handler) Update(c *gin.Context) {
 	orgID, err := ulid.Parse(uriReq.OrgID)
 	if err != nil {
 		h.logger.Error("Invalid organization ID format", "error", err, "org_id", uriReq.OrgID)
-		response.BadRequest(c, "Invalid organization ID format", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID format", err.Error()))
 		return
 	}
 
@@ -528,7 +527,7 @@ func (h *Handler) Delete(c *gin.Context) {
 	var req GetRequest
 	if err := c.ShouldBindUri(&req); err != nil {
 		h.logger.Error("Invalid delete organization request", "error", err)
-		response.BadRequest(c, "Invalid organization ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID", err.Error()))
 		return
 	}
 
@@ -551,7 +550,7 @@ func (h *Handler) Delete(c *gin.Context) {
 	orgID, err := ulid.Parse(req.OrgID)
 	if err != nil {
 		h.logger.Error("Invalid organization ID format", "error", err, "org_id", req.OrgID)
-		response.BadRequest(c, "Invalid organization ID format", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID format", err.Error()))
 		return
 	}
 
@@ -609,13 +608,13 @@ func (h *Handler) ListMembers(c *gin.Context) {
 	var req ListMembersRequest
 	if err := c.ShouldBindUri(&req); err != nil {
 		h.logger.Error("Invalid list members URI request", "error", err)
-		response.BadRequest(c, "Invalid organization ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID", err.Error()))
 		return
 	}
 
 	if err := c.ShouldBindQuery(&req); err != nil {
 		h.logger.Error("Invalid list members query request", "error", err)
-		response.BadRequest(c, "Invalid query parameters", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid query parameters", err.Error()))
 		return
 	}
 
@@ -638,7 +637,7 @@ func (h *Handler) ListMembers(c *gin.Context) {
 	orgID, err := ulid.Parse(req.OrgID)
 	if err != nil {
 		h.logger.Error("Invalid organization ID format", "error", err, "org_id", req.OrgID)
-		response.BadRequest(c, "Invalid organization ID format", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID format", err.Error()))
 		return
 	}
 
@@ -773,14 +772,13 @@ func (h *Handler) InviteMember(c *gin.Context) {
 	var uriReq InviteMemberRequest
 	if err := c.ShouldBindUri(&uriReq); err != nil {
 		h.logger.Error("Invalid invite member URI request", "error", err)
-		response.BadRequest(c, "Invalid organization ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID", err.Error()))
 		return
 	}
 
 	var req InviteMemberRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Error("Invalid invite member request", "error", err)
-		response.BadRequest(c, "Invalid request payload", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -806,7 +804,7 @@ func (h *Handler) InviteMember(c *gin.Context) {
 	orgID, err := ulid.Parse(req.OrgID)
 	if err != nil {
 		h.logger.Error("Invalid organization ID format", "error", err, "org_id", req.OrgID)
-		response.BadRequest(c, "Invalid organization ID format", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID format", err.Error()))
 		return
 	}
 
@@ -891,7 +889,7 @@ func (h *Handler) RemoveMember(c *gin.Context) {
 	var req RemoveMemberRequest
 	if err := c.ShouldBindUri(&req); err != nil {
 		h.logger.Error("Invalid remove member request", "error", err)
-		response.BadRequest(c, "Invalid organization ID or user ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID or user ID", err.Error()))
 		return
 	}
 
@@ -914,7 +912,7 @@ func (h *Handler) RemoveMember(c *gin.Context) {
 	orgID, err := ulid.Parse(req.OrgID)
 	if err != nil {
 		h.logger.Error("Invalid organization ID format", "error", err, "org_id", req.OrgID)
-		response.BadRequest(c, "Invalid organization ID format", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID format", err.Error()))
 		return
 	}
 
@@ -922,7 +920,7 @@ func (h *Handler) RemoveMember(c *gin.Context) {
 	userToRemoveID, err := ulid.Parse(req.UserID)
 	if err != nil {
 		h.logger.Error("Invalid user ID format", "error", err, "user_id", req.UserID)
-		response.BadRequest(c, "Invalid user ID format", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid user ID format", err.Error()))
 		return
 	}
 

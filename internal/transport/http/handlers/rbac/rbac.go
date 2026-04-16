@@ -8,6 +8,7 @@ import (
 
 	"brokle/internal/config"
 	"brokle/internal/core/domain/auth"
+	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 	"brokle/pkg/ulid"
 )
@@ -49,8 +50,7 @@ func NewHandler(
 func (h *Handler) CreateRole(c *gin.Context) {
 	var req auth.CreateRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Error("Invalid create role request", "error", err)
-		response.BadRequest(c, "Invalid request payload", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -67,11 +67,9 @@ func (h *Handler) CreateRole(c *gin.Context) {
 
 // GetRole handles GET /rbac/roles/{roleId}
 func (h *Handler) GetRole(c *gin.Context) {
-	roleIDStr := c.Param("roleId")
-	roleID, err := ulid.Parse(roleIDStr)
+	roleID, err := ulid.Parse(c.Param("roleId"))
 	if err != nil {
-		h.logger.Error("Invalid role ID", "error", err, "role_id", roleIDStr)
-		response.BadRequest(c, "Invalid role ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid role ID", "roleId must be a valid ULID"))
 		return
 	}
 
@@ -88,18 +86,15 @@ func (h *Handler) GetRole(c *gin.Context) {
 
 // UpdateRole handles PUT /rbac/roles/{roleId}
 func (h *Handler) UpdateRole(c *gin.Context) {
-	roleIDStr := c.Param("roleId")
-	roleID, err := ulid.Parse(roleIDStr)
+	roleID, err := ulid.Parse(c.Param("roleId"))
 	if err != nil {
-		h.logger.Error("Invalid role ID", "error", err, "role_id", roleIDStr)
-		response.BadRequest(c, "Invalid role ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid role ID", "roleId must be a valid ULID"))
 		return
 	}
 
 	var req auth.UpdateRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Error("Invalid update role request", "error", err)
-		response.BadRequest(c, "Invalid request payload", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -116,11 +111,9 @@ func (h *Handler) UpdateRole(c *gin.Context) {
 
 // DeleteRole handles DELETE /rbac/roles/{roleId}
 func (h *Handler) DeleteRole(c *gin.Context) {
-	roleIDStr := c.Param("roleId")
-	roleID, err := ulid.Parse(roleIDStr)
+	roleID, err := ulid.Parse(c.Param("roleId"))
 	if err != nil {
-		h.logger.Error("Invalid role ID", "error", err, "role_id", roleIDStr)
-		response.BadRequest(c, "Invalid role ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid role ID", "roleId must be a valid ULID"))
 		return
 	}
 
@@ -162,7 +155,7 @@ func (h *Handler) DeleteRole(c *gin.Context) {
 func (h *Handler) ListRoles(c *gin.Context) {
 	scopeType := c.Query("scope_type")
 	if scopeType == "" {
-		response.BadRequest(c, "Scope type is required", "scope_type parameter cannot be empty")
+		response.Error(c, appErrors.NewValidationError("Scope type is required", "scope_type parameter cannot be empty"))
 		return
 	}
 
@@ -183,11 +176,9 @@ func (h *Handler) ListRoles(c *gin.Context) {
 
 // GetUserRoles handles GET /rbac/users/{userId}/roles
 func (h *Handler) GetUserRoles(c *gin.Context) {
-	userIDStr := c.Param("userId")
-	userID, err := ulid.Parse(userIDStr)
+	userID, err := ulid.Parse(c.Param("userId"))
 	if err != nil {
-		h.logger.Error("Invalid user ID", "error", err, "user_id", userIDStr)
-		response.BadRequest(c, "Invalid user ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid user ID", "userId must be a valid ULID"))
 		return
 	}
 
@@ -204,11 +195,9 @@ func (h *Handler) GetUserRoles(c *gin.Context) {
 
 // GetUserPermissions handles GET /rbac/users/{userId}/permissions
 func (h *Handler) GetUserPermissions(c *gin.Context) {
-	userIDStr := c.Param("userId")
-	userID, err := ulid.Parse(userIDStr)
+	userID, err := ulid.Parse(c.Param("userId"))
 	if err != nil {
-		h.logger.Error("Invalid user ID", "error", err, "user_id", userIDStr)
-		response.BadRequest(c, "Invalid user ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid user ID", "userId must be a valid ULID"))
 		return
 	}
 
@@ -225,26 +214,21 @@ func (h *Handler) GetUserPermissions(c *gin.Context) {
 
 // AssignOrganizationRole handles POST /rbac/users/{userId}/organizations/{orgId}/roles
 func (h *Handler) AssignOrganizationRole(c *gin.Context) {
-	userIDStr := c.Param("userId")
-	userID, err := ulid.Parse(userIDStr)
+	userID, err := ulid.Parse(c.Param("userId"))
 	if err != nil {
-		h.logger.Error("Invalid user ID", "error", err, "user_id", userIDStr)
-		response.BadRequest(c, "Invalid user ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid user ID", "userId must be a valid ULID"))
 		return
 	}
 
-	orgIDStr := c.Param("orgId")
-	orgID, err := ulid.Parse(orgIDStr)
+	orgID, err := ulid.Parse(c.Param("orgId"))
 	if err != nil {
-		h.logger.Error("Invalid organization ID", "error", err, "org_id", orgIDStr)
-		response.BadRequest(c, "Invalid organization ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid ULID"))
 		return
 	}
 
 	var req auth.AssignRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Error("Invalid assign role request", "error", err)
-		response.BadRequest(c, "Invalid request payload", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -262,24 +246,19 @@ func (h *Handler) AssignOrganizationRole(c *gin.Context) {
 
 // RemoveOrganizationMember handles DELETE /rbac/users/{userId}/organizations/{orgId}
 func (h *Handler) RemoveOrganizationMember(c *gin.Context) {
-	userIDStr := c.Param("userId")
-	userID, err := ulid.Parse(userIDStr)
+	userID, err := ulid.Parse(c.Param("userId"))
 	if err != nil {
-		h.logger.Error("Invalid user ID", "error", err, "user_id", userIDStr)
-		response.BadRequest(c, "Invalid user ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid user ID", "userId must be a valid ULID"))
 		return
 	}
 
-	orgIDStr := c.Param("orgId")
-	orgID, err := ulid.Parse(orgIDStr)
+	orgID, err := ulid.Parse(c.Param("orgId"))
 	if err != nil {
-		h.logger.Error("Invalid organization ID", "error", err, "org_id", orgIDStr)
-		response.BadRequest(c, "Invalid organization ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid ULID"))
 		return
 	}
 
-	err = h.organizationMemberService.RemoveMember(c.Request.Context(), userID, orgID)
-	if err != nil {
+	if err := h.organizationMemberService.RemoveMember(c.Request.Context(), userID, orgID); err != nil {
 		h.logger.Error("Failed to remove user from organization", "error", err, "user_id", userID, "org_id", orgID)
 		response.InternalServerError(c, "Failed to remove user from organization")
 		return
@@ -291,18 +270,15 @@ func (h *Handler) RemoveOrganizationMember(c *gin.Context) {
 
 // CheckUserPermissions handles POST /rbac/users/{userId}/permissions/check
 func (h *Handler) CheckUserPermissions(c *gin.Context) {
-	userIDStr := c.Param("userId")
-	userID, err := ulid.Parse(userIDStr)
+	userID, err := ulid.Parse(c.Param("userId"))
 	if err != nil {
-		h.logger.Error("Invalid user ID", "error", err, "user_id", userIDStr)
-		response.BadRequest(c, "Invalid user ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid user ID", "userId must be a valid ULID"))
 		return
 	}
 
 	var req auth.CheckPermissionsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Error("Invalid check permissions request", "error", err)
-		response.BadRequest(c, "Invalid request payload", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -357,8 +333,7 @@ func (h *Handler) ListPermissions(c *gin.Context) {
 func (h *Handler) CreatePermission(c *gin.Context) {
 	var req auth.CreatePermissionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Error("Invalid create permission request", "error", err)
-		response.BadRequest(c, "Invalid request payload", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -375,11 +350,9 @@ func (h *Handler) CreatePermission(c *gin.Context) {
 
 // GetPermission handles GET /rbac/permissions/{permissionId}
 func (h *Handler) GetPermission(c *gin.Context) {
-	permissionIDStr := c.Param("permissionId")
-	permissionID, err := ulid.Parse(permissionIDStr)
+	permissionID, err := ulid.Parse(c.Param("permissionId"))
 	if err != nil {
-		h.logger.Error("Invalid permission ID", "error", err, "permission_id", permissionIDStr)
-		response.BadRequest(c, "Invalid permission ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid permission ID", "permissionId must be a valid ULID"))
 		return
 	}
 
@@ -411,7 +384,7 @@ func (h *Handler) GetAvailableResources(c *gin.Context) {
 func (h *Handler) GetActionsForResource(c *gin.Context) {
 	resource := c.Param("resource")
 	if resource == "" {
-		response.BadRequest(c, "Resource parameter is required", "resource parameter cannot be empty")
+		response.Error(c, appErrors.NewValidationError("Resource parameter is required", "resource parameter cannot be empty"))
 		return
 	}
 
@@ -429,11 +402,9 @@ func (h *Handler) GetActionsForResource(c *gin.Context) {
 // Legacy method for backward compatibility
 func (h *Handler) GetUserRole(c *gin.Context) {
 	// This is a legacy endpoint that should redirect to the new GetUserRoles endpoint
-	userIDStr := c.Param("userId")
-	userID, err := ulid.Parse(userIDStr)
+	userID, err := ulid.Parse(c.Param("userId"))
 	if err != nil {
-		h.logger.Error("Invalid user ID", "error", err, "user_id", userIDStr)
-		response.BadRequest(c, "Invalid user ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid user ID", "userId must be a valid ULID"))
 		return
 	}
 
@@ -458,24 +429,21 @@ func (h *Handler) GetUserRole(c *gin.Context) {
 // CreateCustomRole creates a custom role for an organization
 func (h *Handler) CreateCustomRole(c *gin.Context) {
 	// Get organization ID from URL
-	orgIDStr := c.Param("orgId")
-	orgID, err := ulid.Parse(orgIDStr)
+	orgID, err := ulid.Parse(c.Param("orgId"))
 	if err != nil {
-		h.logger.Error("Invalid organization ID", "error", err, "org_id", orgIDStr)
-		response.BadRequest(c, "Invalid organization ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid ULID"))
 		return
 	}
 
 	var req auth.CreateRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Error("Failed to bind custom role request", "error", err)
-		response.BadRequest(c, "Invalid request format", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
 	// Validate scope type for custom roles
 	if req.ScopeType != auth.ScopeOrganization {
-		response.BadRequest(c, "Custom roles must have organization scope type", "scope_type must be 'organization' for custom roles")
+		response.Error(c, appErrors.NewValidationError("Custom roles must have organization scope type", "scope_type must be 'organization' for custom roles"))
 		return
 	}
 
@@ -500,11 +468,9 @@ func (h *Handler) CreateCustomRole(c *gin.Context) {
 // GetCustomRoles lists all custom roles for an organization
 func (h *Handler) GetCustomRoles(c *gin.Context) {
 	// Get organization ID from URL
-	orgIDStr := c.Param("orgId")
-	orgID, err := ulid.Parse(orgIDStr)
+	orgID, err := ulid.Parse(c.Param("orgId"))
 	if err != nil {
-		h.logger.Error("Invalid organization ID", "error", err, "org_id", orgIDStr)
-		response.BadRequest(c, "Invalid organization ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid ULID"))
 		return
 	}
 
@@ -523,11 +489,9 @@ func (h *Handler) GetCustomRoles(c *gin.Context) {
 
 // GetCustomRole retrieves a specific custom role
 func (h *Handler) GetCustomRole(c *gin.Context) {
-	roleIDStr := c.Param("roleId")
-	roleID, err := ulid.Parse(roleIDStr)
+	roleID, err := ulid.Parse(c.Param("roleId"))
 	if err != nil {
-		h.logger.Error("Invalid role ID", "error", err, "role_id", roleIDStr)
-		response.BadRequest(c, "Invalid role ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid role ID", "roleId must be a valid ULID"))
 		return
 	}
 
@@ -540,7 +504,7 @@ func (h *Handler) GetCustomRole(c *gin.Context) {
 
 	// Verify it's a custom role (not system role)
 	if role.IsSystemRole() {
-		response.BadRequest(c, "Cannot access system role through custom role endpoint", "use /rbac/roles endpoint for system roles")
+		response.Error(c, appErrors.NewValidationError("Cannot access system role through custom role endpoint", "use /rbac/roles endpoint for system roles"))
 		return
 	}
 
@@ -549,18 +513,15 @@ func (h *Handler) GetCustomRole(c *gin.Context) {
 
 // UpdateCustomRole updates a custom role
 func (h *Handler) UpdateCustomRole(c *gin.Context) {
-	roleIDStr := c.Param("roleId")
-	roleID, err := ulid.Parse(roleIDStr)
+	roleID, err := ulid.Parse(c.Param("roleId"))
 	if err != nil {
-		h.logger.Error("Invalid role ID", "error", err, "role_id", roleIDStr)
-		response.BadRequest(c, "Invalid role ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid role ID", "roleId must be a valid ULID"))
 		return
 	}
 
 	var req auth.UpdateRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Error("Failed to bind update custom role request", "error", err)
-		response.BadRequest(c, "Invalid request format", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -584,11 +545,9 @@ func (h *Handler) UpdateCustomRole(c *gin.Context) {
 
 // DeleteCustomRole deletes a custom role
 func (h *Handler) DeleteCustomRole(c *gin.Context) {
-	roleIDStr := c.Param("roleId")
-	roleID, err := ulid.Parse(roleIDStr)
+	roleID, err := ulid.Parse(c.Param("roleId"))
 	if err != nil {
-		h.logger.Error("Invalid role ID", "error", err, "role_id", roleIDStr)
-		response.BadRequest(c, "Invalid role ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid role ID", "roleId must be a valid ULID"))
 		return
 	}
 
@@ -606,7 +565,7 @@ func (h *Handler) DeleteCustomRole(c *gin.Context) {
 	}
 
 	h.logger.Info("Custom role deleted successfully", "role_id", roleID)
-	response.Success(c, gin.H{"message": "Custom role deleted successfully"})
+	response.NoContent(c)
 }
 
 // ========================================
@@ -622,18 +581,15 @@ type CheckUserScopesRequest struct {
 
 // CheckUserScopes handles POST /rbac/users/{userId}/scopes/check
 func (h *Handler) CheckUserScopes(c *gin.Context) {
-	userIDStr := c.Param("userId")
-	userID, err := ulid.Parse(userIDStr)
+	userID, err := ulid.Parse(c.Param("userId"))
 	if err != nil {
-		h.logger.Error("Invalid user ID", "error", err, "user_id", userIDStr)
-		response.BadRequest(c, "Invalid user ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid user ID", "userId must be a valid ULID"))
 		return
 	}
 
 	var req CheckUserScopesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Error("Invalid check scopes request", "error", err)
-		response.BadRequest(c, "Invalid request payload", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -642,7 +598,7 @@ func (h *Handler) CheckUserScopes(c *gin.Context) {
 	if req.OrganizationID != nil && *req.OrganizationID != "" {
 		parsedOrgID, err := ulid.Parse(*req.OrganizationID)
 		if err != nil {
-			response.BadRequest(c, "Invalid organization ID", err.Error())
+			response.Error(c, appErrors.NewValidationError("Invalid organization ID", err.Error()))
 			return
 		}
 		orgID = &parsedOrgID
@@ -653,7 +609,7 @@ func (h *Handler) CheckUserScopes(c *gin.Context) {
 	if req.ProjectID != nil && *req.ProjectID != "" {
 		parsedProjectID, err := ulid.Parse(*req.ProjectID)
 		if err != nil {
-			response.BadRequest(c, "Invalid project ID", err.Error())
+			response.Error(c, appErrors.NewValidationError("Invalid project ID", err.Error()))
 			return
 		}
 		projectID = &parsedProjectID
@@ -679,11 +635,9 @@ func (h *Handler) CheckUserScopes(c *gin.Context) {
 
 // GetUserScopes handles GET /rbac/users/{userId}/scopes
 func (h *Handler) GetUserScopes(c *gin.Context) {
-	userIDStr := c.Param("userId")
-	userID, err := ulid.Parse(userIDStr)
+	userID, err := ulid.Parse(c.Param("userId"))
 	if err != nil {
-		h.logger.Error("Invalid user ID", "error", err, "user_id", userIDStr)
-		response.BadRequest(c, "Invalid user ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid user ID", "userId must be a valid ULID"))
 		return
 	}
 
@@ -692,7 +646,7 @@ func (h *Handler) GetUserScopes(c *gin.Context) {
 	if orgIDStr := c.Query("organization_id"); orgIDStr != "" {
 		parsedOrgID, err := ulid.Parse(orgIDStr)
 		if err != nil {
-			response.BadRequest(c, "Invalid organization ID", err.Error())
+			response.Error(c, appErrors.NewValidationError("Invalid organization ID", err.Error()))
 			return
 		}
 		orgID = &parsedOrgID
@@ -703,7 +657,7 @@ func (h *Handler) GetUserScopes(c *gin.Context) {
 	if projectIDStr := c.Query("project_id"); projectIDStr != "" {
 		parsedProjectID, err := ulid.Parse(projectIDStr)
 		if err != nil {
-			response.BadRequest(c, "Invalid project ID", err.Error())
+			response.Error(c, appErrors.NewValidationError("Invalid project ID", err.Error()))
 			return
 		}
 		projectID = &parsedProjectID
@@ -744,7 +698,7 @@ func (h *Handler) GetAvailableScopes(c *gin.Context) {
 		level = auth.ScopeLevel(levelStr)
 		// Validate scope level
 		if level != auth.ScopeLevelOrganization && level != auth.ScopeLevelProject && level != auth.ScopeLevelGlobal {
-			response.BadRequest(c, "Invalid scope level", "level must be 'organization', 'project', or 'global'")
+			response.Error(c, appErrors.NewValidationError("Invalid scope level", "level must be 'organization', 'project', or 'global'"))
 			return
 		}
 	}

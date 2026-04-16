@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"brokle/internal/core/domain/website"
+	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 )
 
@@ -25,7 +26,7 @@ func NewHandler(logger *slog.Logger, websiteService website.WebsiteService) *Han
 func (h *Handler) SubmitContactForm(c *gin.Context) {
 	var req website.CreateContactSubmissionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ErrorWithStatus(c, 400, "VALIDATION_ERROR", "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 

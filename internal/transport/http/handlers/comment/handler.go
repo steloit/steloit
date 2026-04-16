@@ -36,19 +36,18 @@ func NewHandler(service commentDomain.Service) *Handler {
 func (h *Handler) CreateComment(c *gin.Context) {
 	traceID := c.Param("id")
 	if traceID == "" {
-		response.Error(c, appErrors.NewValidationError("id", "is required"))
+		response.Error(c, appErrors.NewValidationError("Missing trace ID", "id is required"))
 		return
 	}
 
 	projectIDStr := c.Query("project_id")
 	if projectIDStr == "" {
-		response.Error(c, appErrors.NewValidationError("project_id", "is required"))
+		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
 		return
 	}
-
 	projectID, err := ulid.Parse(projectIDStr)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("project_id", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid ULID"))
 		return
 	}
 
@@ -60,7 +59,7 @@ func (h *Handler) CreateComment(c *gin.Context) {
 
 	var req commentDomain.CreateCommentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -86,19 +85,18 @@ func (h *Handler) CreateComment(c *gin.Context) {
 func (h *Handler) ListComments(c *gin.Context) {
 	traceID := c.Param("id")
 	if traceID == "" {
-		response.Error(c, appErrors.NewValidationError("id", "is required"))
+		response.Error(c, appErrors.NewValidationError("Missing trace ID", "id is required"))
 		return
 	}
 
 	projectIDStr := c.Query("project_id")
 	if projectIDStr == "" {
-		response.Error(c, appErrors.NewValidationError("project_id", "is required"))
+		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
 		return
 	}
-
 	projectID, err := ulid.Parse(projectIDStr)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("project_id", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid ULID"))
 		return
 	}
 
@@ -130,19 +128,18 @@ func (h *Handler) ListComments(c *gin.Context) {
 func (h *Handler) GetCommentCount(c *gin.Context) {
 	traceID := c.Param("id")
 	if traceID == "" {
-		response.Error(c, appErrors.NewValidationError("id", "is required"))
+		response.Error(c, appErrors.NewValidationError("Missing trace ID", "id is required"))
 		return
 	}
 
 	projectIDStr := c.Query("project_id")
 	if projectIDStr == "" {
-		response.Error(c, appErrors.NewValidationError("project_id", "is required"))
+		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
 		return
 	}
-
 	projectID, err := ulid.Parse(projectIDStr)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("project_id", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid ULID"))
 		return
 	}
 
@@ -173,31 +170,24 @@ func (h *Handler) GetCommentCount(c *gin.Context) {
 func (h *Handler) UpdateComment(c *gin.Context) {
 	traceID := c.Param("id")
 	if traceID == "" {
-		response.Error(c, appErrors.NewValidationError("id", "is required"))
+		response.Error(c, appErrors.NewValidationError("Missing trace ID", "id is required"))
 		return
 	}
 
-	commentIDStr := c.Param("comment_id")
-	if commentIDStr == "" {
-		response.Error(c, appErrors.NewValidationError("comment_id", "is required"))
-		return
-	}
-
-	commentID, err := ulid.Parse(commentIDStr)
+	commentID, err := ulid.Parse(c.Param("comment_id"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("comment_id", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid comment ID", "comment_id must be a valid ULID"))
 		return
 	}
 
 	projectIDStr := c.Query("project_id")
 	if projectIDStr == "" {
-		response.Error(c, appErrors.NewValidationError("project_id", "is required"))
+		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
 		return
 	}
-
 	projectID, err := ulid.Parse(projectIDStr)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("project_id", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid ULID"))
 		return
 	}
 
@@ -209,7 +199,7 @@ func (h *Handler) UpdateComment(c *gin.Context) {
 
 	var req commentDomain.UpdateCommentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -238,31 +228,24 @@ func (h *Handler) UpdateComment(c *gin.Context) {
 func (h *Handler) DeleteComment(c *gin.Context) {
 	traceID := c.Param("id")
 	if traceID == "" {
-		response.Error(c, appErrors.NewValidationError("id", "is required"))
+		response.Error(c, appErrors.NewValidationError("Missing trace ID", "id is required"))
 		return
 	}
 
-	commentIDStr := c.Param("comment_id")
-	if commentIDStr == "" {
-		response.Error(c, appErrors.NewValidationError("comment_id", "is required"))
-		return
-	}
-
-	commentID, err := ulid.Parse(commentIDStr)
+	commentID, err := ulid.Parse(c.Param("comment_id"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("comment_id", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid comment ID", "comment_id must be a valid ULID"))
 		return
 	}
 
 	projectIDStr := c.Query("project_id")
 	if projectIDStr == "" {
-		response.Error(c, appErrors.NewValidationError("project_id", "is required"))
+		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
 		return
 	}
-
 	projectID, err := ulid.Parse(projectIDStr)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("project_id", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid ULID"))
 		return
 	}
 
@@ -297,31 +280,24 @@ func (h *Handler) DeleteComment(c *gin.Context) {
 func (h *Handler) ToggleReaction(c *gin.Context) {
 	traceID := c.Param("id")
 	if traceID == "" {
-		response.Error(c, appErrors.NewValidationError("id", "is required"))
+		response.Error(c, appErrors.NewValidationError("Missing trace ID", "id is required"))
 		return
 	}
 
-	commentIDStr := c.Param("comment_id")
-	if commentIDStr == "" {
-		response.Error(c, appErrors.NewValidationError("comment_id", "is required"))
-		return
-	}
-
-	commentID, err := ulid.Parse(commentIDStr)
+	commentID, err := ulid.Parse(c.Param("comment_id"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("comment_id", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid comment ID", "comment_id must be a valid ULID"))
 		return
 	}
 
 	projectIDStr := c.Query("project_id")
 	if projectIDStr == "" {
-		response.Error(c, appErrors.NewValidationError("project_id", "is required"))
+		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
 		return
 	}
-
 	projectID, err := ulid.Parse(projectIDStr)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("project_id", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid ULID"))
 		return
 	}
 
@@ -333,7 +309,7 @@ func (h *Handler) ToggleReaction(c *gin.Context) {
 
 	var req commentDomain.ToggleReactionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -363,31 +339,24 @@ func (h *Handler) ToggleReaction(c *gin.Context) {
 func (h *Handler) CreateReply(c *gin.Context) {
 	traceID := c.Param("id")
 	if traceID == "" {
-		response.Error(c, appErrors.NewValidationError("id", "is required"))
+		response.Error(c, appErrors.NewValidationError("Missing trace ID", "id is required"))
 		return
 	}
 
-	parentIDStr := c.Param("comment_id")
-	if parentIDStr == "" {
-		response.Error(c, appErrors.NewValidationError("comment_id", "is required"))
-		return
-	}
-
-	parentID, err := ulid.Parse(parentIDStr)
+	parentID, err := ulid.Parse(c.Param("comment_id"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("comment_id", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid comment ID", "comment_id must be a valid ULID"))
 		return
 	}
 
 	projectIDStr := c.Query("project_id")
 	if projectIDStr == "" {
-		response.Error(c, appErrors.NewValidationError("project_id", "is required"))
+		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
 		return
 	}
-
 	projectID, err := ulid.Parse(projectIDStr)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("project_id", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid ULID"))
 		return
 	}
 
@@ -399,7 +368,7 @@ func (h *Handler) CreateReply(c *gin.Context) {
 
 	var req commentDomain.CreateCommentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 

@@ -42,13 +42,13 @@ func NewDatasetItemHandler(
 func (h *DatasetItemHandler) List(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	datasetID, err := ulid.Parse(c.Param("datasetId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("datasetId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid ULID"))
 		return
 	}
 
@@ -100,19 +100,19 @@ func (h *DatasetItemHandler) List(c *gin.Context) {
 func (h *DatasetItemHandler) Create(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	datasetID, err := ulid.Parse(c.Param("datasetId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("datasetId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid ULID"))
 		return
 	}
 
 	var req evaluationDomain.CreateDatasetItemRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -151,19 +151,19 @@ func (h *DatasetItemHandler) Create(c *gin.Context) {
 func (h *DatasetItemHandler) Delete(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	datasetID, err := ulid.Parse(c.Param("datasetId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("datasetId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid ULID"))
 		return
 	}
 
 	itemID, err := ulid.Parse(c.Param("itemId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("itemId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid item ID", "itemId must be a valid ULID"))
 		return
 	}
 
@@ -191,19 +191,19 @@ func (h *DatasetItemHandler) Delete(c *gin.Context) {
 func (h *DatasetItemHandler) ImportFromJSON(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	datasetID, err := ulid.Parse(c.Param("datasetId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("datasetId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid ULID"))
 		return
 	}
 
 	var req ImportFromJSONRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -211,7 +211,7 @@ func (h *DatasetItemHandler) ImportFromJSON(c *gin.Context) {
 	if req.Source != "" {
 		source := evaluationDomain.DatasetItemSource(req.Source)
 		if !source.IsValid() {
-			response.Error(c, appErrors.NewValidationError("source", "must be one of: manual, trace, span, csv, json, sdk"))
+			response.Error(c, appErrors.NewValidationError("Invalid source", "source must be one of: manual, trace, span, csv, json, sdk"))
 			return
 		}
 	}
@@ -258,19 +258,19 @@ func (h *DatasetItemHandler) ImportFromJSON(c *gin.Context) {
 func (h *DatasetItemHandler) ImportFromCSV(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	datasetID, err := ulid.Parse(c.Param("datasetId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("datasetId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid ULID"))
 		return
 	}
 
 	var req ImportFromCSVRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -314,19 +314,19 @@ func (h *DatasetItemHandler) ImportFromCSV(c *gin.Context) {
 func (h *DatasetItemHandler) CreateFromTraces(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	datasetID, err := ulid.Parse(c.Param("datasetId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("datasetId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid ULID"))
 		return
 	}
 
 	var req CreateFromTracesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -371,19 +371,19 @@ func (h *DatasetItemHandler) CreateFromTraces(c *gin.Context) {
 func (h *DatasetItemHandler) CreateFromSpans(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	datasetID, err := ulid.Parse(c.Param("datasetId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("datasetId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid ULID"))
 		return
 	}
 
 	var req CreateFromSpansRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -426,13 +426,13 @@ func (h *DatasetItemHandler) CreateFromSpans(c *gin.Context) {
 func (h *DatasetItemHandler) Export(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	datasetID, err := ulid.Parse(c.Param("datasetId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("datasetId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid ULID"))
 		return
 	}
 

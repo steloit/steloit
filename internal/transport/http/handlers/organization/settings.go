@@ -199,8 +199,7 @@ func (h *SettingsHandler) CreateSetting(c *gin.Context) {
 
 	var req CreateSettingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Error("Invalid request body", "error", err)
-		response.ErrorWithStatus(c, http.StatusBadRequest, "validation_error", "Invalid request body", err.Error())
+		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid_request", "Invalid request body", err.Error())
 		return
 	}
 
@@ -280,8 +279,7 @@ func (h *SettingsHandler) UpdateSetting(c *gin.Context) {
 
 	var req UpdateSettingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Error("Invalid request body", "error", err)
-		response.ErrorWithStatus(c, http.StatusBadRequest, "validation_error", "Invalid request body", err.Error())
+		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid_request", "Invalid request body", err.Error())
 		return
 	}
 
@@ -304,18 +302,14 @@ func (h *SettingsHandler) UpdateSetting(c *gin.Context) {
 		Value: req.Value,
 	}
 
-	err = h.settingsService.UpdateSetting(c.Request.Context(), orgID, key, userID, domainReq)
+	setting, err := h.settingsService.UpdateSetting(c.Request.Context(), orgID, key, userID, domainReq)
 	if err != nil {
 		h.logger.Error("Failed to update organization setting", "error", err)
-		if err.Error() == "setting not found" {
-			response.ErrorWithStatus(c, http.StatusNotFound, "setting_not_found", "Setting not found", "")
-			return
-		}
-		response.ErrorWithStatus(c, http.StatusInternalServerError, "internal_error", "Failed to update setting", err.Error())
+		response.Error(c, err)
 		return
 	}
 
-	response.Success(c, gin.H{"message": "Setting updated successfully"})
+	response.Success(c, setting)
 }
 
 // DeleteSetting handles DELETE /organizations/:orgId/settings/:key

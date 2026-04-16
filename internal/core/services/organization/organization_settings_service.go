@@ -65,28 +65,28 @@ func (s *organizationSettingsService) GetAllSettings(ctx context.Context, orgID 
 }
 
 // UpdateSetting updates an existing organization setting
-func (s *organizationSettingsService) UpdateSetting(ctx context.Context, orgID ulid.ULID, key string, userID ulid.ULID, req *orgDomain.UpdateOrganizationSettingRequest) error {
+func (s *organizationSettingsService) UpdateSetting(ctx context.Context, orgID ulid.ULID, key string, userID ulid.ULID, req *orgDomain.UpdateOrganizationSettingRequest) (*orgDomain.OrganizationSettings, error) {
 	// Validate user access
 	if err := s.ValidateSettingsAccess(ctx, userID, orgID, "update"); err != nil {
-		return err
+		return nil, err
 	}
 
 	// Get existing setting
 	setting, err := s.settingsRepo.GetByKey(ctx, orgID, key)
 	if err != nil {
-		return appErrors.NewNotFoundError("Setting not found")
+		return nil, appErrors.NewNotFoundError("Setting not found")
 	}
 
 	// Update setting value
 	if err := setting.SetValue(req.Value); err != nil {
-		return appErrors.NewInternalError("Failed to set value", err)
+		return nil, appErrors.NewInternalError("Failed to set value", err)
 	}
 
 	if err := s.settingsRepo.Update(ctx, setting); err != nil {
-		return appErrors.NewInternalError("Failed to update setting", err)
+		return nil, appErrors.NewInternalError("Failed to update setting", err)
 	}
 
-	return nil
+	return setting, nil
 }
 
 // DeleteSetting deletes an organization setting

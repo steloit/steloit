@@ -7,6 +7,7 @@ import (
 
 	dashboardDomain "brokle/internal/core/domain/dashboard"
 	"brokle/internal/transport/http/middleware"
+	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 	"brokle/pkg/ulid"
 )
@@ -30,7 +31,7 @@ import (
 func (h *Handler) ListDashboards(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
@@ -43,7 +44,7 @@ func (h *Handler) ListDashboards(c *gin.Context) {
 	if limitStr := c.Query("limit"); limitStr != "" {
 		limit, err := strconv.Atoi(limitStr)
 		if err != nil || limit < 0 {
-			response.ValidationError(c, "invalid limit", "limit must be a positive integer")
+			response.Error(c, appErrors.NewValidationError("Invalid limit", "limit must be a positive integer"))
 			return
 		}
 		filter.Limit = limit
@@ -52,7 +53,7 @@ func (h *Handler) ListDashboards(c *gin.Context) {
 	if offsetStr := c.Query("offset"); offsetStr != "" {
 		offset, err := strconv.Atoi(offsetStr)
 		if err != nil || offset < 0 {
-			response.ValidationError(c, "invalid offset", "offset must be a non-negative integer")
+			response.Error(c, appErrors.NewValidationError("Invalid offset", "offset must be a non-negative integer"))
 			return
 		}
 		filter.Offset = offset
@@ -86,18 +87,18 @@ func (h *Handler) ListDashboards(c *gin.Context) {
 func (h *Handler) CreateDashboard(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	var req dashboardDomain.CreateDashboardRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
 	if req.Name == "" {
-		response.ValidationError(c, "name is required", "dashboard name is required")
+		response.Error(c, appErrors.NewValidationError("Name is required", "dashboard name is required"))
 		return
 	}
 
@@ -134,13 +135,13 @@ func (h *Handler) CreateDashboard(c *gin.Context) {
 func (h *Handler) GetDashboard(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	dashboardID, err := ulid.Parse(c.Param("dashboardId"))
 	if err != nil {
-		response.ValidationError(c, "invalid dashboard_id", "dashboard_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid dashboard ID", "dashboardId must be a valid ULID"))
 		return
 	}
 
@@ -174,19 +175,19 @@ func (h *Handler) GetDashboard(c *gin.Context) {
 func (h *Handler) UpdateDashboard(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	dashboardID, err := ulid.Parse(c.Param("dashboardId"))
 	if err != nil {
-		response.ValidationError(c, "invalid dashboard_id", "dashboard_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid dashboard ID", "dashboardId must be a valid ULID"))
 		return
 	}
 
 	var req dashboardDomain.UpdateDashboardRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -218,13 +219,13 @@ func (h *Handler) UpdateDashboard(c *gin.Context) {
 func (h *Handler) DeleteDashboard(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	dashboardID, err := ulid.Parse(c.Param("dashboardId"))
 	if err != nil {
-		response.ValidationError(c, "invalid dashboard_id", "dashboard_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid dashboard ID", "dashboardId must be a valid ULID"))
 		return
 	}
 
@@ -257,24 +258,24 @@ func (h *Handler) DeleteDashboard(c *gin.Context) {
 func (h *Handler) DuplicateDashboard(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	dashboardID, err := ulid.Parse(c.Param("dashboardId"))
 	if err != nil {
-		response.ValidationError(c, "invalid dashboard_id", "dashboard_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid dashboard ID", "dashboardId must be a valid ULID"))
 		return
 	}
 
 	var req dashboardDomain.DuplicateDashboardRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
 	if req.Name == "" {
-		response.ValidationError(c, "name is required", "dashboard name is required")
+		response.Error(c, appErrors.NewValidationError("Name is required", "dashboard name is required"))
 		return
 	}
 
@@ -306,13 +307,13 @@ func (h *Handler) DuplicateDashboard(c *gin.Context) {
 func (h *Handler) LockDashboard(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	dashboardID, err := ulid.Parse(c.Param("dashboardId"))
 	if err != nil {
-		response.ValidationError(c, "invalid dashboard_id", "dashboard_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid dashboard ID", "dashboardId must be a valid ULID"))
 		return
 	}
 
@@ -344,13 +345,13 @@ func (h *Handler) LockDashboard(c *gin.Context) {
 func (h *Handler) UnlockDashboard(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	dashboardID, err := ulid.Parse(c.Param("dashboardId"))
 	if err != nil {
-		response.ValidationError(c, "invalid dashboard_id", "dashboard_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid dashboard ID", "dashboardId must be a valid ULID"))
 		return
 	}
 
@@ -382,13 +383,13 @@ func (h *Handler) UnlockDashboard(c *gin.Context) {
 func (h *Handler) ExportDashboard(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	dashboardID, err := ulid.Parse(c.Param("dashboardId"))
 	if err != nil {
-		response.ValidationError(c, "invalid dashboard_id", "dashboard_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid dashboard ID", "dashboardId must be a valid ULID"))
 		return
 	}
 
@@ -420,13 +421,13 @@ func (h *Handler) ExportDashboard(c *gin.Context) {
 func (h *Handler) ImportDashboard(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	var req dashboardDomain.DashboardImportRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 

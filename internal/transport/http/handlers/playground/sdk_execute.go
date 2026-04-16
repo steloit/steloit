@@ -8,6 +8,7 @@ import (
 	playgroundDomain "brokle/internal/core/domain/playground"
 	prompt "brokle/internal/core/domain/prompt"
 	"brokle/internal/transport/http/middleware"
+	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 )
 
@@ -60,7 +61,7 @@ func (h *SDKPlaygroundHandler) Execute(c *gin.Context) {
 
 	var req SDKExecuteRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 

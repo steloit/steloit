@@ -60,7 +60,7 @@ func (h *SDKScoreHandler) Create(c *gin.Context) {
 
 	var req CreateScoreRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -114,12 +114,12 @@ func (h *SDKScoreHandler) CreateBatch(c *gin.Context) {
 
 	var req BatchScoreRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
 	if len(req.Scores) == 0 {
-		response.ValidationError(c, "Invalid request body", "scores array cannot be empty")
+		response.Error(c, appErrors.NewValidationError("Invalid request body", "scores array cannot be empty"))
 		return
 	}
 

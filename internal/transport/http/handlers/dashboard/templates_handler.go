@@ -8,6 +8,7 @@ import (
 	"brokle/internal/config"
 	dashboardDomain "brokle/internal/core/domain/dashboard"
 	"brokle/internal/transport/http/middleware"
+	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 	"brokle/pkg/ulid"
 )
@@ -70,7 +71,7 @@ func (h *TemplateHandler) ListTemplates(c *gin.Context) {
 func (h *TemplateHandler) GetTemplate(c *gin.Context) {
 	templateID, err := ulid.Parse(c.Param("templateId"))
 	if err != nil {
-		response.ValidationError(c, "invalid template_id", "template_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid template ID", "templateId must be a valid ULID"))
 		return
 	}
 
@@ -102,13 +103,13 @@ func (h *TemplateHandler) GetTemplate(c *gin.Context) {
 func (h *TemplateHandler) CreateFromTemplate(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	var req dashboardDomain.CreateFromTemplateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 

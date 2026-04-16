@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"brokle/internal/core/domain/observability"
+	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 )
 
@@ -34,7 +35,7 @@ import (
 func (h *Handler) ListSessions(c *gin.Context) {
 	projectID := c.Param("projectId")
 	if projectID == "" {
-		response.ValidationError(c, "project_id is required", "projectId path parameter is required")
+		response.Error(c, appErrors.NewValidationError("Missing project ID", "projectId is required"))
 		return
 	}
 
@@ -56,7 +57,7 @@ func (h *Handler) ListSessions(c *gin.Context) {
 	if startTimeStr := c.Query("start_time"); startTimeStr != "" {
 		startTimeInt, err := strconv.ParseInt(startTimeStr, 10, 64)
 		if err != nil {
-			response.ValidationError(c, "invalid start_time", "start_time must be a Unix timestamp")
+			response.Error(c, appErrors.NewValidationError("Invalid start_time", "start_time must be a Unix timestamp"))
 			return
 		}
 		startTime := time.Unix(startTimeInt, 0)
@@ -66,7 +67,7 @@ func (h *Handler) ListSessions(c *gin.Context) {
 	if endTimeStr := c.Query("end_time"); endTimeStr != "" {
 		endTimeInt, err := strconv.ParseInt(endTimeStr, 10, 64)
 		if err != nil {
-			response.ValidationError(c, "invalid end_time", "end_time must be a Unix timestamp")
+			response.Error(c, appErrors.NewValidationError("Invalid end_time", "end_time must be a Unix timestamp"))
 			return
 		}
 		endTime := time.Unix(endTimeInt, 0)

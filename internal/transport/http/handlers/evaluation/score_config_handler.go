@@ -43,13 +43,13 @@ func NewScoreConfigHandler(
 func (h *ScoreConfigHandler) Create(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	var req CreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -86,7 +86,7 @@ func (h *ScoreConfigHandler) Create(c *gin.Context) {
 func (h *ScoreConfigHandler) List(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
@@ -121,13 +121,13 @@ func (h *ScoreConfigHandler) List(c *gin.Context) {
 func (h *ScoreConfigHandler) Get(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	configID, err := ulid.Parse(c.Param("configId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("configId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid score config ID", "configId must be a valid ULID"))
 		return
 	}
 
@@ -157,19 +157,19 @@ func (h *ScoreConfigHandler) Get(c *gin.Context) {
 func (h *ScoreConfigHandler) Update(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	configID, err := ulid.Parse(c.Param("configId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("configId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid score config ID", "configId must be a valid ULID"))
 		return
 	}
 
 	var req UpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -212,13 +212,13 @@ func (h *ScoreConfigHandler) Update(c *gin.Context) {
 func (h *ScoreConfigHandler) Delete(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	configID, err := ulid.Parse(c.Param("configId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("configId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid score config ID", "configId must be a valid ULID"))
 		return
 	}
 

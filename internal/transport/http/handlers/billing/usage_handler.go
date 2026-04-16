@@ -59,9 +59,8 @@ type UsageTimeSeriesRequest struct {
 // @Security BearerAuth
 // @Router /api/v1/organizations/{orgId}/usage/overview [get]
 func (h *UsageHandler) GetUsageOverview(c *gin.Context) {
-	orgID, err := h.parseOrgID(c)
-	if err != nil {
-		response.Error(c, err)
+	orgID, ok := h.parseOrgID(c)
+	if !ok {
 		return
 	}
 
@@ -97,9 +96,8 @@ func (h *UsageHandler) GetUsageOverview(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/organizations/{orgId}/usage/timeseries [get]
 func (h *UsageHandler) GetUsageTimeSeries(c *gin.Context) {
-	orgID, err := h.parseOrgID(c)
-	if err != nil {
-		response.Error(c, err)
+	orgID, ok := h.parseOrgID(c)
+	if !ok {
 		return
 	}
 
@@ -155,9 +153,8 @@ func (h *UsageHandler) GetUsageTimeSeries(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/organizations/{orgId}/usage/by-project [get]
 func (h *UsageHandler) GetUsageByProject(c *gin.Context) {
-	orgID, err := h.parseOrgID(c)
-	if err != nil {
-		response.Error(c, err)
+	orgID, ok := h.parseOrgID(c)
+	if !ok {
 		return
 	}
 
@@ -215,9 +212,8 @@ type ExportUsageRequest struct {
 // @Security BearerAuth
 // @Router /api/v1/organizations/{orgId}/usage/export [get]
 func (h *UsageHandler) ExportUsage(c *gin.Context) {
-	orgID, err := h.parseOrgID(c)
-	if err != nil {
-		response.Error(c, err)
+	orgID, ok := h.parseOrgID(c)
+	if !ok {
 		return
 	}
 
@@ -352,18 +348,13 @@ func formatFloat64(f float64, decimals int) string {
 	return strconv.FormatFloat(f, 'f', decimals, 64)
 }
 
-func (h *UsageHandler) parseOrgID(c *gin.Context) (ulid.ULID, error) {
-	orgIDStr := c.Param("orgId")
-	if orgIDStr == "" {
-		return ulid.ULID{}, appErrors.NewValidationError("organization_id is required", "orgId path parameter is missing")
-	}
-
-	orgID, err := ulid.Parse(orgIDStr)
+func (h *UsageHandler) parseOrgID(c *gin.Context) (ulid.ULID, bool) {
+	orgID, err := ulid.Parse(c.Param("orgId"))
 	if err != nil {
-		return ulid.ULID{}, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid organization ID", "orgId must be a valid ULID"))
+		return ulid.ULID{}, false
 	}
-
-	return orgID, nil
+	return orgID, true
 }
 
 func (h *UsageHandler) verifyOrgAccess(c *gin.Context, orgID ulid.ULID) error {

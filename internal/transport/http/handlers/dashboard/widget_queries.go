@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	dashboardDomain "brokle/internal/core/domain/dashboard"
+	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 	"brokle/pkg/ulid"
 )
@@ -62,19 +63,19 @@ type QueryMetadata struct {
 func (h *Handler) ExecuteDashboardQueries(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	dashboardID, err := ulid.Parse(c.Param("dashboardId"))
 	if err != nil {
-		response.ValidationError(c, "invalid dashboard_id", "dashboard_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid dashboard ID", "dashboardId must be a valid ULID"))
 		return
 	}
 
 	var req ExecuteQueryRequest
 	if err := c.ShouldBindJSON(&req); err != nil && err.Error() != "EOF" {
-		response.ValidationError(c, "invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -123,25 +124,25 @@ func (h *Handler) ExecuteDashboardQueries(c *gin.Context) {
 func (h *Handler) ExecuteWidgetQuery(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	dashboardID, err := ulid.Parse(c.Param("dashboardId"))
 	if err != nil {
-		response.ValidationError(c, "invalid dashboard_id", "dashboard_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid dashboard ID", "dashboardId must be a valid ULID"))
 		return
 	}
 
 	widgetID := c.Param("widgetId")
 	if widgetID == "" {
-		response.ValidationError(c, "invalid widget_id", "widget_id is required")
+		response.Error(c, appErrors.NewValidationError("Invalid widget ID", "widget_id is required"))
 		return
 	}
 
 	var req ExecuteQueryRequest
 	if err := c.ShouldBindJSON(&req); err != nil && err.Error() != "EOF" {
-		response.ValidationError(c, "invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -214,19 +215,19 @@ func (h *Handler) GetViewDefinitions(c *gin.Context) {
 func (h *Handler) GetVariableOptions(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	view := c.Query("view")
 	if view == "" {
-		response.ValidationError(c, "view required", "view query parameter is required")
+		response.Error(c, appErrors.NewValidationError("View required", "view query parameter is required"))
 		return
 	}
 
 	dimension := c.Query("dimension")
 	if dimension == "" {
-		response.ValidationError(c, "dimension required", "dimension query parameter is required")
+		response.Error(c, appErrors.NewValidationError("Dimension required", "dimension query parameter is required"))
 		return
 	}
 

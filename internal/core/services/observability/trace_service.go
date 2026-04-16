@@ -361,37 +361,39 @@ func (s *TraceService) DeleteTrace(ctx context.Context, traceID string) error {
 
 // UpdateTraceTags updates the tags for a trace.
 // Validates that the trace exists and belongs to the specified project before updating.
-func (s *TraceService) UpdateTraceTags(ctx context.Context, projectID, traceID string, tags []string) error {
+func (s *TraceService) UpdateTraceTags(ctx context.Context, projectID, traceID string, tags []string) ([]string, error) {
 	if projectID == "" {
-		return appErrors.NewValidationError("project_id is required", "project_id cannot be empty")
+		return nil, appErrors.NewValidationError("project_id is required", "project_id cannot be empty")
 	}
 	if len(traceID) != 32 {
-		return appErrors.NewValidationError("invalid trace_id", "OTEL trace_id must be 32 hex characters")
+		return nil, appErrors.NewValidationError("invalid trace_id", "OTEL trace_id must be 32 hex characters")
 	}
 
 	if len(tags) > observability.MaxTagsPerTrace {
-		return appErrors.NewValidationError("too many tags", fmt.Sprintf("maximum %d tags allowed", observability.MaxTagsPerTrace))
+		return nil, appErrors.NewValidationError("too many tags", fmt.Sprintf("maximum %d tags allowed", observability.MaxTagsPerTrace))
 	}
 
 	// Verify trace exists and belongs to project
 	rootSpan, err := s.traceRepo.GetRootSpanByProject(ctx, traceID, projectID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return appErrors.NewNotFoundError("trace " + traceID)
+			return nil, appErrors.NewNotFoundError("trace " + traceID)
 		}
-		return appErrors.NewInternalError("failed to verify trace ownership", err)
+		return nil, appErrors.NewInternalError("failed to verify trace ownership", err)
 	}
 	if rootSpan == nil || rootSpan.ProjectID != projectID {
-		return appErrors.NewNotFoundError("trace " + traceID)
+		return nil, appErrors.NewNotFoundError("trace " + traceID)
 	}
 
-	if err := s.traceRepo.UpdateTraceTags(ctx, projectID, traceID, tags); err != nil {
+	normalizedTags := observability.NormalizeTags(tags)
+
+	if err := s.traceRepo.UpdateTraceTags(ctx, projectID, traceID, normalizedTags); err != nil {
 		s.logger.Error("failed to update trace tags", "trace_id", traceID, "error", err)
-		return appErrors.NewInternalError("failed to update tags", err)
+		return nil, appErrors.NewInternalError("failed to update tags", err)
 	}
 
-	s.logger.Info("trace tags updated", "trace_id", traceID, "project_id", projectID, "tag_count", len(tags))
-	return nil
+	s.logger.Info("trace tags updated", "trace_id", traceID, "project_id", projectID, "tag_count", len(normalizedTags))
+	return normalizedTags, nil
 }
 
 // UpdateTraceBookmark updates the bookmark status for a trace.

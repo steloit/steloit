@@ -48,13 +48,13 @@ func NewExperimentHandler(
 func (h *ExperimentHandler) Create(c *gin.Context) {
 	projectID, err := extractProjectID(c)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, err)
 		return
 	}
 
 	var req evaluationDomain.CreateExperimentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -93,7 +93,7 @@ func (h *ExperimentHandler) Create(c *gin.Context) {
 func (h *ExperimentHandler) List(c *gin.Context) {
 	projectID, err := extractProjectID(c)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, err)
 		return
 	}
 
@@ -194,13 +194,13 @@ func (h *ExperimentHandler) List(c *gin.Context) {
 func (h *ExperimentHandler) Get(c *gin.Context) {
 	projectID, err := extractProjectID(c)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, err)
 		return
 	}
 
 	experimentID, err := ulid.Parse(c.Param("experimentId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("experimentId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid experiment ID", "experimentId must be a valid ULID"))
 		return
 	}
 
@@ -231,19 +231,19 @@ func (h *ExperimentHandler) Get(c *gin.Context) {
 func (h *ExperimentHandler) Update(c *gin.Context) {
 	projectID, err := extractProjectID(c)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, err)
 		return
 	}
 
 	experimentID, err := ulid.Parse(c.Param("experimentId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("experimentId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid experiment ID", "experimentId must be a valid ULID"))
 		return
 	}
 
 	var req evaluationDomain.UpdateExperimentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -276,13 +276,13 @@ func (h *ExperimentHandler) Update(c *gin.Context) {
 func (h *ExperimentHandler) Delete(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	experimentID, err := ulid.Parse(c.Param("experimentId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("experimentId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid experiment ID", "experimentId must be a valid ULID"))
 		return
 	}
 
@@ -311,13 +311,13 @@ func (h *ExperimentHandler) Delete(c *gin.Context) {
 func (h *ExperimentHandler) CompareExperiments(c *gin.Context) {
 	projectID, err := extractProjectID(c)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, err)
 		return
 	}
 
 	var req CompareExperimentsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -407,19 +407,19 @@ func (h *ExperimentHandler) CompareExperiments(c *gin.Context) {
 func (h *ExperimentHandler) CreateItems(c *gin.Context) {
 	projectID, err := extractProjectID(c)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, err)
 		return
 	}
 
 	experimentID, err := ulid.Parse(c.Param("experimentId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("experimentId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid experiment ID", "experimentId must be a valid ULID"))
 		return
 	}
 
 	var req evaluationDomain.CreateExperimentItemsBatchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -457,13 +457,13 @@ func (h *ExperimentHandler) CreateItems(c *gin.Context) {
 func (h *ExperimentHandler) Rerun(c *gin.Context) {
 	projectID, err := extractProjectID(c)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, err)
 		return
 	}
 
 	experimentID, err := ulid.Parse(c.Param("experimentId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("experimentId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid experiment ID", "experimentId must be a valid ULID"))
 		return
 	}
 
@@ -501,13 +501,13 @@ func (h *ExperimentHandler) Rerun(c *gin.Context) {
 func (h *ExperimentHandler) GetProgress(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	experimentID, err := ulid.Parse(c.Param("experimentId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("experimentId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid experiment ID", "experimentId must be a valid ULID"))
 		return
 	}
 
@@ -534,13 +534,13 @@ func (h *ExperimentHandler) GetProgress(c *gin.Context) {
 func (h *ExperimentHandler) GetMetrics(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	experimentID, err := ulid.Parse(c.Param("experimentId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("experimentId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid experiment ID", "experimentId must be a valid ULID"))
 		return
 	}
 

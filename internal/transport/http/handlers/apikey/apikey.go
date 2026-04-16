@@ -7,6 +7,7 @@ import (
 	"brokle/internal/config"
 	"brokle/internal/core/domain/auth"
 	"brokle/internal/transport/http/middleware"
+	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 	"brokle/pkg/ulid"
 
@@ -85,8 +86,7 @@ func (h *Handler) List(c *gin.Context) {
 	// Get project ID from URL path
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		h.logger.Error("Invalid project ID", "error", err)
-		response.BadRequest(c, "Invalid project ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
@@ -203,16 +203,14 @@ func (h *Handler) Create(c *gin.Context) {
 	// Get project ID from URL path
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		h.logger.Error("Invalid project ID", "error", err)
-		response.BadRequest(c, "Invalid project ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	// Parse request body
 	var req CreateAPIKeyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Error("Invalid create API key request", "error", err)
-		response.BadRequest(c, "Invalid request payload", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -303,16 +301,14 @@ func (h *Handler) Delete(c *gin.Context) {
 	// Get project ID from URL path
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		h.logger.Error("Invalid project ID", "error", err)
-		response.BadRequest(c, "Invalid project ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	// Get API key ID from URL path
 	keyID, err := ulid.Parse(c.Param("keyId"))
 	if err != nil {
-		h.logger.Error("Invalid API key ID", "error", err)
-		response.BadRequest(c, "Invalid API key ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid API key ID", "keyId must be a valid ULID"))
 		return
 	}
 

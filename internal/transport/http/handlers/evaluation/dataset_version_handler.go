@@ -46,21 +46,21 @@ func NewDatasetVersionHandler(
 func (h *DatasetVersionHandler) CreateVersion(c *gin.Context) {
 	projectID, err := extractProjectID(c)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, err)
 		return
 	}
 
 	datasetID, err := ulid.Parse(c.Param("datasetId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("datasetId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid ULID"))
 		return
 	}
 
-	var req evaluationDomain.CreateDatasetVersionRequest
 	// Allow empty body (EOF) for creating a version without description/metadata,
 	// but reject malformed JSON
+	var req evaluationDomain.CreateDatasetVersionRequest
 	if err := c.ShouldBindJSON(&req); err != nil && !errors.Is(err, io.EOF) {
-		response.ValidationError(c, "invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -96,13 +96,13 @@ func (h *DatasetVersionHandler) CreateVersion(c *gin.Context) {
 func (h *DatasetVersionHandler) ListVersions(c *gin.Context) {
 	projectID, err := extractProjectID(c)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, err)
 		return
 	}
 
 	datasetID, err := ulid.Parse(c.Param("datasetId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("datasetId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid ULID"))
 		return
 	}
 
@@ -137,19 +137,19 @@ func (h *DatasetVersionHandler) ListVersions(c *gin.Context) {
 func (h *DatasetVersionHandler) GetVersion(c *gin.Context) {
 	projectID, err := extractProjectID(c)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, err)
 		return
 	}
 
 	datasetID, err := ulid.Parse(c.Param("datasetId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("datasetId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid ULID"))
 		return
 	}
 
 	versionID, err := ulid.Parse(c.Param("versionId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("versionId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid version ID", "versionId must be a valid ULID"))
 		return
 	}
 
@@ -181,19 +181,19 @@ func (h *DatasetVersionHandler) GetVersion(c *gin.Context) {
 func (h *DatasetVersionHandler) GetVersionItems(c *gin.Context) {
 	projectID, err := extractProjectID(c)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, err)
 		return
 	}
 
 	datasetID, err := ulid.Parse(c.Param("datasetId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("datasetId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid ULID"))
 		return
 	}
 
 	versionID, err := ulid.Parse(c.Param("versionId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("versionId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid version ID", "versionId must be a valid ULID"))
 		return
 	}
 
@@ -247,19 +247,19 @@ func (h *DatasetVersionHandler) GetVersionItems(c *gin.Context) {
 func (h *DatasetVersionHandler) PinVersion(c *gin.Context) {
 	projectID, err := extractProjectID(c)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, err)
 		return
 	}
 
 	datasetID, err := ulid.Parse(c.Param("datasetId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("datasetId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid ULID"))
 		return
 	}
 
 	var req evaluationDomain.PinDatasetVersionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -267,7 +267,7 @@ func (h *DatasetVersionHandler) PinVersion(c *gin.Context) {
 	if req.VersionID != nil && *req.VersionID != "" {
 		parsed, err := ulid.Parse(*req.VersionID)
 		if err != nil {
-			response.Error(c, appErrors.NewValidationError("version_id", "must be a valid ULID"))
+			response.Error(c, appErrors.NewValidationError("Invalid version ID", "version_id must be a valid ULID"))
 			return
 		}
 		versionID = &parsed
@@ -307,13 +307,13 @@ func (h *DatasetVersionHandler) PinVersion(c *gin.Context) {
 func (h *DatasetVersionHandler) GetDatasetWithVersionInfo(c *gin.Context) {
 	projectID, err := extractProjectID(c)
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("projectId", "must be a valid ULID"))
+		response.Error(c, err)
 		return
 	}
 
 	datasetID, err := ulid.Parse(c.Param("datasetId"))
 	if err != nil {
-		response.Error(c, appErrors.NewValidationError("datasetId", "must be a valid ULID"))
+		response.Error(c, appErrors.NewValidationError("Invalid dataset ID", "datasetId must be a valid ULID"))
 		return
 	}
 

@@ -139,3 +139,4 @@ func GetEnvironment(c *gin.Context) (string, bool) {
 	env, ok := environment.(string)
 	return env, ok
 }
+

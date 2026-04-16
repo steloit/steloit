@@ -240,18 +240,18 @@ func (s *promptService) GetPromptByID(ctx context.Context, projectID, promptID u
 	return prompt, nil
 }
 
-func (s *promptService) UpdatePrompt(ctx context.Context, projectID, promptID ulid.ULID, req *promptDomain.UpdatePromptRequest) error {
+func (s *promptService) UpdatePrompt(ctx context.Context, projectID, promptID ulid.ULID, req *promptDomain.UpdatePromptRequest) (*promptDomain.Prompt, error) {
 	prompt, err := s.promptRepo.GetByID(ctx, promptID)
 	if err != nil {
 		if promptDomain.IsNotFoundError(err) {
-			return appErrors.NewNotFoundError(fmt.Sprintf("prompt %s", promptID))
+			return nil, appErrors.NewNotFoundError(fmt.Sprintf("prompt %s", promptID))
 		}
-		return appErrors.NewInternalError("failed to get prompt", err)
+		return nil, appErrors.NewInternalError("failed to get prompt", err)
 	}
 
 	// CRITICAL: Validate project ownership
 	if prompt.ProjectID != projectID {
-		return appErrors.NewNotFoundError(fmt.Sprintf("prompt %s", promptID))
+		return nil, appErrors.NewNotFoundError(fmt.Sprintf("prompt %s", promptID))
 	}
 
 	oldName := prompt.Name
@@ -259,7 +259,7 @@ func (s *promptService) UpdatePrompt(ctx context.Context, projectID, promptID ul
 
 	if req.Name != nil {
 		if !namePattern.MatchString(*req.Name) {
-			return appErrors.NewValidationError("name", "must start with letter and contain only alphanumeric, underscore, and hyphen")
+			return nil, appErrors.NewValidationError("name", "must start with letter and contain only alphanumeric, underscore, and hyphen")
 		}
 		if *req.Name != oldName {
 			nameChanged = true
@@ -277,9 +277,9 @@ func (s *promptService) UpdatePrompt(ctx context.Context, projectID, promptID ul
 
 	if err := s.promptRepo.Update(ctx, prompt); err != nil {
 		if isDuplicateKeyError(err) {
-			return appErrors.NewConflictError(fmt.Sprintf("prompt '%s' already exists", *req.Name))
+			return nil, appErrors.NewConflictError(fmt.Sprintf("prompt '%s' already exists", *req.Name))
 		}
-		return appErrors.NewInternalError("failed to update prompt", err)
+		return nil, appErrors.NewInternalError("failed to update prompt", err)
 	}
 
 	if err := s.InvalidateCache(ctx, prompt.ProjectID, oldName); err != nil {
@@ -292,7 +292,7 @@ func (s *promptService) UpdatePrompt(ctx context.Context, projectID, promptID ul
 		}
 	}
 
-	return nil
+	return prompt, nil
 }
 
 func (s *promptService) DeletePrompt(ctx context.Context, projectID, promptID ulid.ULID) error {
@@ -784,30 +784,30 @@ func (s *promptService) GetVersionDiff(ctx context.Context, projectID, promptID 
 	}, nil
 }
 
-func (s *promptService) SetLabels(ctx context.Context, projectID, promptID, versionID ulid.ULID, userID *ulid.ULID, labels []string) error {
+func (s *promptService) SetLabels(ctx context.Context, projectID, promptID, versionID ulid.ULID, userID *ulid.ULID, labels []string) ([]string, error) {
 	prompt, err := s.promptRepo.GetByID(ctx, promptID)
 	if err != nil {
-		return appErrors.NewNotFoundError(fmt.Sprintf("prompt %s", promptID))
+		return nil, appErrors.NewNotFoundError(fmt.Sprintf("prompt %s", promptID))
 	}
 
 	// CRITICAL: Validate project ownership
 	if prompt.ProjectID != projectID {
-		return appErrors.NewNotFoundError(fmt.Sprintf("prompt %s", promptID))
+		return nil, appErrors.NewNotFoundError(fmt.Sprintf("prompt %s", promptID))
 	}
 
 	version, err := s.versionRepo.GetByID(ctx, versionID)
 	if err != nil {
-		return appErrors.NewNotFoundError(fmt.Sprintf("version %s", versionID))
+		return nil, appErrors.NewNotFoundError(fmt.Sprintf("version %s", versionID))
 	}
 
 	// CRITICAL: Validate version belongs to prompt
 	if version.PromptID != promptID {
-		return appErrors.NewValidationError("version_id", "version does not belong to this prompt")
+		return nil, appErrors.NewValidationError("version_id", "version does not belong to this prompt")
 	}
 
 	currentLabels, err := s.labelRepo.ListByVersion(ctx, versionID)
 	if err != nil {
-		return appErrors.NewInternalError("failed to get current labels", err)
+		return nil, appErrors.NewInternalError("failed to get current labels", err)
 	}
 
 	newLabelSet := make(map[string]bool)
@@ -824,7 +824,7 @@ func (s *promptService) SetLabels(ctx context.Context, projectID, promptID, vers
 		}
 		if !newLabelSet[currentLabel.Name] {
 			if err := s.labelRepo.RemoveLabel(ctx, promptID, currentLabel.Name); err != nil {
-				return appErrors.NewInternalError(fmt.Sprintf("failed to remove label %s", currentLabel.Name), err)
+				return nil, appErrors.NewInternalError(fmt.Sprintf("failed to remove label %s", currentLabel.Name), err)
 			}
 		}
 	}
@@ -834,20 +834,20 @@ func (s *promptService) SetLabels(ctx context.Context, projectID, promptID, vers
 			continue
 		}
 		if !labelPattern.MatchString(labelName) {
-			return appErrors.NewValidationError("labels", fmt.Sprintf("invalid label name: %s", labelName))
+			return nil, appErrors.NewValidationError("labels", fmt.Sprintf("invalid label name: %s", labelName))
 		}
 
 		// CRITICAL: Check if label is protected (fail-closed for security)
 		isProtected, err := s.protectedLabelRepo.IsProtected(ctx, prompt.ProjectID, labelName)
 		if err != nil {
-			return appErrors.NewInternalError("failed to check label protection", err)
+			return nil, appErrors.NewInternalError("failed to check label protection", err)
 		}
 		if isProtected {
-			return appErrors.NewForbiddenError(fmt.Sprintf("label '%s' is protected and requires admin permissions to modify", labelName))
+			return nil, appErrors.NewForbiddenError(fmt.Sprintf("label '%s' is protected and requires admin permissions to modify", labelName))
 		}
 
 		if err := s.labelRepo.SetLabel(ctx, promptID, versionID, labelName, userID); err != nil {
-			return appErrors.NewInternalError(fmt.Sprintf("failed to set label %s", labelName), err)
+			return nil, appErrors.NewInternalError(fmt.Sprintf("failed to set label %s", labelName), err)
 		}
 	}
 
@@ -855,7 +855,16 @@ func (s *promptService) SetLabels(ctx context.Context, projectID, promptID, vers
 		s.logger.Warn("failed to invalidate cache", "project_id", prompt.ProjectID, "name", prompt.Name, "error", err)
 	}
 
-	return nil
+	// Return the final label state for this version
+	finalLabels, err := s.labelRepo.ListByVersion(ctx, versionID)
+	if err != nil {
+		return nil, appErrors.NewInternalError("failed to get final labels", err)
+	}
+	labelNames := make([]string, len(finalLabels))
+	for i, l := range finalLabels {
+		labelNames[i] = l.Name
+	}
+	return labelNames, nil
 }
 
 func (s *promptService) RemoveLabel(ctx context.Context, projectID, promptID ulid.ULID, userID *ulid.ULID, labelName string) error {
@@ -931,18 +940,18 @@ func (s *promptService) GetProtectedLabels(ctx context.Context, projectID ulid.U
 	return result, nil
 }
 
-func (s *promptService) SetProtectedLabels(ctx context.Context, projectID ulid.ULID, userID *ulid.ULID, labels []string) error {
+func (s *promptService) SetProtectedLabels(ctx context.Context, projectID ulid.ULID, userID *ulid.ULID, labels []string) ([]string, error) {
 	for _, labelName := range labels {
 		if !labelPattern.MatchString(labelName) {
-			return appErrors.NewValidationError("protected_labels", fmt.Sprintf("invalid label name: %s", labelName))
+			return nil, appErrors.NewValidationError("protected_labels", fmt.Sprintf("invalid label name: %s", labelName))
 		}
 	}
 
 	if err := s.protectedLabelRepo.SetProtectedLabels(ctx, projectID, labels, userID); err != nil {
-		return appErrors.NewInternalError("failed to set protected labels", err)
+		return nil, appErrors.NewInternalError("failed to set protected labels", err)
 	}
 
-	return nil
+	return labels, nil
 }
 
 func (s *promptService) IsLabelProtected(ctx context.Context, projectID ulid.ULID, labelName string) (bool, error) {

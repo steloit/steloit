@@ -15,6 +15,7 @@ import (
 	"brokle/internal/core/domain/user"
 	authService "brokle/internal/core/services/auth"
 	"brokle/internal/core/services/registration"
+	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 	"brokle/pkg/ulid"
 )
@@ -77,8 +78,7 @@ type LoginRequest struct {
 func (h *Handler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Error("Invalid login request", "error", err)
-		response.BadRequest(c, "Invalid request payload", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -163,15 +163,14 @@ type RegisterRequest struct {
 func (h *Handler) Signup(c *gin.Context) {
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Error("Invalid registration request", "error", err)
-		response.BadRequest(c, "Invalid request payload", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
 	// Validation: must have either org name or invitation token
 	if req.InvitationToken == nil && req.OrganizationName == nil {
 		h.logger.Error("Registration requires either organization_name or invitation_token")
-		response.BadRequest(c, "organization_name required for fresh signups", "")
+		response.Error(c, appErrors.NewValidationError("organization_name required for fresh signups", ""))
 		return
 	}
 
@@ -266,8 +265,7 @@ type CompleteOAuthSignupRequest struct {
 func (h *Handler) CompleteOAuthSignup(c *gin.Context) {
 	var req CompleteOAuthSignupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Error("Invalid OAuth signup completion request", "error", err)
-		response.BadRequest(c, "Invalid request payload", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -283,34 +281,34 @@ func (h *Handler) CompleteOAuthSignup(c *gin.Context) {
 	session, ok := sessionInterface.(*authService.OAuthSession)
 	if !ok {
 		h.logger.Error("Invalid OAuth session type")
-		response.BadRequest(c, "Invalid session data", "")
+		response.Error(c, appErrors.NewValidationError("Invalid session data", ""))
 		return
 	}
 
 	// Validate required fields
 	if session.Email == "" {
 		h.logger.Error("Missing email in OAuth session")
-		response.BadRequest(c, "Invalid session: missing email", "")
+		response.Error(c, appErrors.NewValidationError("Invalid session: missing email", ""))
 		return
 	}
 	if session.FirstName == "" {
 		h.logger.Error("Missing first name in OAuth session")
-		response.BadRequest(c, "Invalid session: missing first name", "")
+		response.Error(c, appErrors.NewValidationError("Invalid session: missing first name", ""))
 		return
 	}
 	if session.LastName == "" {
 		h.logger.Error("Missing last name in OAuth session")
-		response.BadRequest(c, "Invalid session: missing last name", "")
+		response.Error(c, appErrors.NewValidationError("Invalid session: missing last name", ""))
 		return
 	}
 	if session.Provider == "" {
 		h.logger.Error("Missing provider in OAuth session")
-		response.BadRequest(c, "Invalid session: missing provider", "")
+		response.Error(c, appErrors.NewValidationError("Invalid session: missing provider", ""))
 		return
 	}
 	if session.ProviderID == "" {
 		h.logger.Error("Missing provider ID in OAuth session")
-		response.BadRequest(c, "Invalid session: missing provider ID", "")
+		response.Error(c, appErrors.NewValidationError("Invalid session: missing provider ID", ""))
 		return
 	}
 
@@ -399,14 +397,14 @@ func (h *Handler) ExchangeLoginSession(c *gin.Context) {
 	accessToken, ok := sessionData["access_token"].(string)
 	if !ok || accessToken == "" {
 		h.logger.Error("Missing access_token in login session")
-		response.BadRequest(c, "Invalid session data: missing access token", "")
+		response.Error(c, appErrors.NewValidationError("Invalid session data: missing access token", ""))
 		return
 	}
 
 	refreshToken, ok := sessionData["refresh_token"].(string)
 	if !ok || refreshToken == "" {
 		h.logger.Error("Missing refresh_token in login session")
-		response.BadRequest(c, "Invalid session data: missing refresh token", "")
+		response.Error(c, appErrors.NewValidationError("Invalid session data: missing refresh token", ""))
 		return
 	}
 
@@ -414,7 +412,7 @@ func (h *Handler) ExchangeLoginSession(c *gin.Context) {
 	expiresInFloat, ok := sessionData["expires_in"].(float64)
 	if !ok {
 		h.logger.Error("Missing or invalid expires_in in login session")
-		response.BadRequest(c, "Invalid session data: missing expiration", "")
+		response.Error(c, appErrors.NewValidationError("Invalid session data: missing expiration", ""))
 		return
 	}
 	expiresIn := int64(expiresInFloat)
@@ -423,7 +421,7 @@ func (h *Handler) ExchangeLoginSession(c *gin.Context) {
 	userIDStr, ok := sessionData["user_id"].(string)
 	if !ok || userIDStr == "" {
 		h.logger.Error("Missing user_id in login session")
-		response.BadRequest(c, "Invalid session data: missing user ID", "")
+		response.Error(c, appErrors.NewValidationError("Invalid session data: missing user ID", ""))
 		return
 	}
 
@@ -431,7 +429,7 @@ func (h *Handler) ExchangeLoginSession(c *gin.Context) {
 	userID, err := ulid.Parse(userIDStr)
 	if err != nil {
 		h.logger.Error("Invalid user ID format in session", "error", err)
-		response.BadRequest(c, "Invalid session data: malformed user ID", "")
+		response.Error(c, appErrors.NewValidationError("Invalid session data: malformed user ID", ""))
 		return
 	}
 
@@ -629,8 +627,7 @@ type ForgotPasswordRequest struct {
 func (h *Handler) ForgotPassword(c *gin.Context) {
 	var req ForgotPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Error("Invalid forgot password request", "error", err)
-		response.BadRequest(c, "Invalid request payload", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -668,8 +665,7 @@ type ResetPasswordRequest struct {
 func (h *Handler) ResetPassword(c *gin.Context) {
 	var req ResetPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Error("Invalid reset password request", "error", err)
-		response.BadRequest(c, "Invalid request payload", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -677,7 +673,7 @@ func (h *Handler) ResetPassword(c *gin.Context) {
 	err := h.authService.ConfirmPasswordReset(c.Request.Context(), req.Token, req.NewPassword)
 	if err != nil {
 		h.logger.Error("Password reset failed", "error", err)
-		response.BadRequest(c, "Password reset failed", err.Error())
+		response.Error(c, appErrors.NewValidationError("Password reset failed", err.Error()))
 		return
 	}
 
@@ -784,8 +780,7 @@ type UpdateProfileRequest struct {
 func (h *Handler) UpdateProfile(c *gin.Context) {
 	var req UpdateProfileRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Error("Invalid update profile request", "error", err)
-		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid_request", "Invalid request payload", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -811,17 +806,15 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 	}
 
 	// Update profile
-	_, err := h.userService.UpdateUser(c.Request.Context(), userID, updateReq)
+	updatedUser, err := h.userService.UpdateUser(c.Request.Context(), userID, updateReq)
 	if err != nil {
 		h.logger.Error("Profile update failed", "error", err, "user_id", userID)
-		response.ErrorWithStatus(c, http.StatusInternalServerError, "profile_update_failed", "Profile update failed", err.Error())
+		response.Error(c, err)
 		return
 	}
 
 	h.logger.Info("Profile updated successfully", "user_id", userID)
-	response.Success(c, gin.H{
-		"message": "Profile updated successfully",
-	})
+	response.Success(c, updatedUser)
 }
 
 // ChangePasswordRequest represents the change password request payload
@@ -849,8 +842,7 @@ type ChangePasswordRequest struct {
 func (h *Handler) ChangePassword(c *gin.Context) {
 	var req ChangePasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Error("Invalid change password request", "error", err)
-		response.ErrorWithStatus(c, http.StatusBadRequest, "invalid_request", "Invalid request payload", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -937,7 +929,7 @@ func (h *Handler) ValidateAPIKeyHandler(c *gin.Context) {
 
 	if apiKey == "" {
 		h.logger.Warn("API key validation request missing API key")
-		response.BadRequest(c, "Missing API key", "API key must be provided via X-API-Key header or Authorization Bearer token")
+		response.Error(c, appErrors.NewValidationError("Missing API key", "API key must be provided via X-API-Key header or Authorization Bearer token"))
 		return
 	}
 
@@ -983,7 +975,7 @@ func (h *Handler) ListSessions(c *gin.Context) {
 	var req ListSessionsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		h.logger.Error("Invalid list sessions request", "error", err)
-		response.BadRequest(c, "Invalid request parameters", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request parameters", err.Error()))
 		return
 	}
 
@@ -1085,7 +1077,7 @@ func (h *Handler) GetSession(c *gin.Context) {
 	var req GetSessionRequest
 	if err := c.ShouldBindUri(&req); err != nil {
 		h.logger.Error("Invalid get session request", "error", err)
-		response.BadRequest(c, "Invalid session ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid session ID", err.Error()))
 		return
 	}
 
@@ -1152,7 +1144,7 @@ func (h *Handler) RevokeSession(c *gin.Context) {
 	var req RevokeSessionRequest
 	if err := c.ShouldBindUri(&req); err != nil {
 		h.logger.Error("Invalid revoke session request", "error", err)
-		response.BadRequest(c, "Invalid session ID", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid session ID", err.Error()))
 		return
 	}
 

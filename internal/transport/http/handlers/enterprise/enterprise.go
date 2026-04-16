@@ -14,6 +14,7 @@ import (
 	"brokle/internal/ee/rbac"
 	"brokle/internal/ee/sso"
 	"brokle/internal/middleware"
+	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 )
 
@@ -192,13 +193,14 @@ func (h *Handler) GetSSOProviders(c *gin.Context) {
 }
 
 func (h *Handler) ConfigureSSO(c *gin.Context) {
-	var req struct {
+	type configureSSORequest struct {
 		Provider string `json:"provider" binding:"required"`
 		Config   string `json:"config" binding:"required"`
 	}
 
+	var req configureSSORequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -232,7 +234,7 @@ func (h *Handler) GetSSOLoginURL(c *gin.Context) {
 func (h *Handler) HandleSSOCallback(c *gin.Context) {
 	assertion := c.PostForm("SAMLResponse")
 	if assertion == "" {
-		response.ValidationError(c, "Missing SAML assertion", "")
+		response.Error(c, appErrors.NewValidationError("Missing SAML assertion", ""))
 		return
 	}
 
@@ -267,12 +269,11 @@ func (h *Handler) ListRoles(c *gin.Context) {
 func (h *Handler) CreateRole(c *gin.Context) {
 	var role rbac.Role
 	if err := c.ShouldBindJSON(&role); err != nil {
-		response.ValidationError(c, "Invalid request", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
-	err := h.rbacService.CreateRole(c.Request.Context(), &role)
-	if err != nil {
+	if err := h.rbacService.CreateRole(c.Request.Context(), &role); err != nil {
 		if strings.Contains(err.Error(), "Enterprise license") {
 			response.PaymentRequired(c, err.Error())
 			return
@@ -289,7 +290,7 @@ func (h *Handler) UpdateRole(c *gin.Context) {
 
 	var role rbac.Role
 	if err := c.ShouldBindJSON(&role); err != nil {
-		response.ValidationError(c, "Invalid request", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -319,7 +320,7 @@ func (h *Handler) DeleteRole(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, gin.H{"message": "Role deleted successfully"})
+	response.NoContent(c)
 }
 
 func (h *Handler) AssignRole(c *gin.Context) {
@@ -369,13 +370,12 @@ func (h *Handler) GetUserPermissions(c *gin.Context) {
 func (h *Handler) ValidateCompliance(c *gin.Context) {
 	var data interface{}
 	if err := c.ShouldBindJSON(&data); err != nil {
-		response.ValidationError(c, "Invalid request", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
-	err := h.complianceService.ValidateCompliance(c.Request.Context(), data)
-	if err != nil {
-		response.ValidationError(c, "Compliance validation failed", err.Error())
+	if err := h.complianceService.ValidateCompliance(c.Request.Context(), data); err != nil {
+		response.Error(c, appErrors.NewValidationError("Compliance validation failed", err.Error()))
 		return
 	}
 
@@ -397,7 +397,7 @@ func (h *Handler) GenerateAuditReport(c *gin.Context) {
 func (h *Handler) AnonymizePII(c *gin.Context) {
 	var data interface{}
 	if err := c.ShouldBindJSON(&data); err != nil {
-		response.ValidationError(c, "Invalid request", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -496,7 +496,7 @@ func (h *Handler) ListCustomDashboards(c *gin.Context) {
 func (h *Handler) CreateCustomDashboard(c *gin.Context) {
 	var dashboard analytics.Dashboard
 	if err := c.ShouldBindJSON(&dashboard); err != nil {
-		response.ValidationError(c, "Invalid request", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -518,7 +518,7 @@ func (h *Handler) UpdateCustomDashboard(c *gin.Context) {
 
 	var dashboard analytics.Dashboard
 	if err := c.ShouldBindJSON(&dashboard); err != nil {
-		response.ValidationError(c, "Invalid request", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -548,13 +548,13 @@ func (h *Handler) DeleteCustomDashboard(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, gin.H{"message": "Dashboard deleted successfully"})
+	response.NoContent(c)
 }
 
 func (h *Handler) GenerateAdvancedReport(c *gin.Context) {
 	var req analytics.ReportRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "Invalid request", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -576,7 +576,7 @@ func (h *Handler) ExportData(c *gin.Context) {
 
 	var query analytics.ExportQuery
 	if err := c.ShouldBindJSON(&query); err != nil {
-		response.ValidationError(c, "Invalid request", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -603,13 +603,13 @@ func (h *Handler) ExportData(c *gin.Context) {
 func (h *Handler) RunMLModel(c *gin.Context) {
 	modelName := c.Query("model")
 	if modelName == "" {
-		response.ValidationError(c, "Model name is required", "")
+		response.Error(c, appErrors.NewValidationError("Model name is required", ""))
 		return
 	}
 
 	var data interface{}
 	if err := c.ShouldBindJSON(&data); err != nil {
-		response.ValidationError(c, "Invalid request", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 

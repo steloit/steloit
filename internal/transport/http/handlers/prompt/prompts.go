@@ -8,6 +8,7 @@ import (
 
 	promptDomain "brokle/internal/core/domain/prompt"
 	"brokle/internal/transport/http/middleware"
+	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 	"brokle/pkg/ulid"
 )
@@ -33,7 +34,7 @@ import (
 func (h *Handler) ListPrompts(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
@@ -42,7 +43,7 @@ func (h *Handler) ListPrompts(c *gin.Context) {
 	if typeStr := c.Query("type"); typeStr != "" {
 		promptType := promptDomain.PromptType(typeStr)
 		if promptType != promptDomain.PromptTypeText && promptType != promptDomain.PromptTypeChat {
-			response.ValidationError(c, "invalid type", "type must be 'text' or 'chat'")
+			response.Error(c, appErrors.NewValidationError("Invalid type", "type must be 'text' or 'chat'"))
 			return
 		}
 		filters.Type = &promptType
@@ -93,22 +94,22 @@ func (h *Handler) ListPrompts(c *gin.Context) {
 func (h *Handler) CreatePrompt(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	var req promptDomain.CreatePromptRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
 	if req.Name == "" {
-		response.ValidationError(c, "name is required", "prompt name is required")
+		response.Error(c, appErrors.NewValidationError("Missing name", "prompt name is required"))
 		return
 	}
 	if req.Template == nil {
-		response.ValidationError(c, "template is required", "prompt template is required")
+		response.Error(c, appErrors.NewValidationError("Missing template", "prompt template is required"))
 		return
 	}
 
@@ -146,13 +147,13 @@ func (h *Handler) CreatePrompt(c *gin.Context) {
 func (h *Handler) GetPrompt(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	promptID, err := ulid.Parse(c.Param("promptId"))
 	if err != nil {
-		response.ValidationError(c, "invalid prompt_id", "prompt_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid prompt ID", "promptId must be a valid ULID"))
 		return
 	}
 
@@ -193,29 +194,30 @@ func (h *Handler) GetPrompt(c *gin.Context) {
 func (h *Handler) UpdatePrompt(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	promptID, err := ulid.Parse(c.Param("promptId"))
 	if err != nil {
-		response.ValidationError(c, "invalid prompt_id", "prompt_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid prompt ID", "promptId must be a valid ULID"))
 		return
 	}
 
 	var req promptDomain.UpdatePromptRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
-	if err := h.promptService.UpdatePrompt(c.Request.Context(), projectID, promptID, &req); err != nil {
+	prompt, err := h.promptService.UpdatePrompt(c.Request.Context(), projectID, promptID, &req)
+	if err != nil {
 		h.logger.Error("Failed to update prompt", "prompt_id", promptID, "error", err)
 		response.Error(c, err)
 		return
 	}
 
-	response.Success(c, gin.H{"message": "prompt updated successfully"})
+	response.Success(c, prompt)
 }
 
 // DeletePrompt handles DELETE /api/v1/projects/:projectId/prompts/:promptId
@@ -227,7 +229,7 @@ func (h *Handler) UpdatePrompt(c *gin.Context) {
 // @Security BearerAuth
 // @Param projectId path string true "Project ID"
 // @Param promptId path string true "Prompt ID"
-// @Success 200 {object} response.APIResponse "Prompt deleted"
+// @Success 204 "No Content"
 // @Failure 400 {object} response.APIResponse{error=response.APIError} "Invalid parameters"
 // @Failure 401 {object} response.APIResponse{error=response.APIError} "Unauthorized"
 // @Failure 404 {object} response.APIResponse{error=response.APIError} "Prompt not found"
@@ -236,13 +238,13 @@ func (h *Handler) UpdatePrompt(c *gin.Context) {
 func (h *Handler) DeletePrompt(c *gin.Context) {
 	projectID, err := ulid.Parse(c.Param("projectId"))
 	if err != nil {
-		response.ValidationError(c, "invalid project_id", "project_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid ULID"))
 		return
 	}
 
 	promptID, err := ulid.Parse(c.Param("promptId"))
 	if err != nil {
-		response.ValidationError(c, "invalid prompt_id", "prompt_id must be a valid ULID")
+		response.Error(c, appErrors.NewValidationError("Invalid prompt ID", "promptId must be a valid ULID"))
 		return
 	}
 
@@ -252,7 +254,7 @@ func (h *Handler) DeletePrompt(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, gin.H{"message": "prompt deleted successfully"})
+	response.NoContent(c)
 }
 
 // UpsertPrompt handles POST /v1/prompts (SDK)
@@ -277,16 +279,16 @@ func (h *Handler) UpsertPrompt(c *gin.Context) {
 
 	var req promptDomain.UpsertPromptRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "invalid request body", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
 	if req.Name == "" {
-		response.ValidationError(c, "name is required", "prompt name is required")
+		response.Error(c, appErrors.NewValidationError("Missing name", "prompt name is required"))
 		return
 	}
 	if req.Template == nil {
-		response.ValidationError(c, "template is required", "prompt template is required")
+		response.Error(c, appErrors.NewValidationError("Missing template", "prompt template is required"))
 		return
 	}
 
@@ -329,7 +331,7 @@ func (h *Handler) ListPromptsSDK(c *gin.Context) {
 	if typeStr := c.Query("type"); typeStr != "" {
 		promptType := promptDomain.PromptType(typeStr)
 		if promptType != promptDomain.PromptTypeText && promptType != promptDomain.PromptTypeChat {
-			response.ValidationError(c, "invalid type", "type must be 'text' or 'chat'")
+			response.Error(c, appErrors.NewValidationError("Invalid type", "type must be 'text' or 'chat'"))
 			return
 		}
 		filters.Type = &promptType
@@ -388,7 +390,7 @@ func (h *Handler) GetPromptByName(c *gin.Context) {
 
 	name := c.Param("name")
 	if name == "" {
-		response.ValidationError(c, "name is required", "prompt name path parameter is required")
+		response.Error(c, appErrors.NewValidationError("Missing name", "prompt name path parameter is required"))
 		return
 	}
 
@@ -399,7 +401,7 @@ func (h *Handler) GetPromptByName(c *gin.Context) {
 	if versionStr := c.Query("version"); versionStr != "" {
 		version, err := strconv.Atoi(versionStr)
 		if err != nil {
-			response.ValidationError(c, "invalid version", "version must be an integer")
+			response.Error(c, appErrors.NewValidationError("Invalid version", "version must be an integer"))
 			return
 		}
 		opts.Version = &version
@@ -409,7 +411,7 @@ func (h *Handler) GetPromptByName(c *gin.Context) {
 	if cacheTTLStr := c.Query("cache_ttl"); cacheTTLStr != "" {
 		cacheTTL, err := strconv.Atoi(cacheTTLStr)
 		if err != nil {
-			response.ValidationError(c, "invalid cache_ttl", "cache_ttl must be an integer")
+			response.Error(c, appErrors.NewValidationError("Invalid cache TTL", "cache_ttl must be an integer"))
 			return
 		}
 		opts.CacheTTL = &cacheTTL

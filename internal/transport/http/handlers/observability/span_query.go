@@ -9,6 +9,7 @@ import (
 	"brokle/internal/core/domain/observability"
 	obsServices "brokle/internal/core/services/observability"
 	"brokle/internal/transport/http/middleware"
+	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 )
 
@@ -82,7 +83,7 @@ func (h *SpanQueryHandler) HandleQuery(c *gin.Context) {
 
 	var req SpanQueryHTTPRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "invalid request", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
@@ -139,7 +140,7 @@ func (h *SpanQueryHandler) HandleValidate(c *gin.Context) {
 
 	var req ValidateFilterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ValidationError(c, "invalid request", err.Error())
+		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
 	}
 
