@@ -17,6 +17,7 @@ import (
 	"brokle/internal/core/domain/user"
 	authService "brokle/internal/core/services/auth"
 	"brokle/internal/core/services/registration"
+	"brokle/internal/transport/http/middleware"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 )
@@ -555,18 +556,9 @@ func (h *Handler) RefreshToken(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse "User not found"
 // @Router /api/v1/auth/me [get]
 func (h *Handler) GetCurrentUser(c *gin.Context) {
-	// Get user ID from context (set by auth middleware)
-	userIDValue, exists := c.Get("user_id")
-	if !exists {
-		h.logger.Error("User ID not found in context")
-		response.Unauthorized(c, "Authentication required")
-		return
-	}
-
-	userID, ok := userIDValue.(uuid.UUID)
+	userID, ok := middleware.GetUserIDFromContext(c)
 	if !ok {
-		h.logger.Error("Invalid user ID type in context")
-		response.InternalServerError(c, "Internal error")
+		response.Unauthorized(c, "User not authenticated")
 		return
 	}
 
@@ -740,18 +732,9 @@ func (h *Handler) Logout(c *gin.Context) {
 
 // GetProfile returns current user profile
 func (h *Handler) GetProfile(c *gin.Context) {
-	// Get user ID from context (set by auth middleware)
-	userIDValue, exists := c.Get("user_id")
-	if !exists {
-		h.logger.Error("User ID not found in context")
-		response.ErrorWithStatus(c, http.StatusUnauthorized, "unauthorized", "Unauthorized", "")
-		return
-	}
-
-	userID, ok := userIDValue.(uuid.UUID)
+	userID, ok := middleware.GetUserIDFromContext(c)
 	if !ok {
-		h.logger.Error("Invalid user ID type in context")
-		response.ErrorWithStatus(c, http.StatusInternalServerError, "internal_error", "Internal error", "")
+		response.Unauthorized(c, "User not authenticated")
 		return
 	}
 
@@ -785,16 +768,9 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	// Get user ID from context
-	userIDValue, exists := c.Get("user_id")
-	if !exists {
-		response.ErrorWithStatus(c, http.StatusUnauthorized, "unauthorized", "Unauthorized", "")
-		return
-	}
-
-	userID, ok := userIDValue.(uuid.UUID)
+	userID, ok := middleware.GetUserIDFromContext(c)
 	if !ok {
-		response.ErrorWithStatus(c, http.StatusInternalServerError, "internal_error", "Internal error", "")
+		response.Unauthorized(c, "User not authenticated")
 		return
 	}
 
@@ -847,16 +823,9 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 		return
 	}
 
-	// Get user ID from context
-	userIDValue, exists := c.Get("user_id")
-	if !exists {
-		response.ErrorWithStatus(c, http.StatusUnauthorized, "unauthorized", "Unauthorized", "")
-		return
-	}
-
-	userID, ok := userIDValue.(uuid.UUID)
+	userID, ok := middleware.GetUserIDFromContext(c)
 	if !ok {
-		response.ErrorWithStatus(c, http.StatusInternalServerError, "internal_error", "Internal error", "")
+		response.Unauthorized(c, "User not authenticated")
 		return
 	}
 
@@ -981,15 +950,9 @@ func (h *Handler) ListSessions(c *gin.Context) {
 	}
 
 	// Get user ID from context
-	userIDValue, exists := c.Get("user_id")
-	if !exists {
-		response.Unauthorized(c, "")
-		return
-	}
-
-	userID, ok := userIDValue.(uuid.UUID)
+	userID, ok := middleware.GetUserIDFromContext(c)
 	if !ok {
-		response.InternalServerError(c, "")
+		response.Unauthorized(c, "User not authenticated")
 		return
 	}
 
@@ -1083,15 +1046,9 @@ func (h *Handler) GetSession(c *gin.Context) {
 	}
 
 	// Get user ID from context
-	userIDValue, exists := c.Get("user_id")
-	if !exists {
-		response.Unauthorized(c, "")
-		return
-	}
-
-	userID, ok := userIDValue.(uuid.UUID)
+	userID, ok := middleware.GetUserIDFromContext(c)
 	if !ok {
-		response.InternalServerError(c, "")
+		response.Unauthorized(c, "User not authenticated")
 		return
 	}
 
@@ -1150,15 +1107,9 @@ func (h *Handler) RevokeSession(c *gin.Context) {
 	}
 
 	// Get user ID from context
-	userIDValue, exists := c.Get("user_id")
-	if !exists {
-		response.Unauthorized(c, "")
-		return
-	}
-
-	userID, ok := userIDValue.(uuid.UUID)
+	userID, ok := middleware.GetUserIDFromContext(c)
 	if !ok {
-		response.InternalServerError(c, "")
+		response.Unauthorized(c, "User not authenticated")
 		return
 	}
 
@@ -1200,15 +1151,9 @@ func (h *Handler) RevokeAllSessions(c *gin.Context) {
 	c.ShouldBindJSON(&req)
 
 	// Get user ID from context
-	userIDValue, exists := c.Get("user_id")
-	if !exists {
-		response.Unauthorized(c, "")
-		return
-	}
-
-	userID, ok := userIDValue.(uuid.UUID)
+	userID, ok := middleware.GetUserIDFromContext(c)
 	if !ok {
-		response.InternalServerError(c, "")
+		response.Unauthorized(c, "User not authenticated")
 		return
 	}
 

@@ -113,27 +113,17 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 // RequirePermission middleware ensures user has specific permission with effective permissions
 func (m *AuthMiddleware) RequirePermission(permission string) gin.HandlerFunc {
 	return gin.HandlerFunc(func(c *gin.Context) {
-		// Get user ID from context
-		userID, exists := GetUserID(c)
-		if !exists {
+		userID, ok := GetUserIDFromContext(c)
+		if !ok {
 			m.logger.Warn("Permission check attempted without authentication")
 			response.Unauthorized(c, "Authentication required")
 			c.Abort()
 			return
 		}
 
-		userIDParsed, err := uuid.Parse(userID)
-		if err != nil {
-			m.logger.Error("Invalid user ID format in context", "error", err)
-			response.InternalServerError(c, "Authentication error")
-			c.Abort()
-			return
-		}
-
-		// Check permission using user's effective permissions
 		hasPermission, err := m.orgMemberService.CheckUserPermissions(
 			c.Request.Context(),
-			userIDParsed,
+			userID,
 			[]string{permission},
 		)
 		if err != nil {
@@ -143,7 +133,6 @@ func (m *AuthMiddleware) RequirePermission(permission string) gin.HandlerFunc {
 			return
 		}
 
-		// Check if user has the required permission
 		if !hasPermission[permission] {
 			m.logger.Warn("Insufficient permissions", "user_id", userID, "permission", permission)
 			response.Forbidden(c, "Insufficient permissions")
@@ -158,26 +147,16 @@ func (m *AuthMiddleware) RequirePermission(permission string) gin.HandlerFunc {
 // RequireAnyPermission middleware ensures user has at least one of the specified permissions
 func (m *AuthMiddleware) RequireAnyPermission(permissions []string) gin.HandlerFunc {
 	return gin.HandlerFunc(func(c *gin.Context) {
-		// Get user ID from context
-		userID, exists := GetUserID(c)
-		if !exists {
+		userID, ok := GetUserIDFromContext(c)
+		if !ok {
 			response.Unauthorized(c, "Authentication required")
 			c.Abort()
 			return
 		}
 
-		userIDParsed, err := uuid.Parse(userID)
-		if err != nil {
-			m.logger.Error("Invalid user ID format in context", "error", err)
-			response.InternalServerError(c, "Authentication error")
-			c.Abort()
-			return
-		}
-
-		// Check if user has ANY of the permissions using effective permissions API
 		hasPermission, err := m.orgMemberService.CheckUserPermissions(
 			c.Request.Context(),
-			userIDParsed,
+			userID,
 			permissions,
 		)
 		if err != nil {
@@ -187,7 +166,6 @@ func (m *AuthMiddleware) RequireAnyPermission(permissions []string) gin.HandlerF
 			return
 		}
 
-		// Check if user has any of the required permissions
 		hasAnyPermission := false
 		for _, permission := range permissions {
 			if hasPermission[permission] {
@@ -210,26 +188,16 @@ func (m *AuthMiddleware) RequireAnyPermission(permissions []string) gin.HandlerF
 // RequireAllPermissions middleware ensures user has ALL specified permissions
 func (m *AuthMiddleware) RequireAllPermissions(permissions []string) gin.HandlerFunc {
 	return gin.HandlerFunc(func(c *gin.Context) {
-		// Get user ID from context
-		userID, exists := GetUserID(c)
-		if !exists {
+		userID, ok := GetUserIDFromContext(c)
+		if !ok {
 			response.Unauthorized(c, "Authentication required")
 			c.Abort()
 			return
 		}
 
-		userIDParsed, err := uuid.Parse(userID)
-		if err != nil {
-			m.logger.Error("Invalid user ID format in context", "error", err)
-			response.InternalServerError(c, "Authentication error")
-			c.Abort()
-			return
-		}
-
-		// Check all permissions using effective permissions API
 		hasPermission, err := m.orgMemberService.CheckUserPermissions(
 			c.Request.Context(),
-			userIDParsed,
+			userID,
 			permissions,
 		)
 		if err != nil {
@@ -239,7 +207,6 @@ func (m *AuthMiddleware) RequireAllPermissions(permissions []string) gin.Handler
 			return
 		}
 
-		// Check if user has ALL required permissions
 		for _, permission := range permissions {
 			if !hasPermission[permission] {
 				m.logger.Warn("Insufficient permissions - missing required permission", "user_id", userID, "permissions", permissions, "failed_on", permission)
@@ -322,25 +289,9 @@ func GetAuthContext(c *gin.Context) (*auth.AuthContext, bool) {
 	return ctx, ok
 }
 
-// GetUserID retrieves user ID from Gin context
-func GetUserID(c *gin.Context) (string, bool) {
-	userID, exists := c.Get(UserIDKey)
-	if !exists {
-		return "", false
-	}
-
-	// Handle both uuid.UUID and string types for compatibility
-	switch id := userID.(type) {
-	case uuid.UUID:
-		return id.String(), true
-	case string:
-		return id, true
-	default:
-		return "", false
-	}
-}
-
-// GetUserIDFromContext retrieves user ID as UUID from Gin context
+// GetUserIDFromContext retrieves the authenticated user's ID from Gin context.
+// It returns the zero UUID and false if no user is present or the value has
+// the wrong type (e.g., if the caller forgot to apply RequireAuth first).
 func GetUserIDFromContext(c *gin.Context) (uuid.UUID, bool) {
 	userID, exists := c.Get(UserIDKey)
 	if !exists {

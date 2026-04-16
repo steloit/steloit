@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"brokle/internal/core/domain/organization"
+	"brokle/internal/transport/http/middleware"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 )
@@ -111,10 +112,10 @@ func (h *Handler) CreateInvitation(c *gin.Context) {
 		return
 	}
 
-	// Get user ID from context
-	userID, err := h.getUserIDFromContext(c)
-	if err != nil {
-		return // Error already handled
+	userID, ok := middleware.GetUserIDFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
 	}
 
 	// Parse role ID
@@ -194,10 +195,10 @@ func (h *Handler) GetPendingInvitations(c *gin.Context) {
 		return
 	}
 
-	// Get user ID from context
-	userID, err := h.getUserIDFromContext(c)
-	if err != nil {
-		return // Error already handled
+	userID, ok := middleware.GetUserIDFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
 	}
 
 	// Verify user is member of organization
@@ -286,10 +287,10 @@ func (h *Handler) ResendInvitation(c *gin.Context) {
 		return
 	}
 
-	// Get user ID from context
-	userID, err := h.getUserIDFromContext(c)
-	if err != nil {
-		return // Error already handled
+	userID, ok := middleware.GetUserIDFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
 	}
 
 	// Resend invitation - returns updated invitation directly
@@ -356,10 +357,10 @@ func (h *Handler) RevokeInvitation(c *gin.Context) {
 		return
 	}
 
-	// Get user ID from context
-	userID, err := h.getUserIDFromContext(c)
-	if err != nil {
-		return // Error already handled
+	userID, ok := middleware.GetUserIDFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
 	}
 
 	// Revoke invitation
@@ -396,10 +397,10 @@ func (h *Handler) AcceptInvitation(c *gin.Context) {
 		return
 	}
 
-	// Get user ID from context
-	userID, err := h.getUserIDFromContext(c)
-	if err != nil {
-		return // Error already handled
+	userID, ok := middleware.GetUserIDFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
 	}
 
 	// Accept invitation - returns org details directly (no extra DB query needed)
@@ -457,10 +458,10 @@ func (h *Handler) DeclineInvitation(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/invitations [get]
 func (h *Handler) GetUserInvitations(c *gin.Context) {
-	// Get user ID from context
-	userID, err := h.getUserIDFromContext(c)
-	if err != nil {
-		return // Error already handled
+	userID, ok := middleware.GetUserIDFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
 	}
 
 	// Get user email
@@ -527,35 +528,4 @@ func (h *Handler) GetUserInvitations(c *gin.Context) {
 	}
 
 	response.Success(c, resp)
-}
-
-// Helper function to get user ID from context
-func (h *Handler) getUserIDFromContext(c *gin.Context) (uuid.UUID, error) {
-	userIDValue, exists := c.Get("user_id")
-	if !exists {
-		response.Unauthorized(c, "Authentication required")
-		return uuid.UUID{}, errUnauthorized
-	}
-
-	userID, ok := userIDValue.(uuid.UUID)
-	if !ok {
-		response.InternalServerError(c, "Internal error")
-		return uuid.UUID{}, errInternalServer
-	}
-
-	return userID, nil
-}
-
-// Internal errors for helper functions
-var (
-	errUnauthorized   = &internalError{code: "unauthorized"}
-	errInternalServer = &internalError{code: "internal_error"}
-)
-
-type internalError struct {
-	code string
-}
-
-func (e *internalError) Error() string {
-	return e.code
 }

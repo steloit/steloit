@@ -78,20 +78,17 @@ func (m *RateLimitMiddleware) RateLimitByUser() gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
-		// Get user ID from auth context
-		userID, exists := c.Get(UserIDKey)
-		if !exists {
-			// No user context, skip user-based rate limiting
-			c.Next()
-			return
-		}
-
-		userIDStr, ok := userID.(string)
+		userID, ok := GetUserIDFromContext(c)
 		if !ok {
+			// No authenticated user — skip user-based rate limiting. Fail-open
+			// because this middleware is meant to run after RequireAuth; if it
+			// ends up on a public route by accident, IP-based limiting covers it.
+			m.logger.Debug("RateLimitByUser skipped: no user in context", "path", c.FullPath())
 			c.Next()
 			return
 		}
 
+		userIDStr := userID.String()
 		key := "rate_limit:user:" + userIDStr
 
 		allowed, err := m.checkRateLimit(c.Request.Context(), key, m.config.RateLimitPerUser, m.config.RateLimitWindow)

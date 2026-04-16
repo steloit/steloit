@@ -10,6 +10,7 @@ import (
 
 	"brokle/internal/config"
 	"brokle/internal/core/domain/organization"
+	"brokle/internal/transport/http/middleware"
 	"brokle/pkg/response"
 )
 
@@ -90,18 +91,8 @@ func (h *SettingsHandler) GetAllSettings(c *gin.Context) {
 		return
 	}
 
-	// Get user ID from context for access validation
-	userIDValue, exists := c.Get("user_id")
-	if !exists {
-		h.logger.Error("User ID not found in context")
-		response.ErrorWithStatus(c, http.StatusUnauthorized, "unauthorized", "Authentication required", "")
-		return
-	}
-
-	_, ok := userIDValue.(uuid.UUID)
-	if !ok {
-		h.logger.Error("Invalid user ID type in context")
-		response.ErrorWithStatus(c, http.StatusInternalServerError, "internal_error", "Internal error", "")
+	if _, ok := middleware.GetUserIDFromContext(c); !ok {
+		response.Unauthorized(c, "User not authenticated")
 		return
 	}
 
@@ -205,17 +196,9 @@ func (h *SettingsHandler) CreateSetting(c *gin.Context) {
 	}
 
 	// Get user ID from context
-	userIDValue, exists := c.Get("user_id")
-	if !exists {
-		h.logger.Error("User ID not found in context")
-		response.ErrorWithStatus(c, http.StatusUnauthorized, "unauthorized", "Authentication required", "")
-		return
-	}
-
-	userID, ok := userIDValue.(uuid.UUID)
+	userID, ok := middleware.GetUserIDFromContext(c)
 	if !ok {
-		h.logger.Error("Invalid user ID type in context")
-		response.ErrorWithStatus(c, http.StatusInternalServerError, "internal_error", "Internal error", "")
+		response.Unauthorized(c, "User not authenticated")
 		return
 	}
 
@@ -285,17 +268,9 @@ func (h *SettingsHandler) UpdateSetting(c *gin.Context) {
 	}
 
 	// Get user ID from context
-	userIDValue, exists := c.Get("user_id")
-	if !exists {
-		h.logger.Error("User ID not found in context")
-		response.ErrorWithStatus(c, http.StatusUnauthorized, "unauthorized", "Authentication required", "")
-		return
-	}
-
-	userID, ok := userIDValue.(uuid.UUID)
+	userID, ok := middleware.GetUserIDFromContext(c)
 	if !ok {
-		h.logger.Error("Invalid user ID type in context")
-		response.ErrorWithStatus(c, http.StatusInternalServerError, "internal_error", "Internal error", "")
+		response.Unauthorized(c, "User not authenticated")
 		return
 	}
 
@@ -345,17 +320,9 @@ func (h *SettingsHandler) DeleteSetting(c *gin.Context) {
 	}
 
 	// Get user ID from context
-	userIDValue, exists := c.Get("user_id")
-	if !exists {
-		h.logger.Error("User ID not found in context")
-		response.ErrorWithStatus(c, http.StatusUnauthorized, "unauthorized", "Authentication required", "")
-		return
-	}
-
-	userID, ok := userIDValue.(uuid.UUID)
+	userID, ok := middleware.GetUserIDFromContext(c)
 	if !ok {
-		h.logger.Error("Invalid user ID type in context")
-		response.ErrorWithStatus(c, http.StatusInternalServerError, "internal_error", "Internal error", "")
+		response.Unauthorized(c, "User not authenticated")
 		return
 	}
 

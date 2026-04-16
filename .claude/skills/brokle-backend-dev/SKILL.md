@@ -181,7 +181,7 @@ sdkRoutes.Use(rateLimitMiddleware.RateLimitByAPIKey())
 **Dashboard Routes** (`/api/v1/*`): JWT Authentication
 ```go
 // Middleware: Authentication()
-// Extract user: middleware.GetUserID(c)
+// Extract user: middleware.GetUserIDFromContext(c)
 // Rate limiting: IP + user-based
 
 // Middleware instances injected via DI (server.go:219-223)

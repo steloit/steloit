@@ -11,6 +11,7 @@ import (
 	"brokle/internal/config"
 	"brokle/internal/core/domain/organization"
 	"brokle/internal/core/domain/user"
+	"brokle/internal/transport/http/middleware"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 	"brokle/pkg/utils"
@@ -111,17 +112,9 @@ type EnhancedUserProfileResponse struct {
 // @Router /api/v1/users/me [get]
 func (h *Handler) GetProfile(c *gin.Context) {
 	// Get user ID from middleware (set by auth middleware)
-	userIDInterface, exists := c.Get("user_id")
-	if !exists {
-		h.logger.Error("User ID not found in request")
-		response.Unauthorized(c, "Authentication required")
-		return
-	}
-
-	userID, ok := userIDInterface.(uuid.UUID)
+	userID, ok := middleware.GetUserIDFromContext(c)
 	if !ok {
-		h.logger.Error("Invalid user ID type")
-		response.InternalServerError(c, "Authentication error")
+		response.Unauthorized(c, "User not authenticated")
 		return
 	}
 
@@ -265,17 +258,9 @@ type UpdateProfileRequest struct {
 // @Router /api/v1/users/me [patch]
 func (h *Handler) UpdateProfile(c *gin.Context) {
 	// Get user ID from middleware (set by auth middleware)
-	userIDInterface, exists := c.Get("user_id")
-	if !exists {
-		h.logger.Error("User ID not found in request")
-		response.Unauthorized(c, "Authentication required")
-		return
-	}
-
-	userID, ok := userIDInterface.(uuid.UUID)
+	userID, ok := middleware.GetUserIDFromContext(c)
 	if !ok {
-		h.logger.Error("Invalid user ID type")
-		response.InternalServerError(c, "Authentication error")
+		response.Unauthorized(c, "User not authenticated")
 		return
 	}
 
@@ -345,17 +330,9 @@ type SetDefaultOrgRequest struct {
 // @Router /api/v1/users/me/default-organization [put]
 func (h *Handler) SetDefaultOrganization(c *gin.Context) {
 	// Get user ID from middleware
-	userIDInterface, exists := c.Get("user_id")
-	if !exists {
-		h.logger.Error("User ID not found in request")
-		response.Unauthorized(c, "Authentication required")
-		return
-	}
-
-	userID, ok := userIDInterface.(uuid.UUID)
+	userID, ok := middleware.GetUserIDFromContext(c)
 	if !ok {
-		h.logger.Error("Invalid user ID type")
-		response.InternalServerError(c, "Authentication error")
+		response.Unauthorized(c, "User not authenticated")
 		return
 	}
 

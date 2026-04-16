@@ -5,11 +5,12 @@ import (
 	"errors"
 	"log/slog"
 
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+
 	"brokle/internal/core/domain/observability"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/uid"
-
-	"gorm.io/gorm"
 )
 
 // FilterPresetService handles filter preset business logic.
@@ -30,7 +31,7 @@ func NewFilterPresetService(
 }
 
 // Create creates a new filter preset.
-func (s *FilterPresetService) Create(ctx context.Context, projectID string, userID string, req *observability.CreateFilterPresetRequest) (*observability.FilterPreset, error) {
+func (s *FilterPresetService) Create(ctx context.Context, projectID, userID uuid.UUID, req *observability.CreateFilterPresetRequest) (*observability.FilterPreset, error) {
 	if validationErrs := observability.ValidateCreateFilterPresetRequest(req); len(validationErrs) > 0 {
 		return nil, appErrors.NewValidationError(validationErrs[0].Field, validationErrs[0].Message)
 	}
@@ -49,7 +50,7 @@ func (s *FilterPresetService) Create(ctx context.Context, projectID string, user
 	}
 
 	preset := &observability.FilterPreset{
-		ID:               uid.New().String(),
+		ID:               uid.New(),
 		ProjectID:        projectID,
 		Name:             req.Name,
 		Description:      req.Description,
@@ -82,18 +83,18 @@ func (s *FilterPresetService) Create(ctx context.Context, projectID string, user
 	return preset, nil
 }
 
-func (s *FilterPresetService) GetByID(ctx context.Context, projectID string, id string, userID string) (*observability.FilterPreset, error) {
+func (s *FilterPresetService) GetByID(ctx context.Context, projectID, id, userID uuid.UUID) (*observability.FilterPreset, error) {
 	preset, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, appErrors.NewNotFoundError("filter preset " + id)
+			return nil, appErrors.NewNotFoundError("filter preset " + id.String())
 		}
 		return nil, appErrors.NewInternalError("failed to get filter preset", err)
 	}
 
 	// Verify project scoping - return 404 to avoid information leakage
 	if preset.ProjectID != projectID {
-		return nil, appErrors.NewNotFoundError("filter preset " + id)
+		return nil, appErrors.NewNotFoundError("filter preset " + id.String())
 	}
 
 	// Check access: user can access their own presets or public presets
@@ -105,19 +106,18 @@ func (s *FilterPresetService) GetByID(ctx context.Context, projectID string, id 
 }
 
 // Update updates a filter preset.
-func (s *FilterPresetService) Update(ctx context.Context, projectID string, id string, userID string, req *observability.UpdateFilterPresetRequest) (*observability.FilterPreset, error) {
-	// Get existing preset
+func (s *FilterPresetService) Update(ctx context.Context, projectID, id, userID uuid.UUID, req *observability.UpdateFilterPresetRequest) (*observability.FilterPreset, error) {
 	preset, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, appErrors.NewNotFoundError("filter preset " + id)
+			return nil, appErrors.NewNotFoundError("filter preset " + id.String())
 		}
 		return nil, appErrors.NewInternalError("failed to get filter preset", err)
 	}
 
 	// Verify project scoping - return 404 to avoid information leakage
 	if preset.ProjectID != projectID {
-		return nil, appErrors.NewNotFoundError("filter preset " + id)
+		return nil, appErrors.NewNotFoundError("filter preset " + id.String())
 	}
 
 	// Check ownership
@@ -177,19 +177,18 @@ func (s *FilterPresetService) Update(ctx context.Context, projectID string, id s
 }
 
 // Delete deletes a filter preset.
-func (s *FilterPresetService) Delete(ctx context.Context, projectID string, id string, userID string) error {
-	// Get existing preset
+func (s *FilterPresetService) Delete(ctx context.Context, projectID, id, userID uuid.UUID) error {
 	preset, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return appErrors.NewNotFoundError("filter preset " + id)
+			return appErrors.NewNotFoundError("filter preset " + id.String())
 		}
 		return appErrors.NewInternalError("failed to get filter preset", err)
 	}
 
 	// Verify project scoping - return 404 to avoid information leakage
 	if preset.ProjectID != projectID {
-		return appErrors.NewNotFoundError("filter preset " + id)
+		return appErrors.NewNotFoundError("filter preset " + id.String())
 	}
 
 	// Check ownership
@@ -215,11 +214,11 @@ func (s *FilterPresetService) Delete(ctx context.Context, projectID string, id s
 
 // List retrieves filter presets for a project.
 // Returns both user's own presets and public presets if includePublic is true.
-func (s *FilterPresetService) List(ctx context.Context, projectID string, userID string, tableName *string, includePublic bool) ([]*observability.FilterPreset, error) {
+func (s *FilterPresetService) List(ctx context.Context, projectID, userID uuid.UUID, tableName *string, includePublic bool) ([]*observability.FilterPreset, error) {
 	filter := &observability.FilterPresetFilter{
 		ProjectID:   projectID,
 		TargetTable: tableName,
-		UserID:      userID,
+		UserID:      &userID,
 		IncludeAll:  includePublic,
 		Limit:       100,
 	}

@@ -6,13 +6,14 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/lib/pq"
 )
 
 // FilterPreset represents a saved filter configuration for traces or spans.
 type FilterPreset struct {
-	ID               string          `json:"id" gorm:"primaryKey;column:id"`
-	ProjectID        string          `json:"project_id" gorm:"column:project_id;not null"`
+	ID               uuid.UUID       `json:"id" gorm:"primaryKey;column:id;type:uuid"`
+	ProjectID        uuid.UUID       `json:"project_id" gorm:"column:project_id;type:uuid;not null"`
 	Name             string          `json:"name" gorm:"column:name;not null"`
 	Description      *string         `json:"description,omitempty" gorm:"column:description"`
 	TargetTable      string          `json:"table_name" gorm:"column:table_name;not null;default:traces"`            // "traces" or "spans"
@@ -22,7 +23,7 @@ type FilterPreset struct {
 	SearchQuery      *string         `json:"search_query,omitempty" gorm:"column:search_query"`
 	SearchTypes      StringArray     `json:"search_types,omitempty" gorm:"column:search_types;type:text[]"`
 	IsPublic         bool            `json:"is_public" gorm:"column:is_public;not null;default:false"`
-	CreatedBy        *string         `json:"created_by,omitempty" gorm:"column:created_by"`
+	CreatedBy        *uuid.UUID      `json:"created_by,omitempty" gorm:"column:created_by;type:uuid"`
 	CreatedAt        time.Time       `json:"created_at" gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt        time.Time       `json:"updated_at" gorm:"column:updated_at;autoUpdateTime"`
 }
@@ -103,25 +104,25 @@ type UpdateFilterPresetRequest struct {
 
 // FilterPresetFilter represents filter options for listing presets.
 type FilterPresetFilter struct {
-	ProjectID   string  `json:"project_id"`
-	TargetTable *string `json:"table_name,omitempty"`
-	CreatedBy   *string `json:"created_by,omitempty"`
-	IsPublic    *bool   `json:"is_public,omitempty"`
-	IncludeAll  bool    `json:"include_all,omitempty"` // Include both owned and public presets
-	UserID      string  `json:"user_id,omitempty"`     // For filtering owned + public
-	Limit       int     `json:"limit,omitempty"`
-	Offset      int     `json:"offset,omitempty"`
+	ProjectID   uuid.UUID  `json:"project_id"`
+	TargetTable *string    `json:"table_name,omitempty"`
+	CreatedBy   *uuid.UUID `json:"created_by,omitempty"`
+	IsPublic    *bool      `json:"is_public,omitempty"`
+	IncludeAll  bool       `json:"include_all,omitempty"` // Include both owned and public presets
+	UserID      *uuid.UUID `json:"user_id,omitempty"`     // For filtering owned + public
+	Limit       int        `json:"limit,omitempty"`
+	Offset      int        `json:"offset,omitempty"`
 }
 
 // FilterPresetRepository defines the interface for filter preset persistence.
 type FilterPresetRepository interface {
 	Create(ctx context.Context, preset *FilterPreset) error
-	GetByID(ctx context.Context, id string) (*FilterPreset, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*FilterPreset, error)
 	Update(ctx context.Context, preset *FilterPreset) error
-	Delete(ctx context.Context, id string) error
+	Delete(ctx context.Context, id uuid.UUID) error
 	List(ctx context.Context, filter *FilterPresetFilter) ([]*FilterPreset, error)
 	Count(ctx context.Context, filter *FilterPresetFilter) (int64, error)
-	ExistsByName(ctx context.Context, projectID, name string, excludeID *string) (bool, error)
+	ExistsByName(ctx context.Context, projectID uuid.UUID, name string, excludeID *uuid.UUID) (bool, error)
 }
 
 // Filter preset limits

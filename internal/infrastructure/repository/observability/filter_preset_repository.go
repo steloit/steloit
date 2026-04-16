@@ -5,9 +5,10 @@ import (
 	"errors"
 	"fmt"
 
-	"brokle/internal/core/domain/observability"
-
+	"github.com/google/uuid"
 	"gorm.io/gorm"
+
+	"brokle/internal/core/domain/observability"
 )
 
 type filterPresetRepository struct {
@@ -26,7 +27,7 @@ func (r *filterPresetRepository) Create(ctx context.Context, preset *observabili
 	return nil
 }
 
-func (r *filterPresetRepository) GetByID(ctx context.Context, id string) (*observability.FilterPreset, error) {
+func (r *filterPresetRepository) GetByID(ctx context.Context, id uuid.UUID) (*observability.FilterPreset, error) {
 	var preset observability.FilterPreset
 	err := r.db.WithContext(ctx).Where("id = ?", id).First(&preset).Error
 	if err != nil {
@@ -58,7 +59,7 @@ func (r *filterPresetRepository) Update(ctx context.Context, preset *observabili
 	return nil
 }
 
-func (r *filterPresetRepository) Delete(ctx context.Context, id string) error {
+func (r *filterPresetRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	result := r.db.WithContext(ctx).Where("id = ?", id).Delete(&observability.FilterPreset{})
 	if result.Error != nil {
 		return fmt.Errorf("delete filter preset: %w", result.Error)
@@ -70,26 +71,7 @@ func (r *filterPresetRepository) Delete(ctx context.Context, id string) error {
 }
 
 func (r *filterPresetRepository) List(ctx context.Context, filter *observability.FilterPresetFilter) ([]*observability.FilterPreset, error) {
-	query := r.db.WithContext(ctx).Model(&observability.FilterPreset{}).Where("project_id = ?", filter.ProjectID)
-
-	if filter.TargetTable != nil {
-		query = query.Where("table_name = ?", *filter.TargetTable)
-	}
-
-	// Handle visibility: user can see their own + optionally public presets
-	if filter.UserID != "" {
-		if filter.IncludeAll {
-			query = query.Where("(created_by = ? OR is_public = true)", filter.UserID)
-		} else {
-			query = query.Where("created_by = ?", filter.UserID)
-		}
-	} else if filter.CreatedBy != nil {
-		query = query.Where("created_by = ?", *filter.CreatedBy)
-	} else if filter.IsPublic != nil {
-		query = query.Where("is_public = ?", *filter.IsPublic)
-	}
-
-	query = query.Order("updated_at DESC")
+	query := r.buildListQuery(ctx, filter).Order("updated_at DESC")
 
 	if filter.Limit > 0 {
 		query = query.Limit(filter.Limit)
@@ -107,6 +89,16 @@ func (r *filterPresetRepository) List(ctx context.Context, filter *observability
 }
 
 func (r *filterPresetRepository) Count(ctx context.Context, filter *observability.FilterPresetFilter) (int64, error) {
+	var count int64
+	if err := r.buildListQuery(ctx, filter).Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("count filter presets: %w", err)
+	}
+
+	return count, nil
+}
+
+// buildListQuery constructs the shared WHERE clause used by List and Count.
+func (r *filterPresetRepository) buildListQuery(ctx context.Context, filter *observability.FilterPresetFilter) *gorm.DB {
 	query := r.db.WithContext(ctx).Model(&observability.FilterPreset{}).Where("project_id = ?", filter.ProjectID)
 
 	if filter.TargetTable != nil {
@@ -114,11 +106,11 @@ func (r *filterPresetRepository) Count(ctx context.Context, filter *observabilit
 	}
 
 	// Handle visibility: user can see their own + optionally public presets
-	if filter.UserID != "" {
+	if filter.UserID != nil {
 		if filter.IncludeAll {
-			query = query.Where("(created_by = ? OR is_public = true)", filter.UserID)
+			query = query.Where("(created_by = ? OR is_public = true)", *filter.UserID)
 		} else {
-			query = query.Where("created_by = ?", filter.UserID)
+			query = query.Where("created_by = ?", *filter.UserID)
 		}
 	} else if filter.CreatedBy != nil {
 		query = query.Where("created_by = ?", *filter.CreatedBy)
@@ -126,15 +118,10 @@ func (r *filterPresetRepository) Count(ctx context.Context, filter *observabilit
 		query = query.Where("is_public = ?", *filter.IsPublic)
 	}
 
-	var count int64
-	if err := query.Count(&count).Error; err != nil {
-		return 0, fmt.Errorf("count filter presets: %w", err)
-	}
-
-	return count, nil
+	return query
 }
 
-func (r *filterPresetRepository) ExistsByName(ctx context.Context, projectID, name string, excludeID *string) (bool, error) {
+func (r *filterPresetRepository) ExistsByName(ctx context.Context, projectID uuid.UUID, name string, excludeID *uuid.UUID) (bool, error) {
 	query := r.db.WithContext(ctx).Model(&observability.FilterPreset{}).
 		Where("project_id = ? AND name = ?", projectID, name)
 

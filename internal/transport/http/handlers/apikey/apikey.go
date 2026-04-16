@@ -91,10 +91,9 @@ func (h *Handler) List(c *gin.Context) {
 	}
 
 	// Get authenticated user from context
-	userID, exists := middleware.GetUserID(c)
-	if !exists {
-		h.logger.Error("User ID not found in context")
-		response.Unauthorized(c, "Authentication required")
+	userID, ok := middleware.GetUserIDFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
 		return
 	}
 
@@ -215,17 +214,9 @@ func (h *Handler) Create(c *gin.Context) {
 	}
 
 	// Get authenticated user from context
-	userID, exists := middleware.GetUserID(c)
-	if !exists {
-		h.logger.Error("User ID not found in context")
-		response.Unauthorized(c, "Authentication required")
-		return
-	}
-
-	userIDParsed, err := uuid.Parse(userID)
-	if err != nil {
-		h.logger.Error("Invalid user ID format", "error", err)
-		response.InternalServerError(c, "Authentication error")
+	userID, ok := middleware.GetUserIDFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
 		return
 	}
 
@@ -250,7 +241,7 @@ func (h *Handler) Create(c *gin.Context) {
 	}
 
 	// Create the API key
-	apiKeyResp, err := h.apiKeyService.CreateAPIKey(c.Request.Context(), userIDParsed, serviceReq)
+	apiKeyResp, err := h.apiKeyService.CreateAPIKey(c.Request.Context(), userID, serviceReq)
 	if err != nil {
 		h.logger.Error("Failed to create API key", "error", err)
 		response.Error(c, err)
@@ -268,7 +259,7 @@ func (h *Handler) Create(c *gin.Context) {
 		LastUsed:   nil, // New keys have never been used
 		CreatedAt:  apiKeyResp.CreatedAt,
 		ExpiresAt:  apiKeyResp.ExpiresAt, // Pointer, will be null if nil
-		CreatedBy:  userID,
+		CreatedBy:  userID.String(),
 	}
 
 	h.logger.Info("API key created successfully",
@@ -313,10 +304,9 @@ func (h *Handler) Delete(c *gin.Context) {
 	}
 
 	// Get authenticated user from context
-	userID, exists := middleware.GetUserID(c)
-	if !exists {
-		h.logger.Error("User ID not found in context")
-		response.Unauthorized(c, "Authentication required")
+	userID, ok := middleware.GetUserIDFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
 		return
 	}
 

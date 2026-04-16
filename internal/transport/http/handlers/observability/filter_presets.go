@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"brokle/internal/core/domain/observability"
 	"brokle/internal/transport/http/middleware"
@@ -24,10 +25,15 @@ import (
 // @Failure 409 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/filter-presets [post]
 func (h *Handler) CreateFilterPreset(c *gin.Context) {
-	projectID := c.Param("projectId")
-	userID, exists := middleware.GetUserID(c)
-	if !exists {
-		response.Unauthorized(c, "user not authenticated")
+	projectID, err := uuid.Parse(c.Param("projectId"))
+	if err != nil {
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
+		return
+	}
+
+	userID, ok := middleware.GetUserIDFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
 		return
 	}
 
@@ -58,11 +64,21 @@ func (h *Handler) CreateFilterPreset(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/filter-presets/{id} [get]
 func (h *Handler) GetFilterPreset(c *gin.Context) {
-	projectID := c.Param("projectId")
-	presetID := c.Param("id")
-	userID, exists := middleware.GetUserID(c)
-	if !exists {
-		response.Unauthorized(c, "user not authenticated")
+	projectID, err := uuid.Parse(c.Param("projectId"))
+	if err != nil {
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
+		return
+	}
+
+	presetID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.Error(c, appErrors.NewValidationError("Invalid filter preset ID", "id must be a valid UUID"))
+		return
+	}
+
+	userID, ok := middleware.GetUserIDFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
 		return
 	}
 
@@ -91,11 +107,21 @@ func (h *Handler) GetFilterPreset(c *gin.Context) {
 // @Failure 409 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/filter-presets/{id} [patch]
 func (h *Handler) UpdateFilterPreset(c *gin.Context) {
-	projectID := c.Param("projectId")
-	presetID := c.Param("id")
-	userID, exists := middleware.GetUserID(c)
-	if !exists {
-		response.Unauthorized(c, "user not authenticated")
+	projectID, err := uuid.Parse(c.Param("projectId"))
+	if err != nil {
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
+		return
+	}
+
+	presetID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.Error(c, appErrors.NewValidationError("Invalid filter preset ID", "id must be a valid UUID"))
+		return
+	}
+
+	userID, ok := middleware.GetUserIDFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
 		return
 	}
 
@@ -125,11 +151,21 @@ func (h *Handler) UpdateFilterPreset(c *gin.Context) {
 // @Failure 404 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/filter-presets/{id} [delete]
 func (h *Handler) DeleteFilterPreset(c *gin.Context) {
-	projectID := c.Param("projectId")
-	presetID := c.Param("id")
-	userID, exists := middleware.GetUserID(c)
-	if !exists {
-		response.Unauthorized(c, "user not authenticated")
+	projectID, err := uuid.Parse(c.Param("projectId"))
+	if err != nil {
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
+		return
+	}
+
+	presetID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.Error(c, appErrors.NewValidationError("Invalid filter preset ID", "id must be a valid UUID"))
+		return
+	}
+
+	userID, ok := middleware.GetUserIDFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
 		return
 	}
 
@@ -153,10 +189,15 @@ func (h *Handler) DeleteFilterPreset(c *gin.Context) {
 // @Failure 400 {object} response.ErrorResponse
 // @Router /api/v1/projects/{projectId}/filter-presets [get]
 func (h *Handler) ListFilterPresets(c *gin.Context) {
-	projectID := c.Param("projectId")
-	userID, exists := middleware.GetUserID(c)
-	if !exists {
-		response.Unauthorized(c, "user not authenticated")
+	projectID, err := uuid.Parse(c.Param("projectId"))
+	if err != nil {
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
+		return
+	}
+
+	userID, ok := middleware.GetUserIDFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
 		return
 	}
 

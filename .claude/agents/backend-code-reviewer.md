@@ -39,7 +39,7 @@ You must understand and enforce these architectural patterns:
   - Use `middleware.GetSDKAuthContext()` for project/environment access
   - SHA-256 hashed storage with O(1) lookup
 - **Dashboard Routes** (`/api/v1/*`): JWT bearer token authentication
-  - Use `middleware.GetUserID()` for user context
+  - Use `middleware.GetUserIDFromContext()` for user context
   - Session management in Redis
 
 ### Error Handling Pattern (Critical)
