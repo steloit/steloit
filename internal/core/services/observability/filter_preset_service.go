@@ -6,7 +6,6 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 
 	"brokle/internal/core/domain/observability"
 	appErrors "brokle/pkg/errors"
@@ -59,7 +58,7 @@ func (s *FilterPresetService) Create(ctx context.Context, projectID, userID uuid
 		ColumnOrder:      req.ColumnOrder,
 		ColumnVisibility: req.ColumnVisibility,
 		SearchQuery:      req.SearchQuery,
-		SearchTypes:      observability.StringArray(req.SearchTypes),
+		SearchTypes:      req.SearchTypes,
 		IsPublic:         req.IsPublic,
 		CreatedBy:        &userID,
 	}
@@ -86,7 +85,7 @@ func (s *FilterPresetService) Create(ctx context.Context, projectID, userID uuid
 func (s *FilterPresetService) GetByID(ctx context.Context, projectID, id, userID uuid.UUID) (*observability.FilterPreset, error) {
 	preset, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, observability.ErrFilterPresetNotFound) {
 			return nil, appErrors.NewNotFoundError("filter preset " + id.String())
 		}
 		return nil, appErrors.NewInternalError("failed to get filter preset", err)
@@ -109,7 +108,7 @@ func (s *FilterPresetService) GetByID(ctx context.Context, projectID, id, userID
 func (s *FilterPresetService) Update(ctx context.Context, projectID, id, userID uuid.UUID, req *observability.UpdateFilterPresetRequest) (*observability.FilterPreset, error) {
 	preset, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, observability.ErrFilterPresetNotFound) {
 			return nil, appErrors.NewNotFoundError("filter preset " + id.String())
 		}
 		return nil, appErrors.NewInternalError("failed to get filter preset", err)
@@ -154,7 +153,7 @@ func (s *FilterPresetService) Update(ctx context.Context, projectID, id, userID 
 		preset.SearchQuery = req.SearchQuery
 	}
 	if req.SearchTypes != nil {
-		preset.SearchTypes = observability.StringArray(req.SearchTypes)
+		preset.SearchTypes = req.SearchTypes
 	}
 	if req.IsPublic != nil {
 		preset.IsPublic = *req.IsPublic
@@ -180,7 +179,7 @@ func (s *FilterPresetService) Update(ctx context.Context, projectID, id, userID 
 func (s *FilterPresetService) Delete(ctx context.Context, projectID, id, userID uuid.UUID) error {
 	preset, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, observability.ErrFilterPresetNotFound) {
 			return appErrors.NewNotFoundError("filter preset " + id.String())
 		}
 		return appErrors.NewInternalError("failed to get filter preset", err)

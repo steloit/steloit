@@ -106,7 +106,7 @@ func (s *promptService) CreatePrompt(ctx context.Context, projectID uuid.UUID, u
 	// TRANSACTION: Create prompt, version, and labels atomically
 	err = s.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		if err := s.promptRepo.Create(ctx, prompt); err != nil {
-			if isDuplicateKeyError(err) {
+			if appErrors.IsUniqueViolation(err) {
 				return appErrors.NewConflictError(fmt.Sprintf("prompt '%s' already exists in this project", req.Name))
 			}
 			return appErrors.NewInternalError("failed to create prompt", err)
@@ -277,7 +277,7 @@ func (s *promptService) UpdatePrompt(ctx context.Context, projectID, promptID uu
 	prompt.UpdatedAt = time.Now()
 
 	if err := s.promptRepo.Update(ctx, prompt); err != nil {
-		if isDuplicateKeyError(err) {
+		if appErrors.IsUniqueViolation(err) {
 			return nil, appErrors.NewConflictError(fmt.Sprintf("prompt '%s' already exists", *req.Name))
 		}
 		return nil, appErrors.NewInternalError("failed to update prompt", err)
@@ -1092,23 +1092,3 @@ func (s *promptService) responseToCachedPrompt(resp *promptDomain.PromptResponse
 	}
 }
 
-func isDuplicateKeyError(err error) bool {
-	return err != nil && (
-	// PostgreSQL duplicate key error
-	contains(err.Error(), "duplicate key") ||
-		contains(err.Error(), "UNIQUE constraint") ||
-		contains(err.Error(), "unique constraint"))
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsAt(s, substr, 0))
-}
-
-func containsAt(s, substr string, start int) bool {
-	for i := start; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}

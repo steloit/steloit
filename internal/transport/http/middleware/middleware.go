@@ -93,12 +93,20 @@ func Metrics() gin.HandlerFunc {
 		// Process request
 		c.Next()
 
-		// Record metrics
+		// Record metrics using Gin's route template (e.g. "/traces/:id") to keep
+		// label cardinality bounded. c.FullPath() returns "" when no route matched
+		// (404s from scanners, unknown paths) — bucket those into "unmatched" so
+		// they cannot inflate series.
 		duration := time.Since(start).Seconds()
 		status := strconv.Itoa(c.Writer.Status())
 
-		httpRequestsTotal.WithLabelValues(c.Request.Method, c.Request.URL.Path, status).Inc()
-		httpRequestDuration.WithLabelValues(c.Request.Method, c.Request.URL.Path).Observe(duration)
+		path := c.FullPath()
+		if path == "" {
+			path = "unmatched"
+		}
+
+		httpRequestsTotal.WithLabelValues(c.Request.Method, path, status).Inc()
+		httpRequestDuration.WithLabelValues(c.Request.Method, path).Observe(duration)
 	}
 }
 

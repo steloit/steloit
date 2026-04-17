@@ -6,195 +6,158 @@ import (
 	"fmt"
 	"time"
 
-	"gorm.io/gorm"
-
 	"github.com/google/uuid"
 
 	authDomain "brokle/internal/core/domain/auth"
-	"brokle/pkg/pagination"
+	"brokle/internal/infrastructure/db"
+	"brokle/internal/infrastructure/db/gen"
 )
 
-// blacklistedTokenRepository implements authDomain.BlacklistedTokenRepository using GORM
+// blacklistedTokenRepository is the pgx+sqlc implementation of
+// authDomain.BlacklistedTokenRepository. Static queries are sqlc-generated
+// (internal/infrastructure/db/queries/blacklisted_token.sql); the single
+// dynamic-filter method lives in blacklisted_token_filter.go and builds
+// with squirrel.
 type blacklistedTokenRepository struct {
-	db *gorm.DB
+	tm *db.TxManager
 }
 
-// NewBlacklistedTokenRepository creates a new blacklisted token repository instance
-func NewBlacklistedTokenRepository(db *gorm.DB) authDomain.BlacklistedTokenRepository {
-	return &blacklistedTokenRepository{
-		db: db,
-	}
+// NewBlacklistedTokenRepository returns a BlacklistedTokenRepository backed
+// by the shared TxManager. The TxManager handles transaction propagation
+// via ctx, so repository callers never need to pass a pgx.Tx explicitly.
+func NewBlacklistedTokenRepository(tm *db.TxManager) authDomain.BlacklistedTokenRepository {
+	return &blacklistedTokenRepository{tm: tm}
 }
 
-// Create adds a new token to the blacklist
-func (r *blacklistedTokenRepository) Create(ctx context.Context, blacklistedToken *authDomain.BlacklistedToken) error {
-	return r.db.WithContext(ctx).Create(blacklistedToken).Error
-}
-
-// GetByJTI retrieves a blacklisted token by JWT ID
-func (r *blacklistedTokenRepository) GetByJTI(ctx context.Context, jti string) (*authDomain.BlacklistedToken, error) {
-	var token authDomain.BlacklistedToken
-	err := r.db.WithContext(ctx).Where("jti = ?", jti).First(&token).Error
+func (r *blacklistedTokenRepository) Create(ctx context.Context, token *authDomain.BlacklistedToken) error {
+	jti, err := uuid.Parse(token.JTI)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		return fmt.Errorf("parse JTI %q: %w", token.JTI, err)
+	}
+	if err := r.tm.Queries(ctx).CreateBlacklistedToken(ctx, gen.CreateBlacklistedTokenParams{
+		Jti:                jti,
+		UserID:             token.UserID,
+		ExpiresAt:          token.ExpiresAt,
+		RevokedAt:          token.RevokedAt,
+		Reason:             token.Reason,
+		TokenType:          token.TokenType,
+		BlacklistTimestamp: token.BlacklistTimestamp,
+		CreatedAt:          token.CreatedAt,
+	}); err != nil {
+		return fmt.Errorf("create blacklisted token: %w", err)
+	}
+	return nil
+}
+
+func (r *blacklistedTokenRepository) GetByJTI(ctx context.Context, jti string) (*authDomain.BlacklistedToken, error) {
+	jtiUUID, err := uuid.Parse(jti)
+	if err != nil {
+		return nil, fmt.Errorf("parse JTI %q: %w", jti, err)
+	}
+	row, err := r.tm.Queries(ctx).GetBlacklistedTokenByJTI(ctx, jtiUUID)
+	if err != nil {
+		if db.IsNoRows(err) {
 			return nil, fmt.Errorf("get blacklisted token by JTI %s: %w", jti, authDomain.ErrNotFound)
 		}
-		return nil, err
+		return nil, fmt.Errorf("get blacklisted token by JTI %s: %w", jti, err)
 	}
-	return &token, nil
+	return blacklistedTokenFromRow(&row), nil
 }
 
-// IsTokenBlacklisted checks if a token is blacklisted (optimized for fast lookup)
 func (r *blacklistedTokenRepository) IsTokenBlacklisted(ctx context.Context, jti string) (bool, error) {
-	var count int64
-	err := r.db.WithContext(ctx).Model(&authDomain.BlacklistedToken{}).
-		Where("jti = ? AND expires_at > ?", jti, time.Now()).
-		Count(&count).Error
-
+	jtiUUID, err := uuid.Parse(jti)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("parse JTI %q: %w", jti, err)
 	}
-
-	return count > 0, nil
+	ok, err := r.tm.Queries(ctx).IsTokenBlacklisted(ctx, jtiUUID)
+	if err != nil {
+		return false, fmt.Errorf("check blacklisted token %s: %w", jti, err)
+	}
+	return ok, nil
 }
 
-// CleanupExpiredTokens removes tokens that have naturally expired
 func (r *blacklistedTokenRepository) CleanupExpiredTokens(ctx context.Context) error {
-	return r.db.WithContext(ctx).
-		Delete(&authDomain.BlacklistedToken{}, "expires_at <= ?", time.Now()).
-		Error
+	if _, err := r.tm.Queries(ctx).CleanupExpiredBlacklistedTokens(ctx); err != nil {
+		return fmt.Errorf("cleanup expired blacklisted tokens: %w", err)
+	}
+	return nil
 }
 
-// CleanupTokensOlderThan removes tokens older than specified time
 func (r *blacklistedTokenRepository) CleanupTokensOlderThan(ctx context.Context, olderThan time.Time) error {
-	return r.db.WithContext(ctx).
-		Delete(&authDomain.BlacklistedToken{}, "created_at < ?", olderThan).
-		Error
+	if _, err := r.tm.Queries(ctx).CleanupBlacklistedTokensOlderThan(ctx, olderThan); err != nil {
+		return fmt.Errorf("cleanup blacklisted tokens older than %s: %w", olderThan, err)
+	}
+	return nil
 }
 
-// CreateUserTimestampBlacklist creates a user-wide timestamp blacklist entry for GDPR/SOC2 compliance
 func (r *blacklistedTokenRepository) CreateUserTimestampBlacklist(ctx context.Context, userID uuid.UUID, blacklistTimestamp int64, reason string) error {
-	blacklistedToken := authDomain.NewUserTimestampBlacklistedToken(userID, blacklistTimestamp, reason)
-	return r.db.WithContext(ctx).Create(blacklistedToken).Error
+	entry := authDomain.NewUserTimestampBlacklistedToken(userID, blacklistTimestamp, reason)
+	return r.Create(ctx, entry)
 }
 
-// IsUserBlacklistedAfterTimestamp checks if a user is blacklisted after a specific timestamp
 func (r *blacklistedTokenRepository) IsUserBlacklistedAfterTimestamp(ctx context.Context, userID uuid.UUID, tokenIssuedAt int64) (bool, error) {
-	var count int64
-	err := r.db.WithContext(ctx).Model(&authDomain.BlacklistedToken{}).
-		Where("user_id = ? AND token_type = ? AND blacklist_timestamp IS NOT NULL AND ? < blacklist_timestamp AND expires_at > ?",
-			userID, authDomain.TokenTypeUserTimestamp, tokenIssuedAt, time.Now()).
-		Count(&count).Error
-
+	ok, err := r.tm.Queries(ctx).IsUserBlacklistedAfterTimestamp(ctx, gen.IsUserBlacklistedAfterTimestampParams{
+		UserID:        userID,
+		TokenIssuedAt: tokenIssuedAt,
+	})
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("check user timestamp blacklist %s: %w", userID, err)
 	}
-
-	return count > 0, nil
+	return ok, nil
 }
 
-// GetUserBlacklistTimestamp gets the latest blacklist timestamp for a user
 func (r *blacklistedTokenRepository) GetUserBlacklistTimestamp(ctx context.Context, userID uuid.UUID) (*int64, error) {
-	var token authDomain.BlacklistedToken
-	err := r.db.WithContext(ctx).
-		Where("user_id = ? AND token_type = ? AND blacklist_timestamp IS NOT NULL AND expires_at > ?",
-			userID, authDomain.TokenTypeUserTimestamp, time.Now()).
-		Order("blacklist_timestamp DESC").
-		First(&token).Error
-
+	ts, err := r.tm.Queries(ctx).GetUserBlacklistTimestamp(ctx, userID)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil // No user-wide blacklist found
+		if db.IsNoRows(err) {
+			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("get user blacklist timestamp %s: %w", userID, err)
 	}
-
-	return token.BlacklistTimestamp, nil
+	return ts, nil
 }
 
-// BlacklistUserTokens adds all active tokens for a user to blacklist (legacy method, now replaced by timestamp approach)
+// BlacklistUserTokens is retained for backward compatibility with the
+// legacy interface; it delegates to CreateUserTimestampBlacklist, the only
+// GDPR/SOC2-compliant primitive used by new call sites.
 func (r *blacklistedTokenRepository) BlacklistUserTokens(ctx context.Context, userID uuid.UUID, reason string) error {
-	// DEPRECATED: This method is now replaced by CreateUserTimestampBlacklist for GDPR/SOC2 compliance
-	// Create a user-wide timestamp blacklist instead of trying to track individual JTIs
-	blacklistTimestamp := time.Now().Unix()
-	return r.CreateUserTimestampBlacklist(ctx, userID, blacklistTimestamp, reason)
+	return r.CreateUserTimestampBlacklist(ctx, userID, time.Now().Unix(), reason)
 }
 
-// GetBlacklistedTokensByUser retrieves blacklisted tokens with cursor pagination
-func (r *blacklistedTokenRepository) GetBlacklistedTokensByUser(ctx context.Context, filters *authDomain.BlacklistedTokenFilter) ([]*authDomain.BlacklistedToken, error) {
-	var tokens []*authDomain.BlacklistedToken
-
-	query := r.db.WithContext(ctx)
-
-	// Apply filters
-	if filters != nil {
-		if filters.UserID != nil {
-			query = query.Where("user_id = ?", *filters.UserID)
-		}
-		if filters.Reason != nil {
-			query = query.Where("reason = ?", *filters.Reason)
-		}
-	}
-
-	// Determine sort field and direction with validation
-	allowedSortFields := []string{"created_at", "expires_at", "reason", "id"}
-	sortField := "created_at" // default
-	sortDir := "DESC"
-
-	if filters != nil {
-		// Validate sort field against whitelist
-		if filters.Params.SortBy != "" {
-			validated, err := pagination.ValidateSortField(filters.Params.SortBy, allowedSortFields)
-			if err != nil {
-				return nil, err
-			}
-			if validated != "" {
-				sortField = validated
-			}
-		}
-		if filters.Params.SortDir == "asc" {
-			sortDir = "ASC"
-		}
-	}
-
-	// Apply sorting with secondary sort on id for stable ordering
-	query = query.Order(fmt.Sprintf("%s %s, id %s", sortField, sortDir, sortDir))
-
-	// Apply limit and offset for pagination
-	limit := pagination.DefaultPageSize
-	offset := 0
-	if filters != nil {
-		if filters.Params.Limit > 0 {
-			limit = filters.Params.Limit
-		}
-		offset = filters.Params.GetOffset()
-	}
-	query = query.Limit(limit).Offset(offset)
-
-	err := query.Find(&tokens).Error
-	if err != nil {
-		return nil, err
-	}
-
-	return tokens, nil
-}
-
-// GetBlacklistedTokensCount returns the total count of blacklisted tokens
 func (r *blacklistedTokenRepository) GetBlacklistedTokensCount(ctx context.Context) (int64, error) {
-	var count int64
-	err := r.db.WithContext(ctx).Model(&authDomain.BlacklistedToken{}).Count(&count).Error
-	return count, err
-}
-
-// GetBlacklistedTokensByReason retrieves tokens blacklisted for a specific reason
-func (r *blacklistedTokenRepository) GetBlacklistedTokensByReason(ctx context.Context, reason string) ([]*authDomain.BlacklistedToken, error) {
-	var tokens []*authDomain.BlacklistedToken
-	err := r.db.WithContext(ctx).Where("reason = ?", reason).
-		Order("created_at DESC").Find(&tokens).Error
-
+	count, err := r.tm.Queries(ctx).CountBlacklistedTokens(ctx)
 	if err != nil {
-		return nil, err
+		return 0, fmt.Errorf("count blacklisted tokens: %w", err)
 	}
-
-	return tokens, nil
+	return count, nil
 }
+
+func (r *blacklistedTokenRepository) GetBlacklistedTokensByReason(ctx context.Context, reason string) ([]*authDomain.BlacklistedToken, error) {
+	rows, err := r.tm.Queries(ctx).ListBlacklistedTokensByReason(ctx, reason)
+	if err != nil {
+		return nil, fmt.Errorf("list blacklisted tokens by reason %q: %w", reason, err)
+	}
+	out := make([]*authDomain.BlacklistedToken, 0, len(rows))
+	for i := range rows {
+		out = append(out, blacklistedTokenFromRow(&rows[i]))
+	}
+	return out, nil
+}
+
+// blacklistedTokenFromRow converts a sqlc-generated gen.BlacklistedToken
+// into the domain BlacklistedToken. Kept unexported — generated types must
+// not escape the repository package.
+func blacklistedTokenFromRow(row *gen.BlacklistedToken) *authDomain.BlacklistedToken {
+	return &authDomain.BlacklistedToken{
+		JTI:                row.Jti.String(),
+		UserID:             row.UserID,
+		ExpiresAt:          row.ExpiresAt,
+		RevokedAt:          row.RevokedAt,
+		Reason:             row.Reason,
+		TokenType:          row.TokenType,
+		BlacklistTimestamp: row.BlacklistTimestamp,
+		CreatedAt:          row.CreatedAt,
+	}
+}
+
+var _ = errors.Is // traversal helper used indirectly via db.IsNoRows

@@ -8,8 +8,8 @@ CREATE TABLE datasets (
     name            VARCHAR(255) NOT NULL,
     description     TEXT,
     metadata        JSONB DEFAULT '{}',
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     CONSTRAINT datasets_project_name_unique UNIQUE(project_id, name)
 );
 CREATE INDEX idx_datasets_project ON datasets(project_id);
@@ -21,7 +21,7 @@ CREATE TABLE dataset_items (
     input           JSONB NOT NULL,
     expected        JSONB,
     metadata        JSONB DEFAULT '{}',
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_dataset_items_dataset ON dataset_items(dataset_id);
 
@@ -35,10 +35,10 @@ CREATE TABLE experiments (
     status          VARCHAR(20) NOT NULL DEFAULT 'pending'
                     CHECK (status IN ('pending', 'running', 'completed', 'failed')),
     metadata        JSONB DEFAULT '{}',
-    started_at      TIMESTAMPTZ,
-    completed_at    TIMESTAMPTZ,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    started_at      TIMESTAMP WITH TIME ZONE,
+    completed_at    TIMESTAMP WITH TIME ZONE,
+    created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_experiments_project ON experiments(project_id);
 CREATE INDEX idx_experiments_dataset ON experiments(dataset_id);
@@ -55,7 +55,7 @@ CREATE TABLE experiment_items (
     expected        JSONB,
     trial_number    INTEGER NOT NULL DEFAULT 1,
     metadata        JSONB DEFAULT '{}',
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_experiment_items_experiment ON experiment_items(experiment_id);
 CREATE INDEX idx_experiment_items_trace ON experiment_items(trace_id);

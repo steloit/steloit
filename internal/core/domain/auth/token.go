@@ -134,14 +134,14 @@ func (c *JWTClaims) GetUserContext() *AuthContext {
 
 // EmailVerificationToken represents an email verification token
 type EmailVerificationToken struct {
-	ExpiresAt time.Time `json:"expires_at"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	User      user.User `json:"user,omitempty" gorm:"foreignKey:UserID"`
-	Token     string    `json:"token" gorm:"size:255;not null;uniqueIndex"`
-	ID        uuid.UUID `json:"id" gorm:"type:uuid;primaryKey"`
-	UserID    uuid.UUID `json:"user_id" gorm:"type:uuid;not null"`
-	Used      bool      `json:"used" gorm:"default:false"`
+	ExpiresAt time.Time  `json:"expires_at"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	UsedAt    *time.Time `json:"used_at,omitempty"`
+	User      user.User  `json:"user,omitempty"`
+	Token     string     `json:"token"`
+	ID        uuid.UUID  `json:"id"`
+	UserID    uuid.UUID  `json:"user_id"`
 }
 
 // Token creation helpers
@@ -152,7 +152,6 @@ func NewEmailVerificationToken(userID uuid.UUID, token string, expiresAt time.Ti
 		UserID:    userID,
 		Token:     token,
 		ExpiresAt: expiresAt,
-		Used:      false,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
@@ -182,8 +181,5 @@ func (t *EmailVerificationToken) IsExpired() bool {
 }
 
 func (t *EmailVerificationToken) IsValid() bool {
-	return !t.Used && !t.IsExpired()
+	return t.UsedAt == nil && !t.IsExpired()
 }
-
-// Table name methods
-func (EmailVerificationToken) TableName() string { return "email_verification_tokens" }

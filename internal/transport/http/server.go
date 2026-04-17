@@ -16,6 +16,7 @@ import (
 
 	"brokle/internal/config"
 	"brokle/internal/core/domain/auth"
+	orgDomain "brokle/internal/core/domain/organization"
 	"brokle/internal/transport/http/handlers"
 	"brokle/internal/transport/http/middleware"
 
@@ -43,6 +44,7 @@ func NewServer(
 	jwtService auth.JWTService,
 	blacklistedTokens auth.BlacklistedTokenService,
 	orgMemberService auth.OrganizationMemberService,
+	projectService orgDomain.ProjectService,
 	apiKeyService auth.APIKeyService,
 	redisClient *redis.Client,
 ) *Server {
@@ -50,6 +52,7 @@ func NewServer(
 		jwtService,
 		blacklistedTokens,
 		orgMemberService,
+		projectService,
 		logger,
 	)
 
@@ -171,7 +174,14 @@ func (s *Server) setupRoutes() {
 	sdk := s.engine.Group("/v1")
 	sdkAuth := sdk.Group("/auth")
 	{
-		sdkAuth.POST("/validate-key", s.handlers.Auth.ValidateAPIKeyHandler)
+		// validate-key runs before RequireSDKAuth / RateLimitByAPIKey are
+		// applied to the /v1 group below. Apply IP + hashed-key-prefix
+		// rate limiting inline so this endpoint is not a brute-force oracle.
+		sdkAuth.POST("/validate-key",
+			s.rateLimitMiddleware.RateLimitByIP(),
+			s.rateLimitMiddleware.RateLimitByKeyPrefix(),
+			s.handlers.Auth.ValidateAPIKeyHandler,
+		)
 	}
 	sdk.Use(s.sdkAuthMiddleware.RequireSDKAuth())
 	sdk.Use(s.rateLimitMiddleware.RateLimitByAPIKey())
@@ -538,20 +548,28 @@ func (s *Server) setupDashboardRoutes(router *gin.RouterGroup) {
 
 	traces := protected.Group("/traces")
 	{
-		traces.GET("", s.handlers.Observability.ListTraces)
-		traces.GET("/filter-options", s.handlers.Observability.GetTraceFilterOptions) // Must be before /:id
-		traces.GET("/attributes", s.handlers.Observability.DiscoverAttributes)        // Must be before /:id
+		// Endpoints that accept a user-controlled project_id (query or path) are
+		// wrapped with RequireProjectAccess so every request is validated to
+		// originate from an org member. Detail endpoints that take only :id
+		// (trace/span/score IDs) rely on service-layer tenancy checks after the
+		// fetch — tracked as a follow-up.
+		requireProject := s.authMiddleware.RequireProjectAccess()
+
+		traces.GET("", requireProject, s.handlers.Observability.ListTraces)
+		traces.GET("/filter-options", requireProject, s.handlers.Observability.GetTraceFilterOptions) // Must be before /:id
+		traces.GET("/attributes", requireProject, s.handlers.Observability.DiscoverAttributes)        // Must be before /:id
 		traces.GET("/:id", s.handlers.Observability.GetTrace)
 		traces.GET("/:id/spans", s.handlers.Observability.GetTraceWithSpans)
 		traces.GET("/:id/scores", s.handlers.Observability.GetTraceWithScores)
-		traces.POST("/:id/scores", s.handlers.Observability.CreateTraceScore)
-		traces.DELETE("/:id/scores/:score_id", s.handlers.Observability.DeleteTraceScore)
+		traces.POST("/:id/scores", requireProject, s.handlers.Observability.CreateTraceScore)
+		traces.DELETE("/:id/scores/:score_id", requireProject, s.handlers.Observability.DeleteTraceScore)
 		traces.DELETE("/:id", s.handlers.Observability.DeleteTrace)
-		traces.PUT("/:id/tags", s.handlers.Observability.UpdateTraceTags)
-		traces.PUT("/:id/bookmark", s.handlers.Observability.UpdateTraceBookmark)
+		traces.PUT("/:id/tags", requireProject, s.handlers.Observability.UpdateTraceTags)
+		traces.PUT("/:id/bookmark", requireProject, s.handlers.Observability.UpdateTraceBookmark)
 
-		// Trace comments
-		traceComments := traces.Group("/:id/comments")
+		// Trace comments — every comment endpoint accepts project_id from the
+		// query string, so the whole group is wrapped.
+		traceComments := traces.Group("/:id/comments", requireProject)
 		{
 			traceComments.POST("", s.handlers.Comment.CreateComment)
 			traceComments.GET("", s.handlers.Comment.ListComments)
@@ -565,14 +583,14 @@ func (s *Server) setupDashboardRoutes(router *gin.RouterGroup) {
 
 	spans := protected.Group("/spans")
 	{
-		spans.GET("", s.handlers.Observability.ListSpans)
+		spans.GET("", s.authMiddleware.RequireProjectAccess(), s.handlers.Observability.ListSpans)
 		spans.GET("/:id", s.handlers.Observability.GetSpan)
 		spans.DELETE("/:id", s.handlers.Observability.DeleteSpan)
 	}
 
 	scores := protected.Group("/scores")
 	{
-		scores.GET("", s.handlers.Observability.ListScores)
+		scores.GET("", s.authMiddleware.RequireProjectAccess(), s.handlers.Observability.ListScores)
 		scores.GET("/:id", s.handlers.Observability.GetScore)
 		scores.PUT("/:id", s.handlers.Observability.UpdateScore)
 	}

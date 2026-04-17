@@ -45,14 +45,9 @@ func NewScopeMiddleware(
 //	router.DELETE("/traces/:id", authMiddleware.RequireAuth(), scopeMiddleware.RequireScope("traces:delete"), handler.DeleteTrace)
 func (m *ScopeMiddleware) RequireScope(scope string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Get user ID from auth context (set by RequireAuth middleware)
-		userID, exists := GetUserIDFromContext(c)
-		if !exists {
-			m.logger.Warn("Scope check attempted without authentication")
-			response.Unauthorized(c, "Authentication required")
-			c.Abort()
-			return
-		}
+		// Must be mounted downstream of RequireAuth; misconfiguration panics
+		// via Recovery → 500, instead of masquerading as a 401.
+		userID := MustGetUserID(c)
 
 		// Resolve organization and project context from request
 		resolver := ResolveContext(c, ContextOrg, ContextProject)
@@ -102,12 +97,7 @@ func (m *ScopeMiddleware) RequireScope(scope string) gin.HandlerFunc {
 //	scopeMiddleware.RequireAnyScope([]string{"billing:manage", "billing:admin"})
 func (m *ScopeMiddleware) RequireAnyScope(scopes []string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID, exists := GetUserIDFromContext(c)
-		if !exists {
-			response.Unauthorized(c, "Authentication required")
-			c.Abort()
-			return
-		}
+		userID := MustGetUserID(c)
 
 		resolver := ResolveContext(c, ContextOrg, ContextProject)
 
@@ -144,12 +134,7 @@ func (m *ScopeMiddleware) RequireAnyScope(scopes []string) gin.HandlerFunc {
 //	scopeMiddleware.RequireAllScopes([]string{"traces:read", "analytics:export"})
 func (m *ScopeMiddleware) RequireAllScopes(scopes []string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID, exists := GetUserIDFromContext(c)
-		if !exists {
-			response.Unauthorized(c, "Authentication required")
-			c.Abort()
-			return
-		}
+		userID := MustGetUserID(c)
 
 		resolver := ResolveContext(c, ContextOrg, ContextProject)
 

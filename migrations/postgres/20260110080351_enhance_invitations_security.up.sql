@@ -12,11 +12,11 @@ ALTER TABLE user_invitations ADD COLUMN IF NOT EXISTS message TEXT;
 
 -- Add resend tracking
 ALTER TABLE user_invitations ADD COLUMN IF NOT EXISTS resent_count INT NOT NULL DEFAULT 0;
-ALTER TABLE user_invitations ADD COLUMN IF NOT EXISTS resent_at TIMESTAMPTZ;
+ALTER TABLE user_invitations ADD COLUMN IF NOT EXISTS resent_at TIMESTAMP WITH TIME ZONE;
 
 -- Add audit fields for acceptance and revocation
 ALTER TABLE user_invitations ADD COLUMN IF NOT EXISTS accepted_by_id UUID REFERENCES users(id) ON DELETE SET NULL;
-ALTER TABLE user_invitations ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ;
+ALTER TABLE user_invitations ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMP WITH TIME ZONE;
 ALTER TABLE user_invitations ADD COLUMN IF NOT EXISTS revoked_by_id UUID REFERENCES users(id) ON DELETE SET NULL;
 
 -- Create index for token hash lookup (O(1) lookup)

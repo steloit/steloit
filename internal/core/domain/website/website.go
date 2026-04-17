@@ -10,20 +10,16 @@ import (
 
 // ContactSubmission represents a contact form submission from the marketing website.
 type ContactSubmission struct {
-	ID          uuid.UUID `gorm:"type:uuid;primaryKey"`
-	Name        string    `gorm:"type:varchar(255);not null"`
-	Email       string    `gorm:"type:varchar(255);not null"`
-	Company     string    `gorm:"type:varchar(255)"`
-	Subject     string    `gorm:"type:varchar(255);not null"`
-	Message     string    `gorm:"type:text;not null"`
-	InquiryType string    `gorm:"type:varchar(50)"`
-	IPAddress   string    `gorm:"type:varchar(45)"`
-	UserAgent   string    `gorm:"type:text"`
-	CreatedAt   time.Time `gorm:"not null;default:now()"`
-}
-
-func (ContactSubmission) TableName() string {
-	return "contact_submissions"
+	ID          uuid.UUID
+	Name        string   
+	Email       string   
+	Company     string   
+	Subject     string   
+	Message     string   
+	InquiryType string   
+	IPAddress   string   
+	UserAgent   string   
+	CreatedAt   time.Time
 }
 
 // CreateContactSubmissionRequest is the DTO for creating a contact submission.

@@ -9,6 +9,8 @@ import (
 	"github.com/google/uuid"
 
 	"brokle/internal/core/domain/auth"
+	orgDomain "brokle/internal/core/domain/organization"
+	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 )
 
@@ -17,6 +19,7 @@ type AuthMiddleware struct {
 	jwtService        auth.JWTService
 	blacklistedTokens auth.BlacklistedTokenService
 	orgMemberService  auth.OrganizationMemberService
+	projectService    orgDomain.ProjectService
 	logger            *slog.Logger
 }
 
@@ -25,12 +28,14 @@ func NewAuthMiddleware(
 	jwtService auth.JWTService,
 	blacklistedTokens auth.BlacklistedTokenService,
 	orgMemberService auth.OrganizationMemberService,
+	projectService orgDomain.ProjectService,
 	logger *slog.Logger,
 ) *AuthMiddleware {
 	return &AuthMiddleware{
 		jwtService:        jwtService,
 		blacklistedTokens: blacklistedTokens,
 		orgMemberService:  orgMemberService,
+		projectService:    projectService,
 		logger:            logger,
 	}
 }
@@ -113,13 +118,7 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 // RequirePermission middleware ensures user has specific permission with effective permissions
 func (m *AuthMiddleware) RequirePermission(permission string) gin.HandlerFunc {
 	return gin.HandlerFunc(func(c *gin.Context) {
-		userID, ok := GetUserIDFromContext(c)
-		if !ok {
-			m.logger.Warn("Permission check attempted without authentication")
-			response.Unauthorized(c, "Authentication required")
-			c.Abort()
-			return
-		}
+		userID := MustGetUserID(c)
 
 		hasPermission, err := m.orgMemberService.CheckUserPermissions(
 			c.Request.Context(),
@@ -144,15 +143,71 @@ func (m *AuthMiddleware) RequirePermission(permission string) gin.HandlerFunc {
 	})
 }
 
-// RequireAnyPermission middleware ensures user has at least one of the specified permissions
-func (m *AuthMiddleware) RequireAnyPermission(permissions []string) gin.HandlerFunc {
+// RequireProjectAccess ensures the authenticated user is a member of the
+// organization that owns the project identified by either the ":projectId"
+// path parameter (preferred) or the "project_id" query string.
+//
+// Must be mounted downstream of RequireAuth; the user-ID invariant is
+// enforced via MustGetUserID, so a misconfigured route panics → Recovery → 500.
+//
+// Responses:
+//   - 400 if the project identifier is missing or malformed;
+//   - 403 if the caller is authenticated but has no org-level membership;
+//   - 404 if the project does not exist;
+//   - 500 on infrastructure errors or invariant violations (missing RequireAuth).
+//
+// On success, the resolved project UUID is pinned to the Gin context under
+// ProjectIDKey so downstream handlers can read it via MustGetProjectID without
+// re-parsing.
+func (m *AuthMiddleware) RequireProjectAccess() gin.HandlerFunc {
 	return gin.HandlerFunc(func(c *gin.Context) {
-		userID, ok := GetUserIDFromContext(c)
-		if !ok {
-			response.Unauthorized(c, "Authentication required")
+		userID := MustGetUserID(c)
+
+		raw := c.Param("projectId")
+		if raw == "" {
+			raw = c.Query("project_id")
+		}
+		if raw == "" {
+			response.Error(c, appErrors.NewValidationError(
+				"Missing project ID", "project_id is required"))
 			c.Abort()
 			return
 		}
+		projectID, err := uuid.Parse(raw)
+		if err != nil {
+			response.Error(c, appErrors.NewValidationError(
+				"Invalid project ID", "project_id must be a valid UUID"))
+			c.Abort()
+			return
+		}
+
+		canAccess, err := m.projectService.CanUserAccessProject(c.Request.Context(), userID, projectID)
+		if err != nil {
+			// projectService returns AppError constructors: forward the mapped
+			// status (404 / 500) rather than dropping it to a generic 500.
+			m.logger.Warn("project access check failed",
+				"error", err, "user_id", userID, "project_id", projectID)
+			response.Error(c, err)
+			c.Abort()
+			return
+		}
+		if !canAccess {
+			m.logger.Warn("project access denied",
+				"user_id", userID, "project_id", projectID)
+			response.Error(c, appErrors.NewForbiddenError("Access denied to project"))
+			c.Abort()
+			return
+		}
+
+		c.Set(ProjectIDKey, projectID)
+		c.Next()
+	})
+}
+
+// RequireAnyPermission middleware ensures user has at least one of the specified permissions
+func (m *AuthMiddleware) RequireAnyPermission(permissions []string) gin.HandlerFunc {
+	return gin.HandlerFunc(func(c *gin.Context) {
+		userID := MustGetUserID(c)
 
 		hasPermission, err := m.orgMemberService.CheckUserPermissions(
 			c.Request.Context(),
@@ -188,12 +243,7 @@ func (m *AuthMiddleware) RequireAnyPermission(permissions []string) gin.HandlerF
 // RequireAllPermissions middleware ensures user has ALL specified permissions
 func (m *AuthMiddleware) RequireAllPermissions(permissions []string) gin.HandlerFunc {
 	return gin.HandlerFunc(func(c *gin.Context) {
-		userID, ok := GetUserIDFromContext(c)
-		if !ok {
-			response.Unauthorized(c, "Authentication required")
-			c.Abort()
-			return
-		}
+		userID := MustGetUserID(c)
 
 		hasPermission, err := m.orgMemberService.CheckUserPermissions(
 			c.Request.Context(),

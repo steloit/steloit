@@ -2,137 +2,206 @@ package observability
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
-	"gorm.io/gorm"
+	sq "github.com/Masterminds/squirrel"
 
-	"brokle/internal/core/domain/observability"
+	observabilityDomain "brokle/internal/core/domain/observability"
+	"brokle/internal/infrastructure/db"
+	"brokle/internal/infrastructure/db/gen"
 )
 
 type filterPresetRepository struct {
-	db *gorm.DB
+	tm *db.TxManager
 }
 
-// NewFilterPresetRepository creates a new PostgreSQL filter preset repository.
-func NewFilterPresetRepository(db *gorm.DB) observability.FilterPresetRepository {
-	return &filterPresetRepository{db: db}
+func NewFilterPresetRepository(tm *db.TxManager) observabilityDomain.FilterPresetRepository {
+	return &filterPresetRepository{tm: tm}
 }
 
-func (r *filterPresetRepository) Create(ctx context.Context, preset *observability.FilterPreset) error {
-	if err := r.db.WithContext(ctx).Create(preset).Error; err != nil {
+func (r *filterPresetRepository) Create(ctx context.Context, p *observabilityDomain.FilterPreset) error {
+	if err := r.tm.Queries(ctx).CreateFilterPreset(ctx, gen.CreateFilterPresetParams{
+		ID:               p.ID,
+		ProjectID:        p.ProjectID,
+		Name:             p.Name,
+		Description:      p.Description,
+		TableName:        p.TargetTable,
+		Filters:          p.Filters,
+		ColumnOrder:      db.JSONOr(p.ColumnOrder, "[]"),
+		ColumnVisibility: db.JSONOr(p.ColumnVisibility, "{}"),
+		SearchQuery:      p.SearchQuery,
+		SearchTypes:      db.NonNilStrings(p.SearchTypes),
+		IsPublic:         p.IsPublic,
+		CreatedBy:        p.CreatedBy,
+	}); err != nil {
 		return fmt.Errorf("create filter preset: %w", err)
 	}
 	return nil
 }
 
-func (r *filterPresetRepository) GetByID(ctx context.Context, id uuid.UUID) (*observability.FilterPreset, error) {
-	var preset observability.FilterPreset
-	err := r.db.WithContext(ctx).Where("id = ?", id).First(&preset).Error
+func (r *filterPresetRepository) GetByID(ctx context.Context, id uuid.UUID) (*observabilityDomain.FilterPreset, error) {
+	row, err := r.tm.Queries(ctx).GetFilterPresetByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, err
+		if db.IsNoRows(err) {
+			return nil, observabilityDomain.ErrFilterPresetNotFound
 		}
 		return nil, fmt.Errorf("get filter preset by id: %w", err)
 	}
-	return &preset, nil
+	return filterPresetFromRow(&row), nil
 }
 
-func (r *filterPresetRepository) Update(ctx context.Context, preset *observability.FilterPreset) error {
-	result := r.db.WithContext(ctx).Model(preset).Updates(map[string]interface{}{
-		"name":              preset.Name,
-		"description":       preset.Description,
-		"filters":           preset.Filters,
-		"column_order":      preset.ColumnOrder,
-		"column_visibility": preset.ColumnVisibility,
-		"search_query":      preset.SearchQuery,
-		"search_types":      preset.SearchTypes,
-		"is_public":         preset.IsPublic,
+func (r *filterPresetRepository) Update(ctx context.Context, p *observabilityDomain.FilterPreset) error {
+	n, err := r.tm.Queries(ctx).UpdateFilterPreset(ctx, gen.UpdateFilterPresetParams{
+		ID:               p.ID,
+		Name:             p.Name,
+		Description:      p.Description,
+		Filters:          p.Filters,
+		ColumnOrder:      db.JSONOr(p.ColumnOrder, "[]"),
+		ColumnVisibility: db.JSONOr(p.ColumnVisibility, "{}"),
+		SearchQuery:      p.SearchQuery,
+		SearchTypes:      db.NonNilStrings(p.SearchTypes),
+		IsPublic:         p.IsPublic,
 	})
-	if result.Error != nil {
-		return fmt.Errorf("update filter preset: %w", result.Error)
+	if err != nil {
+		return fmt.Errorf("update filter preset: %w", err)
 	}
-	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+	if n == 0 {
+		return observabilityDomain.ErrFilterPresetNotFound
 	}
 	return nil
 }
 
 func (r *filterPresetRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	result := r.db.WithContext(ctx).Where("id = ?", id).Delete(&observability.FilterPreset{})
-	if result.Error != nil {
-		return fmt.Errorf("delete filter preset: %w", result.Error)
+	n, err := r.tm.Queries(ctx).DeleteFilterPreset(ctx, id)
+	if err != nil {
+		return fmt.Errorf("delete filter preset: %w", err)
 	}
-	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+	if n == 0 {
+		return observabilityDomain.ErrFilterPresetNotFound
 	}
 	return nil
 }
 
-func (r *filterPresetRepository) List(ctx context.Context, filter *observability.FilterPresetFilter) ([]*observability.FilterPreset, error) {
-	query := r.buildListQuery(ctx, filter).Order("updated_at DESC")
-
-	if filter.Limit > 0 {
-		query = query.Limit(filter.Limit)
+// List is built with squirrel — visibility filtering has 4 branches
+// (owned / owned+public / by created_by / by is_public) that don't
+// compose cleanly as sqlc parameters.
+func (r *filterPresetRepository) List(ctx context.Context, f *observabilityDomain.FilterPresetFilter) ([]*observabilityDomain.FilterPreset, error) {
+	b := r.buildList(f).
+		Columns(
+			"id", "project_id", "name", "description",
+			"table_name", "filters", "column_order", "column_visibility",
+			"search_query", "search_types",
+			"is_public", "created_by", "created_at", "updated_at",
+		).
+		OrderBy("updated_at DESC")
+	if f.Limit > 0 {
+		b = b.Limit(uint64(f.Limit))
 	}
-	if filter.Offset > 0 {
-		query = query.Offset(filter.Offset)
+	if f.Offset > 0 {
+		b = b.Offset(uint64(f.Offset))
 	}
-
-	var presets []*observability.FilterPreset
-	if err := query.Find(&presets).Error; err != nil {
+	sqlStr, args, err := b.PlaceholderFormat(sq.Dollar).ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("build filter preset list: %w", err)
+	}
+	rows, err := r.tm.DB(ctx).Query(ctx, sqlStr, args...)
+	if err != nil {
 		return nil, fmt.Errorf("list filter presets: %w", err)
 	}
-
-	return presets, nil
+	defer rows.Close()
+	out := make([]*observabilityDomain.FilterPreset, 0)
+	for rows.Next() {
+		p := &observabilityDomain.FilterPreset{}
+		var (
+			description, searchQuery *string
+			columnOrder, columnVis   []byte
+			searchTypes              []string
+		)
+		if err := rows.Scan(
+			&p.ID, &p.ProjectID, &p.Name, &description,
+			&p.TargetTable, &p.Filters, &columnOrder, &columnVis,
+			&searchQuery, &searchTypes,
+			&p.IsPublic, &p.CreatedBy, &p.CreatedAt, &p.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan filter preset row: %w", err)
+		}
+		p.Description = description
+		p.ColumnOrder = columnOrder
+		p.ColumnVisibility = columnVis
+		p.SearchQuery = searchQuery
+		p.SearchTypes = searchTypes
+		out = append(out, p)
+	}
+	return out, rows.Err()
 }
 
-func (r *filterPresetRepository) Count(ctx context.Context, filter *observability.FilterPresetFilter) (int64, error) {
-	var count int64
-	if err := r.buildListQuery(ctx, filter).Count(&count).Error; err != nil {
+func (r *filterPresetRepository) Count(ctx context.Context, f *observabilityDomain.FilterPresetFilter) (int64, error) {
+	sqlStr, args, err := r.buildList(f).Columns("COUNT(*)").PlaceholderFormat(sq.Dollar).ToSql()
+	if err != nil {
+		return 0, fmt.Errorf("build filter preset count: %w", err)
+	}
+	var n int64
+	if err := r.tm.DB(ctx).QueryRow(ctx, sqlStr, args...).Scan(&n); err != nil {
 		return 0, fmt.Errorf("count filter presets: %w", err)
 	}
-
-	return count, nil
+	return n, nil
 }
 
-// buildListQuery constructs the shared WHERE clause used by List and Count.
-func (r *filterPresetRepository) buildListQuery(ctx context.Context, filter *observability.FilterPresetFilter) *gorm.DB {
-	query := r.db.WithContext(ctx).Model(&observability.FilterPreset{}).Where("project_id = ?", filter.ProjectID)
-
-	if filter.TargetTable != nil {
-		query = query.Where("table_name = ?", *filter.TargetTable)
+// buildList assembles the shared WHERE clause for List/Count so both
+// queries see the same predicate.
+func (r *filterPresetRepository) buildList(f *observabilityDomain.FilterPresetFilter) sq.SelectBuilder {
+	b := sq.Select().From("filter_presets").Where(sq.Eq{"project_id": f.ProjectID})
+	if f.TargetTable != nil {
+		b = b.Where(sq.Eq{"table_name": *f.TargetTable})
 	}
-
-	// Handle visibility: user can see their own + optionally public presets
-	if filter.UserID != nil {
-		if filter.IncludeAll {
-			query = query.Where("(created_by = ? OR is_public = true)", *filter.UserID)
-		} else {
-			query = query.Where("created_by = ?", *filter.UserID)
-		}
-	} else if filter.CreatedBy != nil {
-		query = query.Where("created_by = ?", *filter.CreatedBy)
-	} else if filter.IsPublic != nil {
-		query = query.Where("is_public = ?", *filter.IsPublic)
+	switch {
+	case f.UserID != nil && f.IncludeAll:
+		b = b.Where("(created_by = ? OR is_public = true)", *f.UserID)
+	case f.UserID != nil:
+		b = b.Where(sq.Eq{"created_by": *f.UserID})
+	case f.CreatedBy != nil:
+		b = b.Where(sq.Eq{"created_by": *f.CreatedBy})
+	case f.IsPublic != nil:
+		b = b.Where(sq.Eq{"is_public": *f.IsPublic})
 	}
-
-	return query
+	return b
 }
 
 func (r *filterPresetRepository) ExistsByName(ctx context.Context, projectID uuid.UUID, name string, excludeID *uuid.UUID) (bool, error) {
-	query := r.db.WithContext(ctx).Model(&observability.FilterPreset{}).
-		Where("project_id = ? AND name = ?", projectID, name)
-
+	b := sq.Select("COUNT(*)").From("filter_presets").
+		Where(sq.Eq{"project_id": projectID, "name": name})
 	if excludeID != nil {
-		query = query.Where("id != ?", *excludeID)
+		b = b.Where(sq.NotEq{"id": *excludeID})
 	}
-
-	var count int64
-	if err := query.Count(&count).Error; err != nil {
+	sqlStr, args, err := b.PlaceholderFormat(sq.Dollar).ToSql()
+	if err != nil {
+		return false, fmt.Errorf("build exists query: %w", err)
+	}
+	var n int64
+	if err := r.tm.DB(ctx).QueryRow(ctx, sqlStr, args...).Scan(&n); err != nil {
 		return false, fmt.Errorf("check filter preset exists: %w", err)
 	}
+	return n > 0, nil
+}
 
-	return count > 0, nil
+// ----- gen ↔ domain boundary -----------------------------------------
+
+func filterPresetFromRow(row *gen.FilterPreset) *observabilityDomain.FilterPreset {
+	return &observabilityDomain.FilterPreset{
+		ID:               row.ID,
+		ProjectID:        row.ProjectID,
+		Name:             row.Name,
+		Description:      row.Description,
+		TargetTable:      row.TableName,
+		Filters:          row.Filters,
+		ColumnOrder:      row.ColumnOrder,
+		ColumnVisibility: row.ColumnVisibility,
+		SearchQuery:      row.SearchQuery,
+		SearchTypes:      row.SearchTypes,
+		IsPublic:         row.IsPublic,
+		CreatedBy:        row.CreatedBy,
+		CreatedAt:        row.CreatedAt,
+		UpdatedAt:        row.UpdatedAt,
+	}
 }

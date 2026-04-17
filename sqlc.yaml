@@ -1,0 +1,92 @@
+# sqlc configuration — generates type-safe Go bindings from SQL queries.
+#
+# Schema is inferred from the PostgreSQL "up" migration files owned by the
+# in-house migrator (cmd/migrate, internal/migration). Queries are hand-
+# written in internal/infrastructure/db/queries/*.sql; each file is mapped to
+# a generated <name>.sql.go inside the single `gen` package.
+#
+# Flat (single) output package is deliberate: splitting by domain forces
+# sqlc to duplicate shared row types (e.g. `User` referenced by both auth
+# and billing), which is the documented failure mode in sqlc issue #1941.
+# Mirrors coder/coder, mariocarrion's samples, and every production sqlc
+# codebase we inspected.
+#
+# Regenerate with `make generate-sqlc`. The emitted files are git-tracked
+# so CI can build without invoking sqlc.
+version: "2"
+
+sql:
+  - engine: postgresql
+    schema: migrations/postgres
+    queries: internal/infrastructure/db/queries
+    gen:
+      go:
+        out: internal/infrastructure/db/gen
+        package: gen
+        sql_package: pgx/v5
+        emit_json_tags: true
+        emit_pointers_for_null_types: true
+        emit_prepared_queries: false
+        emit_interface: false
+        emit_empty_slices: true
+        emit_methods_with_db_argument: false
+        overrides:
+          # UUIDs use google/uuid (repo-wide convention since the UUIDv7
+          # migration) instead of pgx's pgtype.UUID.
+          - db_type: "uuid"
+            go_type:
+              import: "github.com/google/uuid"
+              type: "UUID"
+          - db_type: "uuid"
+            nullable: true
+            go_type:
+              import: "github.com/google/uuid"
+              type: "UUID"
+              pointer: true
+
+          # NUMERIC round-trips through shopspring.Decimal via the codec
+          # registered in internal/infrastructure/db/codecs.go. Precision
+          # is preserved end-to-end; no silent float64 coercion. sqlc's
+          # parser canonicalises NUMERIC/DECIMAL(p,s) to
+          # pg_catalog.numeric; plain "numeric" as an override key does
+          # not match and is dead config (same lesson as timestamptz).
+          - db_type: "pg_catalog.numeric"
+            go_type:
+              import: "github.com/shopspring/decimal"
+              type: "Decimal"
+          - db_type: "pg_catalog.numeric"
+            nullable: true
+            go_type:
+              import: "github.com/shopspring/decimal"
+              type: "Decimal"
+              pointer: true
+
+          # JSONB is decoded as a raw message so the repo layer can choose
+          # whether to unmarshal into a typed struct or forward as-is to an
+          # API response. Matches the existing GORM/datatypes approach.
+          - db_type: "jsonb"
+            go_type: "encoding/json.RawMessage"
+          - db_type: "jsonb"
+            nullable: true
+            go_type: "encoding/json.RawMessage"
+
+          # Timestamps use stdlib time.Time directly rather than pgtype's
+          # Timestamptz wrapper. pgx v5 maps both forms natively; picking
+          # time.Time avoids pgtype <-> time.Time conversion at every
+          # repository boundary. Nullable timestamps become *time.Time.
+          - db_type: "pg_catalog.timestamptz"
+            go_type: "time.Time"
+          - db_type: "pg_catalog.timestamptz"
+            nullable: true
+            go_type:
+              import: "time"
+              type: "Time"
+              pointer: true
+          - db_type: "pg_catalog.timestamp"
+            go_type: "time.Time"
+          - db_type: "pg_catalog.timestamp"
+            nullable: true
+            go_type:
+              import: "time"
+              type: "Time"
+              pointer: true

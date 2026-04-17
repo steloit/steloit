@@ -22,8 +22,8 @@ CREATE TABLE pricing_configs (
 
     is_active BOOLEAN DEFAULT true,
     is_default BOOLEAN DEFAULT false,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Ensure only one default pricing config at a time
@@ -33,7 +33,7 @@ CREATE UNIQUE INDEX idx_pricing_configs_default ON pricing_configs(is_default) W
 CREATE TABLE organization_billings (
     organization_id UUID PRIMARY KEY REFERENCES organizations(id) ON DELETE CASCADE,
     pricing_config_id UUID NOT NULL REFERENCES pricing_configs(id),
-    billing_cycle_start TIMESTAMPTZ NOT NULL,
+    billing_cycle_start TIMESTAMP WITH TIME ZONE NOT NULL,
     billing_cycle_anchor_day INTEGER DEFAULT 1 CHECK (billing_cycle_anchor_day >= 1 AND billing_cycle_anchor_day <= 28),
 
     -- Current period usage (three dimensions)
@@ -49,9 +49,9 @@ CREATE TABLE organization_billings (
     free_bytes_remaining BIGINT DEFAULT 1073741824,
     free_scores_remaining BIGINT DEFAULT 10000,
 
-    last_synced_at TIMESTAMPTZ DEFAULT NOW(),
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+    last_synced_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Indexes for organization_billings
@@ -82,8 +82,8 @@ CREATE TABLE usage_budgets (
     alert_thresholds INTEGER[] NOT NULL DEFAULT '{50,80,100}',
 
     is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Indexes for usage_budgets
@@ -104,9 +104,9 @@ CREATE TABLE usage_alerts (
     actual_value BIGINT NOT NULL,
     percent_used DECIMAL(5, 2) NOT NULL,
     status VARCHAR(20) DEFAULT 'triggered' CHECK (status IN ('triggered', 'acknowledged', 'resolved')),
-    triggered_at TIMESTAMPTZ DEFAULT NOW(),
-    acknowledged_at TIMESTAMPTZ,
-    resolved_at TIMESTAMPTZ,
+    triggered_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    acknowledged_at TIMESTAMP WITH TIME ZONE,
+    resolved_at TIMESTAMP WITH TIME ZONE,
     notification_sent BOOLEAN DEFAULT false
 );
 

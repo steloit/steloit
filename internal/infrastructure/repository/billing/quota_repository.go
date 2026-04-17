@@ -2,108 +2,91 @@ package billing
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"fmt"
 	"log/slog"
-
-	"gorm.io/gorm"
+	"time"
 
 	"github.com/google/uuid"
 
 	billingDomain "brokle/internal/core/domain/billing"
+	"brokle/internal/infrastructure/db"
+	"brokle/internal/infrastructure/db/gen"
 )
 
-// Ensure QuotaRepository implements the interface
+// Ensure QuotaRepository implements the interface.
 var _ billingDomain.QuotaRepository = (*QuotaRepository)(nil)
 
-// QuotaRepository handles usage quota management
+// QuotaRepository is the pgx+sqlc implementation of
+// billingDomain.QuotaRepository. usage_quotas is one row per org;
+// UpdateUsageQuota is an upsert keyed on organization_id.
 type QuotaRepository struct {
-	db     *gorm.DB
+	tm     *db.TxManager
 	logger *slog.Logger
 }
 
-// NewQuotaRepository creates a new quota repository instance
-func NewQuotaRepository(db *gorm.DB, logger *slog.Logger) *QuotaRepository {
-	return &QuotaRepository{
-		db:     db,
-		logger: logger,
-	}
+// NewQuotaRepository returns the pgx-backed repository.
+func NewQuotaRepository(tm *db.TxManager, logger *slog.Logger) *QuotaRepository {
+	return &QuotaRepository{tm: tm, logger: logger}
 }
 
-// GetUsageQuota retrieves the usage quota for an organization
+// GetUsageQuota returns (nil, nil) when no quota is configured for the
+// organization — preserving the "optional record" contract that the
+// GORM implementation exposed. Actual database errors propagate.
 func (r *QuotaRepository) GetUsageQuota(ctx context.Context, orgID uuid.UUID) (*billingDomain.UsageQuota, error) {
-	query := `
-		SELECT
-			organization_id, billing_tier, monthly_request_limit, monthly_token_limit,
-			monthly_cost_limit, current_requests, current_tokens, current_cost,
-			currency, reset_date, last_updated
-		FROM usage_quotas
-		WHERE organization_id = ?`
-
-	quota := &billingDomain.UsageQuota{}
-	err := r.db.WithContext(ctx).Raw(query, orgID).Scan(quota).Error
-
+	row, err := r.tm.Queries(ctx).GetUsageQuota(ctx, orgID)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) || errors.Is(err, sql.ErrNoRows) {
-			return nil, nil // No quota found, return nil without error
+		if db.IsNoRows(err) {
+			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get usage quota: %w", err)
+		return nil, fmt.Errorf("get usage quota for %s: %w", orgID, err)
 	}
-
-	// Check if we got empty result
-	if quota.OrganizationID == uuid.Nil {
-		return nil, nil
-	}
-
-	return quota, nil
+	return usageQuotaFromRow(&row), nil
 }
 
-// UpdateUsageQuota updates or inserts a usage quota for an organization
-func (r *QuotaRepository) UpdateUsageQuota(ctx context.Context, orgID uuid.UUID, quota *billingDomain.UsageQuota) error {
-	query := `
-		INSERT INTO usage_quotas (
-			organization_id, billing_tier, monthly_request_limit, monthly_token_limit,
-			monthly_cost_limit, current_requests, current_tokens, current_cost,
-			currency, reset_date, last_updated
-		) VALUES (
-			?, ?, ?, ?,
-			?, ?, ?, ?,
-			?, ?, ?
-		)
-		ON CONFLICT (organization_id)
-		DO UPDATE SET
-			billing_tier = EXCLUDED.billing_tier,
-			monthly_request_limit = EXCLUDED.monthly_request_limit,
-			monthly_token_limit = EXCLUDED.monthly_token_limit,
-			monthly_cost_limit = EXCLUDED.monthly_cost_limit,
-			current_requests = EXCLUDED.current_requests,
-			current_tokens = EXCLUDED.current_tokens,
-			current_cost = EXCLUDED.current_cost,
-			currency = EXCLUDED.currency,
-			reset_date = EXCLUDED.reset_date,
-			last_updated = EXCLUDED.last_updated`
-
-	err := r.db.WithContext(ctx).Exec(query,
-		quota.OrganizationID,
-		quota.BillingTier,
-		quota.MonthlyRequestLimit,
-		quota.MonthlyTokenLimit,
-		quota.MonthlyCostLimit,
-		quota.CurrentRequests,
-		quota.CurrentTokens,
-		quota.CurrentCost,
-		quota.Currency,
-		quota.ResetDate,
-		quota.LastUpdated,
-	).Error
-
-	if err != nil {
-		r.logger.Error("Failed to update usage quota", "error", err, "org_id", orgID)
-		return fmt.Errorf("failed to update usage quota: %w", err)
+// UpdateUsageQuota inserts or updates the quota row for orgID.
+func (r *QuotaRepository) UpdateUsageQuota(ctx context.Context, orgID uuid.UUID, q *billingDomain.UsageQuota) error {
+	if q.LastUpdated.IsZero() {
+		q.LastUpdated = time.Now()
 	}
-
-	r.logger.Debug("Updated usage quota", "org_id", orgID, "billing_tier", quota.BillingTier, "request_limit", quota.MonthlyRequestLimit, "cost_limit", quota.MonthlyCostLimit)
-
+	if err := r.tm.Queries(ctx).UpsertUsageQuota(ctx, gen.UpsertUsageQuotaParams{
+		OrganizationID:      orgID,
+		BillingTier:         q.BillingTier,
+		MonthlyRequestLimit: q.MonthlyRequestLimit,
+		MonthlyTokenLimit:   q.MonthlyTokenLimit,
+		MonthlyCostLimit:    q.MonthlyCostLimit,
+		CurrentRequests:     q.CurrentRequests,
+		CurrentTokens:       q.CurrentTokens,
+		CurrentCost:         q.CurrentCost,
+		Currency:            q.Currency,
+		ResetDate:           q.ResetDate,
+		LastUpdated:         q.LastUpdated,
+	}); err != nil {
+		r.logger.Error("failed to upsert usage quota", "error", err, "org_id", orgID)
+		return fmt.Errorf("upsert usage quota for %s: %w", orgID, err)
+	}
+	r.logger.Debug("upserted usage quota",
+		"org_id", orgID,
+		"billing_tier", q.BillingTier,
+		"request_limit", q.MonthlyRequestLimit,
+		"cost_limit", q.MonthlyCostLimit,
+	)
 	return nil
+}
+
+// ----- gen ↔ domain boundary -----------------------------------------
+
+func usageQuotaFromRow(row *gen.UsageQuota) *billingDomain.UsageQuota {
+	return &billingDomain.UsageQuota{
+		OrganizationID:      row.OrganizationID,
+		BillingTier:         row.BillingTier,
+		MonthlyRequestLimit: row.MonthlyRequestLimit,
+		MonthlyTokenLimit:   row.MonthlyTokenLimit,
+		MonthlyCostLimit:    row.MonthlyCostLimit,
+		CurrentRequests:     row.CurrentRequests,
+		CurrentTokens:       row.CurrentTokens,
+		CurrentCost:         row.CurrentCost,
+		Currency:            row.Currency,
+		ResetDate:           row.ResetDate,
+		LastUpdated:         row.LastUpdated,
+	}
 }

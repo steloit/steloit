@@ -27,8 +27,8 @@ CREATE TABLE llm_provider_credentials (
 
     -- Audit fields
     created_by        UUID REFERENCES users(id) ON DELETE SET NULL,
-    created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at        TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at        TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 
     -- Business constraint: one key per provider per project
     -- Users can update/replace but not have multiple keys for same provider

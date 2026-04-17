@@ -1,5 +1,7 @@
 package errors
 
+import "strings"
+
 // HTTP status codes for different error types
 const (
 	StatusValidationError      = 400
@@ -161,40 +163,45 @@ func GetErrorMessage(code string) string {
 	return "An error occurred"
 }
 
-// NewErrorWithCode creates a new AppError with a specific error code
+// NewErrorWithCode creates a new AppError whose AppErrorType is inferred from
+// the code's prefix. Safe for codes of any length (including empty).
+//
+// Deprecated: prefer the typed constructors (NewAuthError, NewValidationError,
+// NewNotFoundError, etc.) which carry their type explicitly and require no
+// prefix parsing.
 func NewErrorWithCode(code string, details string) *AppError {
-	message := GetErrorMessage(code)
-
-	// Determine error type based on code prefix
 	var errorType AppErrorType
 	switch {
-	case code[:4] == "AUTH":
+	case strings.HasPrefix(code, "AUTH"):
 		if code == CodeInsufficientPermissions {
 			errorType = ForbiddenError
 		} else {
 			errorType = UnauthorizedError
 		}
-	case code[:4] == "USER", code[:3] == "ORG", code[:7] == "PROJECT", code[:6] == "CONFIG":
+	case strings.HasPrefix(code, "USER"),
+		strings.HasPrefix(code, "ORG"),
+		strings.HasPrefix(code, "PROJECT"),
+		strings.HasPrefix(code, "CONFIG"):
 		errorType = NotFoundError
-	case code[:7] == "BILLING":
+	case strings.HasPrefix(code, "BILLING"):
 		if code == CodeQuotaExceeded || code == CodeInsufficientCredits {
 			errorType = PaymentRequiredError
 		} else {
 			errorType = BadRequestError
 		}
-	case code[:7] == "ROUTING":
+	case strings.HasPrefix(code, "ROUTING"):
 		if code == CodeProviderUnavailable {
 			errorType = ServiceUnavailable
 		} else {
 			errorType = AIProviderError
 		}
-	case code[:10] == "VALIDATION":
+	case strings.HasPrefix(code, "VALIDATION"):
 		errorType = ValidationError
-	case code[:8] == "EXTERNAL":
+	case strings.HasPrefix(code, "EXTERNAL"):
 		errorType = ServiceUnavailable
 	default:
 		errorType = InternalError
 	}
 
-	return NewAppError(errorType, message, details, nil)
+	return NewAppError(errorType, GetErrorMessage(code), details, nil)
 }

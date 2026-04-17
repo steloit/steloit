@@ -21,8 +21,8 @@ CREATE TABLE IF NOT EXISTS filter_presets (
 
     -- Audit fields
     created_by UUID REFERENCES users(id) ON DELETE SET NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 
     -- Unique constraint: one name per project
     CONSTRAINT filter_presets_project_name_unique UNIQUE(project_id, name)

@@ -2,48 +2,28 @@ package observability
 
 import (
 	"context"
-	"database/sql/driver"
 	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/lib/pq"
 )
 
 // FilterPreset represents a saved filter configuration for traces or spans.
 type FilterPreset struct {
-	ID               uuid.UUID       `json:"id" gorm:"primaryKey;column:id;type:uuid"`
-	ProjectID        uuid.UUID       `json:"project_id" gorm:"column:project_id;type:uuid;not null"`
-	Name             string          `json:"name" gorm:"column:name;not null"`
-	Description      *string         `json:"description,omitempty" gorm:"column:description"`
-	TargetTable      string          `json:"table_name" gorm:"column:table_name;not null;default:traces"`            // "traces" or "spans"
-	Filters          json.RawMessage `json:"filters" gorm:"column:filters;type:jsonb;not null" swaggertype:"object"` // Array of filter conditions
-	ColumnOrder      json.RawMessage `json:"column_order,omitempty" gorm:"column:column_order;type:jsonb" swaggertype:"object"`
-	ColumnVisibility json.RawMessage `json:"column_visibility,omitempty" gorm:"column:column_visibility;type:jsonb" swaggertype:"object"`
-	SearchQuery      *string         `json:"search_query,omitempty" gorm:"column:search_query"`
-	SearchTypes      StringArray     `json:"search_types,omitempty" gorm:"column:search_types;type:text[]"`
-	IsPublic         bool            `json:"is_public" gorm:"column:is_public;not null;default:false"`
-	CreatedBy        *uuid.UUID      `json:"created_by,omitempty" gorm:"column:created_by;type:uuid"`
-	CreatedAt        time.Time       `json:"created_at" gorm:"column:created_at;autoCreateTime"`
-	UpdatedAt        time.Time       `json:"updated_at" gorm:"column:updated_at;autoUpdateTime"`
-}
-
-// TableName returns the database table name for FilterPreset.
-func (FilterPreset) TableName() string {
-	return "filter_presets"
-}
-
-// StringArray is a custom type for PostgreSQL text[] that implements Scanner and Valuer.
-type StringArray []string
-
-// Scan implements sql.Scanner for StringArray.
-func (a *StringArray) Scan(value interface{}) error {
-	return (*pq.StringArray)(a).Scan(value)
-}
-
-// Value implements driver.Valuer for StringArray.
-func (a StringArray) Value() (driver.Value, error) {
-	return pq.StringArray(a).Value()
+	ID               uuid.UUID       `json:"id"`
+	ProjectID        uuid.UUID       `json:"project_id"`
+	Name             string          `json:"name"`
+	Description      *string         `json:"description,omitempty"`
+	TargetTable      string          `json:"table_name"`            // "traces" or "spans"
+	Filters          json.RawMessage `json:"filters" swaggertype:"object"` // Array of filter conditions
+	ColumnOrder      json.RawMessage `json:"column_order,omitempty" swaggertype:"object"`
+	ColumnVisibility json.RawMessage `json:"column_visibility,omitempty" swaggertype:"object"`
+	SearchQuery      *string         `json:"search_query,omitempty"`
+	SearchTypes      []string        `json:"search_types,omitempty"`
+	IsPublic         bool            `json:"is_public"`
+	CreatedBy        *uuid.UUID      `json:"created_by,omitempty"`
+	CreatedAt        time.Time       `json:"created_at"`
+	UpdatedAt        time.Time       `json:"updated_at"`
 }
 
 // FilterCondition represents a single filter condition in a preset.

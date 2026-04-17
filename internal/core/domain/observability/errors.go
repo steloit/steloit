@@ -28,6 +28,7 @@ var (
 	ErrInvalidScoreType      = errors.New("invalid score type")
 	ErrEvaluatorNotFound     = errors.New("evaluator not found")
 	ErrDuplicateQualityScore = errors.New("duplicate quality score for the same trace/span and score name")
+	ErrFilterPresetNotFound  = errors.New("filter preset not found")
 
 	// Model pricing errors
 	ErrModelNotFound         = errors.New("model not found")

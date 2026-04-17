@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"brokle/internal/core/domain/observability"
+	"brokle/internal/transport/http/middleware"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 )
@@ -26,7 +27,12 @@ import (
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/spans [get]
 func (h *Handler) ListSpans(c *gin.Context) {
-	filter := &observability.SpanFilter{}
+	// Project scoping + membership check is enforced by RequireProjectAccess
+	// middleware; SpanFilter.ProjectID is required so repository queries are
+	// tenant-bounded.
+	filter := &observability.SpanFilter{
+		ProjectID: middleware.MustGetProjectID(c).String(),
+	}
 
 	if traceID := c.Query("trace_id"); traceID != "" {
 		filter.TraceID = &traceID

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,8 +15,9 @@ import (
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/clickhouse"
-	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/jackc/pgx/v5"
 
 	"brokle/internal/config"
 	"brokle/internal/infrastructure/database"
@@ -28,7 +30,6 @@ type Manager struct {
 	logger           *slog.Logger
 	postgresRunner   *migrate.Migrate
 	clickhouseRunner *migrate.Migrate
-	postgresDB       *database.PostgresDB
 	clickhouseDB     *database.ClickHouseDB
 }
 
@@ -62,13 +63,6 @@ func NewManagerWithDatabases(cfg *config.Config, databases []DatabaseType) (*Man
 
 	// Conditionally initialize PostgreSQL
 	if needsDatabase(PostgresDB) {
-		postgresDB, err := database.NewPostgresDB(cfg, logger)
-		if err != nil {
-			return nil, fmt.Errorf("failed to initialize postgres database: %w", err)
-		}
-		manager.postgresDB = postgresDB
-
-		// Initialize PostgreSQL migration runner
 		if err := manager.initPostgresRunner(); err != nil {
 			return nil, fmt.Errorf("failed to initialize postgres runner: %w", err)
 		}
@@ -94,35 +88,20 @@ func NewManagerWithDatabases(cfg *config.Config, databases []DatabaseType) (*Man
 	return manager, nil
 }
 
-// initPostgresRunner initializes the PostgreSQL migration runner
+// initPostgresRunner initializes the PostgreSQL migration runner.
+// Uses the pgx/v5 golang-migrate driver via URL-based init — symmetric
+// with the ClickHouse runner below, no *sql.DB adapter required.
 func (m *Manager) initPostgresRunner() error {
-	if m.postgresDB == nil {
-		return errors.New("postgres database not initialized")
-	}
-
-	// Get migrations path
 	migrationsPath := m.getMigrationsPath(PostgresDB)
 
-	// Get underlying *sql.DB from GORM
-	sqlDB, err := m.postgresDB.DB.DB()
+	migrateURL, err := postgresMigrateURL(m.config)
 	if err != nil {
-		return fmt.Errorf("failed to get underlying *sql.DB: %w", err)
+		return fmt.Errorf("failed to build postgres migration URL: %w", err)
 	}
 
-	// Create postgres database driver instance
-	driver, err := postgres.WithInstance(sqlDB, &postgres.Config{
-		MigrationsTable: "schema_migrations",
-		DatabaseName:    m.config.Database.Database,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create postgres driver: %w", err)
-	}
-
-	// Create migration runner using golang-migrate
-	runner, err := migrate.NewWithDatabaseInstance(
+	runner, err := migrate.New(
 		"file://"+migrationsPath,
-		"postgres",
-		driver,
+		migrateURL,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create postgres migration runner: %w", err)
@@ -131,6 +110,26 @@ func (m *Manager) initPostgresRunner() error {
 	m.postgresRunner = runner
 	m.logger.Info("PostgreSQL migration runner initialized", "migrations_path", migrationsPath)
 	return nil
+}
+
+// postgresMigrateURL returns the connection URL for the pgx/v5 golang-migrate
+// driver, which registers itself under the "pgx5" scheme. pgx (and libpq)
+// accept both "postgres://" and "postgresql://" as synonymous; we rewrite
+// the scheme using net/url so userinfo, query parameters, IPv6 hosts, and
+// either long/short form all round-trip correctly. An unsupported scheme
+// fails loudly at startup instead of producing a malformed URL.
+func postgresMigrateURL(cfg *config.Config) (string, error) {
+	u, err := url.Parse(cfg.GetDatabaseURL())
+	if err != nil {
+		return "", fmt.Errorf("parse database url: %w", err)
+	}
+	switch u.Scheme {
+	case "postgres", "postgresql":
+		u.Scheme = "pgx5"
+	default:
+		return "", fmt.Errorf("unsupported database url scheme %q (want postgres:// or postgresql://)", u.Scheme)
+	}
+	return u.String(), nil
 }
 
 // initClickHouseRunner initializes the ClickHouse migration runner
@@ -574,42 +573,37 @@ func (m *Manager) DropPostgres() error {
 // This removes ALL objects including tables, custom types/enums, sequences, functions, etc.
 // Use this when the database is in a dirty/inconsistent state that Drop() can't handle.
 func (m *Manager) ResetPostgresComplete(ctx context.Context) error {
-	if m.postgresDB == nil {
+	if m.postgresRunner == nil {
 		return errors.New("PostgreSQL not initialized - run with -db postgres or -db all")
 	}
 
-	sqlDB, err := m.postgresDB.DB.DB()
+	// Open a short-lived pgx connection for the DDL. The migrate runner holds
+	// its own pool internally, so using a fresh conn here avoids interfering
+	// with its state during what is already a destructive operation.
+	conn, err := pgx.Connect(ctx, m.config.GetDatabaseURL())
 	if err != nil {
-		return fmt.Errorf("failed to get underlying *sql.DB: %w", err)
+		return fmt.Errorf("connect to postgres for reset: %w", err)
+	}
+	defer conn.Close(ctx)
+
+	tx, err := conn.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin reset transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	for _, stmt := range []string{
+		"DROP SCHEMA IF EXISTS public CASCADE",
+		"CREATE SCHEMA public",
+		"GRANT ALL ON SCHEMA public TO public",
+	} {
+		if _, err := tx.Exec(ctx, stmt); err != nil {
+			return fmt.Errorf("reset schema (%q): %w", stmt, err)
+		}
 	}
 
-	// Use a transaction to ensure atomicity
-	tx, err := sqlDB.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	// Drop schema with CASCADE to remove ALL objects including custom types
-	_, err = tx.ExecContext(ctx, "DROP SCHEMA IF EXISTS public CASCADE")
-	if err != nil {
-		return fmt.Errorf("failed to drop schema: %w", err)
-	}
-
-	// Recreate the public schema
-	_, err = tx.ExecContext(ctx, "CREATE SCHEMA public")
-	if err != nil {
-		return fmt.Errorf("failed to create schema: %w", err)
-	}
-
-	// Restore default permissions (required for postgres user access)
-	_, err = tx.ExecContext(ctx, "GRANT ALL ON SCHEMA public TO public")
-	if err != nil {
-		return fmt.Errorf("failed to grant privileges: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit reset transaction: %w", err)
 	}
 
 	m.logger.Info("PostgreSQL schema reset complete - all objects dropped")
@@ -722,15 +716,6 @@ func (m *Manager) Shutdown() error {
 	if m.clickhouseRunner != nil {
 		if _, err := m.clickhouseRunner.Close(); err != nil {
 			m.logger.Error("Failed to close ClickHouse migration runner", "error", err)
-			lastErr = err
-		}
-	}
-
-	// Close databases
-	// Close PostgreSQL
-	if m.postgresDB != nil {
-		if err := m.postgresDB.Close(); err != nil {
-			m.logger.Error("Failed to close PostgreSQL connection", "error", err)
 			lastErr = err
 		}
 	}

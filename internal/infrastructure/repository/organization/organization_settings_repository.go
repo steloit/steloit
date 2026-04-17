@@ -6,160 +6,218 @@ import (
 	"errors"
 	"fmt"
 
-	"gorm.io/gorm"
-
 	"github.com/google/uuid"
 
 	orgDomain "brokle/internal/core/domain/organization"
+	"brokle/internal/infrastructure/db"
+	"brokle/internal/infrastructure/db/gen"
 )
 
-// organizationSettingsRepository implements orgDomain.OrganizationSettingsRepository using GORM
+// organizationSettingsRepository is the pgx+sqlc implementation of
+// orgDomain.OrganizationSettingsRepository. Settings are stored as JSONB
+// in the database and as a JSON string in the domain struct — the
+// conversion is a simple []byte ↔ string at the boundary.
 type organizationSettingsRepository struct {
-	db *gorm.DB
+	tm *db.TxManager
 }
 
-// NewOrganizationSettingsRepository creates a new organization settings repository instance
-func NewOrganizationSettingsRepository(db *gorm.DB) orgDomain.OrganizationSettingsRepository {
-	return &organizationSettingsRepository{
-		db: db,
+// NewOrganizationSettingsRepository returns the pgx-backed repository.
+func NewOrganizationSettingsRepository(tm *db.TxManager) orgDomain.OrganizationSettingsRepository {
+	return &organizationSettingsRepository{tm: tm}
+}
+
+func (r *organizationSettingsRepository) Create(ctx context.Context, s *orgDomain.OrganizationSettings) error {
+	if err := r.tm.Queries(ctx).CreateOrganizationSetting(ctx, gen.CreateOrganizationSettingParams{
+		ID:             s.ID,
+		OrganizationID: s.OrganizationID,
+		Key:            s.Key,
+		Value:          json.RawMessage(s.Value),
+		CreatedAt:      s.CreatedAt,
+		UpdatedAt:      s.UpdatedAt,
+	}); err != nil {
+		return fmt.Errorf("create organization_setting %s/%s: %w", s.OrganizationID, s.Key, err)
 	}
+	return nil
 }
 
-// Create creates a new organization setting
-func (r *organizationSettingsRepository) Create(ctx context.Context, setting *orgDomain.OrganizationSettings) error {
-	return r.db.WithContext(ctx).Create(setting).Error
-}
-
-// GetByID retrieves an organization setting by ID
 func (r *organizationSettingsRepository) GetByID(ctx context.Context, id uuid.UUID) (*orgDomain.OrganizationSettings, error) {
-	var setting orgDomain.OrganizationSettings
-	err := r.db.WithContext(ctx).Where("id = ?", id).First(&setting).Error
+	row, err := r.tm.Queries(ctx).GetOrganizationSettingByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("get organization setting by ID %s: %w", id, orgDomain.ErrSettingsNotFound)
+		if db.IsNoRows(err) {
+			return nil, fmt.Errorf("get organization_setting by ID %s: %w", id, orgDomain.ErrSettingsNotFound)
 		}
-		return nil, err
+		return nil, fmt.Errorf("get organization_setting by ID %s: %w", id, err)
 	}
-	return &setting, nil
+	return organizationSettingsFromRow(&row), nil
 }
 
-// GetByKey retrieves an organization setting by organization ID and key
 func (r *organizationSettingsRepository) GetByKey(ctx context.Context, orgID uuid.UUID, key string) (*orgDomain.OrganizationSettings, error) {
-	var setting orgDomain.OrganizationSettings
-	err := r.db.WithContext(ctx).Where("organization_id = ? AND key = ?", orgID, key).First(&setting).Error
+	row, err := r.tm.Queries(ctx).GetOrganizationSettingByKey(ctx, gen.GetOrganizationSettingByKeyParams{
+		OrganizationID: orgID,
+		Key:            key,
+	})
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("get organization setting by org %s and key %s: %w", orgID, key, orgDomain.ErrSettingsNotFound)
+		if db.IsNoRows(err) {
+			return nil, fmt.Errorf("get organization_setting %s/%s: %w", orgID, key, orgDomain.ErrSettingsNotFound)
 		}
-		return nil, err
+		return nil, fmt.Errorf("get organization_setting %s/%s: %w", orgID, key, err)
 	}
-	return &setting, nil
+	return organizationSettingsFromRow(&row), nil
 }
 
-// Update updates an existing organization setting
-func (r *organizationSettingsRepository) Update(ctx context.Context, setting *orgDomain.OrganizationSettings) error {
-	return r.db.WithContext(ctx).Save(setting).Error
+func (r *organizationSettingsRepository) Update(ctx context.Context, s *orgDomain.OrganizationSettings) error {
+	if err := r.tm.Queries(ctx).UpdateOrganizationSetting(ctx, gen.UpdateOrganizationSettingParams{
+		ID:    s.ID,
+		Key:   s.Key,
+		Value: json.RawMessage(s.Value),
+	}); err != nil {
+		return fmt.Errorf("update organization_setting %s: %w", s.ID, err)
+	}
+	return nil
 }
 
-// Delete deletes an organization setting by ID
 func (r *organizationSettingsRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	return r.db.WithContext(ctx).Delete(&orgDomain.OrganizationSettings{}, "id = ?", id).Error
-}
-
-// GetAllByOrganizationID retrieves all settings for an organization
-func (r *organizationSettingsRepository) GetAllByOrganizationID(ctx context.Context, orgID uuid.UUID) ([]*orgDomain.OrganizationSettings, error) {
-	var settings []*orgDomain.OrganizationSettings
-	err := r.db.WithContext(ctx).Where("organization_id = ?", orgID).Find(&settings).Error
-	if err != nil {
-		return nil, err
+	if err := r.tm.Queries(ctx).DeleteOrganizationSetting(ctx, id); err != nil {
+		return fmt.Errorf("delete organization_setting %s: %w", id, err)
 	}
-	return settings, nil
+	return nil
 }
 
-// GetSettingsMap retrieves all settings for an organization as a map[string]interface{}
+func (r *organizationSettingsRepository) GetAllByOrganizationID(ctx context.Context, orgID uuid.UUID) ([]*orgDomain.OrganizationSettings, error) {
+	rows, err := r.tm.Queries(ctx).ListOrganizationSettings(ctx, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("list organization_settings for org %s: %w", orgID, err)
+	}
+	return organizationSettingsFromRows(rows), nil
+}
+
+// GetSettingsMap decodes every stored setting value as JSON and returns
+// a flat key → value map. Values that fail to decode are surfaced as
+// raw strings so the operator can see the bytes rather than silently
+// dropping them.
 func (r *organizationSettingsRepository) GetSettingsMap(ctx context.Context, orgID uuid.UUID) (map[string]interface{}, error) {
 	settings, err := r.GetAllByOrganizationID(ctx, orgID)
 	if err != nil {
 		return nil, err
 	}
-
-	settingsMap := make(map[string]interface{})
-	for _, setting := range settings {
-		var value interface{}
-		if err := json.Unmarshal([]byte(setting.Value), &value); err != nil {
-			// If unmarshaling fails, store as string
-			value = setting.Value
+	out := make(map[string]interface{}, len(settings))
+	for _, s := range settings {
+		var v interface{}
+		if err := json.Unmarshal([]byte(s.Value), &v); err != nil {
+			v = s.Value
 		}
-		settingsMap[setting.Key] = value
+		out[s.Key] = v
 	}
-
-	return settingsMap, nil
+	return out, nil
 }
 
-// DeleteByKey deletes an organization setting by organization ID and key
 func (r *organizationSettingsRepository) DeleteByKey(ctx context.Context, orgID uuid.UUID, key string) error {
-	return r.db.WithContext(ctx).Delete(&orgDomain.OrganizationSettings{}, "organization_id = ? AND key = ?", orgID, key).Error
+	if _, err := r.tm.Queries(ctx).DeleteOrganizationSettingByKey(ctx, gen.DeleteOrganizationSettingByKeyParams{
+		OrganizationID: orgID,
+		Key:            key,
+	}); err != nil {
+		return fmt.Errorf("delete organization_setting %s/%s: %w", orgID, key, err)
+	}
+	return nil
 }
 
-// UpsertSetting creates or updates a setting by organization ID and key
+// UpsertSetting creates-or-updates a single setting atomically. One
+// round trip via ON CONFLICT replaces the previous get-then-create-or-
+// update dance.
 func (r *organizationSettingsRepository) UpsertSetting(ctx context.Context, orgID uuid.UUID, key string, value interface{}) (*orgDomain.OrganizationSettings, error) {
-	// Try to get existing setting
-	existing, err := r.GetByKey(ctx, orgID, key)
-	if err != nil && !errors.Is(err, orgDomain.ErrSettingsNotFound) {
-		return nil, err
-	}
-
-	// Convert value to JSON for validation
-	_, err = json.Marshal(value)
+	raw, err := json.Marshal(value)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("marshal setting %s/%s: %w", orgID, key, err)
 	}
-
-	if existing != nil {
-		// Update existing
-		if err := existing.SetValue(value); err != nil {
-			return nil, err
-		}
-		if err := r.Update(ctx, existing); err != nil {
-			return nil, err
-		}
-		return existing, nil
-	} else {
-		// Create new
-		setting, err := orgDomain.NewOrganizationSettings(orgID, key, value)
-		if err != nil {
-			return nil, err
-		}
-		if err := r.Create(ctx, setting); err != nil {
-			return nil, err
-		}
-		return setting, nil
+	row, err := r.tm.Queries(ctx).UpsertOrganizationSetting(ctx, gen.UpsertOrganizationSettingParams{
+		ID:             mustNewSettingID(),
+		OrganizationID: orgID,
+		Key:            key,
+		Value:          raw,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("upsert organization_setting %s/%s: %w", orgID, key, err)
 	}
+	return organizationSettingsFromRow(&row), nil
 }
 
-// CreateMultiple creates multiple organization settings in a transaction
+// CreateMultiple creates several settings atomically. If any insert
+// fails the entire batch rolls back via TxManager.WithinTransaction.
 func (r *organizationSettingsRepository) CreateMultiple(ctx context.Context, settings []*orgDomain.OrganizationSettings) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		for _, setting := range settings {
-			if err := tx.Create(setting).Error; err != nil {
-				return err
+	if len(settings) == 0 {
+		return nil
+	}
+	return r.tm.WithinTransaction(ctx, func(ctx context.Context) error {
+		q := r.tm.Queries(ctx)
+		for _, s := range settings {
+			if err := q.CreateOrganizationSetting(ctx, gen.CreateOrganizationSettingParams{
+				ID:             s.ID,
+				OrganizationID: s.OrganizationID,
+				Key:            s.Key,
+				Value:          json.RawMessage(s.Value),
+				CreatedAt:      s.CreatedAt,
+				UpdatedAt:      s.UpdatedAt,
+			}); err != nil {
+				return fmt.Errorf("create organization_setting %s/%s: %w", s.OrganizationID, s.Key, err)
 			}
 		}
 		return nil
 	})
 }
 
-// GetByKeys retrieves settings by organization ID and multiple keys
 func (r *organizationSettingsRepository) GetByKeys(ctx context.Context, orgID uuid.UUID, keys []string) ([]*orgDomain.OrganizationSettings, error) {
-	var settings []*orgDomain.OrganizationSettings
-	err := r.db.WithContext(ctx).Where("organization_id = ? AND key IN ?", orgID, keys).Find(&settings).Error
+	rows, err := r.tm.Queries(ctx).ListOrganizationSettingsByKeys(ctx, gen.ListOrganizationSettingsByKeysParams{
+		OrganizationID: orgID,
+		Column2:        keys,
+	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list organization_settings by keys %s: %w", orgID, err)
 	}
-	return settings, nil
+	return organizationSettingsFromRows(rows), nil
 }
 
-// DeleteMultiple deletes multiple settings by organization ID and keys
 func (r *organizationSettingsRepository) DeleteMultiple(ctx context.Context, orgID uuid.UUID, keys []string) error {
-	return r.db.WithContext(ctx).Delete(&orgDomain.OrganizationSettings{}, "organization_id = ? AND key IN ?", orgID, keys).Error
+	if len(keys) == 0 {
+		return nil
+	}
+	if _, err := r.tm.Queries(ctx).DeleteOrganizationSettingsByKeys(ctx, gen.DeleteOrganizationSettingsByKeysParams{
+		OrganizationID: orgID,
+		Column2:        keys,
+	}); err != nil {
+		return fmt.Errorf("delete organization_settings by keys %s: %w", orgID, err)
+	}
+	return nil
 }
+
+// organizationSettingsFromRow adapts a sqlc row into the domain type.
+// The domain stores JSON as a string, not []byte, to match the legacy
+// interface.
+func organizationSettingsFromRow(row *gen.OrganizationSetting) *orgDomain.OrganizationSettings {
+	return &orgDomain.OrganizationSettings{
+		ID:             row.ID,
+		OrganizationID: row.OrganizationID,
+		Key:            row.Key,
+		Value:          string(row.Value),
+		CreatedAt:      row.CreatedAt,
+		UpdatedAt:      row.UpdatedAt,
+	}
+}
+
+func organizationSettingsFromRows(rows []gen.OrganizationSetting) []*orgDomain.OrganizationSettings {
+	out := make([]*orgDomain.OrganizationSettings, 0, len(rows))
+	for i := range rows {
+		out = append(out, organizationSettingsFromRow(&rows[i]))
+	}
+	return out
+}
+
+// mustNewSettingID generates the ID used by UpsertOrganizationSetting
+// on the INSERT path. The ON CONFLICT clause ignores it when updating,
+// so the value is only observed on first-write.
+func mustNewSettingID() uuid.UUID {
+	return uuid.Must(uuid.NewV7())
+}
+
+// ensure errors.Is is imported through fmt — no direct use here, kept for
+// future expansion of error classification.
+var _ = errors.Is

@@ -358,7 +358,7 @@ func (w *UsageAggregationWorker) checkBudgets(ctx context.Context, orgID uuid.UU
 
 			if err := w.alertRepo.Create(ctx, alert); err != nil {
 				// Check if this is a duplicate alert (concurrent worker already created it)
-				if appErrors.IsDatabaseUniqueViolation(err) {
+				if appErrors.IsUniqueViolation(err) {
 					w.logger.Debug("alert already exists (concurrent creation)",
 						"budget_id", budget.ID,
 						"threshold", alert.AlertThreshold,

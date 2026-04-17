@@ -2,400 +2,404 @@ package annotation
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	sq "github.com/Masterminds/squirrel"
 
-	"brokle/internal/core/domain/annotation"
-	"brokle/internal/infrastructure/shared"
-
-	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
+	annotationDomain "brokle/internal/core/domain/annotation"
+	"brokle/internal/infrastructure/db"
+	"brokle/internal/infrastructure/db/gen"
+	appErrors "brokle/pkg/errors"
 )
 
-// ItemRepository implements annotation.ItemRepository using PostgreSQL.
 type ItemRepository struct {
-	db *gorm.DB
+	tm *db.TxManager
 }
 
-// NewItemRepository creates a new ItemRepository.
-func NewItemRepository(db *gorm.DB) *ItemRepository {
-	return &ItemRepository{db: db}
+func NewItemRepository(tm *db.TxManager) *ItemRepository {
+	return &ItemRepository{tm: tm}
 }
 
-// getDB returns transaction-aware DB instance.
-func (r *ItemRepository) getDB(ctx context.Context) *gorm.DB {
-	return shared.GetDB(ctx, r.db)
-}
-
-// Create creates a new queue item.
-func (r *ItemRepository) Create(ctx context.Context, item *annotation.QueueItem) error {
-	result := r.getDB(ctx).WithContext(ctx).Create(item)
-	if result.Error != nil {
-		if isUniqueViolation(result.Error) {
-			return annotation.ErrItemExists
+func (r *ItemRepository) Create(ctx context.Context, item *annotationDomain.QueueItem) error {
+	meta, err := marshalItemMetadata(item.Metadata)
+	if err != nil {
+		return err
+	}
+	if err := r.tm.Queries(ctx).CreateAnnotationQueueItem(ctx, gen.CreateAnnotationQueueItemParams{
+		ID:              item.ID,
+		QueueID:         item.QueueID,
+		ObjectID:        item.ObjectID,
+		ObjectType:      string(item.ObjectType),
+		Status:          string(item.Status),
+		Priority:        int32(item.Priority),
+		LockedAt:        item.LockedAt,
+		LockedByUserID:  item.LockedByUserID,
+		AnnotatorUserID: item.AnnotatorUserID,
+		CompletedAt:     item.CompletedAt,
+		Metadata:        meta,
+	}); err != nil {
+		if appErrors.IsUniqueViolation(err) {
+			return annotationDomain.ErrItemExists
 		}
-		return result.Error
+		return err
 	}
 	return nil
 }
 
-// CreateBatch creates multiple queue items in a single operation.
-// Uses ON CONFLICT DO NOTHING to skip duplicates (idempotent batch inserts).
-// Returns the number of items actually inserted (excluding duplicates).
-func (r *ItemRepository) CreateBatch(ctx context.Context, items []*annotation.QueueItem) (int64, error) {
+// CreateBatch inserts many items in one round-trip using parallel UNNEST arrays.
+// ON CONFLICT (queue_id, object_id, object_type) DO NOTHING makes this
+// idempotent; the returned count reflects actual insertions.
+func (r *ItemRepository) CreateBatch(ctx context.Context, items []*annotationDomain.QueueItem) (int64, error) {
 	if len(items) == 0 {
 		return 0, nil
 	}
-
-	// Use ON CONFLICT DO NOTHING to skip duplicates
-	result := r.getDB(ctx).WithContext(ctx).
-		Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "queue_id"}, {Name: "object_id"}, {Name: "object_type"}},
-			DoNothing: true,
-		}).
-		CreateInBatches(items, 100)
-
-	if result.Error != nil {
-		return 0, result.Error
-	}
-
-	return result.RowsAffected, nil
-}
-
-// GetByID retrieves a queue item by its ID.
-func (r *ItemRepository) GetByID(ctx context.Context, id uuid.UUID) (*annotation.QueueItem, error) {
-	var item annotation.QueueItem
-	result := r.getDB(ctx).WithContext(ctx).
-		Where("id = ?", id.String()).
-		First(&item)
-
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, annotation.ErrItemNotFound
+	ids := make([]uuid.UUID, len(items))
+	queueIDs := make([]uuid.UUID, len(items))
+	objectIDs := make([]string, len(items))
+	objectTypes := make([]string, len(items))
+	statuses := make([]string, len(items))
+	priorities := make([]int32, len(items))
+	metas := make([]json.RawMessage, len(items))
+	for i, it := range items {
+		ids[i] = it.ID
+		queueIDs[i] = it.QueueID
+		objectIDs[i] = it.ObjectID
+		objectTypes[i] = string(it.ObjectType)
+		statuses[i] = string(it.Status)
+		priorities[i] = int32(it.Priority)
+		meta, err := marshalItemMetadata(it.Metadata)
+		if err != nil {
+			return 0, err
 		}
-		return nil, result.Error
-	}
-	return &item, nil
-}
-
-// GetByIDForQueue retrieves a queue item by its ID within a specific queue.
-func (r *ItemRepository) GetByIDForQueue(ctx context.Context, id, queueID uuid.UUID) (*annotation.QueueItem, error) {
-	var item annotation.QueueItem
-	result := r.getDB(ctx).WithContext(ctx).
-		Where("id = ? AND queue_id = ?", id.String(), queueID.String()).
-		First(&item)
-
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, annotation.ErrItemNotFound
+		if len(meta) == 0 {
+			metas[i] = json.RawMessage("{}")
+		} else {
+			metas[i] = meta
 		}
-		return nil, result.Error
 	}
-	return &item, nil
+	n, err := r.tm.Queries(ctx).CreateAnnotationQueueItemsBatch(ctx, gen.CreateAnnotationQueueItemsBatchParams{
+		Column1: ids,
+		Column2: queueIDs,
+		Column3: objectIDs,
+		Column4: objectTypes,
+		Column5: statuses,
+		Column6: priorities,
+		Column7: metas,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("batch insert annotation items: %w", err)
+	}
+	return n, nil
 }
 
-// List retrieves queue items with optional filtering and pagination.
-func (r *ItemRepository) List(ctx context.Context, queueID uuid.UUID, filter *annotation.ItemFilter) ([]*annotation.QueueItem, int64, error) {
-	var items []*annotation.QueueItem
-	var total int64
+func (r *ItemRepository) GetByID(ctx context.Context, id uuid.UUID) (*annotationDomain.QueueItem, error) {
+	row, err := r.tm.Queries(ctx).GetAnnotationQueueItemByID(ctx, id)
+	if err != nil {
+		if db.IsNoRows(err) {
+			return nil, annotationDomain.ErrItemNotFound
+		}
+		return nil, err
+	}
+	return itemFromRow(&row)
+}
 
-	baseQuery := r.getDB(ctx).WithContext(ctx).
-		Model(&annotation.QueueItem{}).
-		Where("queue_id = ?", queueID.String())
+func (r *ItemRepository) GetByIDForQueue(ctx context.Context, id, queueID uuid.UUID) (*annotationDomain.QueueItem, error) {
+	row, err := r.tm.Queries(ctx).GetAnnotationQueueItemByIDForQueue(ctx, gen.GetAnnotationQueueItemByIDForQueueParams{
+		ID:      id,
+		QueueID: queueID,
+	})
+	if err != nil {
+		if db.IsNoRows(err) {
+			return nil, annotationDomain.ErrItemNotFound
+		}
+		return nil, err
+	}
+	return itemFromRow(&row)
+}
 
+func (r *ItemRepository) List(ctx context.Context, queueID uuid.UUID, filter *annotationDomain.ItemFilter) ([]*annotationDomain.QueueItem, int64, error) {
+	base := sq.Select().From("annotation_queue_items").Where(sq.Eq{"queue_id": queueID})
 	if filter != nil && filter.Status != nil {
-		baseQuery = baseQuery.Where("status = ?", string(*filter.Status))
+		base = base.Where(sq.Eq{"status": string(*filter.Status)})
 	}
 
-	// Count total
-	if err := baseQuery.Count(&total).Error; err != nil {
+	cntSQL, cntArgs, err := base.Columns("COUNT(*)").PlaceholderFormat(sq.Dollar).ToSql()
+	if err != nil {
+		return nil, 0, err
+	}
+	var total int64
+	if err := r.tm.DB(ctx).QueryRow(ctx, cntSQL, cntArgs...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 
-	// Apply pagination
-	query := r.getDB(ctx).WithContext(ctx).
-		Where("queue_id = ?", queueID.String())
-
-	if filter != nil && filter.Status != nil {
-		query = query.Where("status = ?", string(*filter.Status))
-	}
-
-	// Order by priority (DESC) then created_at (ASC) for FIFO within same priority
-	query = query.Order("priority DESC, created_at ASC")
-
+	list := base.Columns(itemColumns...).OrderBy("priority DESC, created_at ASC")
 	if filter != nil {
 		if filter.Limit > 0 {
-			query = query.Limit(filter.Limit)
+			list = list.Limit(uint64(filter.Limit))
 		}
 		if filter.Offset > 0 {
-			query = query.Offset(filter.Offset)
+			list = list.Offset(uint64(filter.Offset))
 		}
 	}
-
-	result := query.Find(&items)
-	if result.Error != nil {
-		return nil, 0, result.Error
+	selSQL, selArgs, err := list.PlaceholderFormat(sq.Dollar).ToSql()
+	if err != nil {
+		return nil, 0, err
 	}
-
-	return items, total, nil
+	rows, err := r.tm.DB(ctx).Query(ctx, selSQL, selArgs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	out := make([]*annotationDomain.QueueItem, 0)
+	for rows.Next() {
+		it, err := scanItem(rows)
+		if err != nil {
+			return nil, 0, err
+		}
+		out = append(out, it)
+	}
+	return out, total, rows.Err()
 }
 
-// Update updates an existing queue item.
-func (r *ItemRepository) Update(ctx context.Context, item *annotation.QueueItem) error {
+func (r *ItemRepository) Update(ctx context.Context, item *annotationDomain.QueueItem) error {
 	item.UpdatedAt = time.Now()
-	result := r.getDB(ctx).WithContext(ctx).Save(item)
-	if result.Error != nil {
-		return result.Error
+	meta, err := marshalItemMetadata(item.Metadata)
+	if err != nil {
+		return err
 	}
-
-	if result.RowsAffected == 0 {
-		return annotation.ErrItemNotFound
-	}
-	return nil
-}
-
-// Delete removes a queue item by ID.
-func (r *ItemRepository) Delete(ctx context.Context, id, queueID uuid.UUID) error {
-	result := r.getDB(ctx).WithContext(ctx).
-		Where("id = ? AND queue_id = ?", id.String(), queueID.String()).
-		Delete(&annotation.QueueItem{})
-
-	if result.Error != nil {
-		return result.Error
-	}
-
-	if result.RowsAffected == 0 {
-		return annotation.ErrItemNotFound
-	}
-	return nil
-}
-
-// ExistsByObject checks if an item for the given object exists in the queue.
-func (r *ItemRepository) ExistsByObject(ctx context.Context, queueID uuid.UUID, objectID string, objectType annotation.ObjectType) (bool, error) {
-	var count int64
-	result := r.getDB(ctx).WithContext(ctx).
-		Model(&annotation.QueueItem{}).
-		Where("queue_id = ? AND object_id = ? AND object_type = ?", queueID.String(), objectID, string(objectType)).
-		Count(&count)
-
-	if result.Error != nil {
-		return false, result.Error
-	}
-	return count > 0, nil
-}
-
-// FetchAndLockNext finds and locks the next available item for annotation.
-// Follows Langfuse pattern: finds first pending item where:
-// - Never locked, OR
-// - Lock expired (locked_at + lock_timeout < NOW()), OR
-// - Locked by current user (can reclaim)
-// Uses SELECT ... FOR UPDATE SKIP LOCKED for concurrent safety.
-func (r *ItemRepository) FetchAndLockNext(ctx context.Context, queueID, userID uuid.UUID, lockTimeout int, seenItemIDs []uuid.UUID) (*annotation.QueueItem, error) {
-	var item annotation.QueueItem
-	now := time.Now()
-	lockExpiry := now.Add(-time.Duration(lockTimeout) * time.Second)
-
-	// Build the query
-	query := r.getDB(ctx).WithContext(ctx).
-		Model(&annotation.QueueItem{}).
-		Where("queue_id = ?", queueID.String()).
-		Where("status = ?", string(annotation.ItemStatusPending))
-
-	// Exclude seen items
-	if len(seenItemIDs) > 0 {
-		seenIDs := make([]string, len(seenItemIDs))
-		for i, id := range seenItemIDs {
-			seenIDs[i] = id.String()
-		}
-		query = query.Where("id NOT IN ?", seenIDs)
-	}
-
-	// Find items that can be claimed:
-	// 1. Never locked (locked_at IS NULL), OR
-	// 2. Lock expired (locked_at < lockExpiry), OR
-	// 3. Locked by current user (locked_by_user_id = userID)
-	query = query.Where(
-		"(locked_at IS NULL) OR (locked_at < ?) OR (locked_by_user_id = ?)",
-		lockExpiry, userID.String(),
-	)
-
-	// Order by priority (higher first), then FIFO within same priority
-	query = query.Order("priority DESC, created_at ASC")
-
-	// Use FOR UPDATE SKIP LOCKED for concurrent safety
-	query = query.Clauses(clause.Locking{
-		Strength: "UPDATE",
-		Options:  "SKIP LOCKED",
+	n, err := r.tm.Queries(ctx).UpdateAnnotationQueueItem(ctx, gen.UpdateAnnotationQueueItemParams{
+		ID:              item.ID,
+		Status:          string(item.Status),
+		Priority:        int32(item.Priority),
+		LockedAt:        item.LockedAt,
+		LockedByUserID:  item.LockedByUserID,
+		AnnotatorUserID: item.AnnotatorUserID,
+		CompletedAt:     item.CompletedAt,
+		Metadata:        meta,
 	})
-
-	// Get the first available item
-	result := query.First(&item)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, annotation.ErrNoItemsAvailable
-		}
-		return nil, result.Error
+	if err != nil {
+		return err
 	}
-
-	// Lock the item
-	item.LockedAt = &now
-	item.LockedByUserID = &userID
-	item.UpdatedAt = now
-
-	if err := r.getDB(ctx).WithContext(ctx).Save(&item).Error; err != nil {
-		return nil, err
-	}
-
-	return &item, nil
-}
-
-// Complete marks an item as completed by the annotator.
-func (r *ItemRepository) Complete(ctx context.Context, id, userID uuid.UUID) error {
-	now := time.Now()
-	result := r.getDB(ctx).WithContext(ctx).
-		Model(&annotation.QueueItem{}).
-		Where("id = ?", id.String()).
-		Updates(map[string]interface{}{
-			"status":            string(annotation.ItemStatusCompleted),
-			"annotator_user_id": userID.String(),
-			"completed_at":      now,
-			"updated_at":        now,
-		})
-
-	if result.Error != nil {
-		return result.Error
-	}
-
-	if result.RowsAffected == 0 {
-		return annotation.ErrItemNotFound
+	if n == 0 {
+		return annotationDomain.ErrItemNotFound
 	}
 	return nil
 }
 
-// Skip marks an item as skipped by the annotator.
-func (r *ItemRepository) Skip(ctx context.Context, id, userID uuid.UUID) error {
-	now := time.Now()
-	result := r.getDB(ctx).WithContext(ctx).
-		Model(&annotation.QueueItem{}).
-		Where("id = ?", id.String()).
-		Updates(map[string]interface{}{
-			"status":            string(annotation.ItemStatusSkipped),
-			"annotator_user_id": userID.String(),
-			"completed_at":      now,
-			"updated_at":        now,
-		})
-
-	if result.Error != nil {
-		return result.Error
+func (r *ItemRepository) Delete(ctx context.Context, id, queueID uuid.UUID) error {
+	n, err := r.tm.Queries(ctx).DeleteAnnotationQueueItem(ctx, gen.DeleteAnnotationQueueItemParams{
+		ID:      id,
+		QueueID: queueID,
+	})
+	if err != nil {
+		return err
 	}
-
-	if result.RowsAffected == 0 {
-		return annotation.ErrItemNotFound
+	if n == 0 {
+		return annotationDomain.ErrItemNotFound
 	}
 	return nil
 }
 
-// ReleaseLock releases the lock on an item.
-func (r *ItemRepository) ReleaseLock(ctx context.Context, id uuid.UUID) error {
-	now := time.Now()
-	result := r.getDB(ctx).WithContext(ctx).
-		Model(&annotation.QueueItem{}).
-		Where("id = ?", id.String()).
-		Updates(map[string]interface{}{
-			"locked_at":         nil,
-			"locked_by_user_id": nil,
-			"updated_at":        now,
-		})
-
-	if result.Error != nil {
-		return result.Error
-	}
-
-	if result.RowsAffected == 0 {
-		return annotation.ErrItemNotFound
-	}
-	return nil
+func (r *ItemRepository) ExistsByObject(ctx context.Context, queueID uuid.UUID, objectID string, objectType annotationDomain.ObjectType) (bool, error) {
+	return r.tm.Queries(ctx).AnnotationQueueItemExistsByObject(ctx, gen.AnnotationQueueItemExistsByObjectParams{
+		QueueID:    queueID,
+		ObjectID:   objectID,
+		ObjectType: string(objectType),
+	})
 }
 
-// ReleaseExpiredLocks releases all locks that have expired.
-// Returns the count of locks released.
-func (r *ItemRepository) ReleaseExpiredLocks(ctx context.Context, queueID uuid.UUID, lockTimeout int) (int64, error) {
+// FetchAndLockNext atomically claims the next available item using
+// SELECT ... FOR UPDATE SKIP LOCKED + UPDATE. Eligibility: pending AND
+// (never locked OR lock expired OR locked by same user). Kept as raw
+// SQL because sqlc cannot express FOR UPDATE SKIP LOCKED typed params.
+func (r *ItemRepository) FetchAndLockNext(ctx context.Context, queueID, userID uuid.UUID, lockTimeout int, seenItemIDs []uuid.UUID) (*annotationDomain.QueueItem, error) {
 	now := time.Now()
 	lockExpiry := now.Add(-time.Duration(lockTimeout) * time.Second)
 
-	result := r.getDB(ctx).WithContext(ctx).
-		Model(&annotation.QueueItem{}).
-		Where("queue_id = ?", queueID.String()).
-		Where("locked_at IS NOT NULL").
-		Where("locked_at < ?", lockExpiry).
-		Where("status = ?", string(annotation.ItemStatusPending)).
-		Updates(map[string]interface{}{
-			"locked_at":         nil,
-			"locked_by_user_id": nil,
-			"updated_at":        now,
-		})
-
-	if result.Error != nil {
-		return 0, result.Error
+	selector := sq.Select("id").From("annotation_queue_items").
+		Where(sq.Eq{"queue_id": queueID}).
+		Where(sq.Eq{"status": string(annotationDomain.ItemStatusPending)}).
+		Where(sq.Or{
+			sq.Expr("locked_at IS NULL"),
+			sq.Lt{"locked_at": lockExpiry},
+			sq.Eq{"locked_by_user_id": userID},
+		}).
+		OrderBy("priority DESC", "created_at ASC").
+		Limit(1).
+		Suffix("FOR UPDATE SKIP LOCKED")
+	if len(seenItemIDs) > 0 {
+		selector = selector.Where(sq.NotEq{"id": seenItemIDs})
+	}
+	selSQL, selArgs, err := selector.PlaceholderFormat(sq.Dollar).ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("build lock-next query: %w", err)
 	}
 
-	return result.RowsAffected, nil
+	claim := fmt.Sprintf(`
+		UPDATE annotation_queue_items
+		SET locked_at         = $%d,
+		    locked_by_user_id = $%d,
+		    updated_at        = $%d
+		WHERE id = (%s)
+		RETURNING %s
+	`, len(selArgs)+1, len(selArgs)+2, len(selArgs)+3, selSQL, itemColumnList())
+
+	args := append(selArgs, now, userID, now)
+	row := r.tm.DB(ctx).QueryRow(ctx, claim, args...)
+	item, err := scanItem(row)
+	if err != nil {
+		if db.IsNoRows(err) {
+			return nil, annotationDomain.ErrNoItemsAvailable
+		}
+		return nil, fmt.Errorf("claim next annotation item: %w", err)
+	}
+	return item, nil
 }
 
-// GetStats retrieves aggregated statistics for a queue.
-func (r *ItemRepository) GetStats(ctx context.Context, queueID uuid.UUID, lockTimeout int) (*annotation.QueueStats, error) {
-	stats := &annotation.QueueStats{}
+func (r *ItemRepository) Complete(ctx context.Context, id, userID uuid.UUID) error {
+	n, err := r.tm.Queries(ctx).CompleteAnnotationQueueItem(ctx, gen.CompleteAnnotationQueueItemParams{
+		ID:              id,
+		AnnotatorUserID: &userID,
+	})
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return annotationDomain.ErrItemNotFound
+	}
+	return nil
+}
+
+func (r *ItemRepository) Skip(ctx context.Context, id, userID uuid.UUID) error {
+	n, err := r.tm.Queries(ctx).SkipAnnotationQueueItem(ctx, gen.SkipAnnotationQueueItemParams{
+		ID:              id,
+		AnnotatorUserID: &userID,
+	})
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return annotationDomain.ErrItemNotFound
+	}
+	return nil
+}
+
+func (r *ItemRepository) ReleaseLock(ctx context.Context, id uuid.UUID) error {
+	n, err := r.tm.Queries(ctx).ReleaseAnnotationQueueItemLock(ctx, id)
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return annotationDomain.ErrItemNotFound
+	}
+	return nil
+}
+
+func (r *ItemRepository) ReleaseExpiredLocks(ctx context.Context, queueID uuid.UUID, lockTimeout int) (int64, error) {
 	lockExpiry := time.Now().Add(-time.Duration(lockTimeout) * time.Second)
+	return r.tm.Queries(ctx).ReleaseExpiredAnnotationQueueLocks(ctx, gen.ReleaseExpiredAnnotationQueueLocksParams{
+		QueueID:  queueID,
+		LockedAt: &lockExpiry,
+	})
+}
 
-	// Count total items
-	if err := r.getDB(ctx).WithContext(ctx).
-		Model(&annotation.QueueItem{}).
-		Where("queue_id = ?", queueID.String()).
-		Count(&stats.TotalItems).Error; err != nil {
+func (r *ItemRepository) GetStats(ctx context.Context, queueID uuid.UUID, lockTimeout int) (*annotationDomain.QueueStats, error) {
+	stats := &annotationDomain.QueueStats{}
+	statusRows, err := r.tm.Queries(ctx).CountAnnotationQueueItemsByStatus(ctx, queueID)
+	if err != nil {
 		return nil, err
 	}
-
-	// Count by status
-	type StatusCount struct {
-		Status string
-		Count  int64
+	for _, row := range statusRows {
+		switch annotationDomain.ItemStatus(row.Status) {
+		case annotationDomain.ItemStatusPending:
+			stats.PendingItems = row.Count
+		case annotationDomain.ItemStatusCompleted:
+			stats.CompletedItems = row.Count
+		case annotationDomain.ItemStatusSkipped:
+			stats.SkippedItems = row.Count
+		}
+		stats.TotalItems += row.Count
 	}
-	var statusCounts []StatusCount
-	if err := r.getDB(ctx).WithContext(ctx).
-		Model(&annotation.QueueItem{}).
-		Select("status, COUNT(*) as count").
-		Where("queue_id = ?", queueID.String()).
-		Group("status").
-		Scan(&statusCounts).Error; err != nil {
+	lockExpiry := time.Now().Add(-time.Duration(lockTimeout) * time.Second)
+	inProgress, err := r.tm.Queries(ctx).CountAnnotationQueueItemsInProgress(ctx, gen.CountAnnotationQueueItemsInProgressParams{
+		QueueID:  queueID,
+		LockedAt: &lockExpiry,
+	})
+	if err != nil {
 		return nil, err
 	}
+	stats.InProgressItems = inProgress
+	stats.PendingItems -= stats.InProgressItems
+	return stats, nil
+}
 
-	for _, sc := range statusCounts {
-		switch annotation.ItemStatus(sc.Status) {
-		case annotation.ItemStatusPending:
-			stats.PendingItems = sc.Count
-		case annotation.ItemStatusCompleted:
-			stats.CompletedItems = sc.Count
-		case annotation.ItemStatusSkipped:
-			stats.SkippedItems = sc.Count
+// ----- helpers --------------------------------------------------------
+
+var itemColumns = []string{
+	"id", "queue_id", "object_id", "object_type",
+	"status", "priority",
+	"locked_at", "locked_by_user_id", "annotator_user_id", "completed_at",
+	"metadata", "created_at", "updated_at",
+}
+
+func itemColumnList() string {
+	return "id, queue_id, object_id, object_type, status, priority, locked_at, locked_by_user_id, annotator_user_id, completed_at, metadata, created_at, updated_at"
+}
+
+func scanItem(row interface {
+	Scan(dest ...any) error
+}) (*annotationDomain.QueueItem, error) {
+	var (
+		it       annotationDomain.QueueItem
+		priority int32
+		meta     []byte
+	)
+	if err := row.Scan(
+		&it.ID, &it.QueueID, &it.ObjectID, &it.ObjectType,
+		&it.Status, &priority,
+		&it.LockedAt, &it.LockedByUserID, &it.AnnotatorUserID, &it.CompletedAt,
+		&meta, &it.CreatedAt, &it.UpdatedAt,
+	); err != nil {
+		return nil, err
+	}
+	it.Priority = int(priority)
+	if len(meta) > 0 {
+		if err := json.Unmarshal(meta, &it.Metadata); err != nil {
+			return nil, fmt.Errorf("unmarshal item metadata: %w", err)
 		}
 	}
+	return &it, nil
+}
 
-	// Count in-progress items (pending with active lock)
-	if err := r.getDB(ctx).WithContext(ctx).
-		Model(&annotation.QueueItem{}).
-		Where("queue_id = ?", queueID.String()).
-		Where("status = ?", string(annotation.ItemStatusPending)).
-		Where("locked_at IS NOT NULL").
-		Where("locked_at >= ?", lockExpiry).
-		Count(&stats.InProgressItems).Error; err != nil {
-		return nil, err
+func itemFromRow(row *gen.AnnotationQueueItem) (*annotationDomain.QueueItem, error) {
+	it := &annotationDomain.QueueItem{
+		ID:              row.ID,
+		QueueID:         row.QueueID,
+		ObjectID:        row.ObjectID,
+		ObjectType:      annotationDomain.ObjectType(row.ObjectType),
+		Status:          annotationDomain.ItemStatus(row.Status),
+		Priority:        int(row.Priority),
+		LockedAt:        row.LockedAt,
+		LockedByUserID:  row.LockedByUserID,
+		AnnotatorUserID: row.AnnotatorUserID,
+		CompletedAt:     row.CompletedAt,
+		CreatedAt:       row.CreatedAt,
+		UpdatedAt:       row.UpdatedAt,
 	}
+	if len(row.Metadata) > 0 {
+		if err := json.Unmarshal(row.Metadata, &it.Metadata); err != nil {
+			return nil, fmt.Errorf("unmarshal item metadata: %w", err)
+		}
+	}
+	return it, nil
+}
 
-	// Adjust pending count to exclude in-progress items
-	stats.PendingItems -= stats.InProgressItems
-
-	return stats, nil
+func marshalItemMetadata(m map[string]interface{}) (json.RawMessage, error) {
+	if len(m) == 0 {
+		return json.RawMessage(`{}`), nil
+	}
+	return json.Marshal(m)
 }

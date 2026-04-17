@@ -6,8 +6,6 @@ import (
 	"github.com/google/uuid"
 
 	"brokle/pkg/uid"
-
-	"gorm.io/gorm"
 )
 
 type EntityType string
@@ -27,21 +25,17 @@ func (e EntityType) IsValid() bool {
 }
 
 type Comment struct {
-	ID         uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey"`
-	EntityType EntityType     `json:"entity_type" gorm:"type:comment_entity_type;not null;default:'trace'"`
-	EntityID   string         `json:"entity_id" gorm:"type:varchar(64);not null"` // trace_id or span_id
-	ProjectID  uuid.UUID      `json:"project_id" gorm:"type:uuid;not null"`
-	ParentID   *uuid.UUID     `json:"parent_id,omitempty" gorm:"type:uuid"` // For reply threading (one level deep)
-	Content    string         `json:"content" gorm:"type:text;not null"`
-	CreatedBy  *uuid.UUID     `json:"created_by" gorm:"type:uuid"`
-	UpdatedBy  *uuid.UUID     `json:"updated_by,omitempty" gorm:"type:uuid"`
-	CreatedAt  time.Time      `json:"created_at" gorm:"not null;autoCreateTime"`
-	UpdatedAt  time.Time      `json:"updated_at" gorm:"not null;autoUpdateTime"`
-	DeletedAt  gorm.DeletedAt `json:"-" gorm:"index"`
-}
-
-func (Comment) TableName() string {
-	return "trace_comments"
+	ID         uuid.UUID      `json:"id"`
+	EntityType EntityType     `json:"entity_type"`
+	EntityID   string         `json:"entity_id"` // trace_id or span_id
+	ProjectID  uuid.UUID      `json:"project_id"`
+	ParentID   *uuid.UUID     `json:"parent_id,omitempty"` // For reply threading (one level deep)
+	Content    string         `json:"content"`
+	CreatedBy  *uuid.UUID     `json:"created_by"`
+	UpdatedBy  *uuid.UUID     `json:"updated_by,omitempty"`
+	CreatedAt  time.Time      `json:"created_at"`
+	UpdatedAt  time.Time      `json:"updated_at"`
+	DeletedAt  *time.Time     `json:"-"`
 }
 
 func NewComment(entityType EntityType, entityID string, projectID, createdBy uuid.UUID, content string) *Comment {
@@ -82,7 +76,7 @@ func (c *Comment) IsEdited() bool {
 }
 
 func (c *Comment) IsSoftDeleted() bool {
-	return c.DeletedAt.Valid
+	return c.DeletedAt != nil
 }
 
 func (c *Comment) getCreatedByString() string {
@@ -168,8 +162,8 @@ func (c *Comment) ToResponse() *CommentResponse {
 
 type CommentWithUser struct {
 	Comment
-	Author *CommentUser `json:"author,omitempty" gorm:"-"`
-	Editor *CommentUser `json:"editor,omitempty" gorm:"-"`
+	Author *CommentUser `json:"author,omitempty"`
+	Editor *CommentUser `json:"editor,omitempty"`
 }
 
 func (c *CommentWithUser) ToResponse() *CommentResponse {

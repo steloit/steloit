@@ -45,14 +45,22 @@ install-deps: ## Install Go and Node.js dependencies
 	go mod download
 	cd web && pnpm install
 
-install-tools: ## Install development tools (swag, air, golangci-lint)
+install-tools: ## Install development tools (swag, air, golangci-lint, sqlc)
 	@echo "🔧 Installing development tools..."
-	@echo "Installing Go development tools (swag, air)..."
+	@echo "Installing Go development tools (swag, air, sqlc)..."
 	@go install github.com/swaggo/swag/cmd/swag@v1.16.6
 	@go install github.com/air-verse/air@latest
+	@go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0
 	@echo "Installing golangci-lint v2.6.2 (Go 1.25 compatible)..."
 	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v2.6.2
 	@echo "✅ Tools installed successfully"
+
+ensure-sqlc: ## Ensure sqlc is installed (auto-installs if missing)
+	@command -v sqlc >/dev/null 2>&1 || { \
+		echo "⚠️  sqlc not found, installing sqlc v1.30.0..."; \
+		go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0; \
+		echo "✅ sqlc installed successfully"; \
+	}
 
 ensure-swag: ## Ensure swag is installed (auto-installs if missing)
 	@command -v swag >/dev/null 2>&1 || { \
@@ -221,10 +229,15 @@ fmt-frontend: ## Format frontend code
 
 ##@ Documentation
 
-generate: ensure-swag ## Generate swagger docs and run go generate
+generate: ensure-swag generate-sqlc ## Generate swagger docs + sqlc types and run go generate
 	@echo "📚 Generating swagger documentation..."
 	swag init -g cmd/server/main.go --output docs
 	@echo "✅ Code generation complete"
+
+generate-sqlc: ensure-sqlc ## Generate type-safe Go bindings from SQL queries
+	@echo "🧬 Generating sqlc bindings..."
+	@sqlc generate
+	@echo "✅ sqlc generation complete"
 
 ##@ Utilities
 

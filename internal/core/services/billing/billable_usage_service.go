@@ -239,7 +239,7 @@ func (s *billableUsageService) ProvisionOrganizationBilling(ctx context.Context,
 
 	if err := s.billingRepo.Create(ctx, billingRecord); err != nil {
 		// Idempotency check
-		if pkgErrors.IsDatabaseUniqueViolation(err) {
+		if pkgErrors.IsUniqueViolation(err) {
 			s.logger.Info("billing record already exists", "organization_id", orgID)
 			return nil // Success - already provisioned
 		}

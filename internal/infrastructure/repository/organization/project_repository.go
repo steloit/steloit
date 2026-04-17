@@ -2,115 +2,128 @@ package organization
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"time"
-
-	"gorm.io/gorm"
 
 	"github.com/google/uuid"
 
 	orgDomain "brokle/internal/core/domain/organization"
-	"brokle/internal/infrastructure/shared"
+	"brokle/internal/infrastructure/db"
+	"brokle/internal/infrastructure/db/gen"
 )
 
-// projectRepository implements orgDomain.ProjectRepository using GORM
+// projectRepository is the pgx+sqlc implementation of
+// orgDomain.ProjectRepository.
 type projectRepository struct {
-	db *gorm.DB
+	tm *db.TxManager
 }
 
-// NewProjectRepository creates a new project repository instance
-func NewProjectRepository(db *gorm.DB) orgDomain.ProjectRepository {
-	return &projectRepository{
-		db: db,
-	}
+// NewProjectRepository returns the pgx-backed repository.
+func NewProjectRepository(tm *db.TxManager) orgDomain.ProjectRepository {
+	return &projectRepository{tm: tm}
 }
 
-// getDB returns transaction-aware DB instance
-func (r *projectRepository) getDB(ctx context.Context) *gorm.DB {
-	return shared.GetDB(ctx, r.db)
-}
-
-// Create creates a new project
 func (r *projectRepository) Create(ctx context.Context, project *orgDomain.Project) error {
-	return r.getDB(ctx).WithContext(ctx).Create(project).Error
+	if err := r.tm.Queries(ctx).CreateProject(ctx, gen.CreateProjectParams{
+		ID:             project.ID,
+		OrganizationID: project.OrganizationID,
+		Name:           project.Name,
+		Description:    emptyToNilString(project.Description),
+		Status:         project.Status,
+		CreatedAt:      project.CreatedAt,
+		UpdatedAt:      project.UpdatedAt,
+	}); err != nil {
+		return fmt.Errorf("create project: %w", err)
+	}
+	return nil
 }
 
-// GetByID retrieves a project by ID
 func (r *projectRepository) GetByID(ctx context.Context, id uuid.UUID) (*orgDomain.Project, error) {
-	var project orgDomain.Project
-	err := r.getDB(ctx).WithContext(ctx).Where("id = ? AND deleted_at IS NULL", id).First(&project).Error
+	row, err := r.tm.Queries(ctx).GetProjectByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if db.IsNoRows(err) {
 			return nil, fmt.Errorf("get project by ID %s: %w", id, orgDomain.ErrProjectNotFound)
 		}
-		return nil, err
+		return nil, fmt.Errorf("get project by ID %s: %w", id, err)
 	}
-	return &project, nil
+	return projectFromRow(&row), nil
 }
 
-// GetBySlug retrieves a project by organization and slug
+// GetBySlug is retained by the domain interface but the slug column was
+// dropped in migration 20251101020000_refactor_onboarding_to_signup.
+// Returns ErrProjectNotFound to surface the deprecation without panicking.
 func (r *projectRepository) GetBySlug(ctx context.Context, orgID uuid.UUID, slug string) (*orgDomain.Project, error) {
-	var project orgDomain.Project
-	err := r.getDB(ctx).WithContext(ctx).
-		Where("organization_id = ? AND slug = ? AND deleted_at IS NULL", orgID, slug).
-		First(&project).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("get project by org %s and slug %s: %w", orgID, slug, orgDomain.ErrProjectNotFound)
-		}
-		return nil, err
-	}
-	return &project, nil
+	return nil, fmt.Errorf("get project by org %s and slug %s: %w", orgID, slug, orgDomain.ErrProjectNotFound)
 }
 
-// Update updates a project
 func (r *projectRepository) Update(ctx context.Context, project *orgDomain.Project) error {
-	return r.getDB(ctx).WithContext(ctx).Save(project).Error
+	if err := r.tm.Queries(ctx).UpdateProject(ctx, gen.UpdateProjectParams{
+		ID:          project.ID,
+		Name:        project.Name,
+		Description: emptyToNilString(project.Description),
+		Status:      project.Status,
+	}); err != nil {
+		return fmt.Errorf("update project %s: %w", project.ID, err)
+	}
+	return nil
 }
 
-// Delete soft deletes a project
 func (r *projectRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	return r.getDB(ctx).WithContext(ctx).Model(&orgDomain.Project{}).Where("id = ?", id).Update("deleted_at", time.Now()).Error
+	if err := r.tm.Queries(ctx).SoftDeleteProject(ctx, id); err != nil {
+		return fmt.Errorf("soft-delete project %s: %w", id, err)
+	}
+	return nil
 }
 
-// GetByOrganizationID retrieves all projects in an organization
 func (r *projectRepository) GetByOrganizationID(ctx context.Context, orgID uuid.UUID) ([]*orgDomain.Project, error) {
-	var projects []*orgDomain.Project
-	err := r.getDB(ctx).WithContext(ctx).
-		Where("organization_id = ? AND deleted_at IS NULL", orgID).
-		Order("created_at ASC").
-		Find(&projects).Error
-	return projects, err
+	rows, err := r.tm.Queries(ctx).ListProjectsByOrganization(ctx, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("list projects for org %s: %w", orgID, err)
+	}
+	out := make([]*orgDomain.Project, 0, len(rows))
+	for i := range rows {
+		out = append(out, projectFromRow(&rows[i]))
+	}
+	return out, nil
 }
 
-// CountByOrganization counts projects in an organization
 func (r *projectRepository) CountByOrganization(ctx context.Context, orgID uuid.UUID) (int64, error) {
-	var count int64
-	err := r.getDB(ctx).WithContext(ctx).
-		Model(&orgDomain.Project{}).
-		Where("organization_id = ? AND deleted_at IS NULL", orgID).
-		Count(&count).Error
-	return count, err
+	n, err := r.tm.Queries(ctx).CountProjectsByOrganization(ctx, orgID)
+	if err != nil {
+		return 0, fmt.Errorf("count projects for org %s: %w", orgID, err)
+	}
+	return n, nil
 }
 
-// GetProjectCount returns the count of projects in an organization
+// GetProjectCount is a legacy alias that returns int instead of int64.
 func (r *projectRepository) GetProjectCount(ctx context.Context, orgID uuid.UUID) (int, error) {
-	var count int64
-	err := r.getDB(ctx).WithContext(ctx).
-		Model(&orgDomain.Project{}).
-		Where("organization_id = ? AND deleted_at IS NULL", orgID).
-		Count(&count).Error
-	return int(count), err
+	n, err := r.CountByOrganization(ctx, orgID)
+	if err != nil {
+		return 0, err
+	}
+	return int(n), nil
 }
 
-// CanUserAccessProject checks if a user has access to a project
 func (r *projectRepository) CanUserAccessProject(ctx context.Context, userID, projectID uuid.UUID) (bool, error) {
-	var count int64
-	err := r.getDB(ctx).WithContext(ctx).
-		Table("projects").
-		Joins("JOIN organization_members ON projects.organization_id = organization_members.organization_id").
-		Where("projects.id = ? AND organization_members.user_id = ? AND projects.deleted_at IS NULL", projectID, userID).
-		Count(&count).Error
-	return count > 0, err
+	ok, err := r.tm.Queries(ctx).UserCanAccessProject(ctx, gen.UserCanAccessProjectParams{
+		ID:     projectID,
+		UserID: userID,
+	})
+	if err != nil {
+		return false, fmt.Errorf("check project access (user=%s project=%s): %w", userID, projectID, err)
+	}
+	return ok, nil
+}
+
+// projectFromRow adapts a sqlc-generated row to the domain type.
+func projectFromRow(row *gen.Project) *orgDomain.Project {
+	return &orgDomain.Project{
+		ID:             row.ID,
+		OrganizationID: row.OrganizationID,
+		Name:           row.Name,
+		Description:    derefString(row.Description),
+		Status:         row.Status,
+		CreatedAt:      row.CreatedAt,
+		UpdatedAt:      row.UpdatedAt,
+		DeletedAt:      row.DeletedAt,
+	}
 }

@@ -4,7 +4,7 @@
 ALTER TABLE playground_sessions ADD COLUMN template JSONB;
 ALTER TABLE playground_sessions ADD COLUMN template_type VARCHAR(10) DEFAULT 'chat';
 ALTER TABLE playground_sessions ADD COLUMN is_saved BOOLEAN DEFAULT TRUE;
-ALTER TABLE playground_sessions ADD COLUMN expires_at TIMESTAMPTZ;
+ALTER TABLE playground_sessions ADD COLUMN expires_at TIMESTAMP WITH TIME ZONE;
 
 -- Populate template from first window if exists
 UPDATE playground_sessions

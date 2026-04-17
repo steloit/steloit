@@ -8,8 +8,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/lib/pq"
-
 	"github.com/google/uuid"
 )
 
@@ -17,34 +15,30 @@ import (
 // Sessions are created when users explicitly save them from the playground UI.
 type Session struct {
 	// Primary key (shareable URL ID)
-	ID uuid.UUID `json:"id" gorm:"type:uuid;primaryKey"`
+	ID uuid.UUID `json:"id"`
 
 	// Project scope
-	ProjectID uuid.UUID `json:"project_id" gorm:"type:uuid;not null;index"`
+	ProjectID uuid.UUID `json:"project_id"`
 
 	// Session metadata
-	Name        *string        `json:"name,omitempty" gorm:"size:200"`
-	Description *string        `json:"description,omitempty" gorm:"type:text"`
-	Tags        pq.StringArray `json:"tags" gorm:"type:text[];default:'{}'"`
+	Name        *string        `json:"name,omitempty"`
+	Description *string        `json:"description,omitempty"`
+	Tags        []string       `json:"tags"`
 
 	// Session content
-	Variables JSON `json:"variables" gorm:"type:jsonb;default:'{}'::jsonb"` // Variable values
-	Config    JSON `json:"config,omitempty" gorm:"type:jsonb"`              // Model config
-	Windows   JSON `json:"windows,omitempty" gorm:"type:jsonb"`             // Array of window states
-	LastRun   JSON `json:"last_run,omitempty" gorm:"type:jsonb"`            // Last execution result
+	Variables JSON `json:"variables"` // Variable values
+	Config    JSON `json:"config,omitempty"`              // Model config
+	Windows   JSON `json:"windows,omitempty"`             // Array of window states
+	LastRun   JSON `json:"last_run,omitempty"`            // Last execution result
 
 	// Audit fields
-	CreatedBy  *uuid.UUID `json:"created_by,omitempty" gorm:"type:uuid"`
+	CreatedBy  *uuid.UUID `json:"created_by,omitempty"`
 	CreatedAt  time.Time  `json:"created_at"`
 	UpdatedAt  time.Time  `json:"updated_at"`
 	LastUsedAt time.Time  `json:"last_used_at"`
 }
 
 // TableName returns the database table name
-func (Session) TableName() string {
-	return "playground_sessions"
-}
-
 // ----------------------------
 // Template Types
 // ----------------------------

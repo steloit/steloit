@@ -22,8 +22,8 @@ CREATE TABLE annotation_queues (
                         CHECK (status IN ('active', 'paused', 'archived')),
     settings            JSONB DEFAULT '{"lock_timeout_seconds": 300, "auto_assignment": false}'::jsonb,
     created_by          UUID REFERENCES users(id),
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     UNIQUE(project_id, name)
 );
 
@@ -45,14 +45,14 @@ CREATE TABLE annotation_queue_items (
                         CHECK (status IN ('pending', 'completed', 'skipped')),
     priority            INTEGER NOT NULL DEFAULT 0,     -- Higher = more urgent
     -- Locking (who claimed it)
-    locked_at           TIMESTAMPTZ,                    -- When item was locked for review
+    locked_at           TIMESTAMP WITH TIME ZONE,                    -- When item was locked for review
     locked_by_user_id   UUID REFERENCES users(id),  -- Who currently holds the lock
     -- Completion (who finished it) - Langfuse pattern: separate from locker
     annotator_user_id   UUID REFERENCES users(id),  -- Who completed the annotation
-    completed_at        TIMESTAMPTZ,
+    completed_at        TIMESTAMP WITH TIME ZONE,
     metadata            JSONB DEFAULT '{}'::jsonb,      -- Source info, sampling reason, etc.
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     UNIQUE(queue_id, object_id, object_type)            -- No duplicate items
 );
 
@@ -81,7 +81,7 @@ CREATE TABLE annotation_queue_assignments (
     user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     role            VARCHAR(20) NOT NULL DEFAULT 'annotator'
                     CHECK (role IN ('annotator', 'reviewer', 'admin')),
-    assigned_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    assigned_at     TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     assigned_by     UUID REFERENCES users(id),
     UNIQUE(queue_id, user_id)
 );

@@ -10,8 +10,8 @@ CREATE TABLE contracts (
     contract_number VARCHAR(100) UNIQUE NOT NULL,
 
     -- Dates
-    start_date TIMESTAMPTZ NOT NULL,
-    end_date TIMESTAMPTZ,  -- NULL = no end date
+    start_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    end_date TIMESTAMP WITH TIME ZONE,  -- NULL = no end date
 
     -- Financial terms
     minimum_commit_amount DECIMAL(18, 6),
@@ -40,8 +40,8 @@ CREATE TABLE contracts (
 
     -- Audit trail
     created_by UUID,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     notes TEXT,
 
     CONSTRAINT chk_contract_dates CHECK (end_date IS NULL OR end_date > start_date),

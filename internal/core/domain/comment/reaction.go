@@ -9,15 +9,11 @@ import (
 )
 
 type Reaction struct {
-	ID        uuid.UUID `json:"id" gorm:"type:uuid;primaryKey"`
-	CommentID uuid.UUID `json:"comment_id" gorm:"type:uuid;not null"`
-	UserID    uuid.UUID `json:"user_id" gorm:"type:uuid;not null"`
-	Emoji     string    `json:"emoji" gorm:"type:varchar(8);not null"`
-	CreatedAt time.Time `json:"created_at" gorm:"not null;autoCreateTime"`
-}
-
-func (Reaction) TableName() string {
-	return "comment_reactions"
+	ID        uuid.UUID `json:"id"`
+	CommentID uuid.UUID `json:"comment_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	Emoji     string    `json:"emoji"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 func NewReaction(commentID, userID uuid.UUID, emoji string) *Reaction {

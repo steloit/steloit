@@ -23,8 +23,8 @@ CREATE TABLE experiment_configs (
     -- Step 3: Evaluators Configuration
     evaluators           JSONB NOT NULL DEFAULT '[]',  -- [{name, scorer_type, scorer_config, variable_mapping}]
 
-    created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
 -- Indexes for efficient lookups

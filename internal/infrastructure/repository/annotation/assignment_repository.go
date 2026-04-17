@@ -2,153 +2,136 @@ package annotation
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 
-	"brokle/internal/core/domain/annotation"
-	"brokle/internal/infrastructure/shared"
-
-	"gorm.io/gorm"
+	annotationDomain "brokle/internal/core/domain/annotation"
+	"brokle/internal/infrastructure/db"
+	"brokle/internal/infrastructure/db/gen"
+	appErrors "brokle/pkg/errors"
 )
 
-// AssignmentRepository implements annotation.AssignmentRepository using PostgreSQL.
 type AssignmentRepository struct {
-	db *gorm.DB
+	tm *db.TxManager
 }
 
-// NewAssignmentRepository creates a new AssignmentRepository.
-func NewAssignmentRepository(db *gorm.DB) *AssignmentRepository {
-	return &AssignmentRepository{db: db}
+func NewAssignmentRepository(tm *db.TxManager) *AssignmentRepository {
+	return &AssignmentRepository{tm: tm}
 }
 
-// getDB returns transaction-aware DB instance.
-func (r *AssignmentRepository) getDB(ctx context.Context) *gorm.DB {
-	return shared.GetDB(ctx, r.db)
-}
-
-// Create creates a new queue assignment.
-func (r *AssignmentRepository) Create(ctx context.Context, assignment *annotation.QueueAssignment) error {
-	result := r.getDB(ctx).WithContext(ctx).Create(assignment)
-	if result.Error != nil {
-		if isUniqueViolation(result.Error) {
-			return annotation.ErrAssignmentExists
+func (r *AssignmentRepository) Create(ctx context.Context, a *annotationDomain.QueueAssignment) error {
+	if err := r.tm.Queries(ctx).CreateAnnotationQueueAssignment(ctx, gen.CreateAnnotationQueueAssignmentParams{
+		ID:         a.ID,
+		QueueID:    a.QueueID,
+		UserID:     a.UserID,
+		Role:       string(a.Role),
+		AssignedBy: a.AssignedBy,
+	}); err != nil {
+		if appErrors.IsUniqueViolation(err) {
+			return annotationDomain.ErrAssignmentExists
 		}
-		return result.Error
+		return fmt.Errorf("create assignment: %w", err)
 	}
 	return nil
 }
 
-// Delete removes a queue assignment by queue and user ID.
 func (r *AssignmentRepository) Delete(ctx context.Context, queueID, userID uuid.UUID) error {
-	result := r.getDB(ctx).WithContext(ctx).
-		Where("queue_id = ? AND user_id = ?", queueID.String(), userID.String()).
-		Delete(&annotation.QueueAssignment{})
-
-	if result.Error != nil {
-		return result.Error
+	n, err := r.tm.Queries(ctx).DeleteAnnotationQueueAssignment(ctx, gen.DeleteAnnotationQueueAssignmentParams{
+		QueueID: queueID,
+		UserID:  userID,
+	})
+	if err != nil {
+		return err
 	}
-
-	if result.RowsAffected == 0 {
-		return annotation.ErrAssignmentNotFound
+	if n == 0 {
+		return annotationDomain.ErrAssignmentNotFound
 	}
 	return nil
 }
 
-// GetByQueueAndUser retrieves an assignment by queue and user ID.
-func (r *AssignmentRepository) GetByQueueAndUser(ctx context.Context, queueID, userID uuid.UUID) (*annotation.QueueAssignment, error) {
-	var assignment annotation.QueueAssignment
-	result := r.getDB(ctx).WithContext(ctx).
-		Where("queue_id = ? AND user_id = ?", queueID.String(), userID.String()).
-		First(&assignment)
-
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, annotation.ErrAssignmentNotFound
+func (r *AssignmentRepository) GetByQueueAndUser(ctx context.Context, queueID, userID uuid.UUID) (*annotationDomain.QueueAssignment, error) {
+	row, err := r.tm.Queries(ctx).GetAnnotationQueueAssignmentByQueueAndUser(ctx, gen.GetAnnotationQueueAssignmentByQueueAndUserParams{
+		QueueID: queueID,
+		UserID:  userID,
+	})
+	if err != nil {
+		if db.IsNoRows(err) {
+			return nil, annotationDomain.ErrAssignmentNotFound
 		}
-		return nil, result.Error
+		return nil, err
 	}
-	return &assignment, nil
+	return assignmentFromRow(&row), nil
 }
 
-// List retrieves all assignments for a queue.
-func (r *AssignmentRepository) List(ctx context.Context, queueID uuid.UUID) ([]*annotation.QueueAssignment, error) {
-	var assignments []*annotation.QueueAssignment
-	result := r.getDB(ctx).WithContext(ctx).
-		Where("queue_id = ?", queueID.String()).
-		Order("assigned_at ASC").
-		Find(&assignments)
-
-	if result.Error != nil {
-		return nil, result.Error
+func (r *AssignmentRepository) List(ctx context.Context, queueID uuid.UUID) ([]*annotationDomain.QueueAssignment, error) {
+	rows, err := r.tm.Queries(ctx).ListAnnotationQueueAssignmentsByQueue(ctx, queueID)
+	if err != nil {
+		return nil, err
 	}
-	return assignments, nil
+	out := make([]*annotationDomain.QueueAssignment, 0, len(rows))
+	for i := range rows {
+		out = append(out, assignmentFromRow(&rows[i]))
+	}
+	return out, nil
 }
 
-// ListByUser retrieves all queue assignments for a user.
-func (r *AssignmentRepository) ListByUser(ctx context.Context, userID uuid.UUID) ([]*annotation.QueueAssignment, error) {
-	var assignments []*annotation.QueueAssignment
-	result := r.getDB(ctx).WithContext(ctx).
-		Where("user_id = ?", userID.String()).
-		Order("assigned_at DESC").
-		Find(&assignments)
-
-	if result.Error != nil {
-		return nil, result.Error
+func (r *AssignmentRepository) ListByUser(ctx context.Context, userID uuid.UUID) ([]*annotationDomain.QueueAssignment, error) {
+	rows, err := r.tm.Queries(ctx).ListAnnotationQueueAssignmentsByUser(ctx, userID)
+	if err != nil {
+		return nil, err
 	}
-	return assignments, nil
+	out := make([]*annotationDomain.QueueAssignment, 0, len(rows))
+	for i := range rows {
+		out = append(out, assignmentFromRow(&rows[i]))
+	}
+	return out, nil
 }
 
-// IsAssigned checks if a user is assigned to a queue.
 func (r *AssignmentRepository) IsAssigned(ctx context.Context, queueID, userID uuid.UUID) (bool, error) {
-	var count int64
-	result := r.getDB(ctx).WithContext(ctx).
-		Model(&annotation.QueueAssignment{}).
-		Where("queue_id = ? AND user_id = ?", queueID.String(), userID.String()).
-		Count(&count)
-
-	if result.Error != nil {
-		return false, result.Error
-	}
-	return count > 0, nil
+	return r.tm.Queries(ctx).AnnotationQueueAssignmentExists(ctx, gen.AnnotationQueueAssignmentExistsParams{
+		QueueID: queueID,
+		UserID:  userID,
+	})
 }
 
-// HasRole checks if a user has a specific role (or higher) for a queue.
-// Role hierarchy: admin > reviewer > annotator
-func (r *AssignmentRepository) HasRole(ctx context.Context, queueID, userID uuid.UUID, minRole annotation.AssignmentRole) (bool, error) {
-	var assignment annotation.QueueAssignment
-	result := r.getDB(ctx).WithContext(ctx).
-		Where("queue_id = ? AND user_id = ?", queueID.String(), userID.String()).
-		First(&assignment)
-
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+// HasRole checks whether the user's assigned role meets or exceeds the
+// minimum. Role hierarchy: admin > reviewer > annotator.
+func (r *AssignmentRepository) HasRole(ctx context.Context, queueID, userID uuid.UUID, minRole annotationDomain.AssignmentRole) (bool, error) {
+	a, err := r.GetByQueueAndUser(ctx, queueID, userID)
+	if err != nil {
+		if err == annotationDomain.ErrAssignmentNotFound {
 			return false, nil
 		}
-		return false, result.Error
+		return false, err
 	}
-
-	return roleAtLeast(assignment.Role, minRole), nil
+	return roleAtLeast(a.Role, minRole), nil
 }
 
-// roleAtLeast checks if the actual role meets or exceeds the minimum required role.
-// Role hierarchy: admin > reviewer > annotator
-func roleAtLeast(actual, minimum annotation.AssignmentRole) bool {
-	roleLevel := map[annotation.AssignmentRole]int{
-		annotation.RoleAnnotator: 1,
-		annotation.RoleReviewer:  2,
-		annotation.RoleAdmin:     3,
+func roleAtLeast(actual, minimum annotationDomain.AssignmentRole) bool {
+	level := map[annotationDomain.AssignmentRole]int{
+		annotationDomain.RoleAnnotator: 1,
+		annotationDomain.RoleReviewer:  2,
+		annotationDomain.RoleAdmin:     3,
 	}
-
-	actualLevel, ok := roleLevel[actual]
+	a, ok := level[actual]
 	if !ok {
 		return false
 	}
-
-	minLevel, ok := roleLevel[minimum]
+	m, ok := level[minimum]
 	if !ok {
 		return false
 	}
+	return a >= m
+}
 
-	return actualLevel >= minLevel
+func assignmentFromRow(row *gen.AnnotationQueueAssignment) *annotationDomain.QueueAssignment {
+	return &annotationDomain.QueueAssignment{
+		ID:         row.ID,
+		QueueID:    row.QueueID,
+		UserID:     row.UserID,
+		Role:       annotationDomain.AssignmentRole(row.Role),
+		AssignedAt: row.AssignedAt,
+		AssignedBy: row.AssignedBy,
+	}
 }

@@ -5,70 +5,117 @@ import (
 
 	"github.com/google/uuid"
 
-	"brokle/internal/core/domain/evaluation"
-	"brokle/internal/infrastructure/shared"
-
-	"gorm.io/gorm"
+	evalDomain "brokle/internal/core/domain/evaluation"
+	"brokle/internal/infrastructure/db"
+	"brokle/internal/infrastructure/db/gen"
 )
 
 type ExperimentItemRepository struct {
-	db *gorm.DB
+	tm *db.TxManager
 }
 
-func NewExperimentItemRepository(db *gorm.DB) *ExperimentItemRepository {
-	return &ExperimentItemRepository{db: db}
+func NewExperimentItemRepository(tm *db.TxManager) *ExperimentItemRepository {
+	return &ExperimentItemRepository{tm: tm}
 }
 
-// getDB returns transaction-aware DB instance
-func (r *ExperimentItemRepository) getDB(ctx context.Context) *gorm.DB {
-	return shared.GetDB(ctx, r.db)
+func (r *ExperimentItemRepository) Create(ctx context.Context, item *evalDomain.ExperimentItem) error {
+	return r.insertOne(ctx, item)
 }
 
-func (r *ExperimentItemRepository) Create(ctx context.Context, item *evaluation.ExperimentItem) error {
-	return r.getDB(ctx).WithContext(ctx).Create(item).Error
-}
-
-func (r *ExperimentItemRepository) CreateBatch(ctx context.Context, items []*evaluation.ExperimentItem) error {
+func (r *ExperimentItemRepository) CreateBatch(ctx context.Context, items []*evalDomain.ExperimentItem) error {
 	if len(items) == 0 {
 		return nil
 	}
-	return r.getDB(ctx).WithContext(ctx).CreateInBatches(items, 100).Error
+	return r.tm.WithinTransaction(ctx, func(ctx context.Context) error {
+		for _, it := range items {
+			if err := r.insertOne(ctx, it); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
-func (r *ExperimentItemRepository) List(ctx context.Context, experimentID uuid.UUID, limit, offset int) ([]*evaluation.ExperimentItem, int64, error) {
-	var items []*evaluation.ExperimentItem
-	var total int64
+func (r *ExperimentItemRepository) insertOne(ctx context.Context, item *evalDomain.ExperimentItem) error {
+	input, err := marshalEvalJSON(item.Input)
+	if err != nil {
+		return err
+	}
+	output, err := marshalEvalJSON(item.Output)
+	if err != nil {
+		return err
+	}
+	expected, err := marshalEvalJSON(item.Expected)
+	if err != nil {
+		return err
+	}
+	meta, err := marshalEvalJSON(item.Metadata)
+	if err != nil {
+		return err
+	}
+	return r.tm.Queries(ctx).CreateExperimentItem(ctx, gen.CreateExperimentItemParams{
+		ID:            item.ID,
+		ExperimentID:  item.ExperimentID,
+		DatasetItemID: item.DatasetItemID,
+		TraceID:       item.TraceID,
+		Input:         input,
+		Output:        output,
+		Expected:      expected,
+		TrialNumber:   int32(item.TrialNumber),
+		Metadata:      meta,
+		Error:         item.Error,
+	})
+}
 
-	baseQuery := r.getDB(ctx).WithContext(ctx).
-		Model(&evaluation.ExperimentItem{}).
-		Where("experiment_id = ?", experimentID.String())
-
-	if err := baseQuery.Count(&total).Error; err != nil {
+func (r *ExperimentItemRepository) List(ctx context.Context, experimentID uuid.UUID, limit, offset int) ([]*evalDomain.ExperimentItem, int64, error) {
+	total, err := r.tm.Queries(ctx).CountExperimentItems(ctx, experimentID)
+	if err != nil {
 		return nil, 0, err
 	}
-
-	result := r.getDB(ctx).WithContext(ctx).
-		Where("experiment_id = ?", experimentID.String()).
-		Order("created_at DESC").
-		Limit(limit).
-		Offset(offset).
-		Find(&items)
-
-	if result.Error != nil {
-		return nil, 0, result.Error
+	rows, err := r.tm.Queries(ctx).ListExperimentItems(ctx, gen.ListExperimentItemsParams{
+		ExperimentID: experimentID,
+		Limit:        int32(limit),
+		Offset:       int32(offset),
+	})
+	if err != nil {
+		return nil, 0, err
 	}
-	return items, total, nil
+	out := make([]*evalDomain.ExperimentItem, 0, len(rows))
+	for i := range rows {
+		it, err := experimentItemFromRow(&rows[i])
+		if err != nil {
+			return nil, 0, err
+		}
+		out = append(out, it)
+	}
+	return out, total, nil
 }
 
 func (r *ExperimentItemRepository) CountByExperiment(ctx context.Context, experimentID uuid.UUID) (int64, error) {
-	var count int64
-	result := r.getDB(ctx).WithContext(ctx).
-		Model(&evaluation.ExperimentItem{}).
-		Where("experiment_id = ?", experimentID.String()).
-		Count(&count)
+	return r.tm.Queries(ctx).CountExperimentItems(ctx, experimentID)
+}
 
-	if result.Error != nil {
-		return 0, result.Error
+func experimentItemFromRow(row *gen.ExperimentItem) (*evalDomain.ExperimentItem, error) {
+	it := &evalDomain.ExperimentItem{
+		ID:            row.ID,
+		ExperimentID:  row.ExperimentID,
+		DatasetItemID: row.DatasetItemID,
+		TraceID:       row.TraceID,
+		TrialNumber:   int(row.TrialNumber),
+		CreatedAt:     row.CreatedAt,
+		Error:         row.Error,
 	}
-	return count, nil
+	if err := unmarshalEvalJSON(row.Input, &it.Input); err != nil {
+		return nil, err
+	}
+	if err := unmarshalEvalJSON(row.Output, &it.Output); err != nil {
+		return nil, err
+	}
+	if err := unmarshalEvalJSON(row.Expected, &it.Expected); err != nil {
+		return nil, err
+	}
+	if err := unmarshalEvalJSON(row.Metadata, &it.Metadata); err != nil {
+		return nil, err
+	}
+	return it, nil
 }

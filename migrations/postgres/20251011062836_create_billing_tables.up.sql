@@ -21,8 +21,8 @@ CREATE TABLE IF NOT EXISTS usage_records (
     billing_tier VARCHAR(50) NOT NULL DEFAULT 'free',
     discounts DECIMAL(12, 6) NOT NULL DEFAULT 0.0,
     net_cost DECIMAL(12, 6) NOT NULL DEFAULT 0.0,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    processed_at TIMESTAMPTZ
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    processed_at TIMESTAMP WITH TIME ZONE
 );
 
 -- Indexes for usage_records
@@ -44,8 +44,8 @@ CREATE TABLE IF NOT EXISTS usage_quotas (
     current_tokens BIGINT NOT NULL DEFAULT 0,
     current_cost DECIMAL(12, 6) NOT NULL DEFAULT 0.0,
     currency VARCHAR(3) NOT NULL DEFAULT 'USD',
-    reset_date TIMESTAMPTZ NOT NULL,
-    last_updated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    reset_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    last_updated TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 
     -- Check constraints for limits
     CONSTRAINT chk_monthly_request_limit CHECK (monthly_request_limit >= 0),
@@ -66,8 +66,8 @@ CREATE TABLE IF NOT EXISTS billing_records (
     status VARCHAR(50) NOT NULL DEFAULT 'pending',
     transaction_id VARCHAR(255),
     payment_method VARCHAR(100),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    processed_at TIMESTAMPTZ,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    processed_at TIMESTAMP WITH TIME ZONE,
 
     -- Constraints
     CONSTRAINT chk_billing_amount CHECK (amount >= 0),
@@ -85,8 +85,8 @@ CREATE TABLE IF NOT EXISTS billing_summaries (
     id UUID PRIMARY KEY,
     organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     period VARCHAR(50) NOT NULL,
-    period_start TIMESTAMPTZ NOT NULL,
-    period_end TIMESTAMPTZ NOT NULL,
+    period_start TIMESTAMP WITH TIME ZONE NOT NULL,
+    period_end TIMESTAMP WITH TIME ZONE NOT NULL,
     total_requests BIGINT NOT NULL DEFAULT 0,
     total_tokens BIGINT NOT NULL DEFAULT 0,
     total_cost DECIMAL(12, 6) NOT NULL DEFAULT 0.0,
@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS billing_summaries (
     discounts DECIMAL(12, 6) NOT NULL DEFAULT 0.0,
     net_cost DECIMAL(12, 6) NOT NULL DEFAULT 0.0,
     status VARCHAR(50) NOT NULL DEFAULT 'pending',
-    generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    generated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 
     -- Unique constraint to prevent duplicate summaries
     CONSTRAINT uq_billing_summaries_org_period_start UNIQUE (organization_id, period, period_start),
@@ -124,14 +124,14 @@ CREATE TABLE IF NOT EXISTS discount_rules (
     minimum_amount DECIMAL(12, 6) NOT NULL DEFAULT 0.0,
     maximum_discount DECIMAL(12, 6) NOT NULL DEFAULT 0.0,
     conditions JSONB NOT NULL DEFAULT '{}',
-    valid_from TIMESTAMPTZ NOT NULL,
-    valid_until TIMESTAMPTZ,
+    valid_from TIMESTAMP WITH TIME ZONE NOT NULL,
+    valid_until TIMESTAMP WITH TIME ZONE,
     usage_limit INTEGER,
     usage_count INTEGER NOT NULL DEFAULT 0,
     is_active BOOLEAN NOT NULL DEFAULT true,
     priority INTEGER NOT NULL DEFAULT 0,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 
     -- Constraints
     CONSTRAINT chk_discount_value CHECK (value >= 0),
@@ -158,10 +158,10 @@ CREATE TABLE IF NOT EXISTS invoices (
     organization_name VARCHAR(255) NOT NULL,
     billing_address JSONB,
     period VARCHAR(50) NOT NULL,
-    period_start TIMESTAMPTZ NOT NULL,
-    period_end TIMESTAMPTZ NOT NULL,
-    issue_date TIMESTAMPTZ NOT NULL,
-    due_date TIMESTAMPTZ NOT NULL,
+    period_start TIMESTAMP WITH TIME ZONE NOT NULL,
+    period_end TIMESTAMP WITH TIME ZONE NOT NULL,
+    issue_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    due_date TIMESTAMP WITH TIME ZONE NOT NULL,
     subtotal DECIMAL(12, 6) NOT NULL DEFAULT 0.0,
     tax_amount DECIMAL(12, 6) NOT NULL DEFAULT 0.0,
     discount_amount DECIMAL(12, 6) NOT NULL DEFAULT 0.0,
@@ -171,9 +171,9 @@ CREATE TABLE IF NOT EXISTS invoices (
     payment_terms VARCHAR(255),
     notes TEXT,
     metadata JSONB NOT NULL DEFAULT '{}',
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    paid_at TIMESTAMPTZ,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    paid_at TIMESTAMP WITH TIME ZONE,
 
     -- Constraints
     CONSTRAINT chk_invoice_subtotal CHECK (subtotal >= 0),
@@ -208,7 +208,7 @@ CREATE TABLE IF NOT EXISTS invoice_line_items (
     request_type VARCHAR(50),
     tokens BIGINT,
     requests BIGINT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 
     -- Constraints
     CONSTRAINT chk_line_item_quantity CHECK (quantity > 0),
@@ -234,8 +234,8 @@ CREATE TABLE IF NOT EXISTS payment_methods (
     expiry_month INTEGER,
     expiry_year INTEGER,
     is_default BOOLEAN NOT NULL DEFAULT false,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 
     -- Constraints
     CONSTRAINT chk_payment_method_type CHECK (type IN ('card', 'bank_transfer', 'paypal', 'other')),

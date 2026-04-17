@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/shopspring/decimal"
 	"gopkg.in/yaml.v3"
-	"gorm.io/gorm"
 
 	"github.com/google/uuid"
 
@@ -21,7 +21,7 @@ import (
 	"brokle/internal/core/domain/auth"
 	"brokle/internal/core/domain/billing"
 	"brokle/internal/core/domain/dashboard"
-	"brokle/internal/infrastructure/database"
+	"brokle/internal/infrastructure/db"
 	analyticsRepo "brokle/internal/infrastructure/repository/analytics"
 	authRepo "brokle/internal/infrastructure/repository/auth"
 	billingRepo "brokle/internal/infrastructure/repository/billing"
@@ -31,7 +31,8 @@ import (
 )
 
 type Seeder struct {
-	db     *gorm.DB
+	pool   *pgxpool.Pool
+	tm     *db.TxManager
 	cfg    *config.Config
 	logger *slog.Logger
 
@@ -49,33 +50,33 @@ func New(cfg *config.Config) (*Seeder, error) {
 	// Create logger for seeding - use Info level so progress and verbose output are visible
 	logger := logging.NewLoggerWithFormat(slog.LevelInfo, cfg.Logging.Format)
 
-	// Initialize PostgreSQL database
-	postgresDB, err := database.NewPostgresDB(cfg, logger)
+	pool, err := db.NewPool(context.Background(), cfg, logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to PostgreSQL: %w", err)
+		return nil, fmt.Errorf("failed to open pgx pool: %w", err)
 	}
 
 	s := &Seeder{
-		db:     postgresDB.DB,
+		pool:   pool,
+		tm:     db.NewTxManager(pool),
 		cfg:    cfg,
 		logger: logger,
 	}
 
 	// Initialize repositories
-	s.roleRepo = authRepo.NewRoleRepository(s.db)
-	s.permissionRepo = authRepo.NewPermissionRepository(s.db)
-	s.rolePermRepo = authRepo.NewRolePermissionRepository(s.db)
-	s.providerModelRepo = analyticsRepo.NewProviderModelRepository(s.db)
-	s.templateRepo = dashboardRepo.NewTemplateRepository(s.db)
-	s.planRepo = billingRepo.NewPlanRepository(s.db)
-	s.orgBillingRepo = billingRepo.NewOrganizationBillingRepository(s.db)
+	s.roleRepo = authRepo.NewRoleRepository(s.tm)
+	s.permissionRepo = authRepo.NewPermissionRepository(s.tm)
+	s.rolePermRepo = authRepo.NewRolePermissionRepository(s.tm)
+	s.providerModelRepo = analyticsRepo.NewProviderModelRepository(s.tm)
+	s.templateRepo = dashboardRepo.NewTemplateRepository(s.tm)
+	s.planRepo = billingRepo.NewPlanRepository(s.tm)
+	s.orgBillingRepo = billingRepo.NewOrganizationBillingRepository(s.tm)
 
 	return s, nil
 }
 
 func (s *Seeder) Close() error {
-	if sqlDB, err := s.db.DB(); err == nil {
-		return sqlDB.Close()
+	if s.pool != nil {
+		s.pool.Close()
 	}
 	return nil
 }
@@ -1251,19 +1252,31 @@ func (s *Seeder) SeedOrganizationBillings(ctx context.Context, opts *Options) er
 
 	// Find organizations without billing records using raw SQL
 	type orgWithoutBilling struct {
-		ID   string `gorm:"column:id"`
-		Name string `gorm:"column:name"`
+		ID   string
+		Name string
 	}
 
 	var orgs []orgWithoutBilling
-	err = s.db.WithContext(ctx).Raw(`
+	rows, err := s.tm.DB(ctx).Query(ctx, `
 		SELECT o.id, o.name
 		FROM organizations o
 		LEFT JOIN organization_billings ob ON o.id = ob.organization_id
 		WHERE ob.organization_id IS NULL AND o.deleted_at IS NULL
-	`).Scan(&orgs).Error
+	`)
 	if err != nil {
 		return fmt.Errorf("failed to find organizations without billing: %w", err)
+	}
+	for rows.Next() {
+		var o orgWithoutBilling
+		if err := rows.Scan(&o.ID, &o.Name); err != nil {
+			rows.Close()
+			return fmt.Errorf("scan organization: %w", err)
+		}
+		orgs = append(orgs, o)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate organizations: %w", err)
 	}
 
 	if len(orgs) == 0 {

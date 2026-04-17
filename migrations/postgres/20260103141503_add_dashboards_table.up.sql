@@ -7,9 +7,9 @@ CREATE TABLE IF NOT EXISTS dashboards (
     config JSONB NOT NULL DEFAULT '{}',
     layout JSONB NOT NULL DEFAULT '[]',
     created_by UUID REFERENCES users(id) ON DELETE SET NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at TIMESTAMPTZ
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMP WITH TIME ZONE
 );
 
 -- Index for listing dashboards by project (soft delete aware)

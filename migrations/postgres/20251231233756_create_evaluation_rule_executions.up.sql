@@ -11,11 +11,11 @@ CREATE TABLE evaluation_rule_executions (
     spans_scored    INTEGER NOT NULL DEFAULT 0,
     errors_count    INTEGER NOT NULL DEFAULT 0,
     error_message   TEXT,
-    started_at      TIMESTAMPTZ,
-    completed_at    TIMESTAMPTZ,
+    started_at      TIMESTAMP WITH TIME ZONE,
+    completed_at    TIMESTAMP WITH TIME ZONE,
     duration_ms     INTEGER,
     metadata        JSONB DEFAULT '{}',
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
 -- Index for listing executions by rule (primary use case)

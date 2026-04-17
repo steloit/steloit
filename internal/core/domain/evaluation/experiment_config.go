@@ -63,21 +63,17 @@ type ExperimentEvaluator struct {
 
 // ExperimentConfig stores the configuration for experiments created via the dashboard wizard.
 type ExperimentConfig struct {
-	ID               uuid.UUID                   `json:"id" gorm:"type:uuid;primaryKey"`
-	ExperimentID     uuid.UUID                   `json:"experiment_id" gorm:"type:uuid;unique;not null;index"`
-	PromptID         uuid.UUID                   `json:"prompt_id" gorm:"type:uuid;not null"`
-	PromptVersionID  uuid.UUID                   `json:"prompt_version_id" gorm:"type:uuid;not null"`
-	ModelConfig      map[string]any              `json:"model_config,omitempty" gorm:"type:jsonb;serializer:json"`
-	DatasetID        uuid.UUID                   `json:"dataset_id" gorm:"type:uuid;not null"`
-	DatasetVersionID *uuid.UUID                  `json:"dataset_version_id,omitempty" gorm:"type:uuid"`
-	VariableMapping  []ExperimentVariableMapping `json:"variable_mapping" gorm:"type:jsonb;serializer:json;not null;default:'[]'"`
-	Evaluators       []ExperimentEvaluator       `json:"evaluators" gorm:"type:jsonb;serializer:json;not null;default:'[]'"`
-	CreatedAt        time.Time                   `json:"created_at" gorm:"not null;autoCreateTime"`
-	UpdatedAt        time.Time                   `json:"updated_at" gorm:"not null;autoUpdateTime"`
-}
-
-func (ExperimentConfig) TableName() string {
-	return "experiment_configs"
+	ID               uuid.UUID                   `json:"id"`
+	ExperimentID     uuid.UUID                   `json:"experiment_id"`
+	PromptID         uuid.UUID                   `json:"prompt_id"`
+	PromptVersionID  uuid.UUID                   `json:"prompt_version_id"`
+	ModelConfig      map[string]any              `json:"model_config,omitempty"`
+	DatasetID        uuid.UUID                   `json:"dataset_id"`
+	DatasetVersionID *uuid.UUID                  `json:"dataset_version_id,omitempty"`
+	VariableMapping  []ExperimentVariableMapping `json:"variable_mapping"`
+	Evaluators       []ExperimentEvaluator       `json:"evaluators"`
+	CreatedAt        time.Time                   `json:"created_at"`
+	UpdatedAt        time.Time                   `json:"updated_at"`
 }
 
 // NewExperimentConfig creates a new experiment config.

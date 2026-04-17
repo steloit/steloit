@@ -6,8 +6,6 @@ import (
 	"github.com/google/uuid"
 
 	"brokle/pkg/uid"
-
-	"github.com/lib/pq"
 )
 
 // EvaluatorStatus represents the current state of an evaluator.
@@ -59,26 +57,22 @@ type VariableMap struct {
 
 // Evaluator defines an automated evaluator for scoring spans.
 type Evaluator struct {
-	ID              uuid.UUID        `json:"id" gorm:"type:uuid;primaryKey"`
-	ProjectID       uuid.UUID        `json:"project_id" gorm:"type:uuid;not null;index"`
-	Name            string           `json:"name" gorm:"type:varchar(100);not null"`
-	Description     *string          `json:"description,omitempty" gorm:"type:text"`
-	Status          EvaluatorStatus  `json:"status" gorm:"type:varchar(20);not null;default:'inactive'"`
-	TriggerType     EvaluatorTrigger `json:"trigger_type" gorm:"type:varchar(30);not null;default:'on_span_complete'"`
-	TargetScope     TargetScope      `json:"target_scope" gorm:"type:varchar(20);not null;default:'span'"`
-	Filter          []FilterClause   `json:"filter" gorm:"type:jsonb;serializer:json;not null;default:'[]'"`
-	SpanNames       pq.StringArray   `json:"span_names" gorm:"type:text[];default:'{}'"`
-	SamplingRate    float64          `json:"sampling_rate" gorm:"type:decimal(5,4);not null;default:1.0"`
-	ScorerType      ScorerType       `json:"scorer_type" gorm:"type:varchar(20);not null"`
-	ScorerConfig    map[string]any   `json:"scorer_config" gorm:"type:jsonb;serializer:json;not null"`
-	VariableMapping []VariableMap    `json:"variable_mapping" gorm:"type:jsonb;serializer:json;not null;default:'[]'"`
-	CreatedBy       *string          `json:"created_by,omitempty" gorm:"type:uuid"`
-	CreatedAt       time.Time        `json:"created_at" gorm:"not null;autoCreateTime"`
-	UpdatedAt       time.Time        `json:"updated_at" gorm:"not null;autoUpdateTime"`
-}
-
-func (Evaluator) TableName() string {
-	return "evaluators"
+	ID              uuid.UUID        `json:"id"`
+	ProjectID       uuid.UUID        `json:"project_id"`
+	Name            string           `json:"name"`
+	Description     *string          `json:"description,omitempty"`
+	Status          EvaluatorStatus  `json:"status"`
+	TriggerType     EvaluatorTrigger `json:"trigger_type"`
+	TargetScope     TargetScope      `json:"target_scope"`
+	Filter          []FilterClause   `json:"filter"`
+	SpanNames       []string         `json:"span_names"`
+	SamplingRate    float64          `json:"sampling_rate"`
+	ScorerType      ScorerType       `json:"scorer_type"`
+	ScorerConfig    map[string]any   `json:"scorer_config"`
+	VariableMapping []VariableMap    `json:"variable_mapping"`
+	CreatedBy       *string          `json:"created_by,omitempty"`
+	CreatedAt       time.Time        `json:"created_at"`
+	UpdatedAt       time.Time        `json:"updated_at"`
 }
 
 func NewEvaluator(projectID uuid.UUID, name string, scorerType ScorerType, scorerConfig map[string]any) *Evaluator {

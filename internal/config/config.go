@@ -111,7 +111,6 @@ type DatabaseConfig struct {
 	MigrationsPath  string        `mapstructure:"migrations_path"`
 	Port            int           `mapstructure:"port"`
 	MaxOpenConns    int           `mapstructure:"max_open_conns"`
-	MaxIdleConns    int           `mapstructure:"max_idle_conns"`
 	ConnMaxLifetime time.Duration `mapstructure:"conn_max_lifetime"`
 	ConnMaxIdleTime time.Duration `mapstructure:"conn_max_idle_time"`
 	AutoMigrate     bool          `mapstructure:"auto_migrate"`
@@ -359,10 +358,6 @@ func (dc *DatabaseConfig) Validate() error {
 			return errors.New("max_open_conns cannot be negative")
 		}
 
-		if dc.MaxIdleConns < 0 {
-			return errors.New("max_idle_conns cannot be negative")
-		}
-
 		return nil
 	}
 
@@ -385,10 +380,6 @@ func (dc *DatabaseConfig) Validate() error {
 
 	if dc.MaxOpenConns < 0 {
 		return errors.New("max_open_conns cannot be negative")
-	}
-
-	if dc.MaxIdleConns < 0 {
-		return errors.New("max_idle_conns cannot be negative")
 	}
 
 	return nil
@@ -759,6 +750,8 @@ func Load() (*Config, error) {
 	//nolint:errcheck
 	viper.BindEnv("auth.rate_limit_per_user", "RATE_LIMIT_PER_USER")
 	//nolint:errcheck
+	viper.BindEnv("auth.rate_limit_per_key_prefix", "RATE_LIMIT_PER_KEY_PREFIX")
+	//nolint:errcheck
 	viper.BindEnv("auth.rate_limit_window", "RATE_LIMIT_WINDOW")
 	//nolint:errcheck
 	viper.BindEnv("auth.jwt_signing_method", "JWT_SIGNING_METHOD")
@@ -916,7 +909,6 @@ func setDefaults() {
 	viper.SetDefault("database.database", "") // Empty default - will be populated from URL if present
 	viper.SetDefault("database.ssl_mode", "disable")
 	viper.SetDefault("database.max_open_conns", 100)
-	viper.SetDefault("database.max_idle_conns", 10)
 	viper.SetDefault("database.conn_max_lifetime", "1h")
 	viper.SetDefault("database.conn_max_idle_time", "15m")
 
@@ -956,6 +948,7 @@ func setDefaults() {
 	viper.SetDefault("auth.rate_limit_enabled", false) // Disabled by default for development
 	viper.SetDefault("auth.rate_limit_per_ip", 100)
 	viper.SetDefault("auth.rate_limit_per_user", 1000)
+	viper.SetDefault("auth.rate_limit_per_key_prefix", 30) // per window, per SHA256(key[:8])
 	viper.SetDefault("auth.rate_limit_window", "1h")
 	viper.SetDefault("auth.jwt_signing_method", "HS256") // HS256 for development ease
 	viper.SetDefault("auth.jwt_issuer", "brokle")

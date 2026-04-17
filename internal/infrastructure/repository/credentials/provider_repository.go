@@ -2,33 +2,54 @@ package credentials
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
-
-	"gorm.io/gorm"
 
 	"github.com/google/uuid"
 
 	credentialsDomain "brokle/internal/core/domain/credentials"
+	"brokle/internal/infrastructure/db"
+	"brokle/internal/infrastructure/db/gen"
+	appErrors "brokle/pkg/errors"
 )
 
 type providerCredentialRepository struct {
-	db *gorm.DB
+	tm *db.TxManager
 }
 
-func NewProviderCredentialRepository(db *gorm.DB) credentialsDomain.ProviderCredentialRepository {
-	return &providerCredentialRepository{
-		db: db,
+func NewProviderCredentialRepository(tm *db.TxManager) credentialsDomain.ProviderCredentialRepository {
+	return &providerCredentialRepository{tm: tm}
+}
+
+func (r *providerCredentialRepository) Create(ctx context.Context, c *credentialsDomain.ProviderCredential) error {
+	now := time.Now()
+	if c.CreatedAt.IsZero() {
+		c.CreatedAt = now
 	}
-}
-
-func (r *providerCredentialRepository) Create(ctx context.Context, credential *credentialsDomain.ProviderCredential) error {
-	err := r.db.WithContext(ctx).Create(credential).Error
+	if c.UpdatedAt.IsZero() {
+		c.UpdatedAt = now
+	}
+	cfg, err := marshalConfig(c.Config)
 	if err != nil {
-		// Check for unique constraint violation
-		if isUniqueViolation(err) {
+		return fmt.Errorf("create credential: %w", err)
+	}
+	if err := r.tm.Queries(ctx).CreateProviderCredential(ctx, gen.CreateProviderCredentialParams{
+		ID:             c.ID,
+		OrganizationID: c.OrganizationID,
+		Name:           c.Name,
+		Adapter:        gen.Provider(c.Adapter),
+		EncryptedKey:   c.EncryptedKey,
+		KeyPreview:     c.KeyPreview,
+		BaseUrl:        c.BaseURL,
+		Config:         cfg,
+		Headers:        emptyToNilStringCreds(c.Headers),
+		CustomModels:   c.CustomModels,
+		CreatedBy:      c.CreatedBy,
+		CreatedAt:      c.CreatedAt,
+		UpdatedAt:      c.UpdatedAt,
+	}); err != nil {
+		if appErrors.IsUniqueViolation(err) {
 			return fmt.Errorf("create credential: %w", credentialsDomain.ErrCredentialExists)
 		}
 		return fmt.Errorf("create credential: %w", err)
@@ -36,129 +57,172 @@ func (r *providerCredentialRepository) Create(ctx context.Context, credential *c
 	return nil
 }
 
-// GetByID retrieves a credential by its ID within a specific organization.
-// Returns ErrCredentialNotFound if not found or belongs to different organization.
-func (r *providerCredentialRepository) GetByID(ctx context.Context, id uuid.UUID, orgID uuid.UUID) (*credentialsDomain.ProviderCredential, error) {
-	var credential credentialsDomain.ProviderCredential
-	err := r.db.WithContext(ctx).
-		Where("id = ? AND organization_id = ?", id, orgID).
-		First(&credential).Error
+func (r *providerCredentialRepository) GetByID(ctx context.Context, id, orgID uuid.UUID) (*credentialsDomain.ProviderCredential, error) {
+	row, err := r.tm.Queries(ctx).GetProviderCredentialByID(ctx, gen.GetProviderCredentialByIDParams{
+		ID:             id,
+		OrganizationID: orgID,
+	})
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if db.IsNoRows(err) {
 			return nil, fmt.Errorf("get credential by ID %s: %w", id, credentialsDomain.ErrCredentialNotFound)
 		}
 		return nil, fmt.Errorf("get credential by ID: %w", err)
 	}
-	return &credential, nil
+	return credentialFromRow(&row)
 }
 
-// GetByOrgAndName retrieves the credential for a specific organization and name.
-// Returns nil if not found.
+// GetByOrgAndName returns (nil, nil) when no credential matches —
+// preserves the "uniqueness check" contract the service layer relies on.
 func (r *providerCredentialRepository) GetByOrgAndName(ctx context.Context, orgID uuid.UUID, name string) (*credentialsDomain.ProviderCredential, error) {
-	var credential credentialsDomain.ProviderCredential
-	err := r.db.WithContext(ctx).
-		Where("organization_id = ? AND name = ?", orgID, name).
-		First(&credential).Error
+	row, err := r.tm.Queries(ctx).GetProviderCredentialByOrgAndName(ctx, gen.GetProviderCredentialByOrgAndNameParams{
+		OrganizationID: orgID,
+		Name:           name,
+	})
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil // Return nil for uniqueness checks (not found = available)
+		if db.IsNoRows(err) {
+			return nil, nil
 		}
 		return nil, fmt.Errorf("get credential by name: %w", err)
 	}
-	return &credential, nil
+	return credentialFromRow(&row)
 }
 
-// GetByOrgAndAdapter retrieves all credentials for a specific organization and adapter type.
-// Returns empty slice if none found.
 func (r *providerCredentialRepository) GetByOrgAndAdapter(ctx context.Context, orgID uuid.UUID, adapter credentialsDomain.Provider) ([]*credentialsDomain.ProviderCredential, error) {
-	var credentials []*credentialsDomain.ProviderCredential
-	err := r.db.WithContext(ctx).
-		Where("organization_id = ? AND adapter = ?", orgID, adapter).
-		Order("created_at DESC").
-		Find(&credentials).Error
+	rows, err := r.tm.Queries(ctx).ListProviderCredentialsByOrgAndAdapter(ctx, gen.ListProviderCredentialsByOrgAndAdapterParams{
+		OrganizationID: orgID,
+		Adapter:        gen.Provider(adapter),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("get credentials by adapter: %w", err)
 	}
-	return credentials, nil
+	return credentialsFromRows(rows)
 }
 
 func (r *providerCredentialRepository) ListByOrganization(ctx context.Context, orgID uuid.UUID) ([]*credentialsDomain.ProviderCredential, error) {
-	var credentials []*credentialsDomain.ProviderCredential
-	err := r.db.WithContext(ctx).
-		Where("organization_id = ?", orgID).
-		Order("created_at DESC").
-		Find(&credentials).Error
+	rows, err := r.tm.Queries(ctx).ListProviderCredentialsByOrg(ctx, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("list credentials for organization %s: %w", orgID, err)
 	}
-	return credentials, nil
+	return credentialsFromRows(rows)
 }
 
-// Update updates an existing credential within a specific organization.
-// Returns ErrCredentialNotFound if not found or belongs to different organization.
-func (r *providerCredentialRepository) Update(ctx context.Context, credential *credentialsDomain.ProviderCredential, orgID uuid.UUID) error {
-	credential.UpdatedAt = time.Now()
-
-	// Use organization-scoped update to prevent cross-organization modification
-	result := r.db.WithContext(ctx).
-		Model(&credentialsDomain.ProviderCredential{}).
-		Where("id = ? AND organization_id = ?", credential.ID, orgID).
-		Updates(map[string]interface{}{
-			"name":          credential.Name,
-			"encrypted_key": credential.EncryptedKey,
-			"key_preview":   credential.KeyPreview,
-			"base_url":      credential.BaseURL,
-			"config":        credential.Config,
-			"custom_models": credential.CustomModels,
-			"headers":       credential.Headers,
-			"updated_at":    credential.UpdatedAt,
-		})
-
-	if result.Error != nil {
-		// Check for unique constraint violation (name conflict)
-		if isUniqueViolation(result.Error) {
+func (r *providerCredentialRepository) Update(ctx context.Context, c *credentialsDomain.ProviderCredential, orgID uuid.UUID) error {
+	c.UpdatedAt = time.Now()
+	cfg, err := marshalConfig(c.Config)
+	if err != nil {
+		return fmt.Errorf("update credential: %w", err)
+	}
+	n, err := r.tm.Queries(ctx).UpdateProviderCredential(ctx, gen.UpdateProviderCredentialParams{
+		ID:             c.ID,
+		OrganizationID: orgID,
+		Name:           c.Name,
+		EncryptedKey:   c.EncryptedKey,
+		KeyPreview:     c.KeyPreview,
+		BaseUrl:        c.BaseURL,
+		Config:         cfg,
+		CustomModels:   c.CustomModels,
+		Headers:        emptyToNilStringCreds(c.Headers),
+	})
+	if err != nil {
+		if appErrors.IsUniqueViolation(err) {
 			return fmt.Errorf("update credential: %w", credentialsDomain.ErrCredentialExists)
 		}
-		return fmt.Errorf("update credential: %w", result.Error)
+		return fmt.Errorf("update credential: %w", err)
 	}
-	if result.RowsAffected == 0 {
+	if n == 0 {
 		return fmt.Errorf("update credential: %w", credentialsDomain.ErrCredentialNotFound)
 	}
 	return nil
 }
 
-// Delete removes a credential by ID within a specific organization.
-// Returns ErrCredentialNotFound if not found or belongs to different organization.
-func (r *providerCredentialRepository) Delete(ctx context.Context, id uuid.UUID, orgID uuid.UUID) error {
-	result := r.db.WithContext(ctx).
-		Where("id = ? AND organization_id = ?", id, orgID).
-		Delete(&credentialsDomain.ProviderCredential{})
-	if result.Error != nil {
-		return fmt.Errorf("delete credential: %w", result.Error)
+func (r *providerCredentialRepository) Delete(ctx context.Context, id, orgID uuid.UUID) error {
+	n, err := r.tm.Queries(ctx).DeleteProviderCredential(ctx, gen.DeleteProviderCredentialParams{
+		ID:             id,
+		OrganizationID: orgID,
+	})
+	if err != nil {
+		return fmt.Errorf("delete credential: %w", err)
 	}
-	if result.RowsAffected == 0 {
+	if n == 0 {
 		return fmt.Errorf("delete credential %s: %w", id, credentialsDomain.ErrCredentialNotFound)
 	}
 	return nil
 }
 
 func (r *providerCredentialRepository) ExistsByOrgAndName(ctx context.Context, orgID uuid.UUID, name string) (bool, error) {
-	var count int64
-	err := r.db.WithContext(ctx).
-		Model(&credentialsDomain.ProviderCredential{}).
-		Where("organization_id = ? AND name = ?", orgID, name).
-		Count(&count).Error
+	ok, err := r.tm.Queries(ctx).ProviderCredentialExistsByOrgAndName(ctx, gen.ProviderCredentialExistsByOrgAndNameParams{
+		OrganizationID: orgID,
+		Name:           name,
+	})
 	if err != nil {
 		return false, fmt.Errorf("check credential exists: %w", err)
 	}
-	return count > 0, nil
+	return ok, nil
 }
 
-func isUniqueViolation(err error) bool {
-	if err == nil {
-		return false
+// ----- gen ↔ domain boundary -----------------------------------------
+
+func credentialFromRow(row *gen.ProviderCredential) (*credentialsDomain.ProviderCredential, error) {
+	cfg, err := unmarshalConfig(row.Config)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal config: %w", err)
 	}
-	// PostgreSQL unique violation error code: 23505
-	errStr := err.Error()
-	return strings.Contains(errStr, "23505") || strings.Contains(errStr, "unique constraint") || strings.Contains(errStr, "duplicate key")
+	var headers string
+	if row.Headers != nil {
+		headers = *row.Headers
+	}
+	return &credentialsDomain.ProviderCredential{
+		ID:             row.ID,
+		OrganizationID: row.OrganizationID,
+		Name:           row.Name,
+		Adapter:        credentialsDomain.Provider(row.Adapter),
+		EncryptedKey:   row.EncryptedKey,
+		KeyPreview:     row.KeyPreview,
+		BaseURL:        row.BaseUrl,
+		Config:         cfg,
+		Headers:        headers,
+		CustomModels:   row.CustomModels,
+		CreatedBy:      row.CreatedBy,
+		CreatedAt:      row.CreatedAt,
+		UpdatedAt:      row.UpdatedAt,
+	}, nil
+}
+
+func credentialsFromRows(rows []gen.ProviderCredential) ([]*credentialsDomain.ProviderCredential, error) {
+	out := make([]*credentialsDomain.ProviderCredential, 0, len(rows))
+	for i := range rows {
+		c, err := credentialFromRow(&rows[i])
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, nil
+}
+
+// Config round-trips through JSONB as a map[string]any. Empty maps
+// become `{}` (schema has DEFAULT '{}' NOT NULL semantics in practice).
+func marshalConfig(m map[string]any) (json.RawMessage, error) {
+	if len(m) == 0 {
+		return json.RawMessage(`{}`), nil
+	}
+	return json.Marshal(m)
+}
+
+func unmarshalConfig(raw json.RawMessage) (map[string]any, error) {
+	if len(raw) == 0 {
+		return map[string]any{}, nil
+	}
+	var m map[string]any
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func emptyToNilStringCreds(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }

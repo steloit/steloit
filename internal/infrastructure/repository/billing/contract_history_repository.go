@@ -3,42 +3,115 @@ package billing
 import (
 	"context"
 	"fmt"
-
-	"gorm.io/gorm"
+	"time"
 
 	"github.com/google/uuid"
 
-	"brokle/internal/core/domain/billing"
-	"brokle/internal/infrastructure/shared"
+	billingDomain "brokle/internal/core/domain/billing"
+	"brokle/internal/infrastructure/db"
+	"brokle/internal/infrastructure/db/gen"
 )
 
+// contractHistoryRepository is the pgx+sqlc implementation of
+// billingDomain.ContractHistoryRepository. Append-only audit log.
+//
+// Boundary note: the domain still represents the actor as a plain
+// string (UUID-string) rather than *uuid.UUID. The repo converts at
+// the boundary: empty string ⇒ nil actor (system event), and
+// invalid UUIDs surface an error instead of silently dropping.
 type contractHistoryRepository struct {
-	db *gorm.DB
+	tm *db.TxManager
 }
 
-func NewContractHistoryRepository(db *gorm.DB) billing.ContractHistoryRepository {
-	return &contractHistoryRepository{db: db}
+// NewContractHistoryRepository returns the pgx-backed repository.
+func NewContractHistoryRepository(tm *db.TxManager) billingDomain.ContractHistoryRepository {
+	return &contractHistoryRepository{tm: tm}
 }
 
-// getDB returns transaction-aware DB instance
-func (r *contractHistoryRepository) getDB(ctx context.Context) *gorm.DB {
-	return shared.GetDB(ctx, r.db)
-}
-
-func (r *contractHistoryRepository) Log(ctx context.Context, history *billing.ContractHistory) error {
-	return r.getDB(ctx).WithContext(ctx).Create(history).Error
-}
-
-func (r *contractHistoryRepository) GetByContractID(ctx context.Context, contractID uuid.UUID) ([]*billing.ContractHistory, error) {
-	var history []*billing.ContractHistory
-	err := r.getDB(ctx).WithContext(ctx).
-		Where("contract_id = ?", contractID).
-		Order("changed_at DESC").
-		Find(&history).Error
-
-	if err != nil {
-		return nil, fmt.Errorf("get contract history: %w", err)
+func (r *contractHistoryRepository) Log(ctx context.Context, h *billingDomain.ContractHistory) error {
+	if h.ChangedAt.IsZero() {
+		h.ChangedAt = time.Now()
 	}
+	actor, err := parseActorID(h.ChangedBy)
+	if err != nil {
+		return fmt.Errorf("log contract history (contract=%s): %w", h.ContractID, err)
+	}
+	if err := r.tm.Queries(ctx).CreateContractHistory(ctx, gen.CreateContractHistoryParams{
+		ID:             h.ID,
+		ContractID:     h.ContractID,
+		Action:         string(h.Action),
+		ChangedBy:      actor,
+		ChangedByEmail: emptyToNilString(h.ChangedByEmail),
+		ChangedAt:      h.ChangedAt,
+		Changes:        h.Changes,
+		Reason:         emptyToNilString(h.Reason),
+	}); err != nil {
+		return fmt.Errorf("log contract history (contract=%s): %w", h.ContractID, err)
+	}
+	return nil
+}
 
-	return history, nil
+func (r *contractHistoryRepository) GetByContractID(ctx context.Context, contractID uuid.UUID) ([]*billingDomain.ContractHistory, error) {
+	rows, err := r.tm.Queries(ctx).ListContractHistoryByContract(ctx, contractID)
+	if err != nil {
+		return nil, fmt.Errorf("get contract history for %s: %w", contractID, err)
+	}
+	out := make([]*billingDomain.ContractHistory, 0, len(rows))
+	for i := range rows {
+		out = append(out, contractHistoryFromRow(&rows[i]))
+	}
+	return out, nil
+}
+
+// ----- gen ↔ domain boundary -----------------------------------------
+
+func contractHistoryFromRow(row *gen.ContractHistory) *billingDomain.ContractHistory {
+	var changedBy string
+	if row.ChangedBy != nil {
+		changedBy = row.ChangedBy.String()
+	}
+	return &billingDomain.ContractHistory{
+		ID:             row.ID,
+		ContractID:     row.ContractID,
+		Action:         billingDomain.ContractAction(row.Action),
+		ChangedBy:      changedBy,
+		ChangedByEmail: derefStringBilling(row.ChangedByEmail),
+		ChangedAt:      row.ChangedAt,
+		Changes:        row.Changes,
+		Reason:         derefStringBilling(row.Reason),
+	}
+}
+
+// parseActorID maps the legacy ChangedBy string to a nullable UUID.
+// Empty string means "system event" (actor_id NULL in the DB). A
+// non-empty string must parse as UUID or the caller gets an error —
+// we don't silently discard malformed IDs because that would leak
+// bad audit entries.
+func parseActorID(s string) (*uuid.UUID, error) {
+	if s == "" {
+		return nil, nil
+	}
+	id, err := uuid.Parse(s)
+	if err != nil {
+		return nil, fmt.Errorf("parse actor id %q: %w", s, err)
+	}
+	return &id, nil
+}
+
+// Package-local deref helpers for billing repositories. Duplicated
+// from the organization package because the two don't share a helpers
+// file yet — consolidate during Phase 3 cleanup if the copies diverge.
+
+func derefStringBilling(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}
+
+func emptyToNilString(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }

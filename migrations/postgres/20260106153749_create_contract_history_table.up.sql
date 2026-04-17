@@ -10,7 +10,7 @@ CREATE TABLE contract_history (
 
     changed_by UUID,
     changed_by_email VARCHAR(255),
-    changed_at TIMESTAMPTZ DEFAULT NOW(),
+    changed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
 
     changes JSONB NOT NULL DEFAULT '{}',
     reason TEXT

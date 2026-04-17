@@ -147,7 +147,7 @@ func (s *registrationService) RegisterWithOrganization(ctx context.Context, req 
 
 		if err := s.userRepo.Create(ctx, newUser); err != nil {
 			// Check for duplicate email (database unique constraint)
-			if appErrors.IsDatabaseUniqueViolation(err) {
+			if appErrors.IsUniqueViolation(err) {
 				return appErrors.NewConflictError("Email already registered")
 			}
 			return appErrors.NewInternalError("Failed to create user", err)
@@ -307,7 +307,7 @@ func (s *registrationService) RegisterWithInvitation(ctx context.Context, req *R
 
 		if err := s.userRepo.Create(ctx, newUser); err != nil {
 			// Check for duplicate email (database unique constraint)
-			if appErrors.IsDatabaseUniqueViolation(err) {
+			if appErrors.IsUniqueViolation(err) {
 				return appErrors.NewConflictError("Email already registered")
 			}
 			return appErrors.NewInternalError("Failed to create user", err)

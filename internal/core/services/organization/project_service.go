@@ -2,6 +2,7 @@ package organization
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -164,16 +165,24 @@ func (s *projectService) GetProjectCount(ctx context.Context, orgID uuid.UUID) (
 	return len(projects), nil
 }
 
-// CanUserAccessProject checks if user can access a project
+// CanUserAccessProject reports whether the user is a member of the project's
+// organization. Returns an AppError so callers can forward it via
+// response.Error and get the right HTTP status: 404 when the project does not
+// exist, 500 on infrastructure errors, nil otherwise.
 func (s *projectService) CanUserAccessProject(ctx context.Context, userID, projectID uuid.UUID) (bool, error) {
-	// Get project to find organization
 	project, err := s.projectRepo.GetByID(ctx, projectID)
 	if err != nil {
-		return false, appErrors.NewNotFoundError("Project not found")
+		if errors.Is(err, orgDomain.ErrProjectNotFound) {
+			return false, appErrors.NewNotFoundError("Project")
+		}
+		return false, appErrors.NewInternalError("Failed to get project", err)
 	}
 
-	// Check if user is a member of the organization
-	return s.memberRepo.IsMember(ctx, userID, project.OrganizationID)
+	isMember, err := s.memberRepo.IsMember(ctx, userID, project.OrganizationID)
+	if err != nil {
+		return false, appErrors.NewInternalError("Failed to check organization membership", err)
+	}
+	return isMember, nil
 }
 
 // ValidateProjectAccess validates if user can access a project (throws error if not)

@@ -10,59 +10,57 @@ import (
 	"github.com/google/uuid"
 
 	"brokle/pkg/uid"
-
-	"gorm.io/gorm"
 )
 
 // User represents a platform user with full authentication support.
 type User struct {
-	UpdatedAt             time.Time      `json:"updated_at"`
-	CreatedAt             time.Time      `json:"created_at"`
-	EmailVerifiedAt       *time.Time     `json:"email_verified_at,omitempty"`
-	OAuthProviderID       *string        `json:"-" gorm:"column:oauth_provider_id;size:255"`
-	OAuthProvider         *string        `json:"oauth_provider,omitempty" gorm:"column:oauth_provider;size:50"`
-	ReferralSource        *string        `json:"referral_source,omitempty" gorm:"size:100"`
-	DefaultOrganizationID *uuid.UUID     `json:"default_organization_id,omitempty" gorm:"type:uuid"`
-	LastLoginAt           *time.Time     `json:"last_login_at,omitempty"`
-	DeletedAt             gorm.DeletedAt `json:"deleted_at,omitempty" gorm:"index"`
-	AuthMethod            string         `json:"auth_method" gorm:"column:auth_method;size:20;default:'password'"`
-	Language              string         `json:"language" gorm:"size:10;default:'en'"`
-	Role                  string         `json:"role" gorm:"size:100;not null"`
-	Timezone              string         `json:"timezone" gorm:"size:50;default:'UTC'"`
-	Password              string         `json:"-" gorm:"size:255;not null"`
-	LastName              string         `json:"last_name" gorm:"size:255;not null"`
-	FirstName             string         `json:"first_name" gorm:"size:255;not null"`
-	Email                 string         `json:"email" gorm:"size:255;not null;uniqueIndex"`
-	LoginCount            int            `json:"login_count" gorm:"default:0"`
-	ID                    uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey"`
-	IsEmailVerified       bool           `json:"is_email_verified" gorm:"default:false"`
-	IsActive              bool           `json:"is_active" gorm:"default:true"`
+	UpdatedAt             time.Time  `json:"updated_at"`
+	CreatedAt             time.Time  `json:"created_at"`
+	EmailVerifiedAt       *time.Time `json:"email_verified_at,omitempty"`
+	OAuthProviderID       *string    `json:"-"`
+	OAuthProvider         *string    `json:"oauth_provider,omitempty"`
+	ReferralSource        *string    `json:"referral_source,omitempty"`
+	DefaultOrganizationID *uuid.UUID `json:"default_organization_id,omitempty"`
+	LastLoginAt           *time.Time `json:"last_login_at,omitempty"`
+	DeletedAt             *time.Time `json:"deleted_at,omitempty"`
+	AuthMethod            string     `json:"auth_method"`
+	Language              string     `json:"language"`
+	Role                  string     `json:"role"`
+	Timezone              string     `json:"timezone"`
+	Password              string     `json:"-"`
+	LastName              string     `json:"last_name"`
+	FirstName             string     `json:"first_name"`
+	Email                 string     `json:"email"`
+	LoginCount            int        `json:"login_count"`
+	ID                    uuid.UUID  `json:"id"`
+	IsEmailVerified       bool       `json:"is_email_verified"`
+	IsActive              bool       `json:"is_active"`
 }
 
 // UserProfile represents extended user profile information and preferences.
 type UserProfile struct {
 	CreatedAt             time.Time `json:"created_at"`
 	UpdatedAt             time.Time `json:"updated_at"`
-	Bio                   *string   `json:"bio,omitempty" gorm:"type:text"`
-	Location              *string   `json:"location,omitempty" gorm:"size:100"`
-	Website               *string   `json:"website,omitempty" gorm:"size:500"`
-	TwitterURL            *string   `json:"twitter_url,omitempty" gorm:"column:twitter_url;size:500"`
-	LinkedInURL           *string   `json:"linkedin_url,omitempty" gorm:"column:linkedin_url;size:500"`
-	GitHubURL             *string   `json:"github_url,omitempty" gorm:"column:github_url;size:500"`
-	AvatarURL             *string   `json:"avatar_url,omitempty" gorm:"column:avatar_url;size:500"`
-	Phone                 *string   `json:"phone,omitempty" gorm:"size:50"`
-	Language              string    `json:"language" gorm:"size:10;default:'en'"`
-	Theme                 string    `json:"theme" gorm:"size:20;default:'light'"`
-	Timezone              string    `json:"timezone" gorm:"size:50;default:'UTC'"`
-	UsageThresholdPercent int       `json:"usage_threshold_percent" gorm:"default:80"`
-	UserID                uuid.UUID `json:"user_id" gorm:"type:uuid;primaryKey"`
-	EmailNotifications    bool      `json:"email_notifications" gorm:"default:true"`
-	PushNotifications     bool      `json:"push_notifications" gorm:"default:true"`
-	MarketingEmails       bool      `json:"marketing_emails" gorm:"default:false"`
-	WeeklyReports         bool      `json:"weekly_reports" gorm:"default:true"`
-	MonthlyReports        bool      `json:"monthly_reports" gorm:"default:true"`
-	SecurityAlerts        bool      `json:"security_alerts" gorm:"default:true"`
-	BillingAlerts         bool      `json:"billing_alerts" gorm:"default:true"`
+	Bio                   *string   `json:"bio,omitempty"`
+	Location              *string   `json:"location,omitempty"`
+	Website               *string   `json:"website,omitempty"`
+	TwitterURL            *string   `json:"twitter_url,omitempty"`
+	LinkedInURL           *string   `json:"linkedin_url,omitempty"`
+	GitHubURL             *string   `json:"github_url,omitempty"`
+	AvatarURL             *string   `json:"avatar_url,omitempty"`
+	Phone                 *string   `json:"phone,omitempty"`
+	Language              string    `json:"language"`
+	Theme                 string    `json:"theme"`
+	Timezone              string    `json:"timezone"`
+	UsageThresholdPercent int       `json:"usage_threshold_percent"`
+	UserID                uuid.UUID `json:"user_id"`
+	EmailNotifications    bool      `json:"email_notifications"`
+	PushNotifications     bool      `json:"push_notifications"`
+	MarketingEmails       bool      `json:"marketing_emails"`
+	WeeklyReports         bool      `json:"weekly_reports"`
+	MonthlyReports        bool      `json:"monthly_reports"`
+	SecurityAlerts        bool      `json:"security_alerts"`
+	BillingAlerts         bool      `json:"billing_alerts"`
 }
 
 // CreateUserRequest represents the data needed to create a new user.
@@ -222,6 +220,3 @@ func NewUserProfile(userID uuid.UUID) *UserProfile {
 	}
 }
 
-// Table name methods for GORM
-func (User) TableName() string        { return "users" }
-func (UserProfile) TableName() string { return "user_profiles" }

@@ -2,137 +2,163 @@ package auth
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
-
-	"gorm.io/gorm"
 
 	"github.com/google/uuid"
 
 	authDomain "brokle/internal/core/domain/auth"
+	"brokle/internal/infrastructure/db"
+	"brokle/internal/infrastructure/db/gen"
 )
 
-// passwordResetTokenRepository implements authDomain.PasswordResetTokenRepository using GORM
+// passwordResetTokenRepository is the pgx+sqlc implementation of
+// authDomain.PasswordResetTokenRepository.
 type passwordResetTokenRepository struct {
-	db *gorm.DB
+	tm *db.TxManager
 }
 
-// NewPasswordResetTokenRepository creates a new password reset token repository instance
-func NewPasswordResetTokenRepository(db *gorm.DB) authDomain.PasswordResetTokenRepository {
-	return &passwordResetTokenRepository{
-		db: db,
-	}
+// NewPasswordResetTokenRepository returns the repository backed by the
+// shared TxManager so all queries participate in ctx-scoped transactions.
+func NewPasswordResetTokenRepository(tm *db.TxManager) authDomain.PasswordResetTokenRepository {
+	return &passwordResetTokenRepository{tm: tm}
 }
 
-// Create creates a new password reset token
 func (r *passwordResetTokenRepository) Create(ctx context.Context, token *authDomain.PasswordResetToken) error {
-	return r.db.WithContext(ctx).Create(token).Error
+	if err := r.tm.Queries(ctx).CreatePasswordResetToken(ctx, gen.CreatePasswordResetTokenParams{
+		ID:        token.ID,
+		UserID:    token.UserID,
+		Token:     token.Token,
+		ExpiresAt: token.ExpiresAt,
+		UsedAt:    token.UsedAt,
+		CreatedAt: token.CreatedAt,
+		UpdatedAt: token.UpdatedAt,
+	}); err != nil {
+		return fmt.Errorf("create password reset token: %w", err)
+	}
+	return nil
 }
 
-// GetByID retrieves a password reset token by ID
 func (r *passwordResetTokenRepository) GetByID(ctx context.Context, id uuid.UUID) (*authDomain.PasswordResetToken, error) {
-	var token authDomain.PasswordResetToken
-	err := r.db.WithContext(ctx).Where("id = ?", id).First(&token).Error
+	row, err := r.tm.Queries(ctx).GetPasswordResetTokenByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if db.IsNoRows(err) {
 			return nil, fmt.Errorf("get password reset token: %w", authDomain.ErrNotFound)
 		}
-		return nil, err
+		return nil, fmt.Errorf("get password reset token %s: %w", id, err)
 	}
-	return &token, nil
+	return passwordResetTokenFromRow(&row), nil
 }
 
-// GetByToken retrieves a password reset token by token string
 func (r *passwordResetTokenRepository) GetByToken(ctx context.Context, tokenStr string) (*authDomain.PasswordResetToken, error) {
-	var token authDomain.PasswordResetToken
-	err := r.db.WithContext(ctx).Where("token = ?", tokenStr).First(&token).Error
+	row, err := r.tm.Queries(ctx).GetPasswordResetTokenByToken(ctx, tokenStr)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if db.IsNoRows(err) {
 			return nil, fmt.Errorf("get password reset token: %w", authDomain.ErrNotFound)
 		}
-		return nil, err
+		return nil, fmt.Errorf("get password reset token by token: %w", err)
 	}
-	return &token, nil
+	return passwordResetTokenFromRow(&row), nil
 }
 
-// GetByUserID retrieves all password reset tokens for a user
 func (r *passwordResetTokenRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]*authDomain.PasswordResetToken, error) {
-	var tokens []*authDomain.PasswordResetToken
-	err := r.db.WithContext(ctx).Where("user_id = ?", userID).Order("created_at DESC").Find(&tokens).Error
+	rows, err := r.tm.Queries(ctx).ListPasswordResetTokensByUser(ctx, userID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list password reset tokens by user %s: %w", userID, err)
 	}
-	return tokens, nil
+	out := make([]*authDomain.PasswordResetToken, 0, len(rows))
+	for i := range rows {
+		out = append(out, passwordResetTokenFromRow(&rows[i]))
+	}
+	return out, nil
 }
 
-// Update updates an existing password reset token
 func (r *passwordResetTokenRepository) Update(ctx context.Context, token *authDomain.PasswordResetToken) error {
-	return r.db.WithContext(ctx).Save(token).Error
+	if err := r.tm.Queries(ctx).UpdatePasswordResetToken(ctx, gen.UpdatePasswordResetTokenParams{
+		ID:        token.ID,
+		Token:     token.Token,
+		ExpiresAt: token.ExpiresAt,
+		UsedAt:    token.UsedAt,
+	}); err != nil {
+		return fmt.Errorf("update password reset token %s: %w", token.ID, err)
+	}
+	return nil
 }
 
-// Delete deletes a password reset token by ID
 func (r *passwordResetTokenRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	return r.db.WithContext(ctx).Delete(&authDomain.PasswordResetToken{}, "id = ?", id).Error
+	if err := r.tm.Queries(ctx).DeletePasswordResetToken(ctx, id); err != nil {
+		return fmt.Errorf("delete password reset token %s: %w", id, err)
+	}
+	return nil
 }
 
-// MarkAsUsed marks a password reset token as used by setting the used_at timestamp
 func (r *passwordResetTokenRepository) MarkAsUsed(ctx context.Context, id uuid.UUID) error {
-	now := time.Now()
-	return r.db.WithContext(ctx).Model(&authDomain.PasswordResetToken{}).Where("id = ?", id).Updates(map[string]interface{}{
-		"used_at":    now,
-		"updated_at": now,
-	}).Error
+	if err := r.tm.Queries(ctx).MarkPasswordResetTokenAsUsed(ctx, id); err != nil {
+		return fmt.Errorf("mark password reset token %s used: %w", id, err)
+	}
+	return nil
 }
 
-// IsUsed checks if a password reset token is used
 func (r *passwordResetTokenRepository) IsUsed(ctx context.Context, id uuid.UUID) (bool, error) {
-	var count int64
-	err := r.db.WithContext(ctx).Model(&authDomain.PasswordResetToken{}).Where("id = ? AND used_at IS NOT NULL", id).Count(&count).Error
+	ok, err := r.tm.Queries(ctx).IsPasswordResetTokenUsed(ctx, id)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("check password reset token %s used: %w", id, err)
 	}
-	return count > 0, nil
+	return ok, nil
 }
 
-// IsValid checks if a password reset token is valid (not used and not expired)
 func (r *passwordResetTokenRepository) IsValid(ctx context.Context, id uuid.UUID) (bool, error) {
-	var count int64
-	err := r.db.WithContext(ctx).Model(&authDomain.PasswordResetToken{}).Where("id = ? AND used_at IS NULL AND expires_at > ?", id, time.Now()).Count(&count).Error
+	ok, err := r.tm.Queries(ctx).IsPasswordResetTokenValid(ctx, id)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("check password reset token %s valid: %w", id, err)
 	}
-	return count > 0, nil
+	return ok, nil
 }
 
-// GetValidTokenByUserID retrieves the most recent valid password reset token for a user
 func (r *passwordResetTokenRepository) GetValidTokenByUserID(ctx context.Context, userID uuid.UUID) (*authDomain.PasswordResetToken, error) {
-	var token authDomain.PasswordResetToken
-	err := r.db.WithContext(ctx).Where("user_id = ? AND used_at IS NULL AND expires_at > ?", userID, time.Now()).Order("created_at DESC").First(&token).Error
+	row, err := r.tm.Queries(ctx).GetValidPasswordResetTokenByUser(ctx, userID)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if db.IsNoRows(err) {
 			return nil, fmt.Errorf("get valid password reset token for user %s: %w", userID, authDomain.ErrNotFound)
 		}
-		return nil, err
+		return nil, fmt.Errorf("get valid password reset token for user %s: %w", userID, err)
 	}
-	return &token, nil
+	return passwordResetTokenFromRow(&row), nil
 }
 
-// CleanupExpiredTokens removes expired password reset tokens
 func (r *passwordResetTokenRepository) CleanupExpiredTokens(ctx context.Context) error {
-	return r.db.WithContext(ctx).Delete(&authDomain.PasswordResetToken{}, "expires_at < ?", time.Now()).Error
+	if _, err := r.tm.Queries(ctx).CleanupExpiredPasswordResetTokens(ctx); err != nil {
+		return fmt.Errorf("cleanup expired password reset tokens: %w", err)
+	}
+	return nil
 }
 
-// CleanupUsedTokens removes used password reset tokens older than the specified time
 func (r *passwordResetTokenRepository) CleanupUsedTokens(ctx context.Context, olderThan time.Time) error {
-	return r.db.WithContext(ctx).Delete(&authDomain.PasswordResetToken{}, "used_at IS NOT NULL AND used_at < ?", olderThan).Error
+	if _, err := r.tm.Queries(ctx).CleanupUsedPasswordResetTokens(ctx, olderThan); err != nil {
+		return fmt.Errorf("cleanup used password reset tokens older than %s: %w", olderThan, err)
+	}
+	return nil
 }
 
-// InvalidateAllUserTokens marks all existing tokens for a user as used (invalidates them)
 func (r *passwordResetTokenRepository) InvalidateAllUserTokens(ctx context.Context, userID uuid.UUID) error {
-	now := time.Now()
-	return r.db.WithContext(ctx).Model(&authDomain.PasswordResetToken{}).Where("user_id = ? AND used_at IS NULL", userID).Updates(map[string]interface{}{
-		"used_at":    now,
-		"updated_at": now,
-	}).Error
+	if _, err := r.tm.Queries(ctx).InvalidateUserPasswordResetTokens(ctx, userID); err != nil {
+		return fmt.Errorf("invalidate password reset tokens for user %s: %w", userID, err)
+	}
+	return nil
+}
+
+// passwordResetTokenFromRow adapts a sqlc-generated row to the domain type.
+// The domain struct still carries a legacy `Used bool` field (dead — the
+// schema dropped the column in migration 20250906113026); it's left unset
+// here. The field will be removed alongside other domain cleanup in P1.9.
+func passwordResetTokenFromRow(row *gen.PasswordResetToken) *authDomain.PasswordResetToken {
+	return &authDomain.PasswordResetToken{
+		ID:        row.ID,
+		UserID:    row.UserID,
+		Token:     row.Token,
+		ExpiresAt: row.ExpiresAt,
+		UsedAt:    row.UsedAt,
+		CreatedAt: row.CreatedAt,
+		UpdatedAt: row.UpdatedAt,
+	}
 }

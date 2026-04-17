@@ -2,173 +2,255 @@ package annotation
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
+	sq "github.com/Masterminds/squirrel"
 
-	"brokle/internal/core/domain/annotation"
-	"brokle/internal/infrastructure/shared"
-
-	"gorm.io/gorm"
+	annotationDomain "brokle/internal/core/domain/annotation"
+	"brokle/internal/infrastructure/db"
+	"brokle/internal/infrastructure/db/gen"
+	appErrors "brokle/pkg/errors"
 )
 
-// QueueRepository implements annotation.QueueRepository using PostgreSQL.
 type QueueRepository struct {
-	db *gorm.DB
+	tm *db.TxManager
 }
 
-// NewQueueRepository creates a new QueueRepository.
-func NewQueueRepository(db *gorm.DB) *QueueRepository {
-	return &QueueRepository{db: db}
+func NewQueueRepository(tm *db.TxManager) *QueueRepository {
+	return &QueueRepository{tm: tm}
 }
 
-// getDB returns transaction-aware DB instance.
-func (r *QueueRepository) getDB(ctx context.Context) *gorm.DB {
-	return shared.GetDB(ctx, r.db)
-}
-
-// Create creates a new annotation queue.
-func (r *QueueRepository) Create(ctx context.Context, queue *annotation.AnnotationQueue) error {
-	result := r.getDB(ctx).WithContext(ctx).Create(queue)
-	if result.Error != nil {
-		if isUniqueViolation(result.Error) {
-			return annotation.ErrQueueExists
+func (r *QueueRepository) Create(ctx context.Context, q *annotationDomain.AnnotationQueue) error {
+	scoreIDs, err := json.Marshal(q.ScoreConfigIDs)
+	if err != nil {
+		return fmt.Errorf("marshal score_config_ids: %w", err)
+	}
+	settings, err := json.Marshal(q.Settings)
+	if err != nil {
+		return fmt.Errorf("marshal settings: %w", err)
+	}
+	if err := r.tm.Queries(ctx).CreateAnnotationQueue(ctx, gen.CreateAnnotationQueueParams{
+		ID:             q.ID,
+		ProjectID:      q.ProjectID,
+		Name:           q.Name,
+		Description:    q.Description,
+		Instructions:   q.Instructions,
+		ScoreConfigIds: scoreIDs,
+		Status:         string(q.Status),
+		Settings:       settings,
+		CreatedBy:      q.CreatedBy,
+	}); err != nil {
+		if appErrors.IsUniqueViolation(err) {
+			return annotationDomain.ErrQueueExists
 		}
-		return result.Error
+		return err
 	}
 	return nil
 }
 
-// GetByID retrieves an annotation queue by its ID.
-func (r *QueueRepository) GetByID(ctx context.Context, id, projectID uuid.UUID) (*annotation.AnnotationQueue, error) {
-	var queue annotation.AnnotationQueue
-	result := r.getDB(ctx).WithContext(ctx).
-		Where("id = ? AND project_id = ?", id.String(), projectID.String()).
-		First(&queue)
-
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, annotation.ErrQueueNotFound
+func (r *QueueRepository) GetByID(ctx context.Context, id, projectID uuid.UUID) (*annotationDomain.AnnotationQueue, error) {
+	row, err := r.tm.Queries(ctx).GetAnnotationQueueByIDForProject(ctx, gen.GetAnnotationQueueByIDForProjectParams{
+		ID:        id,
+		ProjectID: projectID,
+	})
+	if err != nil {
+		if db.IsNoRows(err) {
+			return nil, annotationDomain.ErrQueueNotFound
 		}
-		return nil, result.Error
+		return nil, err
 	}
-	return &queue, nil
+	return queueFromRow(&row)
 }
 
-// GetByName retrieves an annotation queue by name within a project.
-func (r *QueueRepository) GetByName(ctx context.Context, name string, projectID uuid.UUID) (*annotation.AnnotationQueue, error) {
-	var queue annotation.AnnotationQueue
-	result := r.getDB(ctx).WithContext(ctx).
-		Where("project_id = ? AND name = ?", projectID.String(), name).
-		First(&queue)
-
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+func (r *QueueRepository) GetByName(ctx context.Context, name string, projectID uuid.UUID) (*annotationDomain.AnnotationQueue, error) {
+	row, err := r.tm.Queries(ctx).GetAnnotationQueueByName(ctx, gen.GetAnnotationQueueByNameParams{
+		ProjectID: projectID,
+		Name:      name,
+	})
+	if err != nil {
+		if db.IsNoRows(err) {
 			return nil, nil
 		}
-		return nil, result.Error
+		return nil, err
 	}
-	return &queue, nil
+	return queueFromRow(&row)
 }
 
-// List retrieves all annotation queues for a project with optional filtering and pagination.
-func (r *QueueRepository) List(ctx context.Context, projectID uuid.UUID, filter *annotation.QueueFilter, offset, limit int) ([]*annotation.AnnotationQueue, int64, error) {
-	var queues []*annotation.AnnotationQueue
-	var total int64
-
-	query := r.getDB(ctx).WithContext(ctx).
-		Where("project_id = ?", projectID.String())
-
+func (r *QueueRepository) List(ctx context.Context, projectID uuid.UUID, filter *annotationDomain.QueueFilter, offset, limit int) ([]*annotationDomain.AnnotationQueue, int64, error) {
+	base := sq.Select().From("annotation_queues").Where(sq.Eq{"project_id": projectID})
 	if filter != nil {
 		if filter.Status != nil {
-			query = query.Where("status = ?", string(*filter.Status))
+			base = base.Where(sq.Eq{"status": string(*filter.Status)})
 		}
 		if filter.Search != nil && *filter.Search != "" {
-			search := "%" + strings.ToLower(*filter.Search) + "%"
-			query = query.Where("LOWER(name) LIKE ? OR LOWER(description) LIKE ?", search, search)
+			pattern := "%" + strings.ToLower(*filter.Search) + "%"
+			base = base.Where(sq.Or{
+				sq.Expr("LOWER(name) LIKE ?", pattern),
+				sq.Expr("LOWER(description) LIKE ?", pattern),
+			})
 		}
 	}
 
-	if err := query.Model(&annotation.AnnotationQueue{}).Count(&total).Error; err != nil {
-		return nil, 0, err
+	// Count
+	cntSQL, cntArgs, err := base.Columns("COUNT(*)").PlaceholderFormat(sq.Dollar).ToSql()
+	if err != nil {
+		return nil, 0, fmt.Errorf("build queue count: %w", err)
+	}
+	var total int64
+	if err := r.tm.DB(ctx).QueryRow(ctx, cntSQL, cntArgs...).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count queues: %w", err)
 	}
 
-	result := query.Order("created_at DESC").Offset(offset).Limit(limit).Find(&queues)
-	if result.Error != nil {
-		return nil, 0, result.Error
+	// List
+	selSQL, selArgs, err := base.Columns(queueColumns...).
+		OrderBy("created_at DESC").Offset(uint64(offset)).Limit(uint64(limit)).
+		PlaceholderFormat(sq.Dollar).ToSql()
+	if err != nil {
+		return nil, 0, fmt.Errorf("build queue list: %w", err)
 	}
-	return queues, total, nil
+	rows, err := r.tm.DB(ctx).Query(ctx, selSQL, selArgs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list queues: %w", err)
+	}
+	defer rows.Close()
+	out := make([]*annotationDomain.AnnotationQueue, 0)
+	for rows.Next() {
+		q, err := scanQueue(rows)
+		if err != nil {
+			return nil, 0, err
+		}
+		out = append(out, q)
+	}
+	return out, total, rows.Err()
 }
 
-// Update updates an existing annotation queue.
-func (r *QueueRepository) Update(ctx context.Context, queue *annotation.AnnotationQueue) error {
-	result := r.getDB(ctx).WithContext(ctx).Save(queue)
-	if result.Error != nil {
-		if isUniqueViolation(result.Error) {
-			return annotation.ErrQueueExists
-		}
-		return result.Error
+func (r *QueueRepository) Update(ctx context.Context, q *annotationDomain.AnnotationQueue) error {
+	scoreIDs, err := json.Marshal(q.ScoreConfigIDs)
+	if err != nil {
+		return fmt.Errorf("marshal score_config_ids: %w", err)
 	}
-
-	if result.RowsAffected == 0 {
-		return annotation.ErrQueueNotFound
+	settings, err := json.Marshal(q.Settings)
+	if err != nil {
+		return fmt.Errorf("marshal settings: %w", err)
+	}
+	n, err := r.tm.Queries(ctx).UpdateAnnotationQueue(ctx, gen.UpdateAnnotationQueueParams{
+		ID:             q.ID,
+		Name:           q.Name,
+		Description:    q.Description,
+		Instructions:   q.Instructions,
+		ScoreConfigIds: scoreIDs,
+		Status:         string(q.Status),
+		Settings:       settings,
+	})
+	if err != nil {
+		if appErrors.IsUniqueViolation(err) {
+			return annotationDomain.ErrQueueExists
+		}
+		return err
+	}
+	if n == 0 {
+		return annotationDomain.ErrQueueNotFound
 	}
 	return nil
 }
 
-// Delete removes an annotation queue by ID.
 func (r *QueueRepository) Delete(ctx context.Context, id, projectID uuid.UUID) error {
-	result := r.getDB(ctx).WithContext(ctx).
-		Where("id = ? AND project_id = ?", id.String(), projectID.String()).
-		Delete(&annotation.AnnotationQueue{})
-
-	if result.Error != nil {
-		return result.Error
+	n, err := r.tm.Queries(ctx).DeleteAnnotationQueue(ctx, gen.DeleteAnnotationQueueParams{
+		ID:        id,
+		ProjectID: projectID,
+	})
+	if err != nil {
+		return err
 	}
-
-	if result.RowsAffected == 0 {
-		return annotation.ErrQueueNotFound
+	if n == 0 {
+		return annotationDomain.ErrQueueNotFound
 	}
 	return nil
 }
 
-// ExistsByName checks if a queue with the given name exists in the project.
 func (r *QueueRepository) ExistsByName(ctx context.Context, projectID uuid.UUID, name string) (bool, error) {
-	var count int64
-	result := r.getDB(ctx).WithContext(ctx).
-		Model(&annotation.AnnotationQueue{}).
-		Where("project_id = ? AND name = ?", projectID.String(), name).
-		Count(&count)
-
-	if result.Error != nil {
-		return false, result.Error
-	}
-	return count > 0, nil
+	return r.tm.Queries(ctx).AnnotationQueueExistsByName(ctx, gen.AnnotationQueueExistsByNameParams{
+		ProjectID: projectID,
+		Name:      name,
+	})
 }
 
-// ListAllActive retrieves all active annotation queues across all projects.
-// This is used by the lock expiry worker to release expired locks.
-func (r *QueueRepository) ListAllActive(ctx context.Context) ([]*annotation.AnnotationQueue, error) {
-	var queues []*annotation.AnnotationQueue
-
-	result := r.getDB(ctx).WithContext(ctx).
-		Where("status = ?", string(annotation.QueueStatusActive)).
-		Find(&queues)
-
-	if result.Error != nil {
-		return nil, result.Error
+func (r *QueueRepository) ListAllActive(ctx context.Context) ([]*annotationDomain.AnnotationQueue, error) {
+	rows, err := r.tm.Queries(ctx).ListAllActiveAnnotationQueues(ctx)
+	if err != nil {
+		return nil, err
 	}
-	return queues, nil
+	out := make([]*annotationDomain.AnnotationQueue, 0, len(rows))
+	for i := range rows {
+		q, err := queueFromRow(&rows[i])
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, q)
+	}
+	return out, nil
 }
 
-// isUniqueViolation checks if the error is a unique constraint violation.
-func isUniqueViolation(err error) bool {
-	if err == nil {
-		return false
+// ----- helpers --------------------------------------------------------
+
+var queueColumns = []string{
+	"id", "project_id", "name", "description", "instructions",
+	"score_config_ids", "status", "settings",
+	"created_by", "created_at", "updated_at",
+}
+
+func scanQueue(row interface {
+	Scan(dest ...any) error
+}) (*annotationDomain.AnnotationQueue, error) {
+	var (
+		q        annotationDomain.AnnotationQueue
+		scoreIDs []byte
+		settings []byte
+	)
+	if err := row.Scan(
+		&q.ID, &q.ProjectID, &q.Name, &q.Description, &q.Instructions,
+		&scoreIDs, &q.Status, &settings,
+		&q.CreatedBy, &q.CreatedAt, &q.UpdatedAt,
+	); err != nil {
+		return nil, err
 	}
-	errStr := strings.ToLower(err.Error())
-	return strings.Contains(errStr, "23505") ||
-		strings.Contains(errStr, "unique constraint") ||
-		strings.Contains(errStr, "duplicate key")
+	if len(scoreIDs) > 0 {
+		if err := json.Unmarshal(scoreIDs, &q.ScoreConfigIDs); err != nil {
+			return nil, fmt.Errorf("unmarshal score_config_ids: %w", err)
+		}
+	}
+	if len(settings) > 0 {
+		if err := json.Unmarshal(settings, &q.Settings); err != nil {
+			return nil, fmt.Errorf("unmarshal settings: %w", err)
+		}
+	}
+	return &q, nil
+}
+
+func queueFromRow(row *gen.AnnotationQueue) (*annotationDomain.AnnotationQueue, error) {
+	q := &annotationDomain.AnnotationQueue{
+		ID:           row.ID,
+		ProjectID:    row.ProjectID,
+		Name:         row.Name,
+		Description:  row.Description,
+		Instructions: row.Instructions,
+		Status:       annotationDomain.QueueStatus(row.Status),
+		CreatedBy:    row.CreatedBy,
+		CreatedAt:    row.CreatedAt,
+		UpdatedAt:    row.UpdatedAt,
+	}
+	if len(row.ScoreConfigIds) > 0 {
+		if err := json.Unmarshal(row.ScoreConfigIds, &q.ScoreConfigIDs); err != nil {
+			return nil, fmt.Errorf("unmarshal score_config_ids: %w", err)
+		}
+	}
+	if len(row.Settings) > 0 {
+		if err := json.Unmarshal(row.Settings, &q.Settings); err != nil {
+			return nil, fmt.Errorf("unmarshal settings: %w", err)
+		}
+	}
+	return q, nil
 }

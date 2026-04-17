@@ -10,8 +10,8 @@ CREATE TABLE dashboard_templates (
     config JSONB NOT NULL DEFAULT '{}',
     layout JSONB NOT NULL DEFAULT '[]',
     is_active BOOLEAN NOT NULL DEFAULT true,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
 -- Unique index on name for template lookup

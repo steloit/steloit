@@ -16,7 +16,7 @@ CREATE TABLE volume_discount_tiers (
     price_per_unit DECIMAL(10, 4) NOT NULL,
     priority INTEGER NOT NULL DEFAULT 0,
 
-    created_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
 
     CONSTRAINT chk_tier_range CHECK (tier_max IS NULL OR tier_max > tier_min),
     CONSTRAINT chk_price_positive CHECK (price_per_unit >= 0)

@@ -15,8 +15,8 @@ CREATE TABLE IF NOT EXISTS score_configs (
     max_value       DECIMAL(10,4),         -- For NUMERIC type: maximum allowed value
     categories      JSONB,                 -- For CATEGORICAL type: ["positive", "negative", "neutral"]
     metadata        JSONB DEFAULT '{}',
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 
     -- Unique constraint: one name per project
     CONSTRAINT score_configs_project_name_unique UNIQUE(project_id, name)

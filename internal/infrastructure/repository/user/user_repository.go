@@ -2,429 +2,449 @@ package user
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
-
-	"gorm.io/gorm"
 
 	"github.com/google/uuid"
 
 	userDomain "brokle/internal/core/domain/user"
-	"brokle/internal/infrastructure/shared"
-	"brokle/pkg/pagination"
+	"brokle/internal/infrastructure/db"
+	"brokle/internal/infrastructure/db/gen"
 )
 
-// userRepository implements the userDomain.Repository interface using GORM
+// userRepository is the pgx+sqlc implementation of userDomain.Repository.
+// Dynamic search/filter queries live in user_filter.go (squirrel).
 type userRepository struct {
-	db *gorm.DB
+	tm *db.TxManager
 }
 
-// NewUserRepository creates a new user repository instance
-func NewUserRepository(db *gorm.DB) userDomain.Repository {
-	return &userRepository{
-		db: db,
-	}
+// NewUserRepository returns the pgx-backed repository.
+func NewUserRepository(tm *db.TxManager) userDomain.Repository {
+	return &userRepository{tm: tm}
 }
 
-// getDB returns transaction-aware DB instance
-func (r *userRepository) getDB(ctx context.Context) *gorm.DB {
-	return shared.GetDB(ctx, r.db)
-}
+// ----- CRUD ----------------------------------------------------------
 
-// Create creates a new user
 func (r *userRepository) Create(ctx context.Context, u *userDomain.User) error {
-	return r.getDB(ctx).WithContext(ctx).Create(u).Error
-}
-
-// GetByID retrieves a user by ID
-func (r *userRepository) GetByID(ctx context.Context, id uuid.UUID) (*userDomain.User, error) {
-	var u userDomain.User
-	err := r.getDB(ctx).WithContext(ctx).Where("id = ? AND deleted_at IS NULL", id).First(&u).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("get user by ID %s: %w", id, userDomain.ErrNotFound)
-		}
-		return nil, fmt.Errorf("database query failed for user ID %s: %w", id, err)
+	now := time.Now()
+	if u.CreatedAt.IsZero() {
+		u.CreatedAt = now
 	}
-	return &u, nil
+	if u.UpdatedAt.IsZero() {
+		u.UpdatedAt = now
+	}
+	if u.Timezone == "" {
+		u.Timezone = "UTC"
+	}
+	if u.Language == "" {
+		u.Language = "en"
+	}
+	if u.AuthMethod == "" {
+		u.AuthMethod = "password"
+	}
+	if err := r.tm.Queries(ctx).CreateUser(ctx, gen.CreateUserParams{
+		ID:                    u.ID,
+		Email:                 u.Email,
+		FirstName:             u.FirstName,
+		LastName:              u.LastName,
+		Password:              emptyToNilString(u.Password),
+		IsActive:              u.IsActive,
+		IsEmailVerified:       u.IsEmailVerified,
+		EmailVerifiedAt:       u.EmailVerifiedAt,
+		Timezone:              u.Timezone,
+		Language:              u.Language,
+		LastLoginAt:           u.LastLoginAt,
+		LoginCount:            int32(u.LoginCount),
+		DefaultOrganizationID: u.DefaultOrganizationID,
+		Role:                  u.Role,
+		ReferralSource:        u.ReferralSource,
+		AuthMethod:            u.AuthMethod,
+		OauthProvider:         u.OAuthProvider,
+		OauthProviderID:       u.OAuthProviderID,
+		CreatedAt:             u.CreatedAt,
+		UpdatedAt:             u.UpdatedAt,
+	}); err != nil {
+		return fmt.Errorf("create user %s: %w", u.Email, err)
+	}
+	return nil
 }
 
-// GetByEmail retrieves a user by email
-func (r *userRepository) GetByEmail(ctx context.Context, email string) (*userDomain.User, error) {
-	var u userDomain.User
-	err := r.getDB(ctx).WithContext(ctx).Where("email = ? AND deleted_at IS NULL", email).First(&u).Error
+func (r *userRepository) GetByID(ctx context.Context, id uuid.UUID) (*userDomain.User, error) {
+	row, err := r.tm.Queries(ctx).GetUserByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if db.IsNoRows(err) {
+			return nil, fmt.Errorf("get user %s: %w", id, userDomain.ErrNotFound)
+		}
+		return nil, fmt.Errorf("get user %s: %w", id, err)
+	}
+	return userFromRow(&row), nil
+}
+
+func (r *userRepository) GetByEmail(ctx context.Context, email string) (*userDomain.User, error) {
+	row, err := r.tm.Queries(ctx).GetUserByEmail(ctx, email)
+	if err != nil {
+		if db.IsNoRows(err) {
 			return nil, fmt.Errorf("get user by email %s: %w", email, userDomain.ErrNotFound)
 		}
-		return nil, fmt.Errorf("database query failed for email %s: %w", email, err)
+		return nil, fmt.Errorf("get user by email %s: %w", email, err)
 	}
-	return &u, nil
+	return userFromRow(&row), nil
 }
 
-// GetByEmailWithPassword retrieves a user by email with password included
+// GetByEmailWithPassword is kept on the interface because the GORM-era
+// repo used a `Select("*")` to ensure the password column loaded even
+// when a caller had configured column masking. With sqlc the password
+// is always on the row struct, so this delegates to GetByEmail.
 func (r *userRepository) GetByEmailWithPassword(ctx context.Context, email string) (*userDomain.User, error) {
-	var u userDomain.User
-	err := r.getDB(ctx).WithContext(ctx).Select("*").Where("email = ? AND deleted_at IS NULL", email).First(&u).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("get user by email with password %s: %w", email, userDomain.ErrNotFound)
-		}
-		return nil, fmt.Errorf("database query failed for email with password %s: %w", email, err)
-	}
-	return &u, nil
+	return r.GetByEmail(ctx, email)
 }
 
-// Update updates a user
 func (r *userRepository) Update(ctx context.Context, u *userDomain.User) error {
-	return r.getDB(ctx).WithContext(ctx).Save(u).Error
+	if err := r.tm.Queries(ctx).UpdateUser(ctx, gen.UpdateUserParams{
+		ID:                    u.ID,
+		Email:                 u.Email,
+		FirstName:             u.FirstName,
+		LastName:              u.LastName,
+		Password:              emptyToNilString(u.Password),
+		IsActive:              u.IsActive,
+		IsEmailVerified:       u.IsEmailVerified,
+		EmailVerifiedAt:       u.EmailVerifiedAt,
+		Timezone:              u.Timezone,
+		Language:              u.Language,
+		LastLoginAt:           u.LastLoginAt,
+		LoginCount:            int32(u.LoginCount),
+		DefaultOrganizationID: u.DefaultOrganizationID,
+		Role:                  u.Role,
+		ReferralSource:        u.ReferralSource,
+		AuthMethod:            u.AuthMethod,
+		OauthProvider:         u.OAuthProvider,
+		OauthProviderID:       u.OAuthProviderID,
+	}); err != nil {
+		return fmt.Errorf("update user %s: %w", u.ID, err)
+	}
+	return nil
 }
 
-// Delete soft deletes a user
 func (r *userRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	return r.getDB(ctx).WithContext(ctx).Model(&userDomain.User{}).Where("id = ?", id).Update("deleted_at", time.Now()).Error
+	if err := r.tm.Queries(ctx).SoftDeleteUser(ctx, id); err != nil {
+		return fmt.Errorf("soft-delete user %s: %w", id, err)
+	}
+	return nil
 }
 
-// List retrieves users with filters
+// List delegates to the squirrel-based filter implementation.
+// ListFilters and UserFilters are aliases of the same type.
 func (r *userRepository) List(ctx context.Context, filters *userDomain.ListFilters) ([]*userDomain.User, int, error) {
-	// Convert ListFilters to UserFilters for compatibility
-	userFilters := (*userDomain.UserFilters)(filters)
-	users, err := r.GetByFilters(ctx, userFilters)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	// Get total count for the same filters - for now just return length
-	// TODO: Implement proper count query with the same filters
-	totalCount := len(users)
-	return users, totalCount, nil
+	return r.listByFilters(ctx, (*userDomain.UserFilters)(filters))
 }
 
-// Count returns the total number of active users
-func (r *userRepository) Count(ctx context.Context) (int64, error) {
-	var count int64
-	err := r.getDB(ctx).WithContext(ctx).Model(&userDomain.User{}).Where("deleted_at IS NULL").Count(&count).Error
-	return count, err
-}
+// ----- Authentication / state -----------------------------------------
 
-// UpdatePassword updates a user's password
 func (r *userRepository) UpdatePassword(ctx context.Context, userID uuid.UUID, hashedPassword string) error {
-	return r.getDB(ctx).WithContext(ctx).
-		Model(&userDomain.User{}).
-		Where("id = ?", userID).
-		Update("password", hashedPassword).Error
+	if err := r.tm.Queries(ctx).UpdateUserPassword(ctx, gen.UpdateUserPasswordParams{
+		ID:       userID,
+		Password: &hashedPassword,
+	}); err != nil {
+		return fmt.Errorf("update user password %s: %w", userID, err)
+	}
+	return nil
 }
 
-// UpdateLastLogin updates the user's last login timestamp
 func (r *userRepository) UpdateLastLogin(ctx context.Context, userID uuid.UUID) error {
-	return r.getDB(ctx).WithContext(ctx).
-		Model(&userDomain.User{}).
-		Where("id = ?", userID).
-		Update("last_login_at", time.Now()).Error
+	if err := r.tm.Queries(ctx).UpdateUserLastLogin(ctx, userID); err != nil {
+		return fmt.Errorf("update last login for user %s: %w", userID, err)
+	}
+	return nil
 }
 
-// MarkEmailAsVerified marks the user's email as verified
 func (r *userRepository) MarkEmailAsVerified(ctx context.Context, userID uuid.UUID) error {
-	return r.getDB(ctx).WithContext(ctx).
-		Model(&userDomain.User{}).
-		Where("id = ?", userID).
-		Updates(map[string]interface{}{
-			"is_email_verified": true,
-			"email_verified_at": time.Now(),
-		}).Error
+	if err := r.tm.Queries(ctx).MarkUserEmailVerified(ctx, userID); err != nil {
+		return fmt.Errorf("mark email verified for user %s: %w", userID, err)
+	}
+	return nil
 }
 
-// SetDefaultOrganization sets the user's default organization
-func (r *userRepository) SetDefaultOrganization(ctx context.Context, userID uuid.UUID, orgID uuid.UUID) error {
-	var orgIDPtr *uuid.UUID
-	if orgID != (uuid.UUID{}) { // Check if not zero value
-		orgIDPtr = &orgID
-	}
-	return r.getDB(ctx).WithContext(ctx).
-		Model(&userDomain.User{}).
-		Where("id = ?", userID).
-		Update("default_organization_id", orgIDPtr).Error
-}
-
-// GetActiveUsers returns active users (those who have logged in recently)
-func (r *userRepository) GetActiveUsers(ctx context.Context, limit, offset int) ([]*userDomain.User, int, error) {
-	var users []*userDomain.User
-	var count int64
-
-	// Get count first
-	err := r.getDB(ctx).WithContext(ctx).
-		Model(&userDomain.User{}).
-		Where("deleted_at IS NULL AND last_login_at IS NOT NULL").
-		Count(&count).Error
-	if err != nil {
-		return nil, 0, err
-	}
-
-	// Get users
-	err = r.getDB(ctx).WithContext(ctx).
-		Where("deleted_at IS NULL AND last_login_at IS NOT NULL").
-		Limit(limit).
-		Offset(offset).
-		Order("last_login_at DESC").
-		Find(&users).Error
-	return users, int(count), err
-}
-
-// GetUsersByIDs retrieves multiple users by their IDs
-func (r *userRepository) GetUsersByIDs(ctx context.Context, ids []uuid.UUID) ([]*userDomain.User, error) {
-	var users []*userDomain.User
-	err := r.getDB(ctx).WithContext(ctx).
-		Where("id IN ? AND deleted_at IS NULL", ids).
-		Find(&users).Error
-	return users, err
-}
-
-// SearchUsers searches users by email, first name, or last name
-func (r *userRepository) SearchUsers(ctx context.Context, query string, limit, offset int) ([]*userDomain.User, int, error) {
-	var users []*userDomain.User
-	var count int64
-
-	searchPattern := "%" + query + "%"
-	whereClause := "deleted_at IS NULL AND (email ILIKE ? OR first_name ILIKE ? OR last_name ILIKE ?)"
-
-	// Get count first
-	err := r.getDB(ctx).WithContext(ctx).
-		Model(&userDomain.User{}).
-		Where(whereClause, searchPattern, searchPattern, searchPattern).
-		Count(&count).Error
-	if err != nil {
-		return nil, 0, err
-	}
-
-	// Get users
-	err = r.getDB(ctx).WithContext(ctx).
-		Where(whereClause, searchPattern, searchPattern, searchPattern).
-		Limit(limit).
-		Offset(offset).
-		Order("created_at DESC").
-		Find(&users).Error
-	return users, int(count), err
-}
-
-// GetUserStats returns user statistics
-func (r *userRepository) GetUserStats(ctx context.Context) (*userDomain.UserStats, error) {
-	stats := &userDomain.UserStats{}
-
-	// Total users
-	err := r.getDB(ctx).WithContext(ctx).Model(&userDomain.User{}).Where("deleted_at IS NULL").Count(&stats.TotalUsers).Error
-	if err != nil {
-		return nil, err
-	}
-
-	// Active users (logged in within last 30 days)
-	thirtyDaysAgo := time.Now().AddDate(0, 0, -30)
-	err = r.getDB(ctx).WithContext(ctx).Model(&userDomain.User{}).
-		Where("deleted_at IS NULL AND last_login_at > ?", thirtyDaysAgo).
-		Count(&stats.ActiveUsers).Error
-	if err != nil {
-		return nil, err
-	}
-
-	// Verified users
-	err = r.getDB(ctx).WithContext(ctx).Model(&userDomain.User{}).
-		Where("deleted_at IS NULL AND is_email_verified = true").
-		Count(&stats.VerifiedUsers).Error
-	if err != nil {
-		return nil, err
-	}
-
-	// Users created today
-	today := time.Now().Truncate(24 * time.Hour)
-	err = r.getDB(ctx).WithContext(ctx).Model(&userDomain.User{}).
-		Where("deleted_at IS NULL AND created_at >= ?", today).
-		Count(&stats.NewUsersToday).Error
-	if err != nil {
-		return nil, err
-	}
-
-	return stats, nil
-}
-
-// UpdateUserActivity updates user activity timestamp
-func (r *userRepository) UpdateUserActivity(ctx context.Context, userID uuid.UUID) error {
-	return r.getDB(ctx).WithContext(ctx).
-		Model(&userDomain.User{}).
-		Where("id = ?", userID).
-		Update("last_activity_at", time.Now()).Error
-}
-
-// Deactivate deactivates a user account
-func (r *userRepository) Deactivate(ctx context.Context, userID uuid.UUID) error {
-	return r.getDB(ctx).WithContext(ctx).
-		Model(&userDomain.User{}).
-		Where("id = ?", userID).
-		Update("is_active", false).Error
-}
-
-// Activate activates a user account
-func (r *userRepository) Activate(ctx context.Context, userID uuid.UUID) error {
-	return r.getDB(ctx).WithContext(ctx).
-		Model(&userDomain.User{}).
-		Where("id = ?", userID).
-		Update("is_active", true).Error
-}
-
-// GetByFilters retrieves users based on filters
-func (r *userRepository) GetByFilters(ctx context.Context, filters *userDomain.UserFilters) ([]*userDomain.User, error) {
-	var users []*userDomain.User
-	query := r.getDB(ctx).WithContext(ctx).Where("deleted_at IS NULL")
-
-	// Apply filters
-	if filters.IsActive != nil {
-		query = query.Where("is_active = ?", *filters.IsActive)
-	}
-	if filters.IsEmailVerified != nil {
-		query = query.Where("is_email_verified = ?", *filters.IsEmailVerified)
-	}
-	if filters.CreatedAfter != nil {
-		query = query.Where("created_at > ?", *filters.CreatedAfter)
-	}
-	if filters.CreatedBefore != nil {
-		query = query.Where("created_at < ?", *filters.CreatedBefore)
-	}
-	if filters.LastLoginAfter != nil {
-		query = query.Where("last_login_at > ?", *filters.LastLoginAfter)
-	}
-
-	// Determine sort field and direction with validation
-	allowedSortFields := []string{"created_at", "updated_at", "email", "name", "id"}
-	sortField := "created_at" // default
-	sortDir := "DESC"
-
-	if filters != nil {
-		// Validate sort field against whitelist
-		if filters.Params.SortBy != "" {
-			validated, err := pagination.ValidateSortField(filters.Params.SortBy, allowedSortFields)
-			if err != nil {
-				return nil, err
-			}
-			if validated != "" {
-				sortField = validated
-			}
-		}
-		if filters.Params.SortDir == "asc" {
-			sortDir = "ASC"
-		}
-	}
-
-	// Apply sorting with secondary sort on id for stable ordering
-	query = query.Order(fmt.Sprintf("%s %s, id %s", sortField, sortDir, sortDir))
-
-	// Apply limit and offset for pagination
-	limit := pagination.DefaultPageSize
-	if filters.Params.Limit > 0 {
-		limit = filters.Params.Limit
-	}
-	offset := filters.Params.GetOffset()
-	query = query.Limit(limit).Offset(offset)
-
-	err := query.Find(&users).Error
-	return users, err
-}
-
-// Profile operations
-func (r *userRepository) CreateProfile(ctx context.Context, profile *userDomain.UserProfile) error {
-	return r.getDB(ctx).WithContext(ctx).Create(profile).Error
-}
-
-func (r *userRepository) GetProfile(ctx context.Context, userID uuid.UUID) (*userDomain.UserProfile, error) {
-	var profile userDomain.UserProfile
-	err := r.getDB(ctx).WithContext(ctx).Where("user_id = ?", userID).First(&profile).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("get profile for user %s: %w", userID, userDomain.ErrNotFound)
-		}
-		return nil, fmt.Errorf("database query failed for profile %s: %w", userID, err)
-	}
-	return &profile, nil
-}
-
-func (r *userRepository) UpdateProfile(ctx context.Context, profile *userDomain.UserProfile) error {
-	return r.getDB(ctx).WithContext(ctx).Save(profile).Error
-}
-
-// Additional missing interface methods
-func (r *userRepository) VerifyEmail(ctx context.Context, userID uuid.UUID, token string) error {
-	// TODO: Implement token validation logic
+// VerifyEmail is a legacy token-validating entry point used by the
+// service layer; the token is validated elsewhere and this delegates
+// to MarkEmailAsVerified.
+func (r *userRepository) VerifyEmail(ctx context.Context, userID uuid.UUID, _ string) error {
 	return r.MarkEmailAsVerified(ctx, userID)
 }
 
-func (r *userRepository) GetDefaultOrganization(ctx context.Context, userID uuid.UUID) (*uuid.UUID, error) {
-	var u userDomain.User
-	err := r.getDB(ctx).WithContext(ctx).Select("default_organization_id").Where("id = ?", userID).First(&u).Error
-	if err != nil {
-		return nil, err
+func (r *userRepository) SetDefaultOrganization(ctx context.Context, userID uuid.UUID, orgID uuid.UUID) error {
+	var orgPtr *uuid.UUID
+	if orgID != uuid.Nil {
+		orgPtr = &orgID
 	}
-	return u.DefaultOrganizationID, nil
+	if err := r.tm.Queries(ctx).SetUserDefaultOrganization(ctx, gen.SetUserDefaultOrganizationParams{
+		ID:                    userID,
+		DefaultOrganizationID: orgPtr,
+	}); err != nil {
+		return fmt.Errorf("set default org for user %s: %w", userID, err)
+	}
+	return nil
+}
+
+func (r *userRepository) GetDefaultOrganization(ctx context.Context, userID uuid.UUID) (*uuid.UUID, error) {
+	ptr, err := r.tm.Queries(ctx).GetUserDefaultOrganization(ctx, userID)
+	if err != nil {
+		if db.IsNoRows(err) {
+			return nil, fmt.Errorf("get default org for user %s: %w", userID, userDomain.ErrNotFound)
+		}
+		return nil, fmt.Errorf("get default org for user %s: %w", userID, err)
+	}
+	return ptr, nil
 }
 
 func (r *userRepository) DeactivateUser(ctx context.Context, userID uuid.UUID) error {
-	return r.getDB(ctx).WithContext(ctx).Model(&userDomain.User{}).Where("id = ?", userID).Update("is_active", false).Error
+	return r.setActive(ctx, userID, false)
 }
 
 func (r *userRepository) ReactivateUser(ctx context.Context, userID uuid.UUID) error {
-	return r.getDB(ctx).WithContext(ctx).Model(&userDomain.User{}).Where("id = ?", userID).Update("is_active", true).Error
+	return r.setActive(ctx, userID, true)
+}
+
+func (r *userRepository) setActive(ctx context.Context, userID uuid.UUID, active bool) error {
+	if err := r.tm.Queries(ctx).SetUserActive(ctx, gen.SetUserActiveParams{
+		ID:       userID,
+		IsActive: active,
+	}); err != nil {
+		return fmt.Errorf("set user %s active=%t: %w", userID, active, err)
+	}
+	return nil
+}
+
+// ----- Batch + listings ----------------------------------------------
+
+func (r *userRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*userDomain.User, error) {
+	if len(ids) == 0 {
+		return []*userDomain.User{}, nil
+	}
+	rows, err := r.tm.Queries(ctx).ListUsersByIDs(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("list users by ids (n=%d): %w", len(ids), err)
+	}
+	return usersFromRows(rows), nil
+}
+
+func (r *userRepository) GetUsersByOrganization(ctx context.Context, organizationID uuid.UUID) ([]*userDomain.User, error) {
+	rows, err := r.tm.Queries(ctx).ListUsersByOrganization(ctx, organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("list users for org %s: %w", organizationID, err)
+	}
+	return usersFromRows(rows), nil
+}
+
+// ----- Statistics -----------------------------------------------------
+
+func (r *userRepository) GetUserStats(ctx context.Context) (*userDomain.UserStats, error) {
+	q := r.tm.Queries(ctx)
+
+	total, err := q.CountActiveUsers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("count users: %w", err)
+	}
+	since := time.Now().AddDate(0, 0, -30)
+	active, err := q.CountUsersLoggedInSince(ctx, &since)
+	if err != nil {
+		return nil, fmt.Errorf("count active users: %w", err)
+	}
+	verified, err := q.CountVerifiedUsers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("count verified users: %w", err)
+	}
+	newToday, err := q.CountUsersCreatedSince(ctx, time.Now().Truncate(24*time.Hour))
+	if err != nil {
+		return nil, fmt.Errorf("count new users today: %w", err)
+	}
+	return &userDomain.UserStats{
+		TotalUsers:    total,
+		ActiveUsers:   active,
+		VerifiedUsers: verified,
+		NewUsersToday: newToday,
+	}, nil
 }
 
 func (r *userRepository) GetNewUsersCount(ctx context.Context, since time.Time) (int64, error) {
-	var count int64
-	err := r.getDB(ctx).WithContext(ctx).Model(&userDomain.User{}).Where("created_at > ? AND deleted_at IS NULL", since).Count(&count).Error
-	return count, err
-}
-
-// GetUsersByOrganization returns users who belong to an organization
-func (r *userRepository) GetUsersByOrganization(ctx context.Context, organizationID uuid.UUID) ([]*userDomain.User, error) {
-	var users []*userDomain.User
-	// This would require a join with the organization_members table
-	// For now, return empty slice as this requires cross-domain queries
-	// TODO: Implement proper join or separate query to get organization members
-	return users, nil
-}
-
-// GetVerifiedUsers returns verified users
-func (r *userRepository) GetVerifiedUsers(ctx context.Context, limit, offset int) ([]*userDomain.User, int, error) {
-	var users []*userDomain.User
-	var count int64
-
-	whereClause := "deleted_at IS NULL AND is_email_verified = true"
-
-	// Get count first
-	err := r.getDB(ctx).WithContext(ctx).
-		Model(&userDomain.User{}).
-		Where(whereClause).
-		Count(&count).Error
+	n, err := r.tm.Queries(ctx).CountUsersCreatedSince(ctx, since)
 	if err != nil {
-		return nil, 0, err
+		return 0, fmt.Errorf("count new users since %s: %w", since, err)
 	}
-
-	// Get users
-	err = r.getDB(ctx).WithContext(ctx).
-		Where(whereClause).
-		Limit(limit).
-		Offset(offset).
-		Order("created_at DESC").
-		Find(&users).Error
-	return users, int(count), err
+	return n, nil
 }
 
-func (r *userRepository) Search(ctx context.Context, query string, limit, offset int) ([]*userDomain.User, int, error) {
-	return r.SearchUsers(ctx, query, limit, offset)
+// ----- Profile operations --------------------------------------------
+
+func (r *userRepository) CreateProfile(ctx context.Context, p *userDomain.UserProfile) error {
+	now := time.Now()
+	if p.CreatedAt.IsZero() {
+		p.CreatedAt = now
+	}
+	if p.UpdatedAt.IsZero() {
+		p.UpdatedAt = now
+	}
+	if p.Theme == "" {
+		p.Theme = "light"
+	}
+	if p.Language == "" {
+		p.Language = "en"
+	}
+	if p.Timezone == "" {
+		p.Timezone = "UTC"
+	}
+	if err := r.tm.Queries(ctx).CreateUserProfile(ctx, gen.CreateUserProfileParams{
+		UserID:                p.UserID,
+		Bio:                   p.Bio,
+		Location:              p.Location,
+		Website:               p.Website,
+		TwitterUrl:            p.TwitterURL,
+		LinkedinUrl:           p.LinkedInURL,
+		GithubUrl:             p.GitHubURL,
+		AvatarUrl:             p.AvatarURL,
+		Phone:                 p.Phone,
+		Timezone:              p.Timezone,
+		Language:              p.Language,
+		Theme:                 p.Theme,
+		EmailNotifications:    p.EmailNotifications,
+		PushNotifications:     p.PushNotifications,
+		MarketingEmails:       p.MarketingEmails,
+		WeeklyReports:         p.WeeklyReports,
+		MonthlyReports:        p.MonthlyReports,
+		SecurityAlerts:        p.SecurityAlerts,
+		BillingAlerts:         p.BillingAlerts,
+		UsageThresholdPercent: int32(p.UsageThresholdPercent),
+		CreatedAt:             p.CreatedAt,
+		UpdatedAt:             p.UpdatedAt,
+	}); err != nil {
+		return fmt.Errorf("create profile for user %s: %w", p.UserID, err)
+	}
+	return nil
 }
 
-func (r *userRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*userDomain.User, error) {
-	return r.GetUsersByIDs(ctx, ids)
+func (r *userRepository) GetProfile(ctx context.Context, userID uuid.UUID) (*userDomain.UserProfile, error) {
+	row, err := r.tm.Queries(ctx).GetUserProfile(ctx, userID)
+	if err != nil {
+		if db.IsNoRows(err) {
+			return nil, fmt.Errorf("get profile for user %s: %w", userID, userDomain.ErrNotFound)
+		}
+		return nil, fmt.Errorf("get profile for user %s: %w", userID, err)
+	}
+	return profileFromRow(&row), nil
 }
 
-// Transaction executes a function within a database transaction
+func (r *userRepository) UpdateProfile(ctx context.Context, p *userDomain.UserProfile) error {
+	if err := r.tm.Queries(ctx).UpdateUserProfile(ctx, gen.UpdateUserProfileParams{
+		UserID:                p.UserID,
+		Bio:                   p.Bio,
+		Location:              p.Location,
+		Website:               p.Website,
+		TwitterUrl:            p.TwitterURL,
+		LinkedinUrl:           p.LinkedInURL,
+		GithubUrl:             p.GitHubURL,
+		AvatarUrl:             p.AvatarURL,
+		Phone:                 p.Phone,
+		Timezone:              p.Timezone,
+		Language:              p.Language,
+		Theme:                 p.Theme,
+		EmailNotifications:    p.EmailNotifications,
+		PushNotifications:     p.PushNotifications,
+		MarketingEmails:       p.MarketingEmails,
+		WeeklyReports:         p.WeeklyReports,
+		MonthlyReports:        p.MonthlyReports,
+		SecurityAlerts:        p.SecurityAlerts,
+		BillingAlerts:         p.BillingAlerts,
+		UsageThresholdPercent: int32(p.UsageThresholdPercent),
+	}); err != nil {
+		return fmt.Errorf("update profile for user %s: %w", p.UserID, err)
+	}
+	return nil
+}
+
+// Transaction is on the domain interface but has no callers. Kept to
+// satisfy the interface; delegates to TxManager. The fn receives a new
+// userRepository that shares the same TxManager — tx scoping travels
+// through ctx.
 func (r *userRepository) Transaction(fn func(userDomain.Repository) error) error {
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		txRepo := &userRepository{db: tx}
-		return fn(txRepo)
+	return r.tm.WithinTransaction(context.Background(), func(ctx context.Context) error {
+		return fn(r)
 	})
+}
+
+// ----- gen ↔ domain boundary ----------------------------------------
+
+func userFromRow(row *gen.User) *userDomain.User {
+	return &userDomain.User{
+		ID:                    row.ID,
+		Email:                 row.Email,
+		FirstName:             row.FirstName,
+		LastName:              row.LastName,
+		Password:              derefString(row.Password),
+		IsActive:              row.IsActive,
+		IsEmailVerified:       row.IsEmailVerified,
+		EmailVerifiedAt:       row.EmailVerifiedAt,
+		Timezone:              row.Timezone,
+		Language:              row.Language,
+		LastLoginAt:           row.LastLoginAt,
+		LoginCount:            int(row.LoginCount),
+		DefaultOrganizationID: row.DefaultOrganizationID,
+		Role:                  row.Role,
+		ReferralSource:        row.ReferralSource,
+		AuthMethod:            row.AuthMethod,
+		OAuthProvider:         row.OauthProvider,
+		OAuthProviderID:       row.OauthProviderID,
+		CreatedAt:             row.CreatedAt,
+		UpdatedAt:             row.UpdatedAt,
+		DeletedAt:             row.DeletedAt,
+	}
+}
+
+func usersFromRows(rows []gen.User) []*userDomain.User {
+	out := make([]*userDomain.User, 0, len(rows))
+	for i := range rows {
+		out = append(out, userFromRow(&rows[i]))
+	}
+	return out
+}
+
+func profileFromRow(row *gen.UserProfile) *userDomain.UserProfile {
+	return &userDomain.UserProfile{
+		UserID:                row.UserID,
+		Bio:                   row.Bio,
+		Location:              row.Location,
+		Website:               row.Website,
+		TwitterURL:            row.TwitterUrl,
+		LinkedInURL:           row.LinkedinUrl,
+		GitHubURL:             row.GithubUrl,
+		AvatarURL:             row.AvatarUrl,
+		Phone:                 row.Phone,
+		Timezone:              row.Timezone,
+		Language:              row.Language,
+		Theme:                 row.Theme,
+		EmailNotifications:    row.EmailNotifications,
+		PushNotifications:     row.PushNotifications,
+		MarketingEmails:       row.MarketingEmails,
+		WeeklyReports:         row.WeeklyReports,
+		MonthlyReports:        row.MonthlyReports,
+		SecurityAlerts:        row.SecurityAlerts,
+		BillingAlerts:         row.BillingAlerts,
+		UsageThresholdPercent: int(row.UsageThresholdPercent),
+		CreatedAt:             row.CreatedAt,
+		UpdatedAt:             row.UpdatedAt,
+	}
+}
+
+// helpers ------------------------------------------------------------
+
+func derefString(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}
+
+func emptyToNilString(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }

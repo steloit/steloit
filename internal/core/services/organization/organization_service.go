@@ -2,6 +2,7 @@ package organization
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -148,7 +149,10 @@ func (s *organizationService) GetOrganizationBySlug(ctx context.Context, slug st
 func (s *organizationService) UpdateOrganization(ctx context.Context, orgID uuid.UUID, req *orgDomain.UpdateOrganizationRequest) error {
 	org, err := s.orgRepo.GetByID(ctx, orgID)
 	if err != nil {
-		return appErrors.NewNotFoundError("Organization not found")
+		if errors.Is(err, orgDomain.ErrNotFound) {
+			return appErrors.NewNotFoundError("Organization")
+		}
+		return appErrors.NewInternalError("Failed to get organization", err)
 	}
 
 	if req.Name != nil {
@@ -175,7 +179,10 @@ func (s *organizationService) DeleteOrganization(ctx context.Context, orgID uuid
 	// Verify organization exists before deletion
 	_, err := s.orgRepo.GetByID(ctx, orgID)
 	if err != nil {
-		return appErrors.NewNotFoundError("Organization not found")
+		if errors.Is(err, orgDomain.ErrNotFound) {
+			return appErrors.NewNotFoundError("Organization")
+		}
+		return appErrors.NewInternalError("Failed to get organization", err)
 	}
 
 	err = s.orgRepo.Delete(ctx, orgID)
@@ -197,7 +204,10 @@ func (s *organizationService) GetUserOrganizations(ctx context.Context, userID u
 func (s *organizationService) GetUserDefaultOrganization(ctx context.Context, userID uuid.UUID) (*orgDomain.Organization, error) {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
-		return nil, appErrors.NewNotFoundError("User not found")
+		if errors.Is(err, userDomain.ErrNotFound) {
+			return nil, appErrors.NewNotFoundError("User")
+		}
+		return nil, appErrors.NewInternalError("Failed to get user", err)
 	}
 
 	if user.DefaultOrganizationID == nil {

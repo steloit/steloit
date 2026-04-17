@@ -8,7 +8,7 @@ CREATE TABLE contact_submissions (
     inquiry_type VARCHAR(50),
     ip_address   VARCHAR(45),
     user_agent   TEXT,
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at   TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_contact_submissions_email ON contact_submissions(email);

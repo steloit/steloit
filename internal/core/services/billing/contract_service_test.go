@@ -15,7 +15,6 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"gorm.io/datatypes"
 )
 
 // Tests use shared mocks from mocks_test.go
@@ -445,7 +444,7 @@ func TestContractService_GetContractHistory_Success(t *testing.T) {
 			Action:     billing.ContractActionCreated,
 			ChangedBy:  uid.New().String(),
 			ChangedAt:  time.Now(),
-			Changes:    datatypes.JSON(changesJSON),
+			Changes:    json.RawMessage(changesJSON),
 			Reason:     "Initial contract creation",
 		},
 		{
@@ -454,7 +453,7 @@ func TestContractService_GetContractHistory_Success(t *testing.T) {
 			Action:     billing.ContractActionUpdated,
 			ChangedBy:  uid.New().String(),
 			ChangedAt:  time.Now().Add(1 * time.Hour),
-			Changes:    datatypes.JSON(changesJSON),
+			Changes:    json.RawMessage(changesJSON),
 			Reason:     "Activated contract",
 		},
 	}

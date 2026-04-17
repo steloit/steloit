@@ -30,24 +30,20 @@ const (
 // EvaluatorExecution tracks the execution history of an evaluator.
 // Inspired by Langfuse's JobExecution and Opik's automation rule logs.
 type EvaluatorExecution struct {
-	ID           uuid.UUID       `json:"id" gorm:"type:uuid;primaryKey"`
-	EvaluatorID  uuid.UUID       `json:"evaluator_id" gorm:"type:uuid;not null;index"`
-	ProjectID    uuid.UUID       `json:"project_id" gorm:"type:uuid;not null;index"`
-	Status       ExecutionStatus `json:"status" gorm:"type:varchar(20);not null"`
-	TriggerType  TriggerType     `json:"trigger_type" gorm:"type:varchar(20);not null;default:'automatic'"`
-	SpansMatched int             `json:"spans_matched" gorm:"not null;default:0"`
-	SpansScored  int             `json:"spans_scored" gorm:"not null;default:0"`
-	ErrorsCount  int             `json:"errors_count" gorm:"not null;default:0"`
-	ErrorMessage *string         `json:"error_message,omitempty" gorm:"type:text"`
+	ID           uuid.UUID       `json:"id"`
+	EvaluatorID  uuid.UUID       `json:"evaluator_id"`
+	ProjectID    uuid.UUID       `json:"project_id"`
+	Status       ExecutionStatus `json:"status"`
+	TriggerType  TriggerType     `json:"trigger_type"`
+	SpansMatched int             `json:"spans_matched"`
+	SpansScored  int             `json:"spans_scored"`
+	ErrorsCount  int             `json:"errors_count"`
+	ErrorMessage *string         `json:"error_message,omitempty"`
 	StartedAt    *time.Time      `json:"started_at,omitempty"`
 	CompletedAt  *time.Time      `json:"completed_at,omitempty"`
 	DurationMs   *int            `json:"duration_ms,omitempty"`
-	Metadata     map[string]any  `json:"metadata" gorm:"type:jsonb;serializer:json;default:'{}'"`
-	CreatedAt    time.Time       `json:"created_at" gorm:"not null;autoCreateTime"`
-}
-
-func (EvaluatorExecution) TableName() string {
-	return "evaluator_executions"
+	Metadata     map[string]any  `json:"metadata"`
+	CreatedAt    time.Time       `json:"created_at"`
 }
 
 // NewEvaluatorExecution creates a new evaluator execution record.

@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS invitation_audit_events (
     metadata JSONB,
     ip_address INET,
     user_agent TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 
     -- Constraint to ensure valid event types
     CONSTRAINT valid_event_type CHECK (event_type IN ('created', 'resent', 'accepted', 'revoked', 'expired', 'declined'))

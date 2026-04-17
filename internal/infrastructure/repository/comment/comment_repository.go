@@ -2,366 +2,236 @@ package comment
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 
-	"brokle/internal/core/domain/comment"
-	"brokle/internal/core/domain/user"
-	"brokle/internal/infrastructure/shared"
-
-	"gorm.io/gorm"
+	commentDomain "brokle/internal/core/domain/comment"
+	"brokle/internal/infrastructure/db"
+	"brokle/internal/infrastructure/db/gen"
 )
 
 type CommentRepository struct {
-	db *gorm.DB
+	tm *db.TxManager
 }
 
-func NewCommentRepository(db *gorm.DB) *CommentRepository {
-	return &CommentRepository{db: db}
+func NewCommentRepository(tm *db.TxManager) *CommentRepository {
+	return &CommentRepository{tm: tm}
 }
 
-func (r *CommentRepository) getDB(ctx context.Context) *gorm.DB {
-	return shared.GetDB(ctx, r.db)
+func (r *CommentRepository) Create(ctx context.Context, c *commentDomain.Comment) error {
+	if err := r.tm.Queries(ctx).CreateComment(ctx, gen.CreateCommentParams{
+		ID:         c.ID,
+		EntityType: gen.CommentEntityType(c.EntityType),
+		EntityID:   c.EntityID,
+		ProjectID:  c.ProjectID,
+		Content:    c.Content,
+		ParentID:   c.ParentID,
+		CreatedBy:  c.CreatedBy,
+		UpdatedBy:  c.UpdatedBy,
+	}); err != nil {
+		return fmt.Errorf("create comment: %w", err)
+	}
+	return nil
 }
 
-func (r *CommentRepository) Create(ctx context.Context, c *comment.Comment) error {
-	result := r.getDB(ctx).WithContext(ctx).Create(c)
-	return result.Error
-}
-
-func (r *CommentRepository) GetByID(ctx context.Context, id uuid.UUID) (*comment.Comment, error) {
-	var c comment.Comment
-	result := r.getDB(ctx).WithContext(ctx).
-		Where("id = ?", id.String()).
-		First(&c)
-
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, comment.ErrNotFound
+func (r *CommentRepository) GetByID(ctx context.Context, id uuid.UUID) (*commentDomain.Comment, error) {
+	row, err := r.tm.Queries(ctx).GetCommentByID(ctx, id)
+	if err != nil {
+		if db.IsNoRows(err) {
+			return nil, commentDomain.ErrNotFound
 		}
-		return nil, result.Error
+		return nil, err
 	}
-	return &c, nil
+	return commentFromRow(&row), nil
 }
 
-func (r *CommentRepository) GetByIDWithUser(ctx context.Context, id uuid.UUID) (*comment.CommentWithUser, error) {
-	var c comment.Comment
-	result := r.getDB(ctx).WithContext(ctx).
-		Where("id = ?", id.String()).
-		First(&c)
-
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, comment.ErrNotFound
-		}
-		return nil, result.Error
+func (r *CommentRepository) GetByIDWithUser(ctx context.Context, id uuid.UUID) (*commentDomain.CommentWithUser, error) {
+	c, err := r.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
 	}
-
-	var author *comment.CommentUser
-	if c.CreatedBy != nil {
-		var err error
-		author, err = r.getUserByID(ctx, *c.CreatedBy)
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, err
-		}
+	ids := collectUserIDs([]*commentDomain.Comment{c})
+	users, err := r.loadUsers(ctx, ids)
+	if err != nil {
+		return nil, err
 	}
-
-	var editor *comment.CommentUser
-	if c.UpdatedBy != nil {
-		var err error
-		editor, err = r.getUserByID(ctx, *c.UpdatedBy)
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, err
-		}
-	}
-
-	return &comment.CommentWithUser{
-		Comment: c,
-		Author:  author,
-		Editor:  editor,
-	}, nil
+	return withUser(c, users), nil
 }
 
-func (r *CommentRepository) Update(ctx context.Context, c *comment.Comment) error {
-	result := r.getDB(ctx).WithContext(ctx).Save(c)
-	if result.Error != nil {
-		return result.Error
+func (r *CommentRepository) Update(ctx context.Context, c *commentDomain.Comment) error {
+	n, err := r.tm.Queries(ctx).UpdateComment(ctx, gen.UpdateCommentParams{
+		ID:        c.ID,
+		Content:   c.Content,
+		UpdatedBy: c.UpdatedBy,
+	})
+	if err != nil {
+		return err
 	}
-	if result.RowsAffected == 0 {
-		return comment.ErrNotFound
+	if n == 0 {
+		return commentDomain.ErrNotFound
 	}
 	return nil
 }
 
 func (r *CommentRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	result := r.getDB(ctx).WithContext(ctx).
-		Where("id = ?", id.String()).
-		Delete(&comment.Comment{})
-
-	if result.Error != nil {
-		return result.Error
+	n, err := r.tm.Queries(ctx).SoftDeleteComment(ctx, id)
+	if err != nil {
+		return err
 	}
-	if result.RowsAffected == 0 {
-		return comment.ErrNotFound
+	if n == 0 {
+		return commentDomain.ErrNotFound
 	}
 	return nil
 }
 
 func (r *CommentRepository) HasActiveReplies(ctx context.Context, parentID uuid.UUID) (bool, error) {
-	var count int64
-	result := r.getDB(ctx).WithContext(ctx).
-		Model(&comment.Comment{}).
-		Where("parent_id = ? AND deleted_at IS NULL", parentID.String()).
-		Count(&count)
-	if result.Error != nil {
-		return false, result.Error
-	}
-	return count > 0, nil
+	return r.tm.Queries(ctx).HasActiveReplies(ctx, &parentID)
 }
 
-// ListByEntity implements tombstone pattern: returns non-deleted comments OR deleted with active replies.
-func (r *CommentRepository) ListByEntity(ctx context.Context, entityType comment.EntityType, entityID string, projectID uuid.UUID) ([]*comment.CommentWithUser, error) {
-	var comments []comment.Comment
-
-	// Subquery: parent IDs with active replies
-	subquery := r.getDB(ctx).WithContext(ctx).
-		Model(&comment.Comment{}).
-		Select("DISTINCT parent_id").
-		Where("entity_type = ? AND entity_id = ? AND project_id = ?", string(entityType), entityID, projectID.String()).
-		Where("parent_id IS NOT NULL AND deleted_at IS NULL")
-
-	result := r.getDB(ctx).WithContext(ctx).Unscoped().
-		Where("entity_type = ? AND entity_id = ? AND project_id = ? AND parent_id IS NULL", string(entityType), entityID, projectID.String()).
-		Where("deleted_at IS NULL OR id IN (?)", subquery).
-		Order("created_at ASC").
-		Find(&comments)
-
-	if result.Error != nil {
-		return nil, result.Error
-	}
-
-	userIDMap := make(map[string]bool)
-	for _, c := range comments {
-		if c.CreatedBy != nil {
-			userIDMap[c.CreatedBy.String()] = true
-		}
-		if c.UpdatedBy != nil {
-			userIDMap[c.UpdatedBy.String()] = true
-		}
-	}
-
-	userIDs := make([]string, 0, len(userIDMap))
-	for id := range userIDMap {
-		userIDs = append(userIDs, id)
-	}
-
-	userMap := make(map[string]*comment.CommentUser)
-	if len(userIDs) > 0 {
-		var users []user.User
-		if err := r.getDB(ctx).WithContext(ctx).
-			Where("id IN ?", userIDs).
-			Find(&users).Error; err != nil {
-			return nil, err
-		}
-		for _, u := range users {
-			userMap[u.ID.String()] = &comment.CommentUser{
-				ID:    u.ID,
-				Name:  u.GetFullName(),
-				Email: u.Email,
-			}
-		}
-
-		var profiles []user.UserProfile
-		if err := r.getDB(ctx).WithContext(ctx).
-			Where("user_id IN ?", userIDs).
-			Find(&profiles).Error; err != nil {
-			return nil, err
-		}
-		for _, p := range profiles {
-			if cu, ok := userMap[p.UserID.String()]; ok {
-				cu.AvatarURL = p.AvatarURL
-			}
-		}
-	}
-
-	result2 := make([]*comment.CommentWithUser, len(comments))
-	for i, c := range comments {
-		cwu := &comment.CommentWithUser{
-			Comment: c,
-		}
-		if c.CreatedBy != nil {
-			cwu.Author = userMap[c.CreatedBy.String()]
-		}
-		if c.UpdatedBy != nil {
-			cwu.Editor = userMap[c.UpdatedBy.String()]
-		}
-		result2[i] = cwu
-	}
-
-	return result2, nil
-}
-
-func (r *CommentRepository) CountByEntity(ctx context.Context, entityType comment.EntityType, entityID string, projectID uuid.UUID) (int64, error) {
-	var count int64
-	result := r.getDB(ctx).WithContext(ctx).
-		Model(&comment.Comment{}).
-		Where("entity_type = ? AND entity_id = ? AND project_id = ? AND deleted_at IS NULL", string(entityType), entityID, projectID.String()).
-		Count(&count)
-
-	if result.Error != nil {
-		return 0, result.Error
-	}
-	return count, nil
-}
-
-func (r *CommentRepository) ListReplies(ctx context.Context, parentIDs []uuid.UUID) (map[string][]*comment.CommentWithUser, error) {
-	if len(parentIDs) == 0 {
-		return make(map[string][]*comment.CommentWithUser), nil
-	}
-
-	ids := make([]string, len(parentIDs))
-	for i, id := range parentIDs {
-		ids[i] = id.String()
-	}
-
-	var replies []comment.Comment
-	if err := r.getDB(ctx).WithContext(ctx).
-		Where("parent_id IN ? AND deleted_at IS NULL", ids).
-		Order("created_at ASC").
-		Find(&replies).Error; err != nil {
+func (r *CommentRepository) ListByEntity(ctx context.Context, entityType commentDomain.EntityType, entityID string, projectID uuid.UUID) ([]*commentDomain.CommentWithUser, error) {
+	rows, err := r.tm.Queries(ctx).ListCommentsByEntity(ctx, gen.ListCommentsByEntityParams{
+		EntityType: gen.CommentEntityType(entityType),
+		EntityID:   entityID,
+		ProjectID:  projectID,
+	})
+	if err != nil {
 		return nil, err
 	}
+	comments := make([]*commentDomain.Comment, 0, len(rows))
+	for i := range rows {
+		comments = append(comments, commentFromRow(&rows[i]))
+	}
+	users, err := r.loadUsers(ctx, collectUserIDs(comments))
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*commentDomain.CommentWithUser, 0, len(comments))
+	for _, c := range comments {
+		out = append(out, withUser(c, users))
+	}
+	return out, nil
+}
 
-	userIDMap := make(map[string]bool)
+func (r *CommentRepository) CountByEntity(ctx context.Context, entityType commentDomain.EntityType, entityID string, projectID uuid.UUID) (int64, error) {
+	return r.tm.Queries(ctx).CountCommentsByEntity(ctx, gen.CountCommentsByEntityParams{
+		EntityType: gen.CommentEntityType(entityType),
+		EntityID:   entityID,
+		ProjectID:  projectID,
+	})
+}
+
+func (r *CommentRepository) ListReplies(ctx context.Context, parentIDs []uuid.UUID) (map[string][]*commentDomain.CommentWithUser, error) {
+	out := make(map[string][]*commentDomain.CommentWithUser, len(parentIDs))
+	for _, id := range parentIDs {
+		out[id.String()] = []*commentDomain.CommentWithUser{}
+	}
+	if len(parentIDs) == 0 {
+		return out, nil
+	}
+	rows, err := r.tm.Queries(ctx).ListRepliesByParents(ctx, parentIDs)
+	if err != nil {
+		return nil, err
+	}
+	replies := make([]*commentDomain.Comment, 0, len(rows))
+	for i := range rows {
+		replies = append(replies, commentFromRow(&rows[i]))
+	}
+	users, err := r.loadUsers(ctx, collectUserIDs(replies))
+	if err != nil {
+		return nil, err
+	}
 	for _, c := range replies {
-		if c.CreatedBy != nil {
-			userIDMap[c.CreatedBy.String()] = true
-		}
-		if c.UpdatedBy != nil {
-			userIDMap[c.UpdatedBy.String()] = true
-		}
+		key := c.ParentID.String()
+		out[key] = append(out[key], withUser(c, users))
 	}
-
-	userMap := make(map[string]*comment.CommentUser)
-	if len(userIDMap) > 0 {
-		userIDs := make([]string, 0, len(userIDMap))
-		for id := range userIDMap {
-			userIDs = append(userIDs, id)
-		}
-
-		var users []user.User
-		if err := r.getDB(ctx).WithContext(ctx).
-			Where("id IN ?", userIDs).
-			Find(&users).Error; err != nil {
-			return nil, err
-		}
-		for _, u := range users {
-			userMap[u.ID.String()] = &comment.CommentUser{
-				ID:    u.ID,
-				Name:  u.GetFullName(),
-				Email: u.Email,
-			}
-		}
-
-		var profiles []user.UserProfile
-		if err := r.getDB(ctx).WithContext(ctx).
-			Where("user_id IN ?", userIDs).
-			Find(&profiles).Error; err != nil {
-			return nil, err
-		}
-		for _, p := range profiles {
-			if cu, ok := userMap[p.UserID.String()]; ok {
-				cu.AvatarURL = p.AvatarURL
-			}
-		}
-	}
-
-	result := make(map[string][]*comment.CommentWithUser)
-	for _, c := range replies {
-		parentID := c.ParentID.String()
-		cwu := &comment.CommentWithUser{
-			Comment: c,
-		}
-		if c.CreatedBy != nil {
-			cwu.Author = userMap[c.CreatedBy.String()]
-		}
-		if c.UpdatedBy != nil {
-			cwu.Editor = userMap[c.UpdatedBy.String()]
-		}
-		result[parentID] = append(result[parentID], cwu)
-	}
-
-	// Ensure all requested IDs have an entry
-	for _, id := range ids {
-		if _, ok := result[id]; !ok {
-			result[id] = []*comment.CommentWithUser{}
-		}
-	}
-
-	return result, nil
+	return out, nil
 }
 
 func (r *CommentRepository) CountReplies(ctx context.Context, parentIDs []uuid.UUID) (map[string]int, error) {
+	out := make(map[string]int, len(parentIDs))
+	for _, id := range parentIDs {
+		out[id.String()] = 0
+	}
 	if len(parentIDs) == 0 {
-		return make(map[string]int), nil
+		return out, nil
 	}
-
-	ids := make([]string, len(parentIDs))
-	for i, id := range parentIDs {
-		ids[i] = id.String()
-	}
-
-	type replyCount struct {
-		ParentID string `gorm:"column:parent_id"`
-		Count    int    `gorm:"column:count"`
-	}
-
-	var counts []replyCount
-	if err := r.getDB(ctx).WithContext(ctx).
-		Model(&comment.Comment{}).
-		Select("parent_id, COUNT(*) as count").
-		Where("parent_id IN ? AND deleted_at IS NULL", ids).
-		Group("parent_id").
-		Scan(&counts).Error; err != nil {
+	rows, err := r.tm.Queries(ctx).CountRepliesByParents(ctx, parentIDs)
+	if err != nil {
 		return nil, err
 	}
-
-	result := make(map[string]int)
-	for _, c := range counts {
-		result[c.ParentID] = c.Count
-	}
-
-	// Ensure all requested IDs have an entry
-	for _, id := range ids {
-		if _, ok := result[id]; !ok {
-			result[id] = 0
+	for _, row := range rows {
+		if row.ParentID != nil {
+			out[row.ParentID.String()] = int(row.Count)
 		}
 	}
-
-	return result, nil
+	return out, nil
 }
 
-func (r *CommentRepository) getUserByID(ctx context.Context, id uuid.UUID) (*comment.CommentUser, error) {
-	var u user.User
-	if err := r.getDB(ctx).WithContext(ctx).
-		Where("id = ?", id.String()).
-		First(&u).Error; err != nil {
-		return nil, err
-	}
+// ----- helpers --------------------------------------------------------
 
-	cu := &comment.CommentUser{
-		ID:    u.ID,
-		Name:  u.GetFullName(),
-		Email: u.Email,
+func collectUserIDs(comments []*commentDomain.Comment) []uuid.UUID {
+	seen := make(map[uuid.UUID]struct{})
+	for _, c := range comments {
+		if c.CreatedBy != nil {
+			seen[*c.CreatedBy] = struct{}{}
+		}
+		if c.UpdatedBy != nil {
+			seen[*c.UpdatedBy] = struct{}{}
+		}
 	}
-
-	var profile user.UserProfile
-	if err := r.getDB(ctx).WithContext(ctx).
-		Where("user_id = ?", id.String()).
-		First(&profile).Error; err == nil {
-		cu.AvatarURL = profile.AvatarURL
+	out := make([]uuid.UUID, 0, len(seen))
+	for id := range seen {
+		out = append(out, id)
 	}
+	return out
+}
 
-	return cu, nil
+func (r *CommentRepository) loadUsers(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]*commentDomain.CommentUser, error) {
+	out := make(map[uuid.UUID]*commentDomain.CommentUser)
+	if len(ids) == 0 {
+		return out, nil
+	}
+	rows, err := r.tm.Queries(ctx).ListUsersForCommentEnrichment(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("load comment users: %w", err)
+	}
+	for _, row := range rows {
+		out[row.ID] = &commentDomain.CommentUser{
+			ID:        row.ID,
+			Name:      row.FirstName + " " + row.LastName,
+			Email:     row.Email,
+			AvatarURL: row.AvatarUrl,
+		}
+	}
+	return out, nil
+}
+
+func withUser(c *commentDomain.Comment, users map[uuid.UUID]*commentDomain.CommentUser) *commentDomain.CommentWithUser {
+	cwu := &commentDomain.CommentWithUser{Comment: *c}
+	if c.CreatedBy != nil {
+		cwu.Author = users[*c.CreatedBy]
+	}
+	if c.UpdatedBy != nil {
+		cwu.Editor = users[*c.UpdatedBy]
+	}
+	return cwu
+}
+
+// ----- gen ↔ domain boundary -----------------------------------------
+
+func commentFromRow(row *gen.TraceComment) *commentDomain.Comment {
+	return &commentDomain.Comment{
+		ID:         row.ID,
+		EntityType: commentDomain.EntityType(row.EntityType),
+		EntityID:   row.EntityID,
+		ProjectID:  row.ProjectID,
+		ParentID:   row.ParentID,
+		Content:    row.Content,
+		CreatedBy:  row.CreatedBy,
+		UpdatedBy:  row.UpdatedBy,
+		CreatedAt:  row.CreatedAt,
+		UpdatedAt:  row.UpdatedAt,
+		DeletedAt:  row.DeletedAt,
+	}
 }

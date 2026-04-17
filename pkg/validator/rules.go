@@ -2,6 +2,7 @@ package validator
 
 import (
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -106,7 +107,7 @@ func ValidateAPIKeyData(data map[string]interface{}) error {
 		for i, perm := range permissions {
 			if permStr, ok := perm.(string); ok {
 				v.Custom(
-					"permissions["+string(rune(i))+"]",
+					"permissions["+strconv.Itoa(i)+"]",
 					permStr,
 					func(val interface{}) bool {
 						return IsValidPermission(val.(string))

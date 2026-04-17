@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/shopspring/decimal"
-	"gorm.io/gorm"
 
 	"github.com/google/uuid"
 
@@ -50,6 +50,7 @@ import (
 	"brokle/internal/ee/rbac"
 	"brokle/internal/ee/sso"
 	"brokle/internal/infrastructure/database"
+	"brokle/internal/infrastructure/db"
 	analyticsRepo "brokle/internal/infrastructure/repository/analytics"
 	annotationRepo "brokle/internal/infrastructure/repository/annotation"
 	authRepo "brokle/internal/infrastructure/repository/auth"
@@ -108,7 +109,11 @@ type ProviderContainer struct {
 }
 
 type DatabaseContainer struct {
-	Postgres   *database.PostgresDB
+	// Pool is the process-wide pgx v5 pool owned by this container.
+	// All repositories access PostgreSQL through TxManager, which wraps
+	// this pool; there is no second handle.
+	Pool       *pgxpool.Pool
+	TxManager  *db.TxManager
 	Redis      *database.RedisDB
 	ClickHouse *database.ClickHouseDB
 }
@@ -346,23 +351,27 @@ type AnnotationServices struct {
 }
 
 func ProvideDatabases(cfg *config.Config, logger *slog.Logger) (*DatabaseContainer, error) {
-	postgres, err := database.NewPostgresDB(cfg, logger)
+	pool, err := db.NewPool(context.Background(), cfg, logger)
 	if err != nil {
 		return nil, err
 	}
 
 	redis, err := database.NewRedisDB(cfg, logger)
 	if err != nil {
+		pool.Close()
 		return nil, err
 	}
 
 	clickhouse, err := database.NewClickHouseDB(cfg, logger)
 	if err != nil {
+		_ = redis.Close()
+		pool.Close()
 		return nil, err
 	}
 
 	return &DatabaseContainer{
-		Postgres:   postgres,
+		Pool:       pool,
+		TxManager:  db.NewTxManager(pool),
 		Redis:      redis,
 		ClickHouse: clickhouse,
 	}, nil
@@ -532,8 +541,10 @@ func ProvideCore(cfg *config.Config, logger *slog.Logger) (*CoreContainer, error
 
 	repos := ProvideRepositories(databases, logger)
 
-	// Concrete → interface for dependency inversion
-	transactor := database.NewTransactor(databases.Postgres.DB)
+	// The TxManager satisfies common.Transactor; services that need
+	// cross-aggregate writes (e.g. registration, annotation) take the
+	// transactor interface, and the sqlc-backed TxManager binds it.
+	transactor := databases.TxManager
 
 	return &CoreContainer{
 		Config:     cfg,
@@ -594,8 +605,8 @@ func ProvideServerServices(core *CoreContainer) *ServiceContainer {
 
 	// Comment service for trace/span comments (with reactions support)
 	commentSvc := commentService.NewCommentService(
-		commentRepo.NewCommentRepository(databases.Postgres.DB),
-		commentRepo.NewReactionRepository(databases.Postgres.DB),
+		commentRepo.NewCommentRepository(databases.TxManager),
+		commentRepo.NewReactionRepository(databases.TxManager),
 		repos.Observability.Trace,
 		logger,
 	)
@@ -795,6 +806,7 @@ func ProvideServer(core *CoreContainer) (*ServerContainer, error) {
 		core.Services.Auth.JWT,
 		core.Services.Auth.BlacklistedTokens,
 		core.Services.Auth.OrganizationMembers,
+		core.Services.ProjectService,
 		core.Services.Auth.APIKey,
 		core.Databases.Redis.Client,
 	)
@@ -846,37 +858,37 @@ func ProvideServer(core *CoreContainer) (*ServerContainer, error) {
 	}, nil
 }
 
-func ProvideUserRepositories(db *gorm.DB) *UserRepositories {
+func ProvideUserRepositories(tm *db.TxManager) *UserRepositories {
 	return &UserRepositories{
-		User: userRepo.NewUserRepository(db),
+		User: userRepo.NewUserRepository(tm),
 	}
 }
 
-func ProvideAuthRepositories(db *gorm.DB) *AuthRepositories {
+func ProvideAuthRepositories(tm *db.TxManager) *AuthRepositories {
 	return &AuthRepositories{
-		UserSession:        authRepo.NewUserSessionRepository(db),
-		BlacklistedToken:   authRepo.NewBlacklistedTokenRepository(db),
-		PasswordResetToken: authRepo.NewPasswordResetTokenRepository(db),
-		APIKey:             authRepo.NewAPIKeyRepository(db),
-		Role:               authRepo.NewRoleRepository(db),
-		OrganizationMember: authRepo.NewOrganizationMemberRepository(db),
-		Permission:         authRepo.NewPermissionRepository(db),
-		RolePermission:     authRepo.NewRolePermissionRepository(db),
-		AuditLog:           authRepo.NewAuditLogRepository(db),
+		UserSession:        authRepo.NewUserSessionRepository(tm),
+		BlacklistedToken:   authRepo.NewBlacklistedTokenRepository(tm),
+		PasswordResetToken: authRepo.NewPasswordResetTokenRepository(tm),
+		APIKey:             authRepo.NewAPIKeyRepository(tm),
+		Role:               authRepo.NewRoleRepository(tm),
+		OrganizationMember: authRepo.NewOrganizationMemberRepository(tm),
+		Permission:         authRepo.NewPermissionRepository(tm),
+		RolePermission:     authRepo.NewRolePermissionRepository(tm),
+		AuditLog:           authRepo.NewAuditLogRepository(tm),
 	}
 }
 
-func ProvideOrganizationRepositories(db *gorm.DB) *OrganizationRepositories {
+func ProvideOrganizationRepositories(tm *db.TxManager) *OrganizationRepositories {
 	return &OrganizationRepositories{
-		Organization: orgRepo.NewOrganizationRepository(db),
-		Member:       orgRepo.NewMemberRepository(db),
-		Project:      orgRepo.NewProjectRepository(db),
-		Invitation:   orgRepo.NewInvitationRepository(db),
-		Settings:     orgRepo.NewOrganizationSettingsRepository(db),
+		Organization: orgRepo.NewOrganizationRepository(tm),
+		Member:       orgRepo.NewMemberRepository(tm),
+		Project:      orgRepo.NewProjectRepository(tm),
+		Invitation:   orgRepo.NewInvitationRepository(tm),
+		Settings:     orgRepo.NewOrganizationSettingsRepository(tm),
 	}
 }
 
-func ProvideObservabilityRepositories(clickhouseDB *database.ClickHouseDB, postgresDB *gorm.DB, redisDB *database.RedisDB) *ObservabilityRepositories {
+func ProvideObservabilityRepositories(clickhouseDB *database.ClickHouseDB, tm *db.TxManager, redisDB *database.RedisDB) *ObservabilityRepositories {
 	return &ObservabilityRepositories{
 		Trace:                  observabilityRepo.NewTraceRepository(clickhouseDB.Conn),
 		Score:                  observabilityRepo.NewScoreRepository(clickhouseDB.Conn),
@@ -885,7 +897,7 @@ func ProvideObservabilityRepositories(clickhouseDB *database.ClickHouseDB, postg
 		Logs:                   observabilityRepo.NewLogsRepository(clickhouseDB.Conn),
 		GenAIEvents:            observabilityRepo.NewGenAIEventsRepository(clickhouseDB.Conn),
 		TelemetryDeduplication: observabilityRepo.NewTelemetryDeduplicationRepository(redisDB),
-		FilterPreset:           observabilityRepo.NewFilterPresetRepository(postgresDB),
+		FilterPreset:           observabilityRepo.NewFilterPresetRepository(tm),
 	}
 }
 
@@ -895,105 +907,105 @@ func ProvideStorageRepositories(clickhouseDB *database.ClickHouseDB) *StorageRep
 	}
 }
 
-func ProvideBillingRepositories(db *gorm.DB, clickhouseDB *database.ClickHouseDB, logger *slog.Logger) *BillingRepositories {
+func ProvideBillingRepositories(tm *db.TxManager, clickhouseDB *database.ClickHouseDB, logger *slog.Logger) *BillingRepositories {
 	return &BillingRepositories{
-		Usage:         billingRepo.NewUsageRepository(db, logger),
-		BillingRecord: billingRepo.NewBillingRecordRepository(db, logger),
-		Quota:         billingRepo.NewQuotaRepository(db, logger),
+		Usage:         billingRepo.NewUsageRepository(tm, logger),
+		BillingRecord: billingRepo.NewBillingRecordRepository(tm, logger),
+		Quota:         billingRepo.NewQuotaRepository(tm, logger),
 		// Usage-based billing repositories
 		BillableUsage:       billingRepo.NewBillableUsageRepository(clickhouseDB.Conn),
-		Plan:                billingRepo.NewPlanRepository(db),
-		OrganizationBilling: billingRepo.NewOrganizationBillingRepository(db),
-		UsageBudget:         billingRepo.NewUsageBudgetRepository(db),
-		UsageAlert:          billingRepo.NewUsageAlertRepository(db),
+		Plan:                billingRepo.NewPlanRepository(tm),
+		OrganizationBilling: billingRepo.NewOrganizationBillingRepository(tm),
+		UsageBudget:         billingRepo.NewUsageBudgetRepository(tm),
+		UsageAlert:          billingRepo.NewUsageAlertRepository(tm),
 		// Enterprise custom pricing repositories
-		Contract:        billingRepo.NewContractRepository(db),
-		VolumeTier:      billingRepo.NewVolumeDiscountTierRepository(db),
-		ContractHistory: billingRepo.NewContractHistoryRepository(db),
+		Contract:        billingRepo.NewContractRepository(tm),
+		VolumeTier:      billingRepo.NewVolumeDiscountTierRepository(tm),
+		ContractHistory: billingRepo.NewContractHistoryRepository(tm),
 	}
 }
 
-func ProvideAnalyticsRepositories(db *gorm.DB, clickhouseDB *database.ClickHouseDB) *AnalyticsRepositories {
+func ProvideAnalyticsRepositories(tm *db.TxManager, clickhouseDB *database.ClickHouseDB) *AnalyticsRepositories {
 	return &AnalyticsRepositories{
-		ProviderModel: analyticsRepo.NewProviderModelRepository(db),
+		ProviderModel: analyticsRepo.NewProviderModelRepository(tm),
 		Overview:      analyticsRepo.NewOverviewRepository(clickhouseDB.Conn),
 	}
 }
 
-func ProvidePromptRepositories(db *gorm.DB, redisDB *database.RedisDB) *PromptRepositories {
+func ProvidePromptRepositories(tm *db.TxManager, redisDB *database.RedisDB) *PromptRepositories {
 	return &PromptRepositories{
-		Prompt:         promptRepo.NewPromptRepository(db),
-		Version:        promptRepo.NewVersionRepository(db),
-		Label:          promptRepo.NewLabelRepository(db),
-		ProtectedLabel: promptRepo.NewProtectedLabelRepository(db),
+		Prompt:         promptRepo.NewPromptRepository(tm),
+		Version:        promptRepo.NewVersionRepository(tm),
+		Label:          promptRepo.NewLabelRepository(tm),
+		ProtectedLabel: promptRepo.NewProtectedLabelRepository(tm),
 		Cache:          promptRepo.NewCacheRepository(redisDB),
 	}
 }
 
-func ProvideCredentialsRepositories(db *gorm.DB) *CredentialsRepositories {
+func ProvideCredentialsRepositories(tm *db.TxManager) *CredentialsRepositories {
 	return &CredentialsRepositories{
-		ProviderCredential: credentialsRepo.NewProviderCredentialRepository(db),
+		ProviderCredential: credentialsRepo.NewProviderCredentialRepository(tm),
 	}
 }
 
-func ProvidePlaygroundRepositories(db *gorm.DB) *PlaygroundRepositories {
+func ProvidePlaygroundRepositories(tm *db.TxManager) *PlaygroundRepositories {
 	return &PlaygroundRepositories{
-		Session: playgroundRepo.NewSessionRepository(db),
+		Session: playgroundRepo.NewSessionRepository(tm),
 	}
 }
 
-func ProvideEvaluationRepositories(db *gorm.DB) *EvaluationRepositories {
+func ProvideEvaluationRepositories(tm *db.TxManager) *EvaluationRepositories {
 	return &EvaluationRepositories{
-		ScoreConfig:        evaluationRepo.NewScoreConfigRepository(db),
-		Dataset:            evaluationRepo.NewDatasetRepository(db),
-		DatasetItem:        evaluationRepo.NewDatasetItemRepository(db),
-		DatasetVersion:     evaluationRepo.NewDatasetVersionRepository(db),
-		Experiment:         evaluationRepo.NewExperimentRepository(db),
-		ExperimentItem:     evaluationRepo.NewExperimentItemRepository(db),
-		ExperimentConfig:   evaluationRepo.NewExperimentConfigRepository(db),
-		Evaluator:          evaluationRepo.NewEvaluatorRepository(db),
-		EvaluatorExecution: evaluationRepo.NewEvaluatorExecutionRepository(db),
+		ScoreConfig:        evaluationRepo.NewScoreConfigRepository(tm),
+		Dataset:            evaluationRepo.NewDatasetRepository(tm),
+		DatasetItem:        evaluationRepo.NewDatasetItemRepository(tm),
+		DatasetVersion:     evaluationRepo.NewDatasetVersionRepository(tm),
+		Experiment:         evaluationRepo.NewExperimentRepository(tm),
+		ExperimentItem:     evaluationRepo.NewExperimentItemRepository(tm),
+		ExperimentConfig:   evaluationRepo.NewExperimentConfigRepository(tm),
+		Evaluator:          evaluationRepo.NewEvaluatorRepository(tm),
+		EvaluatorExecution: evaluationRepo.NewEvaluatorExecutionRepository(tm),
 	}
 }
 
-func ProvideDashboardRepositories(db *gorm.DB, clickhouseDB *database.ClickHouseDB) *DashboardRepositories {
+func ProvideDashboardRepositories(tm *db.TxManager, clickhouseDB *database.ClickHouseDB) *DashboardRepositories {
 	return &DashboardRepositories{
-		Dashboard:   dashboardRepo.NewDashboardRepository(db),
+		Dashboard:   dashboardRepo.NewDashboardRepository(tm),
 		WidgetQuery: dashboardRepo.NewWidgetQueryRepository(clickhouseDB.Conn),
-		Template:    dashboardRepo.NewTemplateRepository(db),
+		Template:    dashboardRepo.NewTemplateRepository(tm),
 	}
 }
 
-func ProvideAnnotationRepositories(db *gorm.DB) *AnnotationRepositories {
+func ProvideAnnotationRepositories(tm *db.TxManager) *AnnotationRepositories {
 	return &AnnotationRepositories{
-		Queue:      annotationRepo.NewQueueRepository(db),
-		Item:       annotationRepo.NewItemRepository(db),
-		Assignment: annotationRepo.NewAssignmentRepository(db),
+		Queue:      annotationRepo.NewQueueRepository(tm),
+		Item:       annotationRepo.NewItemRepository(tm),
+		Assignment: annotationRepo.NewAssignmentRepository(tm),
 	}
 }
 
-func ProvideWebsiteRepositories(db *gorm.DB) *WebsiteRepositories {
+func ProvideWebsiteRepositories(tm *db.TxManager) *WebsiteRepositories {
 	return &WebsiteRepositories{
-		ContactSubmission: websiteRepo.NewContactSubmissionRepository(db),
+		ContactSubmission: websiteRepo.NewContactSubmissionRepository(tm),
 	}
 }
 
 func ProvideRepositories(dbs *DatabaseContainer, logger *slog.Logger) *RepositoryContainer {
 	return &RepositoryContainer{
-		User:          ProvideUserRepositories(dbs.Postgres.DB),
-		Auth:          ProvideAuthRepositories(dbs.Postgres.DB),
-		Organization:  ProvideOrganizationRepositories(dbs.Postgres.DB),
-		Observability: ProvideObservabilityRepositories(dbs.ClickHouse, dbs.Postgres.DB, dbs.Redis),
+		User:          ProvideUserRepositories(dbs.TxManager),
+		Auth:          ProvideAuthRepositories(dbs.TxManager),
+		Organization:  ProvideOrganizationRepositories(dbs.TxManager),
+		Observability: ProvideObservabilityRepositories(dbs.ClickHouse, dbs.TxManager, dbs.Redis),
 		Storage:       ProvideStorageRepositories(dbs.ClickHouse),
-		Billing:       ProvideBillingRepositories(dbs.Postgres.DB, dbs.ClickHouse, logger),
-		Analytics:     ProvideAnalyticsRepositories(dbs.Postgres.DB, dbs.ClickHouse),
-		Prompt:        ProvidePromptRepositories(dbs.Postgres.DB, dbs.Redis),
-		Credentials:   ProvideCredentialsRepositories(dbs.Postgres.DB),
-		Playground:    ProvidePlaygroundRepositories(dbs.Postgres.DB),
-		Evaluation:    ProvideEvaluationRepositories(dbs.Postgres.DB),
-		Dashboard:     ProvideDashboardRepositories(dbs.Postgres.DB, dbs.ClickHouse),
-		Annotation:    ProvideAnnotationRepositories(dbs.Postgres.DB),
-		Website:       ProvideWebsiteRepositories(dbs.Postgres.DB),
+		Billing:       ProvideBillingRepositories(dbs.TxManager, dbs.ClickHouse, logger),
+		Analytics:     ProvideAnalyticsRepositories(dbs.TxManager, dbs.ClickHouse),
+		Prompt:        ProvidePromptRepositories(dbs.TxManager, dbs.Redis),
+		Credentials:   ProvideCredentialsRepositories(dbs.TxManager),
+		Playground:    ProvidePlaygroundRepositories(dbs.TxManager),
+		Evaluation:    ProvideEvaluationRepositories(dbs.TxManager),
+		Dashboard:     ProvideDashboardRepositories(dbs.TxManager, dbs.ClickHouse),
+		Annotation:    ProvideAnnotationRepositories(dbs.TxManager),
+		Website:       ProvideWebsiteRepositories(dbs.TxManager),
 	}
 }
 
@@ -1567,8 +1579,8 @@ func (pc *ProviderContainer) HealthCheck() map[string]string {
 	health := make(map[string]string)
 
 	if pc.Core != nil && pc.Core.Databases != nil {
-		if pc.Core.Databases.Postgres != nil {
-			if err := pc.Core.Databases.Postgres.Health(); err != nil {
+		if pc.Core.Databases.Pool != nil {
+			if err := pc.Core.Databases.Pool.Ping(context.Background()); err != nil {
 				health["postgres"] = "unhealthy: " + err.Error()
 			} else {
 				health["postgres"] = "healthy"
@@ -1677,11 +1689,9 @@ func (pc *ProviderContainer) Shutdown() error {
 	}
 
 	if pc.Core != nil && pc.Core.Databases != nil {
-		if pc.Core.Databases.Postgres != nil {
-			if err := pc.Core.Databases.Postgres.Close(); err != nil {
-				logger.Error("Failed to close PostgreSQL connection", "error", err)
-				lastErr = err
-			}
+		if pc.Core.Databases.Pool != nil {
+			logger.Info("Closing pgx pool...")
+			pc.Core.Databases.Pool.Close()
 		}
 
 		if pc.Core.Databases.Redis != nil {

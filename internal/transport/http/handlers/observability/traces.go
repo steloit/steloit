@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"brokle/internal/core/domain/observability"
+	"brokle/internal/transport/http/middleware"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 )
@@ -86,14 +87,10 @@ func filterEmptyStrings(slice []string) []string {
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/traces [get]
 func (h *Handler) ListTraces(c *gin.Context) {
-	projectID := c.Query("project_id")
-	if projectID == "" {
-		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
-		return
-	}
-
+	// Project scoping + membership check is enforced by RequireProjectAccess
+	// middleware; the resolved projectID is pinned to the context.
 	filter := &observability.TraceFilter{
-		ProjectID: projectID,
+		ProjectID: middleware.MustGetProjectID(c).String(),
 	}
 
 	if sessionID := c.Query("session_id"); sessionID != "" {

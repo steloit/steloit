@@ -2,86 +2,145 @@ package billing
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
-	"github.com/shopspring/decimal"
-	"gorm.io/gorm"
-
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 
-	"brokle/internal/core/domain/billing"
-	"brokle/internal/infrastructure/shared"
+	billingDomain "brokle/internal/core/domain/billing"
+	"brokle/internal/infrastructure/db"
+	"brokle/internal/infrastructure/db/gen"
 )
 
+// organizationBillingRepository is the pgx+sqlc implementation of
+// billingDomain.OrganizationBillingRepository. Owns per-org billing
+// state: current-period counters, free-tier remaining, cycle dates.
 type organizationBillingRepository struct {
-	db *gorm.DB
+	tm *db.TxManager
 }
 
-func NewOrganizationBillingRepository(db *gorm.DB) billing.OrganizationBillingRepository {
-	return &organizationBillingRepository{db: db}
+// NewOrganizationBillingRepository returns the pgx-backed repository.
+func NewOrganizationBillingRepository(tm *db.TxManager) billingDomain.OrganizationBillingRepository {
+	return &organizationBillingRepository{tm: tm}
 }
 
-// getDB extracts transaction from context if available
-func (r *organizationBillingRepository) getDB(ctx context.Context) *gorm.DB {
-	return shared.GetDB(ctx, r.db)
-}
-
-func (r *organizationBillingRepository) GetByOrgID(ctx context.Context, orgID uuid.UUID) (*billing.OrganizationBilling, error) {
-	var orgBilling billing.OrganizationBilling
-	err := r.getDB(ctx).WithContext(ctx).Where("organization_id = ?", orgID).First(&orgBilling).Error
+func (r *organizationBillingRepository) GetByOrgID(ctx context.Context, orgID uuid.UUID) (*billingDomain.OrganizationBilling, error) {
+	row, err := r.tm.Queries(ctx).GetOrganizationBillingByOrgID(ctx, orgID)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, billing.NewBillingNotFoundError(orgID.String())
+		if db.IsNoRows(err) {
+			return nil, billingDomain.NewBillingNotFoundError(orgID.String())
 		}
-		return nil, fmt.Errorf("get organization billing: %w", err)
+		return nil, fmt.Errorf("get organization billing for %s: %w", orgID, err)
 	}
-	return &orgBilling, nil
+	return organizationBillingFromRow(&row), nil
 }
 
-func (r *organizationBillingRepository) Create(ctx context.Context, orgBilling *billing.OrganizationBilling) error {
-	return r.getDB(ctx).WithContext(ctx).Create(orgBilling).Error
+func (r *organizationBillingRepository) Create(ctx context.Context, b *billingDomain.OrganizationBilling) error {
+	now := time.Now()
+	if b.CreatedAt.IsZero() {
+		b.CreatedAt = now
+	}
+	if b.UpdatedAt.IsZero() {
+		b.UpdatedAt = now
+	}
+	if b.LastSyncedAt.IsZero() {
+		b.LastSyncedAt = now
+	}
+	if err := r.tm.Queries(ctx).CreateOrganizationBilling(ctx, gen.CreateOrganizationBillingParams{
+		OrganizationID:        b.OrganizationID,
+		PlanID:                b.PlanID,
+		BillingCycleStart:     b.BillingCycleStart,
+		BillingCycleAnchorDay: int32(b.BillingCycleAnchorDay),
+		CurrentPeriodSpans:    b.CurrentPeriodSpans,
+		CurrentPeriodBytes:    b.CurrentPeriodBytes,
+		CurrentPeriodScores:   b.CurrentPeriodScores,
+		CurrentPeriodCost:     b.CurrentPeriodCost,
+		FreeSpansRemaining:    b.FreeSpansRemaining,
+		FreeBytesRemaining:    b.FreeBytesRemaining,
+		FreeScoresRemaining:   b.FreeScoresRemaining,
+		LastSyncedAt:          b.LastSyncedAt,
+		CreatedAt:             b.CreatedAt,
+		UpdatedAt:             b.UpdatedAt,
+	}); err != nil {
+		return fmt.Errorf("create organization billing for %s: %w", b.OrganizationID, err)
+	}
+	return nil
 }
 
-func (r *organizationBillingRepository) Update(ctx context.Context, orgBilling *billing.OrganizationBilling) error {
-	orgBilling.UpdatedAt = time.Now()
-	return r.getDB(ctx).WithContext(ctx).Save(orgBilling).Error
+func (r *organizationBillingRepository) Update(ctx context.Context, b *billingDomain.OrganizationBilling) error {
+	b.UpdatedAt = time.Now()
+	if err := r.tm.Queries(ctx).UpdateOrganizationBilling(ctx, gen.UpdateOrganizationBillingParams{
+		OrganizationID:        b.OrganizationID,
+		PlanID:                b.PlanID,
+		BillingCycleStart:     b.BillingCycleStart,
+		BillingCycleAnchorDay: int32(b.BillingCycleAnchorDay),
+		CurrentPeriodSpans:    b.CurrentPeriodSpans,
+		CurrentPeriodBytes:    b.CurrentPeriodBytes,
+		CurrentPeriodScores:   b.CurrentPeriodScores,
+		CurrentPeriodCost:     b.CurrentPeriodCost,
+		FreeSpansRemaining:    b.FreeSpansRemaining,
+		FreeBytesRemaining:    b.FreeBytesRemaining,
+		FreeScoresRemaining:   b.FreeScoresRemaining,
+		LastSyncedAt:          b.LastSyncedAt,
+	}); err != nil {
+		return fmt.Errorf("update organization billing for %s: %w", b.OrganizationID, err)
+	}
+	return nil
 }
 
-// SetUsage sets cumulative usage counters and free tier remaining (idempotent - can be called multiple times safely)
-// This replaces values rather than adding, preventing race condition double-counting
-func (r *organizationBillingRepository) SetUsage(ctx context.Context, orgID uuid.UUID, spans, bytes, scores int64, cost decimal.Decimal, freeSpansRemaining, freeBytesRemaining, freeScoresRemaining int64) error {
-	return r.getDB(ctx).WithContext(ctx).
-		Model(&billing.OrganizationBilling{}).
-		Where("organization_id = ?", orgID).
-		Updates(map[string]interface{}{
-			"current_period_spans":  spans,
-			"current_period_bytes":  bytes,
-			"current_period_scores": scores,
-			"current_period_cost":   cost,
-			"free_spans_remaining":  freeSpansRemaining,
-			"free_bytes_remaining":  freeBytesRemaining,
-			"free_scores_remaining": freeScoresRemaining,
-			"last_synced_at":        time.Now(),
-			"updated_at":            time.Now(),
-		}).Error
+// SetUsage replaces cumulative usage counters + free-tier remaining
+// idempotently. Safe to call on worker retries — same inputs produce
+// the same row.
+func (r *organizationBillingRepository) SetUsage(
+	ctx context.Context,
+	orgID uuid.UUID,
+	spans, bytes, scores int64,
+	cost decimal.Decimal,
+	freeSpansRemaining, freeBytesRemaining, freeScoresRemaining int64,
+) error {
+	if err := r.tm.Queries(ctx).SetOrganizationBillingUsage(ctx, gen.SetOrganizationBillingUsageParams{
+		OrganizationID:      orgID,
+		CurrentPeriodSpans:  spans,
+		CurrentPeriodBytes:  bytes,
+		CurrentPeriodScores: scores,
+		CurrentPeriodCost:   cost,
+		FreeSpansRemaining:  freeSpansRemaining,
+		FreeBytesRemaining:  freeBytesRemaining,
+		FreeScoresRemaining: freeScoresRemaining,
+	}); err != nil {
+		return fmt.Errorf("set usage for org %s: %w", orgID, err)
+	}
+	return nil
 }
 
 func (r *organizationBillingRepository) ResetPeriod(ctx context.Context, orgID uuid.UUID, newCycleStart time.Time) error {
-	return r.getDB(ctx).WithContext(ctx).
-		Model(&billing.OrganizationBilling{}).
-		Where("organization_id = ?", orgID).
-		Updates(map[string]interface{}{
-			"billing_cycle_start":   newCycleStart,
-			"current_period_spans":  0,
-			"current_period_bytes":  0,
-			"current_period_scores": 0,
-			"current_period_cost":   0,
-			"free_spans_remaining":  gorm.Expr("(SELECT free_spans FROM plans WHERE id = organization_billing.plan_id)"),
-			"free_bytes_remaining":  gorm.Expr("(SELECT CAST(free_gb * 1073741824 AS BIGINT) FROM plans WHERE id = organization_billing.plan_id)"),
-			"free_scores_remaining": gorm.Expr("(SELECT free_scores FROM plans WHERE id = organization_billing.plan_id)"),
-			"last_synced_at":        time.Now(),
-			"updated_at":            time.Now(),
-		}).Error
+	if err := r.tm.Queries(ctx).ResetOrganizationBillingPeriod(ctx, gen.ResetOrganizationBillingPeriodParams{
+		OrganizationID:    orgID,
+		BillingCycleStart: newCycleStart,
+	}); err != nil {
+		return fmt.Errorf("reset billing period for org %s: %w", orgID, err)
+	}
+	return nil
+}
+
+// ----- gen ↔ domain boundary -----------------------------------------
+
+func organizationBillingFromRow(row *gen.OrganizationBilling) *billingDomain.OrganizationBilling {
+	return &billingDomain.OrganizationBilling{
+		OrganizationID:        row.OrganizationID,
+		PlanID:                row.PlanID,
+		BillingCycleStart:     row.BillingCycleStart,
+		BillingCycleAnchorDay: int(row.BillingCycleAnchorDay),
+		CurrentPeriodSpans:    row.CurrentPeriodSpans,
+		CurrentPeriodBytes:    row.CurrentPeriodBytes,
+		CurrentPeriodScores:   row.CurrentPeriodScores,
+		CurrentPeriodCost:     row.CurrentPeriodCost,
+		FreeSpansRemaining:    row.FreeSpansRemaining,
+		FreeBytesRemaining:    row.FreeBytesRemaining,
+		FreeScoresRemaining:   row.FreeScoresRemaining,
+		LastSyncedAt:          row.LastSyncedAt,
+		CreatedAt:             row.CreatedAt,
+		UpdatedAt:             row.UpdatedAt,
+	}
 }

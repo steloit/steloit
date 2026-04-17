@@ -2,25 +2,46 @@ package website
 
 import (
 	"context"
+	"fmt"
+	"time"
 
-	"gorm.io/gorm"
-
-	"brokle/internal/core/domain/website"
-	"brokle/internal/infrastructure/shared"
+	websiteDomain "brokle/internal/core/domain/website"
+	"brokle/internal/infrastructure/db"
+	"brokle/internal/infrastructure/db/gen"
 )
 
 type contactSubmissionRepository struct {
-	db *gorm.DB
+	tm *db.TxManager
 }
 
-func NewContactSubmissionRepository(db *gorm.DB) website.ContactSubmissionRepository {
-	return &contactSubmissionRepository{db: db}
+func NewContactSubmissionRepository(tm *db.TxManager) websiteDomain.ContactSubmissionRepository {
+	return &contactSubmissionRepository{tm: tm}
 }
 
-func (r *contactSubmissionRepository) getDB(ctx context.Context) *gorm.DB {
-	return shared.GetDB(ctx, r.db)
+func (r *contactSubmissionRepository) Create(ctx context.Context, s *websiteDomain.ContactSubmission) error {
+	if s.CreatedAt.IsZero() {
+		s.CreatedAt = time.Now()
+	}
+	if err := r.tm.Queries(ctx).CreateContactSubmission(ctx, gen.CreateContactSubmissionParams{
+		ID:          s.ID,
+		Name:        s.Name,
+		Email:       s.Email,
+		Company:     emptyToNilString(s.Company),
+		Subject:     s.Subject,
+		Message:     s.Message,
+		InquiryType: emptyToNilString(s.InquiryType),
+		IpAddress:   emptyToNilString(s.IPAddress),
+		UserAgent:   emptyToNilString(s.UserAgent),
+		CreatedAt:   s.CreatedAt,
+	}); err != nil {
+		return fmt.Errorf("create contact submission: %w", err)
+	}
+	return nil
 }
 
-func (r *contactSubmissionRepository) Create(ctx context.Context, submission *website.ContactSubmission) error {
-	return r.getDB(ctx).WithContext(ctx).Create(submission).Error
+func emptyToNilString(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }

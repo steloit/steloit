@@ -2,292 +2,272 @@ package auth
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"time"
-
-	"gorm.io/gorm"
 
 	"github.com/google/uuid"
 
 	authDomain "brokle/internal/core/domain/auth"
+	"brokle/internal/infrastructure/db"
+	"brokle/internal/infrastructure/db/gen"
 )
 
-// permissionRepository implements authDomain.PermissionRepository using GORM
+// permissionRepository is the pgx+sqlc implementation of
+// authDomain.PermissionRepository. Dynamic ILIKE-based search lives in
+// permission_filter.go (squirrel).
 type permissionRepository struct {
-	db *gorm.DB
+	tm *db.TxManager
 }
 
-// NewPermissionRepository creates a new permission repository instance
-func NewPermissionRepository(db *gorm.DB) authDomain.PermissionRepository {
-	return &permissionRepository{
-		db: db,
+// NewPermissionRepository returns the pgx-backed repository.
+func NewPermissionRepository(tm *db.TxManager) authDomain.PermissionRepository {
+	return &permissionRepository{tm: tm}
+}
+
+// ----- CRUD ----------------------------------------------------------
+
+func (r *permissionRepository) Create(ctx context.Context, p *authDomain.Permission) error {
+	if err := r.tm.Queries(ctx).CreatePermission(ctx, gen.CreatePermissionParams{
+		ID:          p.ID,
+		Name:        p.Name,
+		Resource:    p.Resource,
+		Action:      p.Action,
+		Description: emptyToNilString(p.Description),
+		ScopeLevel:  string(p.ScopeLevel),
+		Category:    emptyToNilString(p.Category),
+		CreatedAt:   p.CreatedAt,
+	}); err != nil {
+		return fmt.Errorf("create permission %s: %w", p.Name, err)
 	}
+	return nil
 }
 
-// Create creates a new permission
-func (r *permissionRepository) Create(ctx context.Context, permission *authDomain.Permission) error {
-	return r.db.WithContext(ctx).Create(permission).Error
-}
-
-// GetByID retrieves a permission by ID
 func (r *permissionRepository) GetByID(ctx context.Context, id uuid.UUID) (*authDomain.Permission, error) {
-	var permission authDomain.Permission
-	err := r.db.WithContext(ctx).Where("id = ?", id).First(&permission).Error
+	row, err := r.tm.Queries(ctx).GetPermissionByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("get permission by ID %s: %w", id, authDomain.ErrNotFound)
+		if db.IsNoRows(err) {
+			return nil, fmt.Errorf("get permission %s: %w", id, authDomain.ErrNotFound)
 		}
-		return nil, err
+		return nil, fmt.Errorf("get permission %s: %w", id, err)
 	}
-	return &permission, nil
+	return permissionFromRow(&row), nil
 }
 
-// GetByName retrieves a permission by name
 func (r *permissionRepository) GetByName(ctx context.Context, name string) (*authDomain.Permission, error) {
-	var permission authDomain.Permission
-	err := r.db.WithContext(ctx).Where("name = ?", name).First(&permission).Error
+	row, err := r.tm.Queries(ctx).GetPermissionByName(ctx, name)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if db.IsNoRows(err) {
 			return nil, fmt.Errorf("get permission by name %s: %w", name, authDomain.ErrNotFound)
 		}
-		return nil, err
+		return nil, fmt.Errorf("get permission by name %s: %w", name, err)
 	}
-	return &permission, nil
+	return permissionFromRow(&row), nil
 }
 
-// GetAll retrieves all permissions
+func (r *permissionRepository) GetByResourceAction(ctx context.Context, resource, action string) (*authDomain.Permission, error) {
+	row, err := r.tm.Queries(ctx).GetPermissionByResourceAction(ctx, gen.GetPermissionByResourceActionParams{
+		Resource: resource,
+		Action:   action,
+	})
+	if err != nil {
+		if db.IsNoRows(err) {
+			return nil, fmt.Errorf("get permission %s:%s: %w", resource, action, authDomain.ErrNotFound)
+		}
+		return nil, fmt.Errorf("get permission %s:%s: %w", resource, action, err)
+	}
+	return permissionFromRow(&row), nil
+}
+
+func (r *permissionRepository) Update(ctx context.Context, p *authDomain.Permission) error {
+	if err := r.tm.Queries(ctx).UpdatePermission(ctx, gen.UpdatePermissionParams{
+		ID:          p.ID,
+		Name:        p.Name,
+		Resource:    p.Resource,
+		Action:      p.Action,
+		Description: emptyToNilString(p.Description),
+		ScopeLevel:  string(p.ScopeLevel),
+		Category:    emptyToNilString(p.Category),
+	}); err != nil {
+		return fmt.Errorf("update permission %s: %w", p.ID, err)
+	}
+	return nil
+}
+
+func (r *permissionRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	if err := r.tm.Queries(ctx).DeletePermission(ctx, id); err != nil {
+		return fmt.Errorf("delete permission %s: %w", id, err)
+	}
+	return nil
+}
+
+// ----- Simple listings ----------------------------------------------
+
 func (r *permissionRepository) GetAll(ctx context.Context) ([]*authDomain.Permission, error) {
-	var permissions []*authDomain.Permission
-	err := r.db.WithContext(ctx).Order("category ASC, name ASC").Find(&permissions).Error
-	return permissions, err
+	rows, err := r.tm.Queries(ctx).ListAllPermissions(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list permissions: %w", err)
+	}
+	return permissionsFromRows(rows), nil
 }
 
-// GetAllPermissions retrieves all permissions (interface method)
+// GetAllPermissions is a legacy alias kept for the domain interface.
 func (r *permissionRepository) GetAllPermissions(ctx context.Context) ([]*authDomain.Permission, error) {
 	return r.GetAll(ctx)
 }
 
-// GetByNames retrieves permissions by names
 func (r *permissionRepository) GetByNames(ctx context.Context, names []string) ([]*authDomain.Permission, error) {
-	var permissions []*authDomain.Permission
-	err := r.db.WithContext(ctx).
-		Where("name IN ?", names).
-		Order("name ASC").
-		Find(&permissions).Error
-	return permissions, err
-}
-
-// Update updates a permission
-func (r *permissionRepository) Update(ctx context.Context, permission *authDomain.Permission) error {
-	return r.db.WithContext(ctx).Save(permission).Error
-}
-
-// Delete soft deletes a permission
-func (r *permissionRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	return r.db.WithContext(ctx).Model(&authDomain.Permission{}).Where("id = ?", id).Update("deleted_at", time.Now()).Error
-}
-
-// GetPermissionsByRoleID retrieves permissions for a specific role
-func (r *permissionRepository) GetPermissionsByRoleID(ctx context.Context, roleID uuid.UUID) ([]*authDomain.Permission, error) {
-	var permissions []*authDomain.Permission
-	err := r.db.WithContext(ctx).
-		Table("permissions").
-		Joins("JOIN role_permissions ON permissions.id = role_permissions.permission_id").
-		Where("role_permissions.role_id = ?", roleID).
-		Order("permissions.category ASC, permissions.name ASC").
-		Find(&permissions).Error
-	return permissions, err
-}
-
-// GetUserPermissions retrieves permissions for a user in an organization
-func (r *permissionRepository) GetUserPermissions(ctx context.Context, userID, orgID uuid.UUID) ([]*authDomain.Permission, error) {
-	var permissions []*authDomain.Permission
-	err := r.db.WithContext(ctx).
-		Table("permissions").
-		Joins("JOIN role_permissions ON permissions.id = role_permissions.permission_id").
-		Joins("JOIN roles ON role_permissions.role_id = roles.id").
-		Joins("JOIN organization_members ON roles.id = organization_members.role_id").
-		Where("organization_members.user_id = ? AND organization_members.organization_id = ?", userID, orgID).
-		Order("permissions.category ASC, permissions.resource ASC, permissions.action ASC").
-		Find(&permissions).Error
-	return permissions, err
-}
-
-// GetUserPermissionsByAPIKey retrieves permissions for a user through API key
-func (r *permissionRepository) GetUserPermissionsByAPIKey(ctx context.Context, apiKeyID uuid.UUID) ([]string, error) {
-	var permissionNames []string
-	err := r.db.WithContext(ctx).
-		Table("permissions").
-		Select("permissions.name").
-		Joins("JOIN role_permissions ON permissions.id = role_permissions.permission_id").
-		Joins("JOIN roles ON role_permissions.role_id = roles.id").
-		Joins("JOIN organization_members ON roles.id = organization_members.role_id").
-		Joins("JOIN api_keys ON organization_members.user_id = api_keys.user_id AND organization_members.organization_id = api_keys.organization_id").
-		Where("api_keys.id = ?", apiKeyID).
-		Pluck("permissions.name", &permissionNames).Error
-	return permissionNames, err
-}
-
-// GetByResourceAction retrieves permission by resource and action
-func (r *permissionRepository) GetByResourceAction(ctx context.Context, resource, action string) (*authDomain.Permission, error) {
-	var permission authDomain.Permission
-	err := r.db.WithContext(ctx).Where("resource = ? AND action = ?", resource, action).First(&permission).Error
+	rows, err := r.tm.Queries(ctx).ListPermissionsByNames(ctx, names)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("get permission by resource %s action %s: %w", resource, action, authDomain.ErrNotFound)
-		}
-		return nil, err
+		return nil, fmt.Errorf("list permissions by names: %w", err)
 	}
-	return &permission, nil
+	return permissionsFromRows(rows), nil
 }
 
-// GetByResource retrieves permissions for a specific resource
 func (r *permissionRepository) GetByResource(ctx context.Context, resource string) ([]*authDomain.Permission, error) {
-	var permissions []*authDomain.Permission
-	err := r.db.WithContext(ctx).
-		Where("resource = ?", resource).
-		Order("action ASC").
-		Find(&permissions).Error
-	return permissions, err
+	rows, err := r.tm.Queries(ctx).ListPermissionsByResource(ctx, resource)
+	if err != nil {
+		return nil, fmt.Errorf("list permissions by resource %s: %w", resource, err)
+	}
+	return permissionsFromRows(rows), nil
 }
 
-// GetByResourceActions retrieves permissions by resource:action format
 func (r *permissionRepository) GetByResourceActions(ctx context.Context, resourceActions []string) ([]*authDomain.Permission, error) {
-	var permissions []*authDomain.Permission
-	err := r.db.WithContext(ctx).
-		Where("resource_action IN ?", resourceActions).
-		Order("resource ASC, action ASC").
-		Find(&permissions).Error
-	return permissions, err
-}
-
-// ListPermissions returns paginated list of permissions with total count
-func (r *permissionRepository) ListPermissions(ctx context.Context, limit, offset int) ([]*authDomain.Permission, int, error) {
-	// Get total count
-	var total int64
-	if err := r.db.WithContext(ctx).Model(&authDomain.Permission{}).Count(&total).Error; err != nil {
-		return nil, 0, err
+	rows, err := r.tm.Queries(ctx).ListPermissionsByResourceActions(ctx, resourceActions)
+	if err != nil {
+		return nil, fmt.Errorf("list permissions by resource_actions: %w", err)
 	}
-
-	// Get permissions with cursor pagination (fetch +1 to detect has_next)
-	var permissions []*authDomain.Permission
-	err := r.db.WithContext(ctx).
-		Order("category ASC, resource ASC, action ASC, id ASC").
-		Limit(limit + 1). // Fetch extra for has_next detection
-		Find(&permissions).Error
-
-	return permissions, int(total), err
+	return permissionsFromRows(rows), nil
 }
 
-// SearchPermissions searches permissions with pagination
-func (r *permissionRepository) SearchPermissions(ctx context.Context, query string, limit, offset int) ([]*authDomain.Permission, int, error) {
-	searchPattern := "%" + query + "%"
-	dbQuery := r.db.WithContext(ctx).Where(
-		"(name ILIKE ? OR description ILIKE ? OR resource ILIKE ? OR action ILIKE ? OR category ILIKE ?)",
-		searchPattern, searchPattern, searchPattern, searchPattern, searchPattern,
-	)
-
-	// Get total count
-	var total int64
-	if err := dbQuery.Model(&authDomain.Permission{}).Count(&total).Error; err != nil {
-		return nil, 0, err
+func (r *permissionRepository) GetByScopeLevel(ctx context.Context, scopeLevel authDomain.ScopeLevel) ([]*authDomain.Permission, error) {
+	rows, err := r.tm.Queries(ctx).ListPermissionsByScopeLevel(ctx, string(scopeLevel))
+	if err != nil {
+		return nil, fmt.Errorf("list permissions by scope %s: %w", scopeLevel, err)
 	}
-
-	// Get permissions with cursor pagination (fetch +1 to detect has_next)
-	var permissions []*authDomain.Permission
-	err := dbQuery.
-		Order("category ASC, resource ASC, action ASC, id ASC").
-		Limit(limit + 1). // Fetch extra for has_next detection
-		Find(&permissions).Error
-
-	return permissions, int(total), err
+	return permissionsFromRows(rows), nil
 }
 
-// GetAvailableResources returns all distinct resources
+func (r *permissionRepository) GetByCategory(ctx context.Context, category string) ([]*authDomain.Permission, error) {
+	rows, err := r.tm.Queries(ctx).ListPermissionsByCategory(ctx, &category)
+	if err != nil {
+		return nil, fmt.Errorf("list permissions by category %s: %w", category, err)
+	}
+	return permissionsFromRows(rows), nil
+}
+
+func (r *permissionRepository) GetByScopeLevelAndCategory(ctx context.Context, scopeLevel authDomain.ScopeLevel, category string) ([]*authDomain.Permission, error) {
+	rows, err := r.tm.Queries(ctx).ListPermissionsByScopeAndCategory(ctx, gen.ListPermissionsByScopeAndCategoryParams{
+		ScopeLevel: string(scopeLevel),
+		Category:   &category,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list permissions by scope %s and category %s: %w", scopeLevel, category, err)
+	}
+	return permissionsFromRows(rows), nil
+}
+
+// ----- Aggregate helpers --------------------------------------------
+
 func (r *permissionRepository) GetAvailableResources(ctx context.Context) ([]string, error) {
-	var resources []string
-	err := r.db.WithContext(ctx).
-		Model(&authDomain.Permission{}).
-		Distinct("resource").
-		Where("resource IS NOT NULL AND resource != ''").
-		Order("resource ASC").
-		Pluck("resource", &resources).Error
-	return resources, err
+	resources, err := r.tm.Queries(ctx).ListDistinctResources(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list distinct resources: %w", err)
+	}
+	return resources, nil
 }
 
-// GetActionsForResource returns all actions for a specific resource
 func (r *permissionRepository) GetActionsForResource(ctx context.Context, resource string) ([]string, error) {
-	var actions []string
-	err := r.db.WithContext(ctx).
-		Model(&authDomain.Permission{}).
-		Where("resource = ?", resource).
-		Order("action ASC").
-		Pluck("action", &actions).Error
-	return actions, err
+	actions, err := r.tm.Queries(ctx).ListActionsForResource(ctx, resource)
+	if err != nil {
+		return nil, fmt.Errorf("list actions for resource %s: %w", resource, err)
+	}
+	return actions, nil
 }
 
-// GetPermissionCategories returns all distinct categories
 func (r *permissionRepository) GetPermissionCategories(ctx context.Context) ([]string, error) {
-	var categories []string
-	err := r.db.WithContext(ctx).
-		Model(&authDomain.Permission{}).
-		Distinct("category").
-		Where("category IS NOT NULL AND category != ''").
-		Order("category ASC").
-		Pluck("category", &categories).Error
-	return categories, err
-}
-
-// GetRolePermissionMap returns a map of resource:action -> true for a role
-func (r *permissionRepository) GetRolePermissionMap(ctx context.Context, roleID uuid.UUID) (map[string]bool, error) {
-	var resourceActions []string
-	err := r.db.WithContext(ctx).
-		Table("permissions").
-		Select("permissions.resource_action").
-		Joins("JOIN role_permissions ON permissions.id = role_permissions.permission_id").
-		Where("role_permissions.role_id = ?", roleID).
-		Pluck("permissions.resource_action", &resourceActions).Error
+	cats, err := r.tm.Queries(ctx).ListDistinctCategories(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list distinct categories: %w", err)
 	}
-
-	result := make(map[string]bool)
-	for _, resourceAction := range resourceActions {
-		result[resourceAction] = true
+	out := make([]string, 0, len(cats))
+	for _, c := range cats {
+		if c != nil {
+			out = append(out, *c)
+		}
 	}
-	return result, nil
+	return out, nil
 }
 
-// GetUserPermissionStrings returns user permissions as resource:action strings
+// GetAvailableCategories aliases GetPermissionCategories for the domain interface.
+func (r *permissionRepository) GetAvailableCategories(ctx context.Context) ([]string, error) {
+	return r.GetPermissionCategories(ctx)
+}
+
+// ----- Role / user permission joins ---------------------------------
+
+func (r *permissionRepository) GetPermissionsByRoleID(ctx context.Context, roleID uuid.UUID) ([]*authDomain.Permission, error) {
+	rows, err := r.tm.Queries(ctx).ListPermissionsForRole(ctx, roleID)
+	if err != nil {
+		return nil, fmt.Errorf("list permissions for role %s: %w", roleID, err)
+	}
+	return permissionsFromRows(rows), nil
+}
+
+func (r *permissionRepository) GetUserPermissions(ctx context.Context, userID, orgID uuid.UUID) ([]*authDomain.Permission, error) {
+	rows, err := r.tm.Queries(ctx).ListUserPermissionsInOrg(ctx, gen.ListUserPermissionsInOrgParams{
+		UserID:         userID,
+		OrganizationID: orgID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list user permissions (user=%s org=%s): %w", userID, orgID, err)
+	}
+	return permissionsFromRows(rows), nil
+}
+
 func (r *permissionRepository) GetUserPermissionStrings(ctx context.Context, userID, orgID uuid.UUID) ([]string, error) {
-	var resourceActions []string
-	err := r.db.WithContext(ctx).
-		Table("permissions").
-		Select("permissions.resource_action").
-		Joins("JOIN role_permissions ON permissions.id = role_permissions.permission_id").
-		Joins("JOIN roles ON role_permissions.role_id = roles.id").
-		Joins("JOIN organization_members ON roles.id = organization_members.role_id").
-		Where("organization_members.user_id = ? AND organization_members.organization_id = ?", userID, orgID).
-		Pluck("permissions.resource_action", &resourceActions).Error
-	return resourceActions, err
+	strs, err := r.tm.Queries(ctx).ListUserResourceActionsInOrg(ctx, gen.ListUserResourceActionsInOrgParams{
+		UserID:         userID,
+		OrganizationID: orgID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list user resource_actions (user=%s org=%s): %w", userID, orgID, err)
+	}
+	return strs, nil
 }
 
-// GetUserEffectivePermissions returns effective permissions as map
 func (r *permissionRepository) GetUserEffectivePermissions(ctx context.Context, userID, orgID uuid.UUID) (map[string]bool, error) {
-	resourceActions, err := r.GetUserPermissionStrings(ctx, userID, orgID)
+	strs, err := r.GetUserPermissionStrings(ctx, userID, orgID)
 	if err != nil {
 		return nil, err
 	}
-
-	result := make(map[string]bool)
-	for _, resourceAction := range resourceActions {
-		result[resourceAction] = true
+	result := make(map[string]bool, len(strs))
+	for _, ra := range strs {
+		result[ra] = true
 	}
 	return result, nil
 }
 
-// ValidateResourceAction validates resource:action format
+func (r *permissionRepository) GetRolePermissionMap(ctx context.Context, roleID uuid.UUID) (map[string]bool, error) {
+	strs, err := r.tm.Queries(ctx).ListResourceActionsForRolePermissions(ctx, roleID)
+	if err != nil {
+		return nil, fmt.Errorf("list resource_actions for role %s: %w", roleID, err)
+	}
+	result := make(map[string]bool, len(strs))
+	for _, ra := range strs {
+		result[ra] = true
+	}
+	return result, nil
+}
+
+func (r *permissionRepository) GetUserPermissionsByAPIKey(ctx context.Context, apiKeyID uuid.UUID) ([]string, error) {
+	names, err := r.tm.Queries(ctx).ListPermissionNamesForAPIKey(ctx, apiKeyID)
+	if err != nil {
+		return nil, fmt.Errorf("list permission names for api_key %s: %w", apiKeyID, err)
+	}
+	return names, nil
+}
+
+// ----- Existence checks ---------------------------------------------
+
 func (r *permissionRepository) ValidateResourceAction(ctx context.Context, resource, action string) error {
 	if resource == "" {
 		return fmt.Errorf("validate permission resource: %w", authDomain.ErrInvalidCredentials)
@@ -298,119 +278,112 @@ func (r *permissionRepository) ValidateResourceAction(ctx context.Context, resou
 	return nil
 }
 
-// PermissionExists checks if a permission exists by resource:action
 func (r *permissionRepository) PermissionExists(ctx context.Context, resource, action string) (bool, error) {
-	resourceAction := resource + ":" + action
-	var count int64
-	err := r.db.WithContext(ctx).
-		Model(&authDomain.Permission{}).
-		Where("resource_action = ?", resourceAction).
-		Count(&count).Error
-	return count > 0, err
+	ok, err := r.tm.Queries(ctx).ExistsPermissionByResourceAction(ctx, gen.ExistsPermissionByResourceActionParams{
+		Resource: resource,
+		Action:   action,
+	})
+	if err != nil {
+		return false, fmt.Errorf("check permission %s:%s: %w", resource, action, err)
+	}
+	return ok, nil
 }
 
-// BulkPermissionExists checks multiple permissions at once
 func (r *permissionRepository) BulkPermissionExists(ctx context.Context, resourceActions []string) (map[string]bool, error) {
-	var existingActions []string
-	err := r.db.WithContext(ctx).
-		Model(&authDomain.Permission{}).
-		Where("resource_action IN ?", resourceActions).
-		Pluck("resource_action", &existingActions).Error
+	existing, err := r.tm.Queries(ctx).ListExistingResourceActions(ctx, resourceActions)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list existing resource_actions: %w", err)
 	}
-
-	result := make(map[string]bool)
-	existingSet := make(map[string]bool)
-	for _, action := range existingActions {
-		existingSet[action] = true
+	existingSet := make(map[string]struct{}, len(existing))
+	for _, ra := range existing {
+		existingSet[ra] = struct{}{}
 	}
-
-	for _, resourceAction := range resourceActions {
-		result[resourceAction] = existingSet[resourceAction]
+	result := make(map[string]bool, len(resourceActions))
+	for _, ra := range resourceActions {
+		_, ok := existingSet[ra]
+		result[ra] = ok
 	}
-
 	return result, nil
 }
 
-// BulkCreate creates multiple permissions
+// ----- Bulk writes --------------------------------------------------
+
 func (r *permissionRepository) BulkCreate(ctx context.Context, permissions []*authDomain.Permission) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		for _, permission := range permissions {
-			if err := tx.Create(permission).Error; err != nil {
-				return err
+	if len(permissions) == 0 {
+		return nil
+	}
+	return r.tm.WithinTransaction(ctx, func(ctx context.Context) error {
+		q := r.tm.Queries(ctx)
+		for _, p := range permissions {
+			if err := q.CreatePermission(ctx, gen.CreatePermissionParams{
+				ID:          p.ID,
+				Name:        p.Name,
+				Resource:    p.Resource,
+				Action:      p.Action,
+				Description: emptyToNilString(p.Description),
+				ScopeLevel:  string(p.ScopeLevel),
+				Category:    emptyToNilString(p.Category),
+				CreatedAt:   p.CreatedAt,
+			}); err != nil {
+				return fmt.Errorf("bulk-create permission %s: %w", p.Name, err)
 			}
 		}
 		return nil
 	})
 }
 
-// BulkUpdate updates multiple permissions
 func (r *permissionRepository) BulkUpdate(ctx context.Context, permissions []*authDomain.Permission) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		for _, permission := range permissions {
-			if err := tx.Save(permission).Error; err != nil {
-				return err
+	if len(permissions) == 0 {
+		return nil
+	}
+	return r.tm.WithinTransaction(ctx, func(ctx context.Context) error {
+		q := r.tm.Queries(ctx)
+		for _, p := range permissions {
+			if err := q.UpdatePermission(ctx, gen.UpdatePermissionParams{
+				ID:          p.ID,
+				Name:        p.Name,
+				Resource:    p.Resource,
+				Action:      p.Action,
+				Description: emptyToNilString(p.Description),
+				ScopeLevel:  string(p.ScopeLevel),
+				Category:    emptyToNilString(p.Category),
+			}); err != nil {
+				return fmt.Errorf("bulk-update permission %s: %w", p.ID, err)
 			}
 		}
 		return nil
 	})
 }
 
-// BulkDelete deletes multiple permissions
 func (r *permissionRepository) BulkDelete(ctx context.Context, permissionIDs []uuid.UUID) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		for _, id := range permissionIDs {
-			if err := tx.Model(&authDomain.Permission{}).Where("id = ?", id).Update("deleted_at", time.Now()).Error; err != nil {
-				return err
-			}
-		}
+	if len(permissionIDs) == 0 {
 		return nil
-	})
+	}
+	if _, err := r.tm.Queries(ctx).DeletePermissionsIn(ctx, permissionIDs); err != nil {
+		return fmt.Errorf("bulk-delete permissions: %w", err)
+	}
+	return nil
 }
 
-// ========================================
-// NEW: Scope-Level Query Methods
-// ========================================
+// ----- gen ↔ domain boundary ----------------------------------------
 
-// GetByScopeLevel retrieves all permissions for a specific scope level
-func (r *permissionRepository) GetByScopeLevel(ctx context.Context, scopeLevel authDomain.ScopeLevel) ([]*authDomain.Permission, error) {
-	var permissions []*authDomain.Permission
-	err := r.db.WithContext(ctx).
-		Where("scope_level = ?", scopeLevel).
-		Order("category ASC, resource ASC, action ASC").
-		Find(&permissions).Error
-	return permissions, err
+func permissionFromRow(row *gen.Permission) *authDomain.Permission {
+	return &authDomain.Permission{
+		ID:          row.ID,
+		Name:        row.Name,
+		Resource:    row.Resource,
+		Action:      row.Action,
+		Description: derefString(row.Description),
+		ScopeLevel:  authDomain.ScopeLevel(row.ScopeLevel),
+		Category:    derefString(row.Category),
+		CreatedAt:   row.CreatedAt,
+	}
 }
 
-// GetByCategory retrieves all permissions for a specific category
-func (r *permissionRepository) GetByCategory(ctx context.Context, category string) ([]*authDomain.Permission, error) {
-	var permissions []*authDomain.Permission
-	err := r.db.WithContext(ctx).
-		Where("category = ?", category).
-		Order("resource ASC, action ASC").
-		Find(&permissions).Error
-	return permissions, err
-}
-
-// GetByScopeLevelAndCategory retrieves permissions filtered by both scope level and category
-func (r *permissionRepository) GetByScopeLevelAndCategory(ctx context.Context, scopeLevel authDomain.ScopeLevel, category string) ([]*authDomain.Permission, error) {
-	var permissions []*authDomain.Permission
-	err := r.db.WithContext(ctx).
-		Where("scope_level = ? AND category = ?", scopeLevel, category).
-		Order("resource ASC, action ASC").
-		Find(&permissions).Error
-	return permissions, err
-}
-
-// GetAvailableCategories returns all distinct categories
-func (r *permissionRepository) GetAvailableCategories(ctx context.Context) ([]string, error) {
-	var categories []string
-	err := r.db.WithContext(ctx).
-		Model(&authDomain.Permission{}).
-		Distinct("category").
-		Where("category IS NOT NULL AND category != ''").
-		Order("category ASC").
-		Pluck("category", &categories).Error
-	return categories, err
+func permissionsFromRows(rows []gen.Permission) []*authDomain.Permission {
+	out := make([]*authDomain.Permission, 0, len(rows))
+	for i := range rows {
+		out = append(out, permissionFromRow(&rows[i]))
+	}
+	return out
 }

@@ -8,8 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-
-	"gorm.io/gorm"
 )
 
 // WidgetType defines the type of widget
@@ -145,24 +143,20 @@ type DashboardConfig struct {
 
 // Dashboard represents a project dashboard with widget configurations.
 type Dashboard struct {
-	ID          uuid.UUID       `json:"id" gorm:"type:uuid;primaryKey"`
-	ProjectID   uuid.UUID       `json:"project_id" gorm:"type:uuid;not null"`
-	Name        string          `json:"name" gorm:"size:255;not null"`
-	Description string          `json:"description,omitempty" gorm:"type:text"`
-	Config      DashboardConfig `json:"config" gorm:"type:jsonb;serializer:json"`
-	Layout      []LayoutItem    `json:"layout" gorm:"type:jsonb;serializer:json"`
-	IsLocked    bool            `json:"is_locked" gorm:"default:false"`
-	CreatedBy   *uuid.UUID      `json:"created_by,omitempty" gorm:"type:uuid"`
+	ID          uuid.UUID       `json:"id"`
+	ProjectID   uuid.UUID       `json:"project_id"`
+	Name        string          `json:"name"`
+	Description string          `json:"description,omitempty"`
+	Config      DashboardConfig `json:"config"`
+	Layout      []LayoutItem    `json:"layout"`
+	IsLocked    bool            `json:"is_locked"`
+	CreatedBy   *uuid.UUID      `json:"created_by,omitempty"`
 	CreatedAt   time.Time       `json:"created_at"`
 	UpdatedAt   time.Time       `json:"updated_at"`
-	DeletedAt   gorm.DeletedAt  `json:"deleted_at,omitempty" gorm:"index" swaggertype:"string"`
+	DeletedAt   *time.Time      `json:"deleted_at,omitempty" swaggertype:"string"`
 }
 
 // TableName returns the database table name for Dashboard.
-func (Dashboard) TableName() string {
-	return "dashboards"
-}
-
 // CreateDashboardRequest represents the request to create a new dashboard.
 type CreateDashboardRequest struct {
 	Name        string          `json:"name" binding:"required,min=1,max=255"`
@@ -216,22 +210,18 @@ func (tc TemplateCategory) IsValid() bool {
 
 // Template represents a pre-defined dashboard template.
 type Template struct {
-	ID          uuid.UUID        `json:"id" gorm:"type:uuid;primaryKey"`
-	Name        string           `json:"name" gorm:"size:255;not null;uniqueIndex"`
-	Description string           `json:"description,omitempty" gorm:"type:text"`
-	Category    TemplateCategory `json:"category" gorm:"size:100;not null;index"`
-	Config      DashboardConfig  `json:"config" gorm:"type:jsonb;serializer:json"`
-	Layout      []LayoutItem     `json:"layout" gorm:"type:jsonb;serializer:json"`
-	IsActive    bool             `json:"is_active" gorm:"default:true;index"`
+	ID          uuid.UUID        `json:"id"`
+	Name        string           `json:"name"`
+	Description string           `json:"description,omitempty"`
+	Category    TemplateCategory `json:"category"`
+	Config      DashboardConfig  `json:"config"`
+	Layout      []LayoutItem     `json:"layout"`
+	IsActive    bool             `json:"is_active"`
 	CreatedAt   time.Time        `json:"created_at"`
 	UpdatedAt   time.Time        `json:"updated_at"`
 }
 
 // TableName returns the database table name for Template.
-func (Template) TableName() string {
-	return "dashboard_templates"
-}
-
 // TemplateFilter represents filters for template queries.
 type TemplateFilter struct {
 	Category *TemplateCategory

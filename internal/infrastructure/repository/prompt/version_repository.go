@@ -2,178 +2,165 @@ package prompt
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 	"fmt"
-
-	"github.com/lib/pq"
-	"gorm.io/gorm"
 
 	"github.com/google/uuid"
 
 	promptDomain "brokle/internal/core/domain/prompt"
-	"brokle/internal/infrastructure/shared"
+	"brokle/internal/infrastructure/db"
+	"brokle/internal/infrastructure/db/gen"
 )
 
-// versionRepository implements promptDomain.VersionRepository using GORM
 type versionRepository struct {
-	db *gorm.DB
+	tm *db.TxManager
 }
 
-// NewVersionRepository creates a new version repository instance
-func NewVersionRepository(db *gorm.DB) promptDomain.VersionRepository {
-	return &versionRepository{
-		db: db,
+func NewVersionRepository(tm *db.TxManager) promptDomain.VersionRepository {
+	return &versionRepository{tm: tm}
+}
+
+func (r *versionRepository) Create(ctx context.Context, v *promptDomain.Version) error {
+	var cfg json.RawMessage
+	if v.Config != nil {
+		b, err := json.Marshal(v.Config)
+		if err != nil {
+			return fmt.Errorf("marshal config: %w", err)
+		}
+		cfg = b
 	}
+	if err := r.tm.Queries(ctx).CreatePromptVersion(ctx, gen.CreatePromptVersionParams{
+		ID:            v.ID,
+		PromptID:      v.PromptID,
+		Version:       int32(v.Version),
+		Template:      json.RawMessage(v.Template),
+		Variables:     db.NonNilStrings(v.Variables),
+		CommitMessage: nilIfEmptyPrompt(v.CommitMessage),
+		CreatedBy:     v.CreatedBy,
+		Config:        cfg,
+	}); err != nil {
+		return fmt.Errorf("create prompt version: %w", err)
+	}
+	return nil
 }
 
-// getDB returns transaction-aware DB instance
-func (r *versionRepository) getDB(ctx context.Context) *gorm.DB {
-	return shared.GetDB(ctx, r.db)
-}
-
-// Create creates a new version
-func (r *versionRepository) Create(ctx context.Context, version *promptDomain.Version) error {
-	return r.getDB(ctx).WithContext(ctx).Create(version).Error
-}
-
-// GetByID retrieves a version by ID
 func (r *versionRepository) GetByID(ctx context.Context, id uuid.UUID) (*promptDomain.Version, error) {
-	var version promptDomain.Version
-	err := r.getDB(ctx).WithContext(ctx).
-		Where("id = ?", id).
-		First(&version).Error
+	row, err := r.tm.Queries(ctx).GetPromptVersionByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if db.IsNoRows(err) {
 			return nil, fmt.Errorf("get version by ID %s: %w", id, promptDomain.ErrVersionNotFound)
 		}
 		return nil, err
 	}
-	return &version, nil
+	return versionFromRow(&row)
 }
 
-// Delete deletes a version (versions should generally not be deleted)
 func (r *versionRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	return r.getDB(ctx).WithContext(ctx).Where("id = ?", id).Delete(&promptDomain.Version{}).Error
+	return r.tm.Queries(ctx).DeletePromptVersion(ctx, id)
 }
 
-// GetByPromptAndVersion retrieves a specific version of a prompt
 func (r *versionRepository) GetByPromptAndVersion(ctx context.Context, promptID uuid.UUID, version int) (*promptDomain.Version, error) {
-	var v promptDomain.Version
-	err := r.getDB(ctx).WithContext(ctx).
-		Where("prompt_id = ? AND version = ?", promptID, version).
-		First(&v).Error
+	row, err := r.tm.Queries(ctx).GetPromptVersionByPromptAndVersion(ctx, gen.GetPromptVersionByPromptAndVersionParams{
+		PromptID: promptID,
+		Version:  int32(version),
+	})
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if db.IsNoRows(err) {
 			return nil, fmt.Errorf("get version %d: %w", version, promptDomain.ErrVersionNotFound)
 		}
 		return nil, err
 	}
-	return &v, nil
+	return versionFromRow(&row)
 }
 
-// GetLatestByPrompt retrieves the latest version of a prompt
 func (r *versionRepository) GetLatestByPrompt(ctx context.Context, promptID uuid.UUID) (*promptDomain.Version, error) {
-	var version promptDomain.Version
-	err := r.getDB(ctx).WithContext(ctx).
-		Where("prompt_id = ?", promptID).
-		Order("version DESC").
-		First(&version).Error
+	row, err := r.tm.Queries(ctx).GetLatestPromptVersion(ctx, promptID)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if db.IsNoRows(err) {
 			return nil, fmt.Errorf("get latest version: %w", promptDomain.ErrVersionNotFound)
 		}
 		return nil, err
 	}
-	return &version, nil
+	return versionFromRow(&row)
 }
 
-// ListByPrompt retrieves all versions of a prompt
 func (r *versionRepository) ListByPrompt(ctx context.Context, promptID uuid.UUID) ([]*promptDomain.Version, error) {
-	var versions []*promptDomain.Version
-	err := r.getDB(ctx).WithContext(ctx).
-		Where("prompt_id = ?", promptID).
-		Order("version DESC").
-		Find(&versions).Error
-	return versions, err
+	rows, err := r.tm.Queries(ctx).ListPromptVersions(ctx, promptID)
+	if err != nil {
+		return nil, err
+	}
+	return versionsFromRows(rows)
 }
 
-// GetNextVersionNumber atomically gets the next version number for a prompt.
-// Uses FOR UPDATE locking to prevent race conditions when called within a transaction.
+// GetNextVersionNumber acquires FOR UPDATE locks on existing versions
+// for the prompt, computes MAX(version)+1, and returns it. Safe for
+// concurrent callers when invoked inside a transaction: the locks are
+// held until commit, serializing concurrent inserts through the
+// (prompt_id, version) unique constraint.
 func (r *versionRepository) GetNextVersionNumber(ctx context.Context, promptID uuid.UUID) (int, error) {
-	var nextVersion int
-	// Subquery pattern: PostgreSQL disallows FOR UPDATE with aggregate functions
-	err := r.getDB(ctx).WithContext(ctx).
-		Raw(`
-			SELECT COALESCE(MAX(version), 0) + 1
-			FROM (
-				SELECT version
-				FROM prompt_versions
-				WHERE prompt_id = ?
-				FOR UPDATE
-			) locked_rows
-		`, promptID).
-		Scan(&nextVersion).Error
+	n, err := r.tm.Queries(ctx).GetNextPromptVersionNumber(ctx, promptID)
 	if err != nil {
 		return 0, err
 	}
-	return nextVersion, nil
+	return int(n), nil
 }
 
-// CountByPrompt counts versions for a prompt
 func (r *versionRepository) CountByPrompt(ctx context.Context, promptID uuid.UUID) (int64, error) {
-	var count int64
-	err := r.getDB(ctx).WithContext(ctx).
-		Model(&promptDomain.Version{}).
-		Where("prompt_id = ?", promptID).
-		Count(&count).Error
-	return count, err
+	return r.tm.Queries(ctx).CountPromptVersions(ctx, promptID)
 }
 
-// GetLatestByPrompts retrieves the latest version for multiple prompts in a single query
-// This is a batch operation to avoid N+1 query problems
 func (r *versionRepository) GetLatestByPrompts(ctx context.Context, promptIDs []uuid.UUID) ([]*promptDomain.Version, error) {
 	if len(promptIDs) == 0 {
 		return []*promptDomain.Version{}, nil
 	}
-
-	// pq.Array required: GORM Raw() doesn't expand slices for PostgreSQL arrays
-	ids := make([]string, len(promptIDs))
-	for i, id := range promptIDs {
-		ids[i] = id.String()
-	}
-
-	var versions []*promptDomain.Version
-	err := r.getDB(ctx).WithContext(ctx).
-		Raw(`
-			SELECT DISTINCT ON (prompt_id) *
-			FROM prompt_versions
-			WHERE prompt_id = ANY(?)
-			ORDER BY prompt_id, version DESC
-		`, pq.Array(ids)).
-		Scan(&versions).Error
-
+	rows, err := r.tm.Queries(ctx).GetLatestPromptVersionsForPrompts(ctx, promptIDs)
 	if err != nil {
 		return nil, err
 	}
-
-	return versions, nil
+	return versionsFromRows(rows)
 }
 
-// GetByIDs retrieves multiple versions by their IDs in a single query
-// This is a batch operation to avoid N+1 query problems
 func (r *versionRepository) GetByIDs(ctx context.Context, versionIDs []uuid.UUID) ([]*promptDomain.Version, error) {
 	if len(versionIDs) == 0 {
 		return []*promptDomain.Version{}, nil
 	}
-
-	var versions []*promptDomain.Version
-	err := r.getDB(ctx).WithContext(ctx).
-		Where("id IN ?", versionIDs).
-		Find(&versions).Error
-
+	rows, err := r.tm.Queries(ctx).ListPromptVersionsByIDs(ctx, versionIDs)
 	if err != nil {
 		return nil, err
 	}
+	return versionsFromRows(rows)
+}
 
-	return versions, nil
+func versionFromRow(row *gen.PromptVersion) (*promptDomain.Version, error) {
+	v := &promptDomain.Version{
+		ID:        row.ID,
+		PromptID:  row.PromptID,
+		Version:   int(row.Version),
+		Template:  promptDomain.JSON(row.Template),
+		Variables: row.Variables,
+		CreatedBy: row.CreatedBy,
+		CreatedAt: row.CreatedAt,
+	}
+	if row.CommitMessage != nil {
+		v.CommitMessage = *row.CommitMessage
+	}
+	if len(row.Config) > 0 {
+		v.Config = &promptDomain.ModelConfig{}
+		if err := json.Unmarshal(row.Config, v.Config); err != nil {
+			return nil, fmt.Errorf("unmarshal config: %w", err)
+		}
+	}
+	return v, nil
+}
+
+func versionsFromRows(rows []gen.PromptVersion) ([]*promptDomain.Version, error) {
+	out := make([]*promptDomain.Version, 0, len(rows))
+	for i := range rows {
+		v, err := versionFromRow(&rows[i])
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, v)
+	}
+	return out, nil
 }

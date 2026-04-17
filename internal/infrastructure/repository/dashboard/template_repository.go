@@ -2,138 +2,196 @@ package dashboard
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 	"fmt"
 
-	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
-
 	"github.com/google/uuid"
+	sq "github.com/Masterminds/squirrel"
 
 	dashboardDomain "brokle/internal/core/domain/dashboard"
+	"brokle/internal/infrastructure/db"
+	"brokle/internal/infrastructure/db/gen"
 )
 
-// templateRepository implements dashboardDomain.TemplateRepository using GORM
+// templateRepository is the pgx+sqlc implementation of
+// dashboardDomain.TemplateRepository. List uses squirrel because the
+// is_active filter has a default ("active only when unspecified")
+// branch that doesn't compose cleanly as a sqlc parameter.
 type templateRepository struct {
-	db *gorm.DB
+	tm *db.TxManager
 }
 
-// NewTemplateRepository creates a new template repository instance
-func NewTemplateRepository(db *gorm.DB) dashboardDomain.TemplateRepository {
-	return &templateRepository{
-		db: db,
-	}
+func NewTemplateRepository(tm *db.TxManager) dashboardDomain.TemplateRepository {
+	return &templateRepository{tm: tm}
 }
 
-// List retrieves all active templates with optional filtering
 func (r *templateRepository) List(ctx context.Context, filter *dashboardDomain.TemplateFilter) ([]*dashboardDomain.Template, error) {
-	var templates []*dashboardDomain.Template
+	b := sq.Select(
+		"id", "name", "description", "category",
+		"config", "layout", "is_active",
+		"created_at", "updated_at",
+	).From("dashboard_templates").OrderBy("name ASC")
 
-	query := r.db.WithContext(ctx).Model(&dashboardDomain.Template{})
-
-	// Default to active templates only
+	// Default visibility rule: active only unless the caller says otherwise.
 	if filter == nil || filter.IsActive == nil {
-		query = query.Where("is_active = ?", true)
+		b = b.Where(sq.Eq{"is_active": true})
 	} else {
-		query = query.Where("is_active = ?", *filter.IsActive)
+		b = b.Where(sq.Eq{"is_active": *filter.IsActive})
 	}
-
 	if filter != nil && filter.Category != nil {
-		query = query.Where("category = ?", *filter.Category)
+		b = b.Where(sq.Eq{"category": string(*filter.Category)})
 	}
 
-	query = query.Order("name ASC")
-
-	if err := query.Find(&templates).Error; err != nil {
+	sqlStr, args, err := b.PlaceholderFormat(sq.Dollar).ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("build template list query: %w", err)
+	}
+	rows, err := r.tm.DB(ctx).Query(ctx, sqlStr, args...)
+	if err != nil {
 		return nil, fmt.Errorf("list templates: %w", err)
 	}
-
-	return templates, nil
+	defer rows.Close()
+	out := make([]*dashboardDomain.Template, 0)
+	for rows.Next() {
+		t := &dashboardDomain.Template{}
+		var (
+			description *string
+			cfgRaw      json.RawMessage
+			layoutRaw   json.RawMessage
+		)
+		if err := rows.Scan(
+			&t.ID, &t.Name, &description, &t.Category,
+			&cfgRaw, &layoutRaw, &t.IsActive,
+			&t.CreatedAt, &t.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan template row: %w", err)
+		}
+		if description != nil {
+			t.Description = *description
+		}
+		if err := unmarshalDashboardContent(cfgRaw, layoutRaw, &t.Config, &t.Layout); err != nil {
+			return nil, err
+		}
+		out = append(out, t)
+	}
+	return out, rows.Err()
 }
 
-// GetByID retrieves a template by its ID
 func (r *templateRepository) GetByID(ctx context.Context, id uuid.UUID) (*dashboardDomain.Template, error) {
-	var template dashboardDomain.Template
-	err := r.db.WithContext(ctx).
-		Where("id = ?", id).
-		First(&template).Error
+	row, err := r.tm.Queries(ctx).GetDashboardTemplateByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if db.IsNoRows(err) {
 			return nil, fmt.Errorf("get template by ID %s: %w", id, dashboardDomain.ErrTemplateNotFound)
 		}
 		return nil, fmt.Errorf("get template by ID %s: %w", id, err)
 	}
-	return &template, nil
+	return templateFromRow(&row)
 }
 
-// GetByName retrieves a template by its name
 func (r *templateRepository) GetByName(ctx context.Context, name string) (*dashboardDomain.Template, error) {
-	var template dashboardDomain.Template
-	err := r.db.WithContext(ctx).
-		Where("name = ?", name).
-		First(&template).Error
+	row, err := r.tm.Queries(ctx).GetDashboardTemplateByName(ctx, name)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if db.IsNoRows(err) {
 			return nil, fmt.Errorf("get template by name %s: %w", name, dashboardDomain.ErrTemplateNotFound)
 		}
 		return nil, fmt.Errorf("get template by name %s: %w", name, err)
 	}
-	return &template, nil
+	return templateFromRow(&row)
 }
 
-// GetByCategory retrieves a template by its category
 func (r *templateRepository) GetByCategory(ctx context.Context, category dashboardDomain.TemplateCategory) (*dashboardDomain.Template, error) {
-	var template dashboardDomain.Template
-	err := r.db.WithContext(ctx).
-		Where("category = ? AND is_active = ?", category, true).
-		First(&template).Error
+	row, err := r.tm.Queries(ctx).GetActiveDashboardTemplateByCategory(ctx, string(category))
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if db.IsNoRows(err) {
 			return nil, fmt.Errorf("get template by category %s: %w", category, dashboardDomain.ErrTemplateNotFound)
 		}
 		return nil, fmt.Errorf("get template by category %s: %w", category, err)
 	}
-	return &template, nil
+	return templateFromRow(&row)
 }
 
-// Create creates a new template
-func (r *templateRepository) Create(ctx context.Context, template *dashboardDomain.Template) error {
-	if err := r.db.WithContext(ctx).Create(template).Error; err != nil {
+func (r *templateRepository) Create(ctx context.Context, t *dashboardDomain.Template) error {
+	cfg, layout, err := marshalDashboardContent(&t.Config, t.Layout)
+	if err != nil {
+		return fmt.Errorf("create template: %w", err)
+	}
+	if err := r.tm.Queries(ctx).CreateDashboardTemplate(ctx, gen.CreateDashboardTemplateParams{
+		ID:          t.ID,
+		Name:        t.Name,
+		Description: nilIfEmptyDash(t.Description),
+		Category:    string(t.Category),
+		Config:      cfg,
+		Layout:      layout,
+		IsActive:    t.IsActive,
+	}); err != nil {
 		return fmt.Errorf("create template: %w", err)
 	}
 	return nil
 }
 
-// Update updates an existing template
-func (r *templateRepository) Update(ctx context.Context, template *dashboardDomain.Template) error {
-	if err := r.db.WithContext(ctx).Save(template).Error; err != nil {
+func (r *templateRepository) Update(ctx context.Context, t *dashboardDomain.Template) error {
+	cfg, layout, err := marshalDashboardContent(&t.Config, t.Layout)
+	if err != nil {
+		return fmt.Errorf("update template: %w", err)
+	}
+	if err := r.tm.Queries(ctx).UpdateDashboardTemplate(ctx, gen.UpdateDashboardTemplateParams{
+		ID:          t.ID,
+		Name:        t.Name,
+		Description: nilIfEmptyDash(t.Description),
+		Category:    string(t.Category),
+		Config:      cfg,
+		Layout:      layout,
+		IsActive:    t.IsActive,
+	}); err != nil {
 		return fmt.Errorf("update template: %w", err)
 	}
 	return nil
 }
 
-// Delete removes a template by its ID
 func (r *templateRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	result := r.db.WithContext(ctx).Delete(&dashboardDomain.Template{}, "id = ?", id)
-	if result.Error != nil {
-		return fmt.Errorf("delete template: %w", result.Error)
+	n, err := r.tm.Queries(ctx).DeleteDashboardTemplate(ctx, id)
+	if err != nil {
+		return fmt.Errorf("delete template: %w", err)
 	}
-	if result.RowsAffected == 0 {
+	if n == 0 {
 		return dashboardDomain.ErrTemplateNotFound
 	}
 	return nil
 }
 
-// Upsert creates or updates a template by name (used for seeding)
-func (r *templateRepository) Upsert(ctx context.Context, template *dashboardDomain.Template) error {
-	err := r.db.WithContext(ctx).
-		Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "name"}},
-			UpdateAll: true,
-		}).
-		Create(template).Error
+func (r *templateRepository) Upsert(ctx context.Context, t *dashboardDomain.Template) error {
+	cfg, layout, err := marshalDashboardContent(&t.Config, t.Layout)
 	if err != nil {
 		return fmt.Errorf("upsert template: %w", err)
 	}
+	if err := r.tm.Queries(ctx).UpsertDashboardTemplateByName(ctx, gen.UpsertDashboardTemplateByNameParams{
+		ID:          t.ID,
+		Name:        t.Name,
+		Description: nilIfEmptyDash(t.Description),
+		Category:    string(t.Category),
+		Config:      cfg,
+		Layout:      layout,
+		IsActive:    t.IsActive,
+	}); err != nil {
+		return fmt.Errorf("upsert template: %w", err)
+	}
 	return nil
+}
+
+func templateFromRow(row *gen.DashboardTemplate) (*dashboardDomain.Template, error) {
+	t := &dashboardDomain.Template{
+		ID:        row.ID,
+		Name:      row.Name,
+		Category:  dashboardDomain.TemplateCategory(row.Category),
+		IsActive:  row.IsActive,
+		CreatedAt: row.CreatedAt,
+		UpdatedAt: row.UpdatedAt,
+	}
+	if row.Description != nil {
+		t.Description = *row.Description
+	}
+	if err := unmarshalDashboardContent(row.Config, row.Layout, &t.Config, &t.Layout); err != nil {
+		return nil, err
+	}
+	return t, nil
 }

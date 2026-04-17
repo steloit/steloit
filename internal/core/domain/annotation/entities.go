@@ -128,24 +128,20 @@ func (s QueueSettings) GetLockDuration() time.Duration {
 // AnnotationQueue represents a configuration for organizing annotation tasks.
 // Design informed by Langfuse (5-min leasing) and Opik (instructions field).
 type AnnotationQueue struct {
-	ID             uuid.UUID     `json:"id" gorm:"type:uuid;primaryKey"`
-	ProjectID      uuid.UUID     `json:"project_id" gorm:"type:uuid;not null;index"`
-	Name           string        `json:"name" gorm:"type:varchar(255);not null"`
-	Description    *string       `json:"description,omitempty" gorm:"type:text"`
-	Instructions   *string       `json:"instructions,omitempty" gorm:"type:text"`                         // Annotation guidelines (from Opik pattern)
-	ScoreConfigIDs []string      `json:"score_config_ids" gorm:"type:jsonb;serializer:json;default:'[]'"` // Which scores to collect
-	Status         QueueStatus   `json:"status" gorm:"type:varchar(20);not null;default:'active'"`
-	Settings       QueueSettings `json:"settings" gorm:"type:jsonb;serializer:json"` // Lock timeout, auto-assignment, etc.
-	CreatedBy      *uuid.UUID    `json:"created_by,omitempty" gorm:"type:uuid"`
-	CreatedAt      time.Time     `json:"created_at" gorm:"not null;autoCreateTime"`
-	UpdatedAt      time.Time     `json:"updated_at" gorm:"not null;autoUpdateTime"`
+	ID             uuid.UUID     `json:"id"`
+	ProjectID      uuid.UUID     `json:"project_id"`
+	Name           string        `json:"name"`
+	Description    *string       `json:"description,omitempty"`
+	Instructions   *string       `json:"instructions,omitempty"`                         // Annotation guidelines (from Opik pattern)
+	ScoreConfigIDs []string      `json:"score_config_ids"` // Which scores to collect
+	Status         QueueStatus   `json:"status"`
+	Settings       QueueSettings `json:"settings"` // Lock timeout, auto-assignment, etc.
+	CreatedBy      *uuid.UUID    `json:"created_by,omitempty"`
+	CreatedAt      time.Time     `json:"created_at"`
+	UpdatedAt      time.Time     `json:"updated_at"`
 }
 
 // TableName returns the database table name for GORM.
-func (AnnotationQueue) TableName() string {
-	return "annotation_queues"
-}
-
 // NewAnnotationQueue creates a new annotation queue with default settings.
 func NewAnnotationQueue(projectID uuid.UUID, name string) *AnnotationQueue {
 	now := time.Now()
@@ -201,26 +197,22 @@ func (q *AnnotationQueue) GetLockDuration() time.Duration {
 // QueueItem represents an individual item pending human review in an annotation queue.
 // Design follows Langfuse pattern: dual-user tracking (locked_by vs annotator_user_id).
 type QueueItem struct {
-	ID              uuid.UUID              `json:"id" gorm:"type:uuid;primaryKey"`
-	QueueID         uuid.UUID              `json:"queue_id" gorm:"type:uuid;not null;index"`
-	ObjectID        string                 `json:"object_id" gorm:"type:varchar(32);not null"` // trace_id or span_id
-	ObjectType      ObjectType             `json:"object_type" gorm:"type:varchar(20);not null"`
-	Status          ItemStatus             `json:"status" gorm:"type:varchar(20);not null;default:'pending'"`
-	Priority        int                    `json:"priority" gorm:"not null;default:0"`           // Higher = more urgent
+	ID              uuid.UUID              `json:"id"`
+	QueueID         uuid.UUID              `json:"queue_id"`
+	ObjectID        string                 `json:"object_id"` // trace_id or span_id
+	ObjectType      ObjectType             `json:"object_type"`
+	Status          ItemStatus             `json:"status"`
+	Priority        int                    `json:"priority"`           // Higher = more urgent
 	LockedAt        *time.Time             `json:"locked_at,omitempty"`                          // When item was locked for review
-	LockedByUserID  *uuid.UUID             `json:"locked_by_user_id,omitempty" gorm:"type:uuid"` // Who currently holds the lock
-	AnnotatorUserID *uuid.UUID             `json:"annotator_user_id,omitempty" gorm:"type:uuid"` // Who completed the annotation
+	LockedByUserID  *uuid.UUID             `json:"locked_by_user_id,omitempty"` // Who currently holds the lock
+	AnnotatorUserID *uuid.UUID             `json:"annotator_user_id,omitempty"` // Who completed the annotation
 	CompletedAt     *time.Time             `json:"completed_at,omitempty"`
-	Metadata        map[string]interface{} `json:"metadata,omitempty" gorm:"type:jsonb;serializer:json;default:'{}'"` // Source info, sampling reason, etc.
-	CreatedAt       time.Time              `json:"created_at" gorm:"not null;autoCreateTime"`
-	UpdatedAt       time.Time              `json:"updated_at" gorm:"not null;autoUpdateTime"`
+	Metadata        map[string]interface{} `json:"metadata,omitempty"` // Source info, sampling reason, etc.
+	CreatedAt       time.Time              `json:"created_at"`
+	UpdatedAt       time.Time              `json:"updated_at"`
 }
 
 // TableName returns the database table name for GORM.
-func (QueueItem) TableName() string {
-	return "annotation_queue_items"
-}
-
 // NewQueueItem creates a new queue item with default values.
 func NewQueueItem(queueID uuid.UUID, objectID string, objectType ObjectType) *QueueItem {
 	now := time.Now()
@@ -338,19 +330,15 @@ func (i *QueueItem) Skip(userID uuid.UUID) {
 // QueueAssignment represents a user's assignment to an annotation queue.
 // Defines who can annotate items in a queue and their role.
 type QueueAssignment struct {
-	ID         uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey"`
-	QueueID    uuid.UUID      `json:"queue_id" gorm:"type:uuid;not null;index"`
-	UserID     uuid.UUID      `json:"user_id" gorm:"type:uuid;not null;index"`
-	Role       AssignmentRole `json:"role" gorm:"type:varchar(20);not null;default:'annotator'"`
-	AssignedAt time.Time      `json:"assigned_at" gorm:"not null;autoCreateTime"`
-	AssignedBy *uuid.UUID     `json:"assigned_by,omitempty" gorm:"type:uuid"`
+	ID         uuid.UUID      `json:"id"`
+	QueueID    uuid.UUID      `json:"queue_id"`
+	UserID     uuid.UUID      `json:"user_id"`
+	Role       AssignmentRole `json:"role"`
+	AssignedAt time.Time      `json:"assigned_at"`
+	AssignedBy *uuid.UUID     `json:"assigned_by,omitempty"`
 }
 
 // TableName returns the database table name for GORM.
-func (QueueAssignment) TableName() string {
-	return "annotation_queue_assignments"
-}
-
 // NewQueueAssignment creates a new queue assignment.
 func NewQueueAssignment(queueID, userID uuid.UUID, role AssignmentRole) *QueueAssignment {
 	return &QueueAssignment{

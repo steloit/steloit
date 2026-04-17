@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
-	"gorm.io/datatypes"
 
 	"github.com/google/uuid"
 
@@ -213,7 +212,7 @@ func (s *contractService) ActivateContract(ctx context.Context, contractID uuid.
 
 		if err := s.contractRepo.Update(ctx, contract); err != nil {
 			// Check for unique constraint violation (race condition caught by database)
-			if appErrors.IsDatabaseUniqueViolation(err) {
+			if appErrors.IsUniqueViolation(err) {
 				return appErrors.NewConflictError("Another contract was activated concurrently for this organization")
 			}
 			return appErrors.NewInternalError("Failed to activate contract", err)
@@ -579,7 +578,7 @@ func (s *contractService) logContractActionTx(
 		Action:     action,
 		ChangedBy:  changedBy,
 		ChangedAt:  time.Now(),
-		Changes:    datatypes.JSON(changesJSON),
+		Changes:    json.RawMessage(changesJSON),
 		Reason:     reason,
 	}
 

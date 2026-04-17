@@ -2,242 +2,279 @@ package evaluation
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
+	sq "github.com/Masterminds/squirrel"
 
-	"brokle/internal/core/domain/evaluation"
-	"brokle/internal/infrastructure/shared"
+	evalDomain "brokle/internal/core/domain/evaluation"
+	"brokle/internal/infrastructure/db"
+	"brokle/internal/infrastructure/db/gen"
+	appErrors "brokle/pkg/errors"
 	"brokle/pkg/pagination"
-
-	"gorm.io/gorm"
 )
 
 type DatasetRepository struct {
-	db *gorm.DB
+	tm *db.TxManager
 }
 
-func NewDatasetRepository(db *gorm.DB) *DatasetRepository {
-	return &DatasetRepository{db: db}
+func NewDatasetRepository(tm *db.TxManager) *DatasetRepository {
+	return &DatasetRepository{tm: tm}
 }
 
-// getDB returns transaction-aware DB instance
-func (r *DatasetRepository) getDB(ctx context.Context) *gorm.DB {
-	return shared.GetDB(ctx, r.db)
-}
-
-func (r *DatasetRepository) Create(ctx context.Context, dataset *evaluation.Dataset) error {
-	result := r.getDB(ctx).WithContext(ctx).Create(dataset)
-	if result.Error != nil {
-		if isUniqueViolation(result.Error) {
-			return evaluation.ErrDatasetExists
+func (r *DatasetRepository) Create(ctx context.Context, d *evalDomain.Dataset) error {
+	meta, err := marshalEvalJSON(d.Metadata)
+	if err != nil {
+		return err
+	}
+	if err := r.tm.Queries(ctx).CreateDataset(ctx, gen.CreateDatasetParams{
+		ID:               d.ID,
+		ProjectID:        d.ProjectID,
+		Name:             d.Name,
+		Description:      d.Description,
+		Metadata:         meta,
+		CurrentVersionID: d.CurrentVersionID,
+	}); err != nil {
+		if appErrors.IsUniqueViolation(err) {
+			return evalDomain.ErrDatasetExists
 		}
-		return result.Error
+		return err
 	}
 	return nil
 }
 
-func (r *DatasetRepository) GetByID(ctx context.Context, id uuid.UUID, projectID uuid.UUID) (*evaluation.Dataset, error) {
-	var dataset evaluation.Dataset
-	result := r.getDB(ctx).WithContext(ctx).
-		Where("id = ? AND project_id = ?", id.String(), projectID.String()).
-		First(&dataset)
-
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, evaluation.ErrDatasetNotFound
+func (r *DatasetRepository) GetByID(ctx context.Context, id, projectID uuid.UUID) (*evalDomain.Dataset, error) {
+	row, err := r.tm.Queries(ctx).GetDatasetByID(ctx, gen.GetDatasetByIDParams{
+		ID:        id,
+		ProjectID: projectID,
+	})
+	if err != nil {
+		if db.IsNoRows(err) {
+			return nil, evalDomain.ErrDatasetNotFound
 		}
-		return nil, result.Error
+		return nil, err
 	}
-	return &dataset, nil
+	return datasetFromRow(&row)
 }
 
-func (r *DatasetRepository) GetByName(ctx context.Context, projectID uuid.UUID, name string) (*evaluation.Dataset, error) {
-	var dataset evaluation.Dataset
-	result := r.getDB(ctx).WithContext(ctx).
-		Where("project_id = ? AND name = ?", projectID.String(), name).
-		First(&dataset)
-
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+func (r *DatasetRepository) GetByName(ctx context.Context, projectID uuid.UUID, name string) (*evalDomain.Dataset, error) {
+	row, err := r.tm.Queries(ctx).GetDatasetByName(ctx, gen.GetDatasetByNameParams{
+		ProjectID: projectID,
+		Name:      name,
+	})
+	if err != nil {
+		if db.IsNoRows(err) {
 			return nil, nil
 		}
-		return nil, result.Error
+		return nil, err
 	}
-	return &dataset, nil
+	return datasetFromRow(&row)
 }
 
-func (r *DatasetRepository) List(ctx context.Context, projectID uuid.UUID, filter *evaluation.DatasetFilter, offset, limit int) ([]*evaluation.Dataset, int64, error) {
-	var datasets []*evaluation.Dataset
-	var total int64
-
-	query := r.getDB(ctx).WithContext(ctx).
-		Where("project_id = ?", projectID.String())
-
-	// Apply search filter
+func (r *DatasetRepository) List(ctx context.Context, projectID uuid.UUID, filter *evalDomain.DatasetFilter, offset, limit int) ([]*evalDomain.Dataset, int64, error) {
+	base := sq.Select().From("datasets").Where(sq.Eq{"project_id": projectID})
 	if filter != nil && filter.Search != nil && *filter.Search != "" {
-		search := "%" + strings.ToLower(*filter.Search) + "%"
-		query = query.Where("LOWER(name) LIKE ? OR LOWER(description) LIKE ?", search, search)
+		p := "%" + strings.ToLower(*filter.Search) + "%"
+		base = base.Where(sq.Or{
+			sq.Expr("LOWER(name) LIKE ?", p),
+			sq.Expr("LOWER(description) LIKE ?", p),
+		})
 	}
 
-	if err := query.Model(&evaluation.Dataset{}).Count(&total).Error; err != nil {
+	cntSQL, cntArgs, err := base.Columns("COUNT(*)").PlaceholderFormat(sq.Dollar).ToSql()
+	if err != nil {
+		return nil, 0, err
+	}
+	var total int64
+	if err := r.tm.DB(ctx).QueryRow(ctx, cntSQL, cntArgs...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 
-	result := query.Order("created_at DESC").
-		Offset(offset).
-		Limit(limit).
-		Find(&datasets)
-
-	if result.Error != nil {
-		return nil, 0, result.Error
+	selSQL, selArgs, err := base.Columns(datasetColumns...).
+		OrderBy("created_at DESC").Offset(uint64(offset)).Limit(uint64(limit)).
+		PlaceholderFormat(sq.Dollar).ToSql()
+	if err != nil {
+		return nil, 0, err
 	}
-	return datasets, total, nil
+	rows, err := r.tm.DB(ctx).Query(ctx, selSQL, selArgs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	out := make([]*evalDomain.Dataset, 0)
+	for rows.Next() {
+		d, err := scanDataset(rows)
+		if err != nil {
+			return nil, 0, err
+		}
+		out = append(out, d)
+	}
+	return out, total, rows.Err()
 }
 
-func (r *DatasetRepository) Update(ctx context.Context, dataset *evaluation.Dataset, projectID uuid.UUID) error {
-	result := r.getDB(ctx).WithContext(ctx).
-		Where("id = ? AND project_id = ?", dataset.ID.String(), projectID.String()).
-		Save(dataset)
-
-	if result.Error != nil {
-		if isUniqueViolation(result.Error) {
-			return evaluation.ErrDatasetExists
-		}
-		return result.Error
+func (r *DatasetRepository) Update(ctx context.Context, d *evalDomain.Dataset, projectID uuid.UUID) error {
+	meta, err := marshalEvalJSON(d.Metadata)
+	if err != nil {
+		return err
 	}
-
-	if result.RowsAffected == 0 {
-		return evaluation.ErrDatasetNotFound
+	n, err := r.tm.Queries(ctx).UpdateDataset(ctx, gen.UpdateDatasetParams{
+		ID:               d.ID,
+		ProjectID:        projectID,
+		Name:             d.Name,
+		Description:      d.Description,
+		Metadata:         meta,
+		CurrentVersionID: d.CurrentVersionID,
+	})
+	if err != nil {
+		if appErrors.IsUniqueViolation(err) {
+			return evalDomain.ErrDatasetExists
+		}
+		return err
+	}
+	if n == 0 {
+		return evalDomain.ErrDatasetNotFound
 	}
 	return nil
 }
 
-func (r *DatasetRepository) Delete(ctx context.Context, id uuid.UUID, projectID uuid.UUID) error {
-	result := r.getDB(ctx).WithContext(ctx).
-		Where("id = ? AND project_id = ?", id.String(), projectID.String()).
-		Delete(&evaluation.Dataset{})
-
-	if result.Error != nil {
-		return result.Error
+func (r *DatasetRepository) Delete(ctx context.Context, id, projectID uuid.UUID) error {
+	n, err := r.tm.Queries(ctx).DeleteDataset(ctx, gen.DeleteDatasetParams{
+		ID:        id,
+		ProjectID: projectID,
+	})
+	if err != nil {
+		return err
 	}
-
-	if result.RowsAffected == 0 {
-		return evaluation.ErrDatasetNotFound
+	if n == 0 {
+		return evalDomain.ErrDatasetNotFound
 	}
 	return nil
 }
 
 func (r *DatasetRepository) ExistsByName(ctx context.Context, projectID uuid.UUID, name string) (bool, error) {
-	var count int64
-	result := r.getDB(ctx).WithContext(ctx).
-		Model(&evaluation.Dataset{}).
-		Where("project_id = ? AND name = ?", projectID.String(), name).
-		Count(&count)
-
-	if result.Error != nil {
-		return false, result.Error
-	}
-	return count > 0, nil
+	return r.tm.Queries(ctx).DatasetExistsByName(ctx, gen.DatasetExistsByNameParams{
+		ProjectID: projectID,
+		Name:      name,
+	})
 }
 
-// ListWithFilters returns datasets with filtering, sorting, and pagination, including item counts.
-// Allowed sort fields: name, created_at, updated_at, item_count
+// ListWithFilters returns datasets with item counts, via a LEFT JOIN
+// against a count subquery so sort-by-item_count works for pagination.
 func (r *DatasetRepository) ListWithFilters(
 	ctx context.Context,
 	projectID uuid.UUID,
-	filter *evaluation.DatasetFilter,
+	filter *evalDomain.DatasetFilter,
 	params pagination.Params,
-) ([]*evaluation.DatasetWithItemCount, int64, error) {
-	// Allowed sort fields for SQL injection prevention
-	allowedSortFields := []string{"name", "created_at", "updated_at", "item_count"}
-
-	// Validate and set defaults for pagination params
+) ([]*evalDomain.DatasetWithItemCount, int64, error) {
+	allowed := []string{"name", "created_at", "updated_at", "item_count"}
 	params.SetDefaults("updated_at")
-	if _, err := pagination.ValidateSortField(params.SortBy, allowedSortFields); err != nil {
+	if _, err := pagination.ValidateSortField(params.SortBy, allowed); err != nil {
 		params.SortBy = "updated_at"
 	}
 
-	// Build base query for counting (without sorting and pagination)
-	baseQuery := r.getDB(ctx).WithContext(ctx).
-		Model(&evaluation.Dataset{}).
-		Where("project_id = ?", projectID.String())
-
-	// Apply search filter if provided
+	base := sq.Select().From("datasets d").Where(sq.Eq{"d.project_id": projectID})
 	if filter != nil && filter.Search != nil && *filter.Search != "" {
-		searchPattern := "%" + strings.ToLower(*filter.Search) + "%"
-		baseQuery = baseQuery.Where("LOWER(name) LIKE ?", searchPattern)
+		p := "%" + strings.ToLower(*filter.Search) + "%"
+		base = base.Where(sq.Expr("LOWER(d.name) LIKE ?", p))
 	}
 
-	// Count total matching records
-	var total int64
-	if err := baseQuery.Count(&total).Error; err != nil {
+	cntSQL, cntArgs, err := base.Columns("COUNT(*)").PlaceholderFormat(sq.Dollar).ToSql()
+	if err != nil {
 		return nil, 0, err
 	}
-
+	var total int64
+	if err := r.tm.DB(ctx).QueryRow(ctx, cntSQL, cntArgs...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
 	if total == 0 {
-		return []*evaluation.DatasetWithItemCount{}, 0, nil
+		return []*evalDomain.DatasetWithItemCount{}, 0, nil
 	}
 
-	// Build the query with item counts using a subquery
-	// This uses LEFT JOIN with a subquery to count items for each dataset
-	selectQuery := r.getDB(ctx).WithContext(ctx).
-		Table("datasets d").
-		Select("d.*, COALESCE(item_counts.count, 0) as item_count").
-		Joins("LEFT JOIN (SELECT dataset_id, COUNT(*) as count FROM dataset_items GROUP BY dataset_id) item_counts ON item_counts.dataset_id = d.id").
-		Where("d.project_id = ?", projectID.String())
-
-	// Apply search filter
-	if filter != nil && filter.Search != nil && *filter.Search != "" {
-		searchPattern := "%" + strings.ToLower(*filter.Search) + "%"
-		selectQuery = selectQuery.Where("LOWER(d.name) LIKE ?", searchPattern)
-	}
-
-	// Apply sorting with defensive validation of sort direction
 	sortDir := strings.ToUpper(params.SortDir)
 	if sortDir != "ASC" && sortDir != "DESC" {
 		sortDir = "DESC"
 	}
-
-	sortOrder := params.GetSortOrder(params.SortBy, "d.id")
-	// Prefix non-item_count columns with "d."
-	if params.SortBy != "item_count" {
-		sortOrder = "d." + params.SortBy + " " + sortDir + ", d.id " + sortDir
+	sortField := params.SortBy
+	if sortField != "item_count" {
+		sortField = "d." + sortField
 	}
-	selectQuery = selectQuery.Order(sortOrder)
 
-	// Apply pagination
-	selectQuery = selectQuery.Offset(params.GetOffset()).Limit(params.Limit)
+	list := base.Columns(
+		"d.id", "d.project_id", "d.name", "d.description", "d.metadata",
+		"d.created_at", "d.updated_at", "d.current_version_id",
+		"COALESCE(item_counts.count, 0) AS item_count",
+	).LeftJoin(
+		"(SELECT dataset_id, COUNT(*) AS count FROM dataset_items GROUP BY dataset_id) item_counts ON item_counts.dataset_id = d.id",
+	).OrderBy(fmt.Sprintf("%s %s, d.id %s", sortField, sortDir, sortDir)).
+		Offset(uint64(params.GetOffset())).Limit(uint64(params.Limit))
 
-	// Execute query
-	type datasetWithCount struct {
-		evaluation.Dataset
-		ItemCount int64 `gorm:"column:item_count"`
-	}
-	var results []datasetWithCount
-	if err := selectQuery.Find(&results).Error; err != nil {
+	selSQL, selArgs, err := list.PlaceholderFormat(sq.Dollar).ToSql()
+	if err != nil {
 		return nil, 0, err
 	}
-
-	// Convert to domain type
-	datasets := make([]*evaluation.DatasetWithItemCount, len(results))
-	for i, r := range results {
-		datasets[i] = &evaluation.DatasetWithItemCount{
-			Dataset:   r.Dataset,
-			ItemCount: r.ItemCount,
-		}
+	rows, err := r.tm.DB(ctx).Query(ctx, selSQL, selArgs...)
+	if err != nil {
+		return nil, 0, err
 	}
-
-	return datasets, total, nil
+	defer rows.Close()
+	out := make([]*evalDomain.DatasetWithItemCount, 0)
+	for rows.Next() {
+		var (
+			d     evalDomain.Dataset
+			count int64
+			meta  []byte
+		)
+		if err := rows.Scan(
+			&d.ID, &d.ProjectID, &d.Name, &d.Description, &meta,
+			&d.CreatedAt, &d.UpdatedAt, &d.CurrentVersionID, &count,
+		); err != nil {
+			return nil, 0, err
+		}
+		if err := unmarshalEvalJSON(meta, &d.Metadata); err != nil {
+			return nil, 0, err
+		}
+		out = append(out, &evalDomain.DatasetWithItemCount{Dataset: d, ItemCount: count})
+	}
+	return out, total, rows.Err()
 }
 
-func isDatasetUniqueViolation(err error) bool {
-	if err == nil {
-		return false
+var datasetColumns = []string{
+	"id", "project_id", "name", "description", "metadata",
+	"created_at", "updated_at", "current_version_id",
+}
+
+func scanDataset(row interface {
+	Scan(dest ...any) error
+}) (*evalDomain.Dataset, error) {
+	var (
+		d    evalDomain.Dataset
+		meta []byte
+	)
+	if err := row.Scan(
+		&d.ID, &d.ProjectID, &d.Name, &d.Description, &meta,
+		&d.CreatedAt, &d.UpdatedAt, &d.CurrentVersionID,
+	); err != nil {
+		return nil, err
 	}
-	errStr := strings.ToLower(err.Error())
-	return strings.Contains(errStr, "23505") ||
-		strings.Contains(errStr, "unique constraint") ||
-		strings.Contains(errStr, "duplicate key")
+	if err := unmarshalEvalJSON(meta, &d.Metadata); err != nil {
+		return nil, err
+	}
+	return &d, nil
+}
+
+func datasetFromRow(row *gen.Dataset) (*evalDomain.Dataset, error) {
+	d := &evalDomain.Dataset{
+		ID:               row.ID,
+		ProjectID:        row.ProjectID,
+		Name:             row.Name,
+		Description:      row.Description,
+		CreatedAt:        row.CreatedAt,
+		UpdatedAt:        row.UpdatedAt,
+		CurrentVersionID: row.CurrentVersionID,
+	}
+	if err := unmarshalEvalJSON(row.Metadata, &d.Metadata); err != nil {
+		return nil, err
+	}
+	return d, nil
 }

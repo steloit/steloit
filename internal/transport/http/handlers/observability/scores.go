@@ -163,7 +163,12 @@ func (h *Handler) ListProjectScores(c *gin.Context) {
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/scores [get]
 func (h *Handler) ListScores(c *gin.Context) {
-	filter := &observability.ScoreFilter{}
+	// Project scoping + membership check is enforced by RequireProjectAccess
+	// middleware; ScoreFilter.ProjectID is required so repository queries are
+	// tenant-bounded.
+	filter := &observability.ScoreFilter{
+		ProjectID: middleware.MustGetProjectID(c).String(),
+	}
 
 	if traceID := c.Query("trace_id"); traceID != "" {
 		filter.TraceID = &traceID

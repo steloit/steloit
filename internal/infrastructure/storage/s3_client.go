@@ -3,6 +3,7 @@ package storage
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -11,6 +12,7 @@ import (
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/smithy-go"
 
 	"brokle/internal/config"
 )
@@ -141,19 +143,34 @@ func (c *S3Client) Delete(ctx context.Context, key string) error {
 	return nil
 }
 
-// Exists checks if an object exists in S3
+// Exists reports whether an object exists at the given key.
+//
+// Only "missing object" responses from S3 are collapsed to (false, nil). Every
+// other error (permission denied, throttling, 5xx, network failure) is
+// propagated so callers can distinguish "key absent" from "we can't tell right
+// now." Treating transient failures as "missing" silently breaks uniqueness
+// checks that assume a false result means safe-to-create.
+//
+// aws-sdk-go-v2 quirk: HeadObject returns an un-modeled smithy.GenericAPIError
+// with code "NotFound" — it does not return *types.NoSuchKey (that typed error
+// is emitted only by GetObject).
 func (c *S3Client) Exists(ctx context.Context, key string) (bool, error) {
-	input := &s3.HeadObjectInput{
+	_, err := c.client.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String(c.bucketName),
 		Key:    aws.String(key),
+	})
+	if err == nil {
+		return true, nil
 	}
 
-	_, err := c.client.HeadObject(ctx, input)
-	if err != nil {
-		return false, nil
+	var apiErr smithy.APIError
+	if errors.As(err, &apiErr) {
+		switch apiErr.ErrorCode() {
+		case "NotFound", "NoSuchKey":
+			return false, nil
+		}
 	}
-
-	return true, nil
+	return false, fmt.Errorf("s3 head object %q: %w", key, err)
 }
 
 // GetS3URI returns the full S3 URI for a key

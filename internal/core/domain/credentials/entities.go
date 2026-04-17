@@ -4,8 +4,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-
-	"github.com/lib/pq"
 )
 
 // Provider represents supported AI/LLM providers
@@ -53,50 +51,46 @@ func (p Provider) String() string {
 // Multiple configurations per adapter (provider type) are supported.
 // Each configuration has a unique Name within an organization.
 type ProviderCredential struct {
-	ID             uuid.UUID `json:"id" gorm:"type:uuid;primaryKey"`
-	OrganizationID uuid.UUID `json:"organization_id" gorm:"type:uuid;not null;index"`
+	ID             uuid.UUID `json:"id"`
+	OrganizationID uuid.UUID `json:"organization_id"`
 
 	// User-defined name for this configuration (unique per organization)
 	// e.g., "OpenAI Production", "Claude Development", "My Custom Provider"
-	Name string `json:"name" gorm:"type:varchar(100);not null"`
+	Name string `json:"name"`
 
 	// Adapter type - the API protocol/provider (openai, anthropic, azure, gemini, openrouter, custom)
-	Adapter Provider `json:"adapter" gorm:"column:adapter;type:provider;not null"`
+	Adapter Provider `json:"adapter"`
 
 	// Encrypted API key (AES-256-GCM: nonce + ciphertext + tag, base64 encoded)
 	// Never serialized to JSON, never returned to frontend
-	EncryptedKey string `json:"-" gorm:"column:encrypted_key;not null"`
+	EncryptedKey string `json:"-"`
 
 	// Masked preview for safe display (e.g., "sk-***abcd")
-	KeyPreview string `json:"key_preview" gorm:"size:20;not null"`
+	KeyPreview string `json:"key_preview"`
 
 	// Optional custom base URL for Azure OpenAI, proxies, etc.
-	BaseURL *string `json:"base_url,omitempty" gorm:"type:text"`
+	BaseURL *string `json:"base_url,omitempty"`
 
 	// Provider-specific configuration (JSONB)
 	// Azure: deployment_id, api_version
 	// Gemini: location
 	// Custom: models list
-	Config map[string]any `json:"config,omitempty" gorm:"type:jsonb;serializer:json;default:'{}'"`
+	Config map[string]any `json:"config,omitempty"`
 
 	// Encrypted custom HTTP headers (JSON string)
 	// Used for proxy authentication or custom endpoints
 	// Never serialized to JSON, never returned to frontend
-	Headers string `json:"-" gorm:"type:text"`
+	Headers string `json:"-"`
 
 	// Custom models defined by user (fine-tuned, private deployments, custom provider models)
 	// For standard providers: optional fine-tuned models (e.g., "ft:gpt-4o:my-org")
 	// For custom provider: required list of available models (e.g., "llama-3.1", "mistral-7b")
-	CustomModels pq.StringArray `json:"custom_models" gorm:"type:text[];default:'{}'"`
+	CustomModels []string `json:"custom_models"`
 
 	// Audit fields
-	CreatedBy *uuid.UUID `json:"created_by,omitempty" gorm:"type:uuid"`
+	CreatedBy *uuid.UUID `json:"created_by,omitempty"`
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at"`
-}
-
-func (ProviderCredential) TableName() string {
-	return "provider_credentials"
 }
 
 // ProviderCredentialResponse is the safe response DTO (no encrypted data).

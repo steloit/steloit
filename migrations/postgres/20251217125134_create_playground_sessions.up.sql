@@ -29,12 +29,12 @@ CREATE TABLE playground_sessions (
 
     -- Audit fields
     created_by      UUID REFERENCES users(id) ON DELETE SET NULL,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    last_used_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    last_used_at    TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 
     -- Auto-cleanup for unsaved sessions
-    expires_at      TIMESTAMPTZ,                    -- NULL if saved, NOW()+30d if unsaved
+    expires_at      TIMESTAMP WITH TIME ZONE,                    -- NULL if saved, NOW()+30d if unsaved
 
     -- Constraints
     CONSTRAINT chk_template_type CHECK (template_type IN ('chat', 'text'))

@@ -2,9 +2,12 @@ package middleware
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"log/slog"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -102,6 +105,55 @@ func (m *RateLimitMiddleware) RateLimitByUser() gin.HandlerFunc {
 		if !allowed {
 			m.logger.Warn("Rate limit exceeded for user", "user_id", userIDStr)
 			response.TooManyRequests(c, "Rate limit exceeded. Please try again later.")
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}
+
+// RateLimitByKeyPrefix rate-limits requests by a hash of the API key's
+// leading prefix bytes. It is intended for unauthenticated endpoints that
+// accept a raw API key (e.g. /v1/auth/validate-key) as a defense against
+// distributed brute-force attempts where the attacker rotates source IPs.
+//
+// The key is read from the X-API-Key header or the Authorization: Bearer
+// header — matching ValidateAPIKeyHandler. Only the first 8 characters are
+// hashed; the full key is never written to Redis. Requests missing an API
+// key are passed through (the handler returns 400) and only count against
+// the IP bucket upstream.
+func (m *RateLimitMiddleware) RateLimitByKeyPrefix() gin.HandlerFunc {
+	if !m.config.RateLimitEnabled {
+		return func(c *gin.Context) {
+			c.Next()
+		}
+	}
+
+	return func(c *gin.Context) {
+		apiKey := c.GetHeader("X-API-Key")
+		if apiKey == "" {
+			if auth := c.GetHeader("Authorization"); strings.HasPrefix(auth, "Bearer ") {
+				apiKey = strings.TrimPrefix(auth, "Bearer ")
+			}
+		}
+		if len(apiKey) < 8 {
+			c.Next()
+			return
+		}
+
+		sum := sha256.Sum256([]byte(apiKey[:8]))
+		key := "rate_limit:keyprefix:" + hex.EncodeToString(sum[:8])
+
+		allowed, err := m.checkRateLimit(c.Request.Context(), key, m.config.RateLimitPerKeyPrefix, m.config.RateLimitWindow)
+		if err != nil {
+			m.logger.Error("Key-prefix rate limit check failed", "error", err)
+			c.Next()
+			return
+		}
+		if !allowed {
+			m.logger.Warn("Key-prefix rate limit exceeded", "prefix_hash", hex.EncodeToString(sum[:8]))
+			response.TooManyRequests(c, "Validation rate limit exceeded. Please try again later.")
 			c.Abort()
 			return
 		}

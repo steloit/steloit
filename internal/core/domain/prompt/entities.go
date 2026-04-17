@@ -9,13 +9,9 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/lib/pq"
-
 	"github.com/google/uuid"
 
 	"brokle/pkg/uid"
-
-	"gorm.io/gorm"
 )
 
 // PromptType represents the type of prompt template
@@ -30,49 +26,49 @@ const (
 type Prompt struct {
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
-	DeletedAt   gorm.DeletedAt `json:"deleted_at,omitempty" gorm:"index"`
-	Name        string         `json:"name" gorm:"size:100;not null"`
-	Description string         `json:"description,omitempty" gorm:"type:text"`
-	Type        PromptType     `json:"type" gorm:"size:10;not null;default:'text'"`
-	Tags        pq.StringArray `json:"tags" gorm:"type:text[];default:'{}'"`
-	Versions    []Version      `json:"versions,omitempty" gorm:"foreignKey:PromptID"`
-	Labels      []Label        `json:"labels,omitempty" gorm:"foreignKey:PromptID"`
-	ID          uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey"`
-	ProjectID   uuid.UUID      `json:"project_id" gorm:"type:uuid;not null"`
+	DeletedAt   *time.Time     `json:"deleted_at,omitempty"`
+	Name        string         `json:"name"`
+	Description string         `json:"description,omitempty"`
+	Type        PromptType     `json:"type"`
+	Tags        []string       `json:"tags"`
+	Versions    []Version      `json:"versions,omitempty"`
+	Labels      []Label        `json:"labels,omitempty"`
+	ID          uuid.UUID      `json:"id"`
+	ProjectID   uuid.UUID      `json:"project_id"`
 }
 
 // Version represents an immutable version snapshot of a prompt.
 type Version struct {
 	CreatedAt     time.Time      `json:"created_at"`
-	Template      JSON           `json:"template" gorm:"type:jsonb;not null"`
-	Config        *ModelConfig   `json:"config,omitempty" gorm:"type:jsonb"`
-	Variables     pq.StringArray `json:"variables" gorm:"type:text[];default:'{}'"`
-	CommitMessage string         `json:"commit_message,omitempty" gorm:"type:text"`
-	Labels        []Label        `json:"labels,omitempty" gorm:"foreignKey:VersionID"`
-	ID            uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey"`
-	PromptID      uuid.UUID      `json:"prompt_id" gorm:"type:uuid;not null"`
-	CreatedBy     *uuid.UUID     `json:"created_by,omitempty" gorm:"type:uuid"`
-	Version       int            `json:"version" gorm:"not null"`
+	Template      JSON           `json:"template"`
+	Config        *ModelConfig   `json:"config,omitempty"`
+	Variables     []string       `json:"variables"`
+	CommitMessage string         `json:"commit_message,omitempty"`
+	Labels        []Label        `json:"labels,omitempty"`
+	ID            uuid.UUID      `json:"id"`
+	PromptID      uuid.UUID      `json:"prompt_id"`
+	CreatedBy     *uuid.UUID     `json:"created_by,omitempty"`
+	Version       int            `json:"version"`
 }
 
 // Label represents a mutable pointer from a label name to a specific version.
 type Label struct {
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at"`
-	Name      string     `json:"name" gorm:"size:50;not null"`
-	ID        uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey"`
-	PromptID  uuid.UUID  `json:"prompt_id" gorm:"type:uuid;not null"`
-	VersionID uuid.UUID  `json:"version_id" gorm:"type:uuid;not null"`
-	CreatedBy *uuid.UUID `json:"created_by,omitempty" gorm:"type:uuid"`
+	Name      string     `json:"name"`
+	ID        uuid.UUID  `json:"id"`
+	PromptID  uuid.UUID  `json:"prompt_id"`
+	VersionID uuid.UUID  `json:"version_id"`
+	CreatedBy *uuid.UUID `json:"created_by,omitempty"`
 }
 
 // ProtectedLabel represents a project-level protected label configuration.
 type ProtectedLabel struct {
 	CreatedAt time.Time  `json:"created_at"`
-	LabelName string     `json:"label_name" gorm:"size:50;not null"`
-	ID        uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey"`
-	ProjectID uuid.UUID  `json:"project_id" gorm:"type:uuid;not null"`
-	CreatedBy *uuid.UUID `json:"created_by,omitempty" gorm:"type:uuid"`
+	LabelName string     `json:"label_name"`
+	ID        uuid.UUID  `json:"id"`
+	ProjectID uuid.UUID  `json:"project_id"`
+	CreatedBy *uuid.UUID `json:"created_by,omitempty"`
 }
 
 // ChatMessage represents a single message in a chat prompt template.
@@ -378,7 +374,7 @@ func NewPrompt(projectID uuid.UUID, name string, promptType PromptType, descript
 		Name:        name,
 		Type:        promptType,
 		Description: description,
-		Tags:        pq.StringArray(tags),
+		Tags:        tags,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
@@ -391,7 +387,7 @@ func NewVersion(promptID uuid.UUID, version int, template JSON, config *ModelCon
 		Version:       version,
 		Template:      template,
 		Config:        config,
-		Variables:     pq.StringArray(variables),
+		Variables:     variables,
 		CommitMessage: commitMessage,
 		CreatedBy:     createdBy,
 		CreatedAt:     time.Now(),
@@ -421,13 +417,9 @@ func NewProtectedLabel(projectID uuid.UUID, labelName string, createdBy *uuid.UU
 	}
 }
 
-func (Prompt) TableName() string         { return "prompts" }
-func (Version) TableName() string        { return "prompt_versions" }
-func (Label) TableName() string          { return "prompt_labels" }
-func (ProtectedLabel) TableName() string { return "prompt_protected_labels" }
 
 func (p *Prompt) IsDeleted() bool {
-	return p.DeletedAt.Valid
+	return p.DeletedAt != nil
 }
 
 func (p *Prompt) GetLatestVersion() int {

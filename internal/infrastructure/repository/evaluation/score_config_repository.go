@@ -2,142 +2,211 @@ package evaluation
 
 import (
 	"context"
-	"errors"
-	"strings"
+	"encoding/json"
+	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 
-	"brokle/internal/core/domain/evaluation"
-
-	"gorm.io/gorm"
+	evalDomain "brokle/internal/core/domain/evaluation"
+	"brokle/internal/infrastructure/db"
+	"brokle/internal/infrastructure/db/gen"
+	appErrors "brokle/pkg/errors"
 )
 
+// float64PtrToDecimal / decimalPtrToFloat64 bridge between the domain's
+// *float64 score bounds and the generated *decimal.Decimal. Lossless
+// for the typical 0-1 or 0-100 range of score configs.
+func float64PtrToDecimal(p *float64) *decimal.Decimal {
+	if p == nil {
+		return nil
+	}
+	d := decimal.NewFromFloat(*p)
+	return &d
+}
+
+func decimalPtrToFloat64(p *decimal.Decimal) *float64 {
+	if p == nil {
+		return nil
+	}
+	f := p.InexactFloat64()
+	return &f
+}
+
 type ScoreConfigRepository struct {
-	db *gorm.DB
+	tm *db.TxManager
 }
 
-func NewScoreConfigRepository(db *gorm.DB) *ScoreConfigRepository {
-	return &ScoreConfigRepository{db: db}
+func NewScoreConfigRepository(tm *db.TxManager) *ScoreConfigRepository {
+	return &ScoreConfigRepository{tm: tm}
 }
 
-func (r *ScoreConfigRepository) Create(ctx context.Context, config *evaluation.ScoreConfig) error {
-	result := r.db.WithContext(ctx).Create(config)
-	if result.Error != nil {
-		if isUniqueViolation(result.Error) {
-			return evaluation.ErrScoreConfigExists
+func (r *ScoreConfigRepository) Create(ctx context.Context, c *evalDomain.ScoreConfig) error {
+	cats, err := marshalEvalJSON(c.Categories)
+	if err != nil {
+		return err
+	}
+	meta, err := marshalEvalJSON(c.Metadata)
+	if err != nil {
+		return err
+	}
+	if err := r.tm.Queries(ctx).CreateScoreConfig(ctx, gen.CreateScoreConfigParams{
+		ID:          c.ID,
+		ProjectID:   c.ProjectID,
+		Name:        c.Name,
+		Description: c.Description,
+		Type:        string(c.Type),
+		MinValue:    float64PtrToDecimal(c.MinValue),
+		MaxValue:    float64PtrToDecimal(c.MaxValue),
+		Categories:  cats,
+		Metadata:    meta,
+	}); err != nil {
+		if appErrors.IsUniqueViolation(err) {
+			return evalDomain.ErrScoreConfigExists
 		}
-		return result.Error
+		return err
 	}
 	return nil
 }
 
-func (r *ScoreConfigRepository) GetByID(ctx context.Context, id uuid.UUID, projectID uuid.UUID) (*evaluation.ScoreConfig, error) {
-	var config evaluation.ScoreConfig
-	result := r.db.WithContext(ctx).
-		Where("id = ? AND project_id = ?", id.String(), projectID.String()).
-		First(&config)
-
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, evaluation.ErrScoreConfigNotFound
+func (r *ScoreConfigRepository) GetByID(ctx context.Context, id, projectID uuid.UUID) (*evalDomain.ScoreConfig, error) {
+	row, err := r.tm.Queries(ctx).GetScoreConfigByID(ctx, gen.GetScoreConfigByIDParams{
+		ID:        id,
+		ProjectID: projectID,
+	})
+	if err != nil {
+		if db.IsNoRows(err) {
+			return nil, evalDomain.ErrScoreConfigNotFound
 		}
-		return nil, result.Error
+		return nil, err
 	}
-	return &config, nil
+	return scoreConfigFromRow(&row)
 }
 
-// GetByName returns nil, nil if not found (for uniqueness checks).
-func (r *ScoreConfigRepository) GetByName(ctx context.Context, projectID uuid.UUID, name string) (*evaluation.ScoreConfig, error) {
-	var config evaluation.ScoreConfig
-	result := r.db.WithContext(ctx).
-		Where("project_id = ? AND name = ?", projectID.String(), name).
-		First(&config)
-
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil // Not found is not an error for uniqueness checks
+func (r *ScoreConfigRepository) GetByName(ctx context.Context, projectID uuid.UUID, name string) (*evalDomain.ScoreConfig, error) {
+	row, err := r.tm.Queries(ctx).GetScoreConfigByName(ctx, gen.GetScoreConfigByNameParams{
+		ProjectID: projectID,
+		Name:      name,
+	})
+	if err != nil {
+		if db.IsNoRows(err) {
+			return nil, nil
 		}
-		return nil, result.Error
+		return nil, err
 	}
-	return &config, nil
+	return scoreConfigFromRow(&row)
 }
 
-func (r *ScoreConfigRepository) List(ctx context.Context, projectID uuid.UUID, offset, limit int) ([]*evaluation.ScoreConfig, int64, error) {
-	var configs []*evaluation.ScoreConfig
-	var total int64
-
-	if err := r.db.WithContext(ctx).
-		Model(&evaluation.ScoreConfig{}).
-		Where("project_id = ?", projectID.String()).
-		Count(&total).Error; err != nil {
+func (r *ScoreConfigRepository) List(ctx context.Context, projectID uuid.UUID, offset, limit int) ([]*evalDomain.ScoreConfig, int64, error) {
+	total, err := r.tm.Queries(ctx).CountScoreConfigsByProject(ctx, projectID)
+	if err != nil {
 		return nil, 0, err
 	}
-
-	result := r.db.WithContext(ctx).
-		Where("project_id = ?", projectID.String()).
-		Order("created_at DESC").
-		Offset(offset).
-		Limit(limit).
-		Find(&configs)
-
-	if result.Error != nil {
-		return nil, 0, result.Error
+	rows, err := r.tm.Queries(ctx).ListScoreConfigsByProject(ctx, gen.ListScoreConfigsByProjectParams{
+		ProjectID: projectID,
+		Offset:    int32(offset),
+		Limit:     int32(limit),
+	})
+	if err != nil {
+		return nil, 0, err
 	}
-	return configs, total, nil
+	out := make([]*evalDomain.ScoreConfig, 0, len(rows))
+	for i := range rows {
+		c, err := scoreConfigFromRow(&rows[i])
+		if err != nil {
+			return nil, 0, err
+		}
+		out = append(out, c)
+	}
+	return out, total, nil
 }
 
-func (r *ScoreConfigRepository) Update(ctx context.Context, config *evaluation.ScoreConfig, projectID uuid.UUID) error {
-	result := r.db.WithContext(ctx).
-		Where("id = ? AND project_id = ?", config.ID.String(), projectID.String()).
-		Save(config)
-
-	if result.Error != nil {
-		if isUniqueViolation(result.Error) {
-			return evaluation.ErrScoreConfigExists
-		}
-		return result.Error
+func (r *ScoreConfigRepository) Update(ctx context.Context, c *evalDomain.ScoreConfig, projectID uuid.UUID) error {
+	cats, err := marshalEvalJSON(c.Categories)
+	if err != nil {
+		return err
 	}
-
-	if result.RowsAffected == 0 {
-		return evaluation.ErrScoreConfigNotFound
+	meta, err := marshalEvalJSON(c.Metadata)
+	if err != nil {
+		return err
+	}
+	n, err := r.tm.Queries(ctx).UpdateScoreConfig(ctx, gen.UpdateScoreConfigParams{
+		ID:          c.ID,
+		ProjectID:   projectID,
+		Name:        c.Name,
+		Description: c.Description,
+		Type:        string(c.Type),
+		MinValue:    float64PtrToDecimal(c.MinValue),
+		MaxValue:    float64PtrToDecimal(c.MaxValue),
+		Categories:  cats,
+		Metadata:    meta,
+	})
+	if err != nil {
+		if appErrors.IsUniqueViolation(err) {
+			return evalDomain.ErrScoreConfigExists
+		}
+		return err
+	}
+	if n == 0 {
+		return evalDomain.ErrScoreConfigNotFound
 	}
 	return nil
 }
 
-func (r *ScoreConfigRepository) Delete(ctx context.Context, id uuid.UUID, projectID uuid.UUID) error {
-	result := r.db.WithContext(ctx).
-		Where("id = ? AND project_id = ?", id.String(), projectID.String()).
-		Delete(&evaluation.ScoreConfig{})
-
-	if result.Error != nil {
-		return result.Error
+func (r *ScoreConfigRepository) Delete(ctx context.Context, id, projectID uuid.UUID) error {
+	n, err := r.tm.Queries(ctx).DeleteScoreConfig(ctx, gen.DeleteScoreConfigParams{
+		ID:        id,
+		ProjectID: projectID,
+	})
+	if err != nil {
+		return err
 	}
-
-	if result.RowsAffected == 0 {
-		return evaluation.ErrScoreConfigNotFound
+	if n == 0 {
+		return evalDomain.ErrScoreConfigNotFound
 	}
 	return nil
 }
 
 func (r *ScoreConfigRepository) ExistsByName(ctx context.Context, projectID uuid.UUID, name string) (bool, error) {
-	var count int64
-	result := r.db.WithContext(ctx).
-		Model(&evaluation.ScoreConfig{}).
-		Where("project_id = ? AND name = ?", projectID.String(), name).
-		Count(&count)
-
-	if result.Error != nil {
-		return false, result.Error
-	}
-	return count > 0, nil
+	return r.tm.Queries(ctx).ScoreConfigExistsByName(ctx, gen.ScoreConfigExistsByNameParams{
+		ProjectID: projectID,
+		Name:      name,
+	})
 }
 
-func isUniqueViolation(err error) bool {
-	if err == nil {
-		return false
+func scoreConfigFromRow(row *gen.ScoreConfig) (*evalDomain.ScoreConfig, error) {
+	c := &evalDomain.ScoreConfig{
+		ID:          row.ID,
+		ProjectID:   row.ProjectID,
+		Name:        row.Name,
+		Description: row.Description,
+		Type:        evalDomain.ScoreType(row.Type),
+		MinValue:    decimalPtrToFloat64(row.MinValue),
+		MaxValue:    decimalPtrToFloat64(row.MaxValue),
+		CreatedAt:   row.CreatedAt,
+		UpdatedAt:   row.UpdatedAt,
 	}
-	errStr := err.Error()
-	return strings.Contains(errStr, "23505") ||
-		strings.Contains(errStr, "unique constraint") ||
-		strings.Contains(errStr, "duplicate key")
+	if err := unmarshalEvalJSON(row.Categories, &c.Categories); err != nil {
+		return nil, fmt.Errorf("unmarshal categories: %w", err)
+	}
+	if err := unmarshalEvalJSON(row.Metadata, &c.Metadata); err != nil {
+		return nil, fmt.Errorf("unmarshal metadata: %w", err)
+	}
+	return c, nil
+}
+
+// marshalEvalJSON handles the domain-side JSONB serialization. Returns
+// nil for empty/nil values so the column stores NULL.
+func marshalEvalJSON(v interface{}) (json.RawMessage, error) {
+	if v == nil {
+		return nil, nil
+	}
+	return json.Marshal(v)
+}
+
+func unmarshalEvalJSON(raw json.RawMessage, dst interface{}) error {
+	if len(raw) == 0 {
+		return nil
+	}
+	return json.Unmarshal(raw, dst)
 }

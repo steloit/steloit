@@ -21,13 +21,14 @@ type AuthConfig struct {
 	JWTPrivateKeyBase64  string        `mapstructure:"jwt_private_key_base64"`
 	JWTPublicKeyPath     string        `mapstructure:"jwt_public_key_path"`
 	JWTPrivateKeyPath    string        `mapstructure:"jwt_private_key_path"`
-	RateLimitPerUser     int           `mapstructure:"rate_limit_per_user"`
-	RefreshTokenTTL      time.Duration `mapstructure:"refresh_token_ttl"`
-	AccessTokenTTL       time.Duration `mapstructure:"access_token_ttl"`
-	RateLimitWindow      time.Duration `mapstructure:"rate_limit_window"`
-	RateLimitPerIP       int           `mapstructure:"rate_limit_per_ip"`
-	RateLimitEnabled     bool          `mapstructure:"rate_limit_enabled"`
-	TokenRotationEnabled bool          `mapstructure:"token_rotation_enabled"`
+	RateLimitPerUser      int           `mapstructure:"rate_limit_per_user"`
+	RefreshTokenTTL       time.Duration `mapstructure:"refresh_token_ttl"`
+	AccessTokenTTL        time.Duration `mapstructure:"access_token_ttl"`
+	RateLimitWindow       time.Duration `mapstructure:"rate_limit_window"`
+	RateLimitPerIP        int           `mapstructure:"rate_limit_per_ip"`
+	RateLimitPerKeyPrefix int           `mapstructure:"rate_limit_per_key_prefix"`
+	RateLimitEnabled      bool          `mapstructure:"rate_limit_enabled"`
+	TokenRotationEnabled  bool          `mapstructure:"token_rotation_enabled"`
 }
 
 // Validate ensures the auth configuration is valid and complete.
@@ -86,6 +87,9 @@ func (c *AuthConfig) Validate() error {
 		if c.RateLimitWindow <= 0 {
 			return errors.New("rate_limit_window must be greater than 0 when rate limiting is enabled")
 		}
+		if c.RateLimitPerKeyPrefix <= 0 {
+			return errors.New("rate_limit_per_key_prefix must be greater than 0 when rate limiting is enabled")
+		}
 	}
 
 	return nil
@@ -111,23 +115,3 @@ func (c *AuthConfig) HasKeyBase64() bool {
 	return c.JWTPrivateKeyBase64 != "" && c.JWTPublicKeyBase64 != ""
 }
 
-// DefaultAuthConfig returns the default authentication configuration.
-func DefaultAuthConfig() AuthConfig {
-	return AuthConfig{
-		// Token defaults (15 minutes access, 7 days refresh)
-		AccessTokenTTL:       15 * time.Minute,
-		RefreshTokenTTL:      7 * 24 * time.Hour,
-		TokenRotationEnabled: true,
-
-		// Rate limiting defaults (disabled by default)
-		RateLimitEnabled: false,
-		RateLimitPerIP:   100,
-		RateLimitPerUser: 1000,
-		RateLimitWindow:  1 * time.Hour,
-
-		// JWT defaults (HS256 for development ease)
-		JWTSigningMethod: "HS256",
-		JWTIssuer:        "brokle",
-		JWTSecret:        "", // Must be set in environment
-	}
-}

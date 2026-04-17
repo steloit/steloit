@@ -2,181 +2,148 @@ package comment
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 
-	"brokle/internal/core/domain/comment"
-	"brokle/internal/core/domain/user"
-	"brokle/internal/infrastructure/shared"
-
-	"gorm.io/gorm"
+	commentDomain "brokle/internal/core/domain/comment"
+	"brokle/internal/infrastructure/db"
+	"brokle/internal/infrastructure/db/gen"
 )
 
 type ReactionRepository struct {
-	db *gorm.DB
+	tm *db.TxManager
 }
 
-func NewReactionRepository(db *gorm.DB) *ReactionRepository {
-	return &ReactionRepository{db: db}
+func NewReactionRepository(tm *db.TxManager) *ReactionRepository {
+	return &ReactionRepository{tm: tm}
 }
 
-func (r *ReactionRepository) getDB(ctx context.Context) *gorm.DB {
-	return shared.GetDB(ctx, r.db)
-}
-
+// Toggle adds the reaction if absent, removes it if present. Returns
+// true when the reaction was added.
 func (r *ReactionRepository) Toggle(ctx context.Context, commentID, userID uuid.UUID, emoji string) (bool, error) {
-	// Check if reaction already exists
-	var existing comment.Reaction
-	result := r.getDB(ctx).WithContext(ctx).
-		Where("comment_id = ? AND user_id = ? AND emoji = ?", commentID.String(), userID.String(), emoji).
-		First(&existing)
-
-	if result.Error == nil {
-		// Reaction exists, remove it
-		if err := r.getDB(ctx).WithContext(ctx).
-			Where("comment_id = ? AND user_id = ? AND emoji = ?", commentID.String(), userID.String(), emoji).
-			Delete(&comment.Reaction{}).Error; err != nil {
-			return false, err
+	q := r.tm.Queries(ctx)
+	_, err := q.GetCommentReactionByUserEmoji(ctx, gen.GetCommentReactionByUserEmojiParams{
+		CommentID: commentID,
+		UserID:    userID,
+		Emoji:     emoji,
+	})
+	if err == nil {
+		if _, err := q.DeleteCommentReaction(ctx, gen.DeleteCommentReactionParams{
+			CommentID: commentID,
+			UserID:    userID,
+			Emoji:     emoji,
+		}); err != nil {
+			return false, fmt.Errorf("remove reaction: %w", err)
 		}
-		return false, nil // Removed
+		return false, nil
 	}
-
-	if result.Error != gorm.ErrRecordNotFound {
-		return false, result.Error
+	if !db.IsNoRows(err) {
+		return false, fmt.Errorf("lookup reaction: %w", err)
 	}
-
-	// Reaction doesn't exist, add it
-	reaction := comment.NewReaction(commentID, userID, emoji)
-	if err := r.getDB(ctx).WithContext(ctx).Create(reaction).Error; err != nil {
-		return false, err
+	reaction := commentDomain.NewReaction(commentID, userID, emoji)
+	if err := q.CreateCommentReaction(ctx, gen.CreateCommentReactionParams{
+		ID:        reaction.ID,
+		CommentID: reaction.CommentID,
+		UserID:    reaction.UserID,
+		Emoji:     reaction.Emoji,
+	}); err != nil {
+		return false, fmt.Errorf("add reaction: %w", err)
 	}
-	return true, nil // Added
+	return true, nil
 }
 
-func (r *ReactionRepository) GetByComments(ctx context.Context, commentIDs []uuid.UUID, currentUserID *uuid.UUID) (map[string][]comment.ReactionSummary, error) {
+func (r *ReactionRepository) GetByComments(ctx context.Context, commentIDs []uuid.UUID, currentUserID *uuid.UUID) (map[string][]commentDomain.ReactionSummary, error) {
+	out := make(map[string][]commentDomain.ReactionSummary, len(commentIDs))
+	for _, id := range commentIDs {
+		out[id.String()] = []commentDomain.ReactionSummary{}
+	}
 	if len(commentIDs) == 0 {
-		return make(map[string][]comment.ReactionSummary), nil
+		return out, nil
+	}
+	reactions, err := r.tm.Queries(ctx).ListCommentReactionsByComments(ctx, commentIDs)
+	if err != nil {
+		return nil, fmt.Errorf("list reactions: %w", err)
 	}
 
-	ids := make([]string, len(commentIDs))
-	for i, id := range commentIDs {
-		ids[i] = id.String()
-	}
-
-	var reactions []comment.Reaction
-	if err := r.getDB(ctx).WithContext(ctx).
-		Where("comment_id IN ?", ids).
-		Order("created_at ASC").
-		Find(&reactions).Error; err != nil {
-		return nil, err
-	}
-
-	userIDMap := make(map[string]bool)
+	// Collect distinct user IDs for name lookup.
+	userSet := make(map[uuid.UUID]struct{}, len(reactions))
 	for _, rx := range reactions {
-		userIDMap[rx.UserID.String()] = true
+		userSet[rx.UserID] = struct{}{}
 	}
-
-	userNames := make(map[string]string)
-	if len(userIDMap) > 0 {
-		userIDs := make([]string, 0, len(userIDMap))
-		for id := range userIDMap {
-			userIDs = append(userIDs, id)
+	userIDs := make([]uuid.UUID, 0, len(userSet))
+	for id := range userSet {
+		userIDs = append(userIDs, id)
+	}
+	names := make(map[uuid.UUID]string, len(userIDs))
+	if len(userIDs) > 0 {
+		users, err := r.tm.Queries(ctx).ListUsersForCommentEnrichment(ctx, userIDs)
+		if err != nil {
+			return nil, fmt.Errorf("load reaction users: %w", err)
 		}
-
-		var users []user.User
-		if err := r.getDB(ctx).WithContext(ctx).
-			Where("id IN ?", userIDs).
-			Find(&users).Error; err != nil {
-			return nil, err
-		}
-
 		for _, u := range users {
-			userNames[u.ID.String()] = u.GetFullName()
+			names[u.ID] = u.FirstName + " " + u.LastName
 		}
 	}
 
-	// Build result map: commentID -> emoji -> aggregation
-	type emojiAgg struct {
-		Count   int
-		Users   []string
-		HasUser bool
+	// Aggregate: comment -> emoji -> { count, users, hasUser }.
+	type agg struct {
+		count   int
+		users   []string
+		hasUser bool
 	}
-
-	commentEmojis := make(map[string]map[string]*emojiAgg)
+	byComment := make(map[string]map[string]*agg, len(commentIDs))
 	for _, rx := range reactions {
 		cid := rx.CommentID.String()
-		if _, ok := commentEmojis[cid]; !ok {
-			commentEmojis[cid] = make(map[string]*emojiAgg)
+		if _, ok := byComment[cid]; !ok {
+			byComment[cid] = make(map[string]*agg)
 		}
-		if _, ok := commentEmojis[cid][rx.Emoji]; !ok {
-			commentEmojis[cid][rx.Emoji] = &emojiAgg{}
+		a, ok := byComment[cid][rx.Emoji]
+		if !ok {
+			a = &agg{}
+			byComment[cid][rx.Emoji] = a
 		}
-
-		agg := commentEmojis[cid][rx.Emoji]
-		agg.Count++
-		agg.Users = append(agg.Users, userNames[rx.UserID.String()])
-
+		a.count++
+		a.users = append(a.users, names[rx.UserID])
 		if currentUserID != nil && rx.UserID == *currentUserID {
-			agg.HasUser = true
+			a.hasUser = true
 		}
 	}
-
-	result := make(map[string][]comment.ReactionSummary)
-	for cid, emojis := range commentEmojis {
-		summaries := make([]comment.ReactionSummary, 0, len(emojis))
-		for emoji, agg := range emojis {
-			summaries = append(summaries, comment.ReactionSummary{
+	for cid, emojis := range byComment {
+		summaries := make([]commentDomain.ReactionSummary, 0, len(emojis))
+		for emoji, a := range emojis {
+			summaries = append(summaries, commentDomain.ReactionSummary{
 				Emoji:   emoji,
-				Count:   agg.Count,
-				Users:   agg.Users,
-				HasUser: agg.HasUser,
+				Count:   a.count,
+				Users:   a.users,
+				HasUser: a.hasUser,
 			})
 		}
-		result[cid] = summaries
+		out[cid] = summaries
 	}
-
-	// Ensure all requested comment IDs have an entry (even if empty)
-	for _, id := range ids {
-		if _, ok := result[id]; !ok {
-			result[id] = []comment.ReactionSummary{}
-		}
-	}
-
-	return result, nil
+	return out, nil
 }
 
-func (r *ReactionRepository) GetByComment(ctx context.Context, commentID uuid.UUID, currentUserID *uuid.UUID) ([]comment.ReactionSummary, error) {
+func (r *ReactionRepository) GetByComment(ctx context.Context, commentID uuid.UUID, currentUserID *uuid.UUID) ([]commentDomain.ReactionSummary, error) {
 	result, err := r.GetByComments(ctx, []uuid.UUID{commentID}, currentUserID)
 	if err != nil {
 		return nil, err
 	}
-
-	summaries, ok := result[commentID.String()]
-	if !ok {
-		return []comment.ReactionSummary{}, nil
-	}
-	return summaries, nil
+	return result[commentID.String()], nil
 }
 
 func (r *ReactionRepository) CountUniqueEmojis(ctx context.Context, commentID uuid.UUID) (int, error) {
-	var count int64
-	if err := r.getDB(ctx).WithContext(ctx).
-		Model(&comment.Reaction{}).
-		Where("comment_id = ?", commentID.String()).
-		Distinct("emoji").
-		Count(&count).Error; err != nil {
-		return 0, err
+	n, err := r.tm.Queries(ctx).CountDistinctEmojisOnComment(ctx, commentID)
+	if err != nil {
+		return 0, fmt.Errorf("count distinct emojis: %w", err)
 	}
-	return int(count), nil
+	return int(n), nil
 }
 
 func (r *ReactionRepository) UserHasReacted(ctx context.Context, commentID, userID uuid.UUID, emoji string) (bool, error) {
-	var count int64
-	if err := r.getDB(ctx).WithContext(ctx).
-		Model(&comment.Reaction{}).
-		Where("comment_id = ? AND user_id = ? AND emoji = ?", commentID.String(), userID.String(), emoji).
-		Count(&count).Error; err != nil {
-		return false, err
-	}
-	return count > 0, nil
+	return r.tm.Queries(ctx).CommentReactionExists(ctx, gen.CommentReactionExistsParams{
+		CommentID: commentID,
+		UserID:    userID,
+		Emoji:     emoji,
+	})
 }

@@ -2,225 +2,316 @@ package evaluation
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	sq "github.com/Masterminds/squirrel"
 
-	"brokle/internal/core/domain/evaluation"
-	"brokle/internal/infrastructure/shared"
-
-	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
+	evalDomain "brokle/internal/core/domain/evaluation"
+	"brokle/internal/infrastructure/db"
+	"brokle/internal/infrastructure/db/gen"
 )
 
 type ExperimentRepository struct {
-	db *gorm.DB
+	tm *db.TxManager
 }
 
-func NewExperimentRepository(db *gorm.DB) *ExperimentRepository {
-	return &ExperimentRepository{db: db}
+func NewExperimentRepository(tm *db.TxManager) *ExperimentRepository {
+	return &ExperimentRepository{tm: tm}
 }
 
-// getDB returns transaction-aware DB instance
-func (r *ExperimentRepository) getDB(ctx context.Context) *gorm.DB {
-	return shared.GetDB(ctx, r.db)
-}
-
-func (r *ExperimentRepository) Create(ctx context.Context, experiment *evaluation.Experiment) error {
-	return r.getDB(ctx).WithContext(ctx).Create(experiment).Error
-}
-
-func (r *ExperimentRepository) GetByID(ctx context.Context, id uuid.UUID, projectID uuid.UUID) (*evaluation.Experiment, error) {
-	var experiment evaluation.Experiment
-	result := r.getDB(ctx).WithContext(ctx).
-		Where("id = ? AND project_id = ?", id.String(), projectID.String()).
-		First(&experiment)
-
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, evaluation.ErrExperimentNotFound
-		}
-		return nil, result.Error
-	}
-	return &experiment, nil
-}
-
-func (r *ExperimentRepository) List(ctx context.Context, projectID uuid.UUID, filter *evaluation.ExperimentFilter, offset, limit int) ([]*evaluation.Experiment, int64, error) {
-	var experiments []*evaluation.Experiment
-	var total int64
-
-	query := r.getDB(ctx).WithContext(ctx).
-		Where("project_id = ?", projectID.String())
-
-	if filter != nil {
-		if filter.DatasetID != nil {
-			query = query.Where("dataset_id = ?", filter.DatasetID.String())
-		}
-		if filter.Status != nil {
-			query = query.Where("status = ?", string(*filter.Status))
-		}
-		if filter.Search != nil && *filter.Search != "" {
-			search := "%" + strings.ToLower(*filter.Search) + "%"
-			query = query.Where("LOWER(name) LIKE ? OR LOWER(description) LIKE ?", search, search)
-		}
-		if len(filter.IDs) > 0 {
-			idStrings := make([]string, len(filter.IDs))
-			for i, id := range filter.IDs {
-				idStrings[i] = id.String()
-			}
-			query = query.Where("id IN ?", idStrings)
-		}
-	}
-
-	if err := query.Model(&evaluation.Experiment{}).Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-
-	result := query.Order("created_at DESC").
-		Offset(offset).
-		Limit(limit).
-		Find(&experiments)
-
-	if result.Error != nil {
-		return nil, 0, result.Error
-	}
-	return experiments, total, nil
-}
-
-func (r *ExperimentRepository) Update(ctx context.Context, experiment *evaluation.Experiment, projectID uuid.UUID) error {
-	result := r.getDB(ctx).WithContext(ctx).
-		Where("id = ? AND project_id = ?", experiment.ID.String(), projectID.String()).
-		Save(experiment)
-
-	if result.Error != nil {
-		return result.Error
-	}
-
-	if result.RowsAffected == 0 {
-		return evaluation.ErrExperimentNotFound
-	}
-	return nil
-}
-
-func (r *ExperimentRepository) Delete(ctx context.Context, id uuid.UUID, projectID uuid.UUID) error {
-	result := r.getDB(ctx).WithContext(ctx).
-		Where("id = ? AND project_id = ?", id.String(), projectID.String()).
-		Delete(&evaluation.Experiment{})
-
-	if result.Error != nil {
-		return result.Error
-	}
-
-	if result.RowsAffected == 0 {
-		return evaluation.ErrExperimentNotFound
-	}
-	return nil
-}
-
-// SetTotalItems sets the total number of items for an experiment.
-func (r *ExperimentRepository) SetTotalItems(ctx context.Context, id, projectID uuid.UUID, total int) error {
-	result := r.getDB(ctx).WithContext(ctx).
-		Model(&evaluation.Experiment{}).
-		Where("id = ? AND project_id = ?", id.String(), projectID.String()).
-		Update("total_items", total)
-
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return evaluation.ErrExperimentNotFound
-	}
-	return nil
-}
-
-// IncrementCounters atomically increments completed and/or failed counters.
-func (r *ExperimentRepository) IncrementCounters(ctx context.Context, id, projectID uuid.UUID, completed, failed int) error {
-	updates := map[string]interface{}{}
-
-	if completed > 0 {
-		updates["completed_items"] = gorm.Expr("completed_items + ?", completed)
-	}
-	if failed > 0 {
-		updates["failed_items"] = gorm.Expr("failed_items + ?", failed)
-	}
-
-	if len(updates) == 0 {
-		return nil
-	}
-
-	result := r.getDB(ctx).WithContext(ctx).
-		Model(&evaluation.Experiment{}).
-		Where("id = ? AND project_id = ?", id.String(), projectID.String()).
-		Updates(updates)
-
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return evaluation.ErrExperimentNotFound
-	}
-	return nil
-}
-
-// IncrementCountersAndUpdateStatus atomically increments counters and updates status if complete.
-// Uses row locking to ensure atomicity. Returns true if the experiment was marked as complete.
-func (r *ExperimentRepository) IncrementCountersAndUpdateStatus(ctx context.Context, id, projectID uuid.UUID, completed, failed int) (bool, error) {
-	var isComplete bool
-
-	err := r.getDB(ctx).WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// Lock the row for update
-		var exp evaluation.Experiment
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("id = ? AND project_id = ?", id.String(), projectID.String()).
-			First(&exp).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return evaluation.ErrExperimentNotFound
-			}
-			return err
-		}
-
-		// Update counters
-		exp.CompletedItems += completed
-		exp.FailedItems += failed
-
-		// Check if complete
-		processedItems := exp.CompletedItems + exp.FailedItems
-		if processedItems >= exp.TotalItems && exp.TotalItems > 0 {
-			isComplete = true
-			now := time.Now()
-			exp.CompletedAt = &now
-
-			// Determine final status
-			if exp.FailedItems == 0 {
-				exp.Status = evaluation.ExperimentStatusCompleted
-			} else if exp.CompletedItems == 0 {
-				exp.Status = evaluation.ExperimentStatusFailed
-			} else {
-				exp.Status = evaluation.ExperimentStatusPartial
-			}
-		}
-
-		return tx.Save(&exp).Error
-	})
-
-	return isComplete, err
-}
-
-// GetProgress gets minimal experiment data for progress polling.
-func (r *ExperimentRepository) GetProgress(ctx context.Context, id, projectID uuid.UUID) (*evaluation.Experiment, error) {
-	var exp evaluation.Experiment
-	err := r.getDB(ctx).WithContext(ctx).
-		Select("id", "status", "total_items", "completed_items", "failed_items", "started_at", "completed_at").
-		Where("id = ? AND project_id = ?", id.String(), projectID.String()).
-		First(&exp).Error
-
+func (r *ExperimentRepository) Create(ctx context.Context, e *evalDomain.Experiment) error {
+	meta, err := marshalEvalJSON(e.Metadata)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, evaluation.ErrExperimentNotFound
+		return err
+	}
+	return r.tm.Queries(ctx).CreateExperiment(ctx, gen.CreateExperimentParams{
+		ID:             e.ID,
+		ProjectID:      e.ProjectID,
+		DatasetID:      e.DatasetID,
+		Name:           e.Name,
+		Description:    e.Description,
+		Status:         string(e.Status),
+		Metadata:       meta,
+		StartedAt:      e.StartedAt,
+		CompletedAt:    e.CompletedAt,
+		ConfigID:       e.ConfigID,
+		Source:         string(e.Source),
+		TotalItems:     int32(e.TotalItems),
+		CompletedItems: int32(e.CompletedItems),
+		FailedItems:    int32(e.FailedItems),
+	})
+}
+
+func (r *ExperimentRepository) GetByID(ctx context.Context, id, projectID uuid.UUID) (*evalDomain.Experiment, error) {
+	row, err := r.tm.Queries(ctx).GetExperimentByID(ctx, gen.GetExperimentByIDParams{
+		ID:        id,
+		ProjectID: projectID,
+	})
+	if err != nil {
+		if db.IsNoRows(err) {
+			return nil, evalDomain.ErrExperimentNotFound
 		}
 		return nil, err
 	}
-	return &exp, nil
+	return experimentFromRow(&row)
+}
+
+func (r *ExperimentRepository) List(ctx context.Context, projectID uuid.UUID, filter *evalDomain.ExperimentFilter, offset, limit int) ([]*evalDomain.Experiment, int64, error) {
+	base := sq.Select().From("experiments").Where(sq.Eq{"project_id": projectID})
+	if filter != nil {
+		if filter.DatasetID != nil {
+			base = base.Where(sq.Eq{"dataset_id": *filter.DatasetID})
+		}
+		if filter.Status != nil {
+			base = base.Where(sq.Eq{"status": string(*filter.Status)})
+		}
+		if filter.Search != nil && *filter.Search != "" {
+			p := "%" + strings.ToLower(*filter.Search) + "%"
+			base = base.Where(sq.Or{
+				sq.Expr("LOWER(name) LIKE ?", p),
+				sq.Expr("LOWER(description) LIKE ?", p),
+			})
+		}
+		if len(filter.IDs) > 0 {
+			base = base.Where(sq.Eq{"id": filter.IDs})
+		}
+	}
+
+	cntSQL, cntArgs, err := base.Columns("COUNT(*)").PlaceholderFormat(sq.Dollar).ToSql()
+	if err != nil {
+		return nil, 0, err
+	}
+	var total int64
+	if err := r.tm.DB(ctx).QueryRow(ctx, cntSQL, cntArgs...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	selSQL, selArgs, err := base.Columns(experimentColumns...).
+		OrderBy("created_at DESC").Offset(uint64(offset)).Limit(uint64(limit)).
+		PlaceholderFormat(sq.Dollar).ToSql()
+	if err != nil {
+		return nil, 0, err
+	}
+	rows, err := r.tm.DB(ctx).Query(ctx, selSQL, selArgs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	out := make([]*evalDomain.Experiment, 0)
+	for rows.Next() {
+		e, err := scanExperiment(rows)
+		if err != nil {
+			return nil, 0, err
+		}
+		out = append(out, e)
+	}
+	return out, total, rows.Err()
+}
+
+func (r *ExperimentRepository) Update(ctx context.Context, e *evalDomain.Experiment, projectID uuid.UUID) error {
+	meta, err := marshalEvalJSON(e.Metadata)
+	if err != nil {
+		return err
+	}
+	n, err := r.tm.Queries(ctx).UpdateExperiment(ctx, gen.UpdateExperimentParams{
+		ID:             e.ID,
+		ProjectID:      projectID,
+		DatasetID:      e.DatasetID,
+		Name:           e.Name,
+		Description:    e.Description,
+		Status:         string(e.Status),
+		Metadata:       meta,
+		StartedAt:      e.StartedAt,
+		CompletedAt:    e.CompletedAt,
+		ConfigID:       e.ConfigID,
+		Source:         string(e.Source),
+		TotalItems:     int32(e.TotalItems),
+		CompletedItems: int32(e.CompletedItems),
+		FailedItems:    int32(e.FailedItems),
+	})
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return evalDomain.ErrExperimentNotFound
+	}
+	return nil
+}
+
+func (r *ExperimentRepository) Delete(ctx context.Context, id, projectID uuid.UUID) error {
+	n, err := r.tm.Queries(ctx).DeleteExperiment(ctx, gen.DeleteExperimentParams{
+		ID:        id,
+		ProjectID: projectID,
+	})
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return evalDomain.ErrExperimentNotFound
+	}
+	return nil
+}
+
+func (r *ExperimentRepository) SetTotalItems(ctx context.Context, id, projectID uuid.UUID, total int) error {
+	n, err := r.tm.Queries(ctx).SetExperimentTotalItems(ctx, gen.SetExperimentTotalItemsParams{
+		ID:         id,
+		ProjectID:  projectID,
+		TotalItems: int32(total),
+	})
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return evalDomain.ErrExperimentNotFound
+	}
+	return nil
+}
+
+func (r *ExperimentRepository) IncrementCounters(ctx context.Context, id, projectID uuid.UUID, completed, failed int) error {
+	n, err := r.tm.Queries(ctx).IncrementExperimentCounters(ctx, gen.IncrementExperimentCountersParams{
+		ID:             id,
+		ProjectID:      projectID,
+		CompletedItems: int32(completed),
+		FailedItems:    int32(failed),
+	})
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return evalDomain.ErrExperimentNotFound
+	}
+	return nil
+}
+
+// IncrementCountersAndUpdateStatus locks the experiment row, applies
+// the delta, and flips status to completed/failed/partial once all
+// items are processed. Returns true when the experiment just finished.
+func (r *ExperimentRepository) IncrementCountersAndUpdateStatus(ctx context.Context, id, projectID uuid.UUID, completed, failed int) (bool, error) {
+	var isComplete bool
+	err := r.tm.WithinTransaction(ctx, func(ctx context.Context) error {
+		row, err := r.tm.Queries(ctx).LockExperimentForUpdate(ctx, gen.LockExperimentForUpdateParams{
+			ID:        id,
+			ProjectID: projectID,
+		})
+		if err != nil {
+			if db.IsNoRows(err) {
+				return evalDomain.ErrExperimentNotFound
+			}
+			return err
+		}
+		row.CompletedItems += int32(completed)
+		row.FailedItems += int32(failed)
+		processed := row.CompletedItems + row.FailedItems
+		if processed >= row.TotalItems && row.TotalItems > 0 {
+			isComplete = true
+			now := time.Now()
+			row.CompletedAt = &now
+			switch {
+			case row.FailedItems == 0:
+				row.Status = string(evalDomain.ExperimentStatusCompleted)
+			case row.CompletedItems == 0:
+				row.Status = string(evalDomain.ExperimentStatusFailed)
+			default:
+				row.Status = string(evalDomain.ExperimentStatusPartial)
+			}
+		}
+		_, err = r.tm.Queries(ctx).UpdateExperiment(ctx, gen.UpdateExperimentParams{
+			ID:             row.ID,
+			ProjectID:      row.ProjectID,
+			DatasetID:      row.DatasetID,
+			Name:           row.Name,
+			Description:    row.Description,
+			Status:         row.Status,
+			Metadata:       row.Metadata,
+			StartedAt:      row.StartedAt,
+			CompletedAt:    row.CompletedAt,
+			ConfigID:       row.ConfigID,
+			Source:         row.Source,
+			TotalItems:     row.TotalItems,
+			CompletedItems: row.CompletedItems,
+			FailedItems:    row.FailedItems,
+		})
+		return err
+	})
+	return isComplete, err
+}
+
+func (r *ExperimentRepository) GetProgress(ctx context.Context, id, projectID uuid.UUID) (*evalDomain.Experiment, error) {
+	row, err := r.tm.Queries(ctx).GetExperimentProgress(ctx, gen.GetExperimentProgressParams{
+		ID:        id,
+		ProjectID: projectID,
+	})
+	if err != nil {
+		if db.IsNoRows(err) {
+			return nil, evalDomain.ErrExperimentNotFound
+		}
+		return nil, err
+	}
+	return &evalDomain.Experiment{
+		ID:             row.ID,
+		Status:         evalDomain.ExperimentStatus(row.Status),
+		TotalItems:     int(row.TotalItems),
+		CompletedItems: int(row.CompletedItems),
+		FailedItems:    int(row.FailedItems),
+		StartedAt:      row.StartedAt,
+		CompletedAt:    row.CompletedAt,
+	}, nil
+}
+
+var experimentColumns = []string{
+	"id", "project_id", "dataset_id", "name", "description",
+	"status", "metadata", "started_at", "completed_at",
+	"created_at", "updated_at", "config_id", "source",
+	"total_items", "completed_items", "failed_items",
+}
+
+func scanExperiment(row interface {
+	Scan(dest ...any) error
+}) (*evalDomain.Experiment, error) {
+	var (
+		e    evalDomain.Experiment
+		meta []byte
+		total, completed, failed int32
+	)
+	if err := row.Scan(
+		&e.ID, &e.ProjectID, &e.DatasetID, &e.Name, &e.Description,
+		&e.Status, &meta, &e.StartedAt, &e.CompletedAt,
+		&e.CreatedAt, &e.UpdatedAt, &e.ConfigID, &e.Source,
+		&total, &completed, &failed,
+	); err != nil {
+		return nil, err
+	}
+	if err := unmarshalEvalJSON(meta, &e.Metadata); err != nil {
+		return nil, err
+	}
+	e.TotalItems = int(total)
+	e.CompletedItems = int(completed)
+	e.FailedItems = int(failed)
+	return &e, nil
+}
+
+func experimentFromRow(row *gen.Experiment) (*evalDomain.Experiment, error) {
+	e := &evalDomain.Experiment{
+		ID:             row.ID,
+		ProjectID:      row.ProjectID,
+		DatasetID:      row.DatasetID,
+		Name:           row.Name,
+		Description:    row.Description,
+		Status:         evalDomain.ExperimentStatus(row.Status),
+		StartedAt:      row.StartedAt,
+		CompletedAt:    row.CompletedAt,
+		CreatedAt:      row.CreatedAt,
+		UpdatedAt:      row.UpdatedAt,
+		ConfigID:       row.ConfigID,
+		Source:         evalDomain.ExperimentSource(row.Source),
+		TotalItems:     int(row.TotalItems),
+		CompletedItems: int(row.CompletedItems),
+		FailedItems:    int(row.FailedItems),
+	}
+	if err := unmarshalEvalJSON(row.Metadata, &e.Metadata); err != nil {
+		return nil, err
+	}
+	return e, nil
 }
