@@ -296,7 +296,7 @@ func (h *UsageHandler) exportCSV(c *gin.Context, usage []*billing.BillableUsage,
 }
 
 func (h *UsageHandler) exportJSON(c *gin.Context, usage []*billing.BillableUsage, projectUsage []*billing.BillableUsageSummary, from, to time.Time) {
-	export := map[string]interface{}{
+	export := map[string]any{
 		"period": map[string]string{
 			"from": from.Format(time.RFC3339),
 			"to":   to.Format(time.RFC3339),

@@ -22,8 +22,8 @@ type CreateEventRequest struct {
 	TraceID     *string                `json:"trace_id,omitempty" example:"trace_def456" description:"Distributed trace ID"`
 	SpanID      *string                `json:"span_id,omitempty" example:"span_ghi789" description:"Span identifier"`
 	UserID      *string                `json:"user_id,omitempty" example:"user_123" description:"User identifier"`
-	Properties  map[string]interface{} `json:"properties,omitempty" description:"Event-specific properties"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty" description:"Additional metadata"`
+	Properties  map[string]any `json:"properties,omitempty" description:"Event-specific properties"`
+	Metadata    map[string]any `json:"metadata,omitempty" description:"Additional metadata"`
 	Environment *string                `json:"environment,omitempty" example:"production" description:"Environment name"`
 	Version     *string                `json:"version,omitempty" example:"1.0.0" description:"Application version"`
 	Source      *string                `json:"source,omitempty" example:"python-sdk" description:"Event source (sdk, api, etc.)"`

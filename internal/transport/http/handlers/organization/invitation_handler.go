@@ -16,9 +16,9 @@ import (
 
 // InviteMemberRequestV2 represents the enhanced request to invite a member
 type InviteMemberRequestV2 struct {
-	Email   string  `json:"email" binding:"required,email" example:"john@acme.com" description:"Email address of user to invite"`
-	RoleID  string  `json:"role_id" binding:"required" example:"01HX..." description:"Role ID to assign"`
-	Message *string `json:"message,omitempty" binding:"omitempty,max=500" example:"Welcome to the team!" description:"Optional personal message (max 500 chars)"`
+	Email   string    `json:"email" binding:"required,email" example:"john@acme.com" description:"Email address of user to invite"`
+	RoleID  uuid.UUID `json:"role_id" binding:"required" example:"01HX..." description:"Role ID to assign"`
+	Message *string   `json:"message,omitempty" binding:"omitempty,max=500" example:"Welcome to the team!" description:"Optional personal message (max 500 chars)"`
 }
 
 // InvitationResponse represents an invitation in API responses
@@ -29,14 +29,14 @@ type InvitationResponse struct {
 	AcceptedAt     *time.Time `json:"accepted_at,omitempty"`
 	RevokedAt      *time.Time `json:"revoked_at,omitempty"`
 	ResentAt       *time.Time `json:"resent_at,omitempty"`
-	ID             string     `json:"id" example:"01HX..."`
+	ID             uuid.UUID  `json:"id" example:"01HX..."`
 	Email          string     `json:"email" example:"john@acme.com"`
 	Status         string     `json:"status" example:"pending"`
 	TokenPreview   string     `json:"token_preview,omitempty" example:"inv_AbCd..."`
-	RoleID         string     `json:"role_id" example:"01HX..."`
+	RoleID         uuid.UUID  `json:"role_id" example:"01HX..."`
 	RoleName       string     `json:"role_name" example:"developer"`
 	Message        *string    `json:"message,omitempty"`
-	InvitedByID    string     `json:"invited_by_id" example:"01HX..."`
+	InvitedByID    uuid.UUID  `json:"invited_by_id" example:"01HX..."`
 	InvitedByEmail string     `json:"invited_by_email" example:"admin@acme.com"`
 	InvitedByName  string     `json:"invited_by_name" example:"Admin User"`
 	ResentCount    int        `json:"resent_count" example:"0"`
@@ -55,7 +55,7 @@ type PendingInvitationsResponse struct {
 
 // AcceptInvitationResponse represents the response after accepting an invitation
 type AcceptInvitationResponse struct {
-	OrganizationID   string `json:"organization_id" example:"01HX..."`
+	OrganizationID   uuid.UUID `json:"organization_id" example:"01HX..."`
 	OrganizationName string `json:"organization_name" example:"Acme Inc"`
 	RoleName         string `json:"role_name" example:"developer"`
 	Message          string `json:"message" example:"Successfully joined organization"`
@@ -66,12 +66,12 @@ type AcceptInvitationResponse struct {
 type UserInvitationResponse struct {
 	CreatedAt        time.Time `json:"created_at" example:"2024-01-01T00:00:00Z"`
 	ExpiresAt        time.Time `json:"expires_at" example:"2024-01-08T00:00:00Z"`
-	ID               string    `json:"id" example:"01HX..."`
+	ID               uuid.UUID `json:"id" example:"01HX..."`
 	Email            string    `json:"email" example:"john@acme.com"`
 	Status           string    `json:"status" example:"pending"`
 	RoleName         string    `json:"role_name" example:"developer"`
 	Message          *string   `json:"message,omitempty"`
-	OrganizationID   string    `json:"organization_id" example:"01HX..."`
+	OrganizationID   uuid.UUID `json:"organization_id" example:"01HX..."`
 	OrganizationName string    `json:"organization_name" example:"Acme Inc"`
 	InvitedByName    string    `json:"invited_by_name" example:"Admin User"`
 }
@@ -114,17 +114,10 @@ func (h *Handler) CreateInvitation(c *gin.Context) {
 
 	userID := middleware.MustGetUserID(c)
 
-	// Parse role ID
-	roleID, err := uuid.Parse(req.RoleID)
-	if err != nil {
-		response.Error(c, appErrors.NewValidationError("Invalid role ID format", err.Error()))
-		return
-	}
-
 	// Create invitation request
 	inviteReq := &organization.InviteUserRequest{
 		Email:   strings.ToLower(strings.TrimSpace(req.Email)),
-		RoleID:  roleID,
+		RoleID:  req.RoleID,
 		Message: req.Message,
 	}
 
@@ -150,14 +143,14 @@ func (h *Handler) CreateInvitation(c *gin.Context) {
 	}
 
 	resp := InvitationResponse{
-		ID:             invitation.ID.String(),
+		ID:             invitation.ID,
 		Email:          invitation.Email,
 		Status:         string(invitation.Status),
 		TokenPreview:   invitation.TokenPreview,
-		RoleID:         invitation.RoleID.String(),
+		RoleID:         invitation.RoleID,
 		RoleName:       roleName,
 		Message:        invitation.Message,
-		InvitedByID:    invitation.InvitedByID.String(),
+		InvitedByID:    invitation.InvitedByID,
 		InvitedByEmail: inviterEmail,
 		InvitedByName:  inviterName,
 		ExpiresAt:      invitation.ExpiresAt,
@@ -229,14 +222,14 @@ func (h *Handler) GetPendingInvitations(c *gin.Context) {
 		}
 
 		respInvitations = append(respInvitations, InvitationResponse{
-			ID:             inv.ID.String(),
+			ID:             inv.ID,
 			Email:          inv.Email,
 			Status:         string(inv.Status),
 			TokenPreview:   inv.TokenPreview,
-			RoleID:         inv.RoleID.String(),
+			RoleID:         inv.RoleID,
 			RoleName:       roleName,
 			Message:        inv.Message,
-			InvitedByID:    inv.InvitedByID.String(),
+			InvitedByID:    inv.InvitedByID,
 			InvitedByEmail: inviterEmail,
 			InvitedByName:  inviterName,
 			ExpiresAt:      inv.ExpiresAt,
@@ -303,14 +296,14 @@ func (h *Handler) ResendInvitation(c *gin.Context) {
 	}
 
 	resp := InvitationResponse{
-		ID:             invitation.ID.String(),
+		ID:             invitation.ID,
 		Email:          invitation.Email,
 		Status:         string(invitation.Status),
 		TokenPreview:   invitation.TokenPreview,
-		RoleID:         invitation.RoleID.String(),
+		RoleID:         invitation.RoleID,
 		RoleName:       roleName,
 		Message:        invitation.Message,
-		InvitedByID:    invitation.InvitedByID.String(),
+		InvitedByID:    invitation.InvitedByID,
 		InvitedByEmail: inviterEmail,
 		InvitedByName:  inviterName,
 		ExpiresAt:      invitation.ExpiresAt,
@@ -391,7 +384,7 @@ func (h *Handler) AcceptInvitation(c *gin.Context) {
 	}
 
 	response.Success(c, AcceptInvitationResponse{
-		OrganizationID:   result.OrganizationID.String(),
+		OrganizationID:   result.OrganizationID,
 		OrganizationName: result.OrganizationName,
 		RoleName:         result.RoleName,
 		Message:          "Successfully joined organization",
@@ -485,12 +478,12 @@ func (h *Handler) GetUserInvitations(c *gin.Context) {
 		}
 
 		respInvitations = append(respInvitations, UserInvitationResponse{
-			ID:               inv.ID.String(),
+			ID:               inv.ID,
 			Email:            inv.Email,
 			Status:           string(inv.Status),
 			RoleName:         roleName,
 			Message:          inv.Message,
-			OrganizationID:   inv.OrganizationID.String(),
+			OrganizationID:   inv.OrganizationID,
 			OrganizationName: orgName,
 			InvitedByName:    inviterName,
 			ExpiresAt:        inv.ExpiresAt,

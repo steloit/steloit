@@ -42,10 +42,10 @@ func MemoryLimiterInterceptor(cfg *MemoryLimiterConfig, logger *slog.Logger) grp
 
 	return func(
 		ctx context.Context,
-		req interface{},
+		req any,
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
-	) (interface{}, error) {
+	) (any, error) {
 		// Check memory before processing request
 		var memStats runtime.MemStats
 		runtime.ReadMemStats(&memStats)

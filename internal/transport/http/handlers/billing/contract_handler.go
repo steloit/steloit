@@ -545,7 +545,7 @@ func (h *ContractHandler) UpdateVolumeTiers(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, map[string]interface{}{
+	response.Success(c, map[string]any{
 		"message":     "Volume tiers updated successfully",
 		"tiers_count": len(tiers),
 	})

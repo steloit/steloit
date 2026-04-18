@@ -104,8 +104,8 @@ type Event struct {
 	Type        EventType              `json:"type"`
 	Subject     string                 `json:"subject,omitempty"`
 	Action      string                 `json:"action,omitempty"`
-	Data        interface{}            `json:"data,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Data        any            `json:"data,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
 	Priority    Priority               `json:"priority"`
 	Timestamp   time.Time              `json:"timestamp"`
 	Source      string                 `json:"source"`
@@ -118,13 +118,13 @@ type Event struct {
 }
 
 // NewEvent creates a new real-time event
-func NewEvent(eventType EventType, data interface{}) *Event {
+func NewEvent(eventType EventType, data any) *Event {
 	return &Event{
 		Type:      eventType,
 		Data:      data,
 		Priority:  PriorityMedium,
 		Timestamp: time.Now().UTC(),
-		Metadata:  make(map[string]interface{}),
+		Metadata:  make(map[string]any),
 		Version:   "1.0",
 	}
 }
@@ -180,16 +180,16 @@ func (e *Event) SetTraceID(traceID string) *Event {
 }
 
 // AddMetadata adds metadata to the event
-func (e *Event) AddMetadata(key string, value interface{}) *Event {
+func (e *Event) AddMetadata(key string, value any) *Event {
 	if e.Metadata == nil {
-		e.Metadata = make(map[string]interface{})
+		e.Metadata = make(map[string]any)
 	}
 	e.Metadata[key] = value
 	return e
 }
 
 // GetMetadata retrieves metadata from the event
-func (e *Event) GetMetadata(key string) (interface{}, bool) {
+func (e *Event) GetMetadata(key string) (any, bool) {
 	if e.Metadata == nil {
 		return nil, false
 	}
@@ -248,7 +248,7 @@ func (e *Event) Clone() *Event {
 
 	// Deep copy metadata
 	if e.Metadata != nil {
-		clone.Metadata = make(map[string]interface{})
+		clone.Metadata = make(map[string]any)
 		for k, v := range e.Metadata {
 			clone.Metadata[k] = v
 		}
@@ -260,7 +260,7 @@ func (e *Event) Clone() *Event {
 // EventFilter represents a filter for events
 type EventFilter struct {
 	TimeRange   *EventTimeRange        `json:"time_range,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
 	UserID      string                 `json:"user_id,omitempty"`
 	OrgID       string                 `json:"org_id,omitempty"`
 	ProjectID   string                 `json:"project_id,omitempty"`
@@ -357,7 +357,7 @@ func (f *EventFilter) Matches(event *Event) bool {
 
 // RequestEventData represents data for request events
 type RequestEventData struct {
-	CustomFields map[string]interface{} `json:"custom_fields,omitempty"`
+	CustomFields map[string]any `json:"custom_fields,omitempty"`
 	Error        string                 `json:"error,omitempty"`
 	Provider     string                 `json:"provider"`
 	Model        string                 `json:"model"`
@@ -386,7 +386,7 @@ type ProviderEventData struct {
 // MetricEventData represents data for metric events
 type MetricEventData struct {
 	Labels     map[string]string      `json:"labels,omitempty"`
-	Dimensions map[string]interface{} `json:"dimensions,omitempty"`
+	Dimensions map[string]any `json:"dimensions,omitempty"`
 	MetricName string                 `json:"metric_name"`
 	Unit       string                 `json:"unit"`
 	Value      float64                `json:"value"`
@@ -419,7 +419,7 @@ type CacheEventData struct {
 
 // OrganizationEventData represents data for organization events
 type OrganizationEventData struct {
-	Changes     map[string]interface{} `json:"changes,omitempty"`
+	Changes     map[string]any `json:"changes,omitempty"`
 	Name        string                 `json:"name"`
 	Slug        string                 `json:"slug,omitempty"`
 	Plan        string                 `json:"plan,omitempty"`
@@ -428,7 +428,7 @@ type OrganizationEventData struct {
 
 // ProjectEventData represents data for project events
 type ProjectEventData struct {
-	Changes     map[string]interface{} `json:"changes,omitempty"`
+	Changes     map[string]any `json:"changes,omitempty"`
 	Name        string                 `json:"name"`
 	Environment string                 `json:"environment"`
 	Status      string                 `json:"status,omitempty"`

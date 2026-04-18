@@ -70,7 +70,7 @@ func anyValueArrayToStrings(arrayValue *commonpb.ArrayValue) []string {
 
 // convertEntityToPayload converts a typed domain entity to map[string]any for TelemetryEventRequest
 // This preserves type safety during conversion while matching the expected payload format
-func convertEntityToPayload(entity interface{}) map[string]any {
+func convertEntityToPayload(entity any) map[string]any {
 	// Serialize to JSON then deserialize to map (simple, reliable)
 	jsonBytes, err := json.Marshal(entity)
 	if err != nil {
@@ -86,8 +86,8 @@ func convertEntityToPayload(entity interface{}) map[string]any {
 }
 
 // extractResourceAttributes converts OTLP Resource to map[string]string
-// Handles both metrics (resourcepb.Resource) and logs (interface{}) resource types
-func extractResourceAttributes(resource interface{}) map[string]string {
+// Handles both metrics (resourcepb.Resource) and logs (any) resource types
+func extractResourceAttributes(resource any) map[string]string {
 	// Handle nil resource
 	if resource == nil {
 		return make(map[string]string)

@@ -57,8 +57,8 @@ type Message struct {
 	Type      MessageType            `json:"type"`
 	Channel   string                 `json:"channel,omitempty"`
 	Event     string                 `json:"event,omitempty"`
-	Data      interface{}            `json:"data,omitempty"`
-	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+	Data      any            `json:"data,omitempty"`
+	Metadata  map[string]any `json:"metadata,omitempty"`
 	Timestamp time.Time              `json:"timestamp"`
 	UserID    string                 `json:"user_id,omitempty"`
 	OrgID     string                 `json:"org_id,omitempty"`
@@ -66,34 +66,34 @@ type Message struct {
 }
 
 // NewMessage creates a new WebSocket message
-func NewMessage(messageType MessageType, data interface{}) *Message {
+func NewMessage(messageType MessageType, data any) *Message {
 	return &Message{
 		Type:      messageType,
 		Data:      data,
 		Timestamp: time.Now().UTC(),
-		Metadata:  make(map[string]interface{}),
+		Metadata:  make(map[string]any),
 	}
 }
 
 // NewEventMessage creates a new event message
-func NewEventMessage(event string, data interface{}) *Message {
+func NewEventMessage(event string, data any) *Message {
 	return &Message{
 		Type:      MessageTypeEvent,
 		Event:     event,
 		Data:      data,
 		Timestamp: time.Now().UTC(),
-		Metadata:  make(map[string]interface{}),
+		Metadata:  make(map[string]any),
 	}
 }
 
 // NewChannelMessage creates a new channel message
-func NewChannelMessage(channel string, data interface{}) *Message {
+func NewChannelMessage(channel string, data any) *Message {
 	return &Message{
 		Type:      MessageTypeMessage,
 		Channel:   channel,
 		Data:      data,
 		Timestamp: time.Now().UTC(),
-		Metadata:  make(map[string]interface{}),
+		Metadata:  make(map[string]any),
 	}
 }
 
@@ -118,16 +118,16 @@ func (m *Message) SetUserContext(userID, orgID, projectID string) *Message {
 }
 
 // AddMetadata adds metadata to the message
-func (m *Message) AddMetadata(key string, value interface{}) *Message {
+func (m *Message) AddMetadata(key string, value any) *Message {
 	if m.Metadata == nil {
-		m.Metadata = make(map[string]interface{})
+		m.Metadata = make(map[string]any)
 	}
 	m.Metadata[key] = value
 	return m
 }
 
 // GetMetadata retrieves metadata from the message
-func (m *Message) GetMetadata(key string) (interface{}, bool) {
+func (m *Message) GetMetadata(key string) (any, bool) {
 	if m.Metadata == nil {
 		return nil, false
 	}
@@ -196,7 +196,7 @@ func (m *Message) Clone() *Message {
 
 	// Deep copy metadata
 	if m.Metadata != nil {
-		clone.Metadata = make(map[string]interface{})
+		clone.Metadata = make(map[string]any)
 		for k, v := range m.Metadata {
 			clone.Metadata[k] = v
 		}
@@ -233,14 +233,14 @@ type ErrorMessage struct {
 type StatusMessage struct {
 	Status  string      `json:"status"`
 	Message string      `json:"message"`
-	Data    interface{} `json:"data,omitempty"`
+	Data    any `json:"data,omitempty"`
 }
 
 // AckMessage represents an acknowledgment message
 type AckMessage struct {
 	MessageID string      `json:"message_id"`
 	Status    string      `json:"status"`
-	Data      interface{} `json:"data,omitempty"`
+	Data      any `json:"data,omitempty"`
 }
 
 // Real-time data structures for Brokle platform
@@ -251,7 +251,7 @@ type MetricUpdate struct {
 	Value      float64                `json:"value"`
 	Unit       string                 `json:"unit,omitempty"`
 	Labels     map[string]string      `json:"labels,omitempty"`
-	Dimensions map[string]interface{} `json:"dimensions,omitempty"`
+	Dimensions map[string]any `json:"dimensions,omitempty"`
 	Timestamp  time.Time              `json:"timestamp"`
 	OrgID      string                 `json:"org_id"`
 	ProjectID  string                 `json:"project_id"`
@@ -260,7 +260,7 @@ type MetricUpdate struct {
 // AnalyticsUpdate represents a real-time analytics update
 type AnalyticsUpdate struct {
 	Type      string                 `json:"type"`
-	Data      map[string]interface{} `json:"data"`
+	Data      map[string]any `json:"data"`
 	Period    string                 `json:"period"`
 	Timestamp time.Time              `json:"timestamp"`
 	OrgID     string                 `json:"org_id"`
@@ -285,7 +285,7 @@ type ProviderUpdate struct {
 	Health       float64                `json:"health"`
 	Latency      float64                `json:"latency"`
 	ErrorRate    float64                `json:"error_rate"`
-	Metadata     map[string]interface{} `json:"metadata,omitempty"`
+	Metadata     map[string]any `json:"metadata,omitempty"`
 	Timestamp    time.Time              `json:"timestamp"`
 }
 
@@ -299,7 +299,7 @@ type RoutingUpdate struct {
 	Latency   float64                `json:"latency"`
 	Cost      float64                `json:"cost"`
 	Quality   float64                `json:"quality,omitempty"`
-	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+	Metadata  map[string]any `json:"metadata,omitempty"`
 	Timestamp time.Time              `json:"timestamp"`
 	OrgID     string                 `json:"org_id"`
 	ProjectID string                 `json:"project_id"`
@@ -323,7 +323,7 @@ type SystemAlert struct {
 	Message   string                 `json:"message"`
 	Component string                 `json:"component"`
 	Action    string                 `json:"action,omitempty"`
-	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+	Metadata  map[string]any `json:"metadata,omitempty"`
 	Timestamp time.Time              `json:"timestamp"`
 	OrgID     string                 `json:"org_id,omitempty"`
 	ProjectID string                 `json:"project_id,omitempty"`
@@ -338,7 +338,7 @@ type Notification struct {
 	Priority  string                 `json:"priority"`
 	Category  string                 `json:"category"`
 	ActionURL string                 `json:"action_url,omitempty"`
-	Data      map[string]interface{} `json:"data,omitempty"`
+	Data      map[string]any `json:"data,omitempty"`
 	Read      bool                   `json:"read"`
 	Timestamp time.Time              `json:"timestamp"`
 	ExpiresAt *time.Time             `json:"expires_at,omitempty"`
@@ -358,7 +358,7 @@ type RequestEvent struct {
 	Quality   float64                `json:"quality,omitempty"`
 	CacheHit  bool                   `json:"cache_hit,omitempty"`
 	Error     string                 `json:"error,omitempty"`
-	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+	Metadata  map[string]any `json:"metadata,omitempty"`
 	Timestamp time.Time              `json:"timestamp"`
 	OrgID     string                 `json:"org_id"`
 	ProjectID string                 `json:"project_id"`
@@ -373,7 +373,7 @@ type CacheEvent struct {
 	Similarity float64                `json:"similarity,omitempty"`
 	SavedCost  float64                `json:"saved_cost,omitempty"`
 	SavedTime  float64                `json:"saved_time,omitempty"`
-	Metadata   map[string]interface{} `json:"metadata,omitempty"`
+	Metadata   map[string]any `json:"metadata,omitempty"`
 	Timestamp  time.Time              `json:"timestamp"`
 	OrgID      string                 `json:"org_id"`
 	ProjectID  string                 `json:"project_id"`
@@ -419,7 +419,7 @@ func NewErrorMessage(code, message, details string) *Message {
 }
 
 // NewStatusMessage creates a status message
-func NewStatusMessage(status, message string, data interface{}) *Message {
+func NewStatusMessage(status, message string, data any) *Message {
 	return NewMessage(MessageTypeStatus, StatusMessage{
 		Status:  status,
 		Message: message,
@@ -428,7 +428,7 @@ func NewStatusMessage(status, message string, data interface{}) *Message {
 }
 
 // NewAckMessage creates an acknowledgment message
-func NewAckMessage(messageID, status string, data interface{}) *Message {
+func NewAckMessage(messageID, status string, data any) *Message {
 	return NewMessage(MessageTypeAck, AckMessage{
 		MessageID: messageID,
 		Status:    status,

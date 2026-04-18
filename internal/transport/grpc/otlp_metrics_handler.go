@@ -105,7 +105,7 @@ func (h *OTLPMetricsHandler) Export(
 		BatchID:   batchID,
 		ProjectID: *projectIDPtr,
 		Events:    eventData,
-		Metadata: map[string]interface{}{
+		Metadata: map[string]any{
 			"source":           "otlp-grpc-metrics",
 			"resource_metrics": len(req.ResourceMetrics),
 			"total_metrics":    metricCount,

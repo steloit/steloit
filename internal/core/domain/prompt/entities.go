@@ -357,7 +357,7 @@ type StreamResult struct {
 
 // UpsertResponse is the response for the SDK upsert endpoint.
 type UpsertResponse struct {
-	ID          string     `json:"id"`
+	ID          uuid.UUID  `json:"id"`
 	Name        string     `json:"name"`
 	Type        PromptType `json:"type"`
 	Version     int        `json:"version"`

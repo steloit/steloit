@@ -248,12 +248,12 @@ func (t *UsageTracker) Stop() {
 }
 
 // Health check
-func (t *UsageTracker) GetHealth() map[string]interface{} {
+func (t *UsageTracker) GetHealth() map[string]any {
 	t.cacheMutex.RLock()
 	cacheSize := len(t.quotaCache)
 	t.cacheMutex.RUnlock()
 
-	return map[string]interface{}{
+	return map[string]any{
 		"service":               "usage_tracker",
 		"status":                "healthy",
 		"cached_quotas":         cacheSize,
@@ -359,21 +359,21 @@ func (t *UsageTracker) syncQuotas() {
 }
 
 // GetUsageMetrics returns usage metrics for monitoring
-func (t *UsageTracker) GetUsageMetrics(ctx context.Context, orgID uuid.UUID) (map[string]interface{}, error) {
+func (t *UsageTracker) GetUsageMetrics(ctx context.Context, orgID uuid.UUID) (map[string]any, error) {
 	quota, err := t.GetUsageQuota(ctx, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get usage quota: %w", err)
 	}
 
 	if quota == nil {
-		return map[string]interface{}{
+		return map[string]any{
 			"organization_id": orgID,
 			"has_quota":       false,
 			"unlimited":       true,
 		}, nil
 	}
 
-	return map[string]interface{}{
+	return map[string]any{
 		"organization_id":       orgID,
 		"has_quota":             true,
 		"billing_tier":          quota.BillingTier,

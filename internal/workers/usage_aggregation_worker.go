@@ -526,7 +526,7 @@ func (w *UsageAggregationWorker) sendAlertNotification(ctx context.Context, org 
 			To:       []string{org.BillingEmail},
 			Subject:  "Usage Alert: " + string(alert.Dimension) + " threshold exceeded",
 			Template: "usage_alert",
-			TemplateData: map[string]interface{}{
+			TemplateData: map[string]any{
 				"organization_name": org.Name,
 				"budget_name":       budgetName,
 				"dimension":         string(alert.Dimension),

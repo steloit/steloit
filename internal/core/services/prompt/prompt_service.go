@@ -437,7 +437,7 @@ func (s *promptService) UpsertPrompt(ctx context.Context, projectID uuid.UUID, u
 		}
 
 		return &promptDomain.UpsertResponse{
-			ID:          newPrompt.ID.String(),
+			ID:          newPrompt.ID,
 			Name:        newPrompt.Name,
 			Type:        newPrompt.Type,
 			Version:     version.Version,
@@ -460,7 +460,7 @@ func (s *promptService) UpsertPrompt(ctx context.Context, projectID uuid.UUID, u
 	}
 
 	return &promptDomain.UpsertResponse{
-		ID:          prompt.ID.String(),
+		ID:          prompt.ID,
 		Name:        prompt.Name,
 		Type:        prompt.Type,
 		Version:     version.Version,
@@ -749,7 +749,7 @@ func (s *promptService) GetVersionDiff(ctx context.Context, projectID, promptID 
 		return nil, appErrors.NewNotFoundError(fmt.Sprintf("version %d", toVersion))
 	}
 
-	var templateFrom, templateTo interface{}
+	var templateFrom, templateTo any
 	json.Unmarshal(from.Template, &templateFrom)
 	json.Unmarshal(to.Template, &templateTo)
 
@@ -964,8 +964,8 @@ func (s *promptService) InvalidateCache(ctx context.Context, projectID uuid.UUID
 	return s.cacheRepo.DeleteByPattern(ctx, pattern)
 }
 
-func (s *promptService) inferPromptType(template interface{}) promptDomain.PromptType {
-	if m, ok := template.(map[string]interface{}); ok {
+func (s *promptService) inferPromptType(template any) promptDomain.PromptType {
+	if m, ok := template.(map[string]any); ok {
 		if _, hasMessages := m["messages"]; hasMessages {
 			return promptDomain.PromptTypeChat
 		}
@@ -974,7 +974,7 @@ func (s *promptService) inferPromptType(template interface{}) promptDomain.Promp
 }
 
 func (s *promptService) buildPromptResponse(prompt *promptDomain.Prompt, version *promptDomain.Version, labels []*promptDomain.Label) *promptDomain.PromptResponse {
-	var template interface{}
+	var template any
 	json.Unmarshal(version.Template, &template)
 
 	labelNames := make([]string, 0, len(labels))
@@ -1009,7 +1009,7 @@ func (s *promptService) buildPromptResponse(prompt *promptDomain.Prompt, version
 // buildVersionResponseWithLabels builds a version response with preloaded labels
 // This avoids the N+1 query problem when listing multiple versions
 func (s *promptService) buildVersionResponseWithLabels(v *promptDomain.Version, labels []string) (*promptDomain.VersionResponse, error) {
-	var template interface{}
+	var template any
 	if err := json.Unmarshal(v.Template, &template); err != nil {
 		return nil, err
 	}

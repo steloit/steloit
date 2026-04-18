@@ -4,9 +4,9 @@ import "context"
 
 // Compliance interface that both stub and real implementation satisfy
 type Compliance interface {
-	ValidateCompliance(ctx context.Context, data interface{}) error
+	ValidateCompliance(ctx context.Context, data any) error
 	GenerateAuditReport(ctx context.Context) ([]byte, error)
-	AnonymizePII(ctx context.Context, data interface{}) (interface{}, error)
+	AnonymizePII(ctx context.Context, data any) (any, error)
 	CheckSOC2Compliance(ctx context.Context) (bool, error)
 	CheckHIPAACompliance(ctx context.Context) (bool, error)
 	CheckGDPRCompliance(ctx context.Context) (bool, error)
@@ -20,7 +20,7 @@ func New() Compliance {
 	return &StubCompliance{}
 }
 
-func (s *StubCompliance) ValidateCompliance(ctx context.Context, data interface{}) error {
+func (s *StubCompliance) ValidateCompliance(ctx context.Context, data any) error {
 	// Stub: Always passes validation
 	return nil
 }
@@ -30,7 +30,7 @@ func (s *StubCompliance) GenerateAuditReport(ctx context.Context) ([]byte, error
 	return []byte("Basic audit report - Enterprise license required for advanced compliance features"), nil
 }
 
-func (s *StubCompliance) AnonymizePII(ctx context.Context, data interface{}) (interface{}, error) {
+func (s *StubCompliance) AnonymizePII(ctx context.Context, data any) (any, error) {
 	// Stub: Returns data unchanged
 	return data, nil
 }

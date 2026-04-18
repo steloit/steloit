@@ -28,7 +28,7 @@ func NewWidgetQueryBuilder() *WidgetQueryBuilder {
 
 type QueryResult struct {
 	Query string
-	Args  []interface{}
+	Args  []any
 }
 
 type TimeBucket struct {
@@ -88,7 +88,7 @@ func (b *WidgetQueryBuilder) BuildWidgetQuery(
 
 	// Build PREWHERE conditions (indexed columns)
 	prewhereConditions := []string{"project_id = ?"}
-	prewhereArgs := []interface{}{projectID}
+	prewhereArgs := []any{projectID}
 
 	if startTime != nil {
 		prewhereConditions = append(prewhereConditions, viewDef.TimeColumn+" >= ?")
@@ -104,7 +104,7 @@ func (b *WidgetQueryBuilder) BuildWidgetQuery(
 	}
 
 	whereConditions := []string{}
-	whereArgs := []interface{}{}
+	whereArgs := []any{}
 	for _, filter := range query.Filters {
 		cond, args, err := b.buildFilterCondition(filter, viewDef)
 		if err != nil {
@@ -178,7 +178,7 @@ func (b *WidgetQueryBuilder) BuildWidgetQuery(
 func (b *WidgetQueryBuilder) buildFilterCondition(
 	filter dashboardDomain.QueryFilter,
 	viewDef *dashboardDomain.ViewDefinition,
-) (string, []interface{}, error) {
+) (string, []any, error) {
 	if err := b.validateFieldName(filter.Field); err != nil {
 		return "", nil, err
 	}
@@ -191,32 +191,32 @@ func (b *WidgetQueryBuilder) buildFilterCondition(
 	}
 
 	var condition string
-	var args []interface{}
+	var args []any
 
 	switch filter.Operator {
 	case dashboardDomain.FilterOpEqual:
 		condition = fieldSQL + " = ?"
-		args = []interface{}{filter.Value}
+		args = []any{filter.Value}
 	case dashboardDomain.FilterOpNotEqual:
 		condition = fieldSQL + " != ?"
-		args = []interface{}{filter.Value}
+		args = []any{filter.Value}
 	case dashboardDomain.FilterOpGreaterThan:
 		condition = fieldSQL + " > ?"
-		args = []interface{}{filter.Value}
+		args = []any{filter.Value}
 	case dashboardDomain.FilterOpLessThan:
 		condition = fieldSQL + " < ?"
-		args = []interface{}{filter.Value}
+		args = []any{filter.Value}
 	case dashboardDomain.FilterOpGTE:
 		condition = fieldSQL + " >= ?"
-		args = []interface{}{filter.Value}
+		args = []any{filter.Value}
 	case dashboardDomain.FilterOpLTE:
 		condition = fieldSQL + " <= ?"
-		args = []interface{}{filter.Value}
+		args = []any{filter.Value}
 	case dashboardDomain.FilterOpContains:
 		condition = fieldSQL + " LIKE ?"
-		args = []interface{}{fmt.Sprintf("%%%v%%", filter.Value)}
+		args = []any{fmt.Sprintf("%%%v%%", filter.Value)}
 	case dashboardDomain.FilterOpIn:
-		values, ok := filter.Value.([]interface{})
+		values, ok := filter.Value.([]any)
 		if !ok {
 			return "", nil, errors.New("IN operator requires an array value")
 		}
@@ -349,7 +349,7 @@ func (b *WidgetQueryBuilder) BuildTraceListQuery(
 		"parent_span_id IS NULL",
 		"deleted_at IS NULL",
 	}
-	prewhereArgs := []interface{}{projectID}
+	prewhereArgs := []any{projectID}
 
 	if startTime != nil {
 		prewhereConditions = append(prewhereConditions, viewDef.TimeColumn+" >= ?")
@@ -361,7 +361,7 @@ func (b *WidgetQueryBuilder) BuildTraceListQuery(
 	}
 
 	whereConditions := []string{}
-	whereArgs := []interface{}{}
+	whereArgs := []any{}
 	for _, filter := range query.Filters {
 		cond, args, err := b.buildFilterCondition(filter, viewDef)
 		if err != nil {
@@ -468,7 +468,7 @@ func (b *WidgetQueryBuilder) BuildHistogramQuery(
 	`, bucketCount, histogramColumn)
 
 	prewhereConditions := []string{"project_id = ?"}
-	prewhereArgs := []interface{}{projectID}
+	prewhereArgs := []any{projectID}
 
 	if startTime != nil {
 		prewhereConditions = append(prewhereConditions, viewDef.TimeColumn+" >= ?")
@@ -484,7 +484,7 @@ func (b *WidgetQueryBuilder) BuildHistogramQuery(
 	}
 
 	whereConditions := []string{}
-	whereArgs := []interface{}{}
+	whereArgs := []any{}
 	for _, filter := range query.Filters {
 		cond, args, err := b.buildFilterCondition(filter, viewDef)
 		if err != nil {
@@ -557,6 +557,6 @@ func (b *WidgetQueryBuilder) BuildVariableOptionsQuery(
 
 	return &QueryResult{
 		Query: queryBuilder.String(),
-		Args:  []interface{}{projectID, limit},
+		Args:  []any{projectID, limit},
 	}
 }

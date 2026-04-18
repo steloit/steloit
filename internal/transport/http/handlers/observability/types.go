@@ -8,15 +8,15 @@ import (
 
 type CreateSpanRequest struct {
 	StartTime        time.Time              `json:"start_time" binding:"required"`
-	Input            map[string]interface{} `json:"input,omitempty"`
+	Input            map[string]any `json:"input,omitempty"`
 	QualityScore     *float64               `json:"quality_score,omitempty"`
 	LatencyMs        *int                   `json:"latency_ms,omitempty"`
 	TotalCost        *float64               `json:"total_cost,omitempty"`
 	OutputCost       *float64               `json:"output_cost,omitempty"`
 	EndTime          *time.Time             `json:"end_time,omitempty"`
 	InputCost        *float64               `json:"input_cost,omitempty"`
-	ModelParameters  map[string]interface{} `json:"model_parameters,omitempty"`
-	Output           map[string]interface{} `json:"output,omitempty"`
+	ModelParameters  map[string]any `json:"model_parameters,omitempty"`
+	Output           map[string]any `json:"output,omitempty"`
 	Model            string                 `json:"model,omitempty"`
 	Provider         string                 `json:"provider,omitempty"`
 	TraceID          string                 `json:"trace_id" binding:"required"`
@@ -38,15 +38,15 @@ type SpanResponse struct {
 	UpdatedAt        time.Time              `json:"updated_at"`
 	CreatedAt        time.Time              `json:"created_at"`
 	StartTime        time.Time              `json:"start_time"`
-	Input            map[string]interface{} `json:"input,omitempty"`
+	Input            map[string]any `json:"input,omitempty"`
 	QualityScore     *float64               `json:"quality_score,omitempty"`
 	LatencyMs        *int                   `json:"latency_ms,omitempty"`
 	TotalCost        *float64               `json:"total_cost,omitempty"`
 	EndTime          *time.Time             `json:"end_time,omitempty"`
 	OutputCost       *float64               `json:"output_cost,omitempty"`
 	InputCost        *float64               `json:"input_cost,omitempty"`
-	ModelParameters  map[string]interface{} `json:"model_parameters,omitempty"`
-	Output           map[string]interface{} `json:"output,omitempty"`
+	ModelParameters  map[string]any `json:"model_parameters,omitempty"`
+	Output           map[string]any `json:"output,omitempty"`
 	Provider         string                 `json:"provider,omitempty"`
 	Type             string                 `json:"type"`
 	Model            string                 `json:"model,omitempty"`
@@ -163,7 +163,7 @@ type ProviderSummaryResponse struct {
 
 type ActivityItemResponse struct {
 	Timestamp   time.Time              `json:"timestamp"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
 	Type        string                 `json:"type"`
 	Description string                 `json:"description"`
 }
@@ -174,7 +174,7 @@ type TimeSeriesPointResponse struct {
 }
 
 type ErrorResponse struct {
-	Details interface{} `json:"details,omitempty"`
+	Details any `json:"details,omitempty"`
 	Error   string      `json:"error"`
 	Message string      `json:"message"`
 	Code    string      `json:"code,omitempty"`

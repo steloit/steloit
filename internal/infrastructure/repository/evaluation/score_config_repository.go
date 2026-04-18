@@ -197,14 +197,14 @@ func scoreConfigFromRow(row *gen.ScoreConfig) (*evalDomain.ScoreConfig, error) {
 
 // marshalEvalJSON handles the domain-side JSONB serialization. Returns
 // nil for empty/nil values so the column stores NULL.
-func marshalEvalJSON(v interface{}) (json.RawMessage, error) {
+func marshalEvalJSON(v any) (json.RawMessage, error) {
 	if v == nil {
 		return nil, nil
 	}
 	return json.Marshal(v)
 }
 
-func unmarshalEvalJSON(raw json.RawMessage, dst interface{}) error {
+func unmarshalEvalJSON(raw json.RawMessage, dst any) error {
 	if len(raw) == 0 {
 		return nil
 	}

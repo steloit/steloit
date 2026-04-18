@@ -38,33 +38,33 @@ func NewSettingsHandler(
 
 // OrganizationSetting represents an organization setting
 type OrganizationSetting struct {
-	ID             string      `json:"id" example:"set_1234567890" description:"Unique setting identifier"`
-	OrganizationID string      `json:"organization_id" example:"org_1234567890" description:"Organization ID"`
-	Key            string      `json:"key" example:"theme_color" description:"Setting key"`
-	Value          interface{} `json:"value" swaggertype:"object" description:"Setting value (can be any JSON type)"`
-	CreatedAt      string      `json:"created_at" example:"2024-01-01T00:00:00Z" description:"Creation timestamp"`
-	UpdatedAt      string      `json:"updated_at" example:"2024-01-01T00:00:00Z" description:"Last update timestamp"`
+	ID             uuid.UUID `json:"id" example:"set_1234567890" description:"Unique setting identifier"`
+	OrganizationID uuid.UUID `json:"organization_id" example:"org_1234567890" description:"Organization ID"`
+	Key            string    `json:"key" example:"theme_color" description:"Setting key"`
+	Value          any       `json:"value" swaggertype:"object" description:"Setting value (can be any JSON type)"`
+	CreatedAt      string    `json:"created_at" example:"2024-01-01T00:00:00Z" description:"Creation timestamp"`
+	UpdatedAt      string    `json:"updated_at" example:"2024-01-01T00:00:00Z" description:"Last update timestamp"`
 }
 
 // CreateSettingRequest represents the request to create an organization setting
 type CreateSettingRequest struct {
-	Value interface{} `json:"value" binding:"required" swaggertype:"object" description:"Setting value (any JSON type)"`
+	Value any `json:"value" binding:"required" swaggertype:"object" description:"Setting value (any JSON type)"`
 	Key   string      `json:"key" binding:"required,min=1,max=255" example:"theme_color" description:"Setting key (1-255 characters)"`
 }
 
 // UpdateSettingRequest represents the request to update an organization setting
 type UpdateSettingRequest struct {
-	Value interface{} `json:"value" binding:"required" swaggertype:"object" description:"New setting value (any JSON type)"`
+	Value any `json:"value" binding:"required" swaggertype:"object" description:"New setting value (any JSON type)"`
 }
 
 // BulkSettingsRequest represents the request for bulk settings operations
 type BulkSettingsRequest struct {
-	Settings map[string]interface{} `json:"settings" binding:"required" swaggertype:"object" description:"Key-value pairs of settings"`
+	Settings map[string]any `json:"settings" binding:"required" swaggertype:"object" description:"Key-value pairs of settings"`
 }
 
 // SettingsListResponse represents the response when listing settings
 type SettingsListResponse struct {
-	Settings map[string]interface{} `json:"settings" swaggertype:"object" description:"Key-value pairs of all settings"`
+	Settings map[string]any `json:"settings" swaggertype:"object" description:"Key-value pairs of all settings"`
 }
 
 // GetAllSettings handles GET /organizations/:orgId/settings
@@ -150,8 +150,8 @@ func (h *SettingsHandler) GetSetting(c *gin.Context) {
 
 	value, _ := setting.GetValue()
 	response.Success(c, OrganizationSetting{
-		ID:             setting.ID.String(),
-		OrganizationID: setting.OrganizationID.String(),
+		ID:             setting.ID,
+		OrganizationID: setting.OrganizationID,
 		Key:            setting.Key,
 		Value:          value,
 		CreatedAt:      setting.CreatedAt.Format("2006-01-02T15:04:05Z"),
@@ -211,8 +211,8 @@ func (h *SettingsHandler) CreateSetting(c *gin.Context) {
 
 	value, _ := setting.GetValue()
 	response.SuccessWithStatus(c, http.StatusCreated, OrganizationSetting{
-		ID:             setting.ID.String(),
-		OrganizationID: setting.OrganizationID.String(),
+		ID:             setting.ID,
+		OrganizationID: setting.OrganizationID,
 		Key:            setting.Key,
 		Value:          value,
 		CreatedAt:      setting.CreatedAt.Format("2006-01-02T15:04:05Z"),

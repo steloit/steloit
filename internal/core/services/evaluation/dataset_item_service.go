@@ -361,9 +361,9 @@ func (s *datasetItemService) ImportFromCSV(ctx context.Context, datasetID uuid.U
 
 	// First pass: extract data and compute content hashes
 	type csvRowData struct {
-		input    map[string]interface{}
-		expected map[string]interface{}
-		metadata map[string]interface{}
+		input    map[string]any
+		expected map[string]any
+		metadata map[string]any
 		hash     string
 	}
 	rowDataList := make([]csvRowData, 0, len(records)-startRow)
@@ -381,17 +381,17 @@ func (s *datasetItemService) ImportFromCSV(ctx context.Context, datasetID uuid.U
 			continue
 		}
 
-		input := make(map[string]interface{})
+		input := make(map[string]any)
 		if inputIdx < len(row) {
 			input["value"] = s.parseCSVValue(row[inputIdx])
 		}
 
-		expected := make(map[string]interface{})
+		expected := make(map[string]any)
 		if expectedIdx != nil && *expectedIdx < len(row) {
 			expected["value"] = s.parseCSVValue(row[*expectedIdx])
 		}
 
-		metadata := make(map[string]interface{})
+		metadata := make(map[string]any)
 		for _, col := range req.ColumnMapping.MetadataColumns {
 			idx := columnIndex[col]
 			if idx < len(row) {
@@ -474,10 +474,10 @@ func (s *datasetItemService) ImportFromCSV(ctx context.Context, datasetID uuid.U
 
 // parseCSVValue attempts to parse a CSV cell value into its appropriate type.
 // Tries JSON parsing first (for objects, arrays, booleans, numbers), falls back to string.
-func (s *datasetItemService) parseCSVValue(value string) interface{} {
+func (s *datasetItemService) parseCSVValue(value string) any {
 	value = strings.TrimSpace(value)
 
-	var parsed interface{}
+	var parsed any
 	if err := json.Unmarshal([]byte(value), &parsed); err == nil {
 		return parsed
 	}
@@ -719,35 +719,35 @@ func (s *datasetItemService) ExportItems(ctx context.Context, datasetID uuid.UUI
 
 // Helper types for trace/span data extraction
 type traceData struct {
-	input    map[string]interface{}
-	expected map[string]interface{}
-	metadata map[string]interface{}
+	input    map[string]any
+	expected map[string]any
+	metadata map[string]any
 	hash     string
 }
 
 type spanData struct {
 	traceID  string
-	input    map[string]interface{}
-	expected map[string]interface{}
-	metadata map[string]interface{}
+	input    map[string]any
+	expected map[string]any
+	metadata map[string]any
 	hash     string
 }
 
 // computeContentHash computes a SHA256 hash of the input and expected fields for deduplication.
-func (s *datasetItemService) computeContentHash(input, expected map[string]interface{}) string {
+func (s *datasetItemService) computeContentHash(input, expected map[string]any) string {
 	return ComputeContentHash(input, expected)
 }
 
 // extractFieldsFromRaw extracts input, expected, and metadata fields from a raw JSON item using keys mapping.
-func (s *datasetItemService) extractFieldsFromRaw(raw map[string]interface{}, mapping *evaluation.KeysMapping) (input, expected, metadata map[string]interface{}) {
-	input = make(map[string]interface{})
-	expected = make(map[string]interface{})
-	metadata = make(map[string]interface{})
+func (s *datasetItemService) extractFieldsFromRaw(raw map[string]any, mapping *evaluation.KeysMapping) (input, expected, metadata map[string]any) {
+	input = make(map[string]any)
+	expected = make(map[string]any)
+	metadata = make(map[string]any)
 
 	if mapping == nil || (len(mapping.InputKeys) == 0 && len(mapping.ExpectedKeys) == 0 && len(mapping.MetadataKeys) == 0) {
 		// No mapping: use "input", "expected", "metadata" keys or the whole object as input
 		if v, ok := raw["input"]; ok {
-			if m, ok := v.(map[string]interface{}); ok {
+			if m, ok := v.(map[string]any); ok {
 				input = m
 			} else {
 				input["value"] = v
@@ -762,7 +762,7 @@ func (s *datasetItemService) extractFieldsFromRaw(raw map[string]interface{}, ma
 		}
 
 		if v, ok := raw["expected"]; ok {
-			if m, ok := v.(map[string]interface{}); ok {
+			if m, ok := v.(map[string]any); ok {
 				expected = m
 			} else {
 				expected["value"] = v
@@ -770,7 +770,7 @@ func (s *datasetItemService) extractFieldsFromRaw(raw map[string]interface{}, ma
 		}
 
 		if v, ok := raw["metadata"]; ok {
-			if m, ok := v.(map[string]interface{}); ok {
+			if m, ok := v.(map[string]any); ok {
 				metadata = m
 			} else {
 				metadata["value"] = v
@@ -802,16 +802,16 @@ func (s *datasetItemService) extractFieldsFromRaw(raw map[string]interface{}, ma
 }
 
 // extractFieldsFromSpan extracts input, expected, and metadata fields from a span using keys mapping.
-func (s *datasetItemService) extractFieldsFromSpan(span *observability.Span, mapping *evaluation.KeysMapping) (input, expected, metadata map[string]interface{}) {
-	input = make(map[string]interface{})
-	expected = make(map[string]interface{})
-	metadata = make(map[string]interface{})
+func (s *datasetItemService) extractFieldsFromSpan(span *observability.Span, mapping *evaluation.KeysMapping) (input, expected, metadata map[string]any) {
+	input = make(map[string]any)
+	expected = make(map[string]any)
+	metadata = make(map[string]any)
 
 	// Parse span input
 	if span.Input != nil && *span.Input != "" {
-		var parsed interface{}
+		var parsed any
 		if err := json.Unmarshal([]byte(*span.Input), &parsed); err == nil {
-			if m, ok := parsed.(map[string]interface{}); ok {
+			if m, ok := parsed.(map[string]any); ok {
 				input = m
 			} else {
 				input["value"] = parsed
@@ -823,9 +823,9 @@ func (s *datasetItemService) extractFieldsFromSpan(span *observability.Span, map
 
 	// Parse span output as expected
 	if span.Output != nil && *span.Output != "" {
-		var parsed interface{}
+		var parsed any
 		if err := json.Unmarshal([]byte(*span.Output), &parsed); err == nil {
-			if m, ok := parsed.(map[string]interface{}); ok {
+			if m, ok := parsed.(map[string]any); ok {
 				expected = m
 			} else {
 				expected["value"] = parsed
@@ -837,7 +837,7 @@ func (s *datasetItemService) extractFieldsFromSpan(span *observability.Span, map
 
 	// Apply keys mapping to filter specific fields
 	if mapping != nil && len(mapping.InputKeys) > 0 {
-		filtered := make(map[string]interface{})
+		filtered := make(map[string]any)
 		for _, key := range mapping.InputKeys {
 			if v, ok := input[key]; ok {
 				filtered[key] = v
@@ -847,7 +847,7 @@ func (s *datasetItemService) extractFieldsFromSpan(span *observability.Span, map
 	}
 
 	if mapping != nil && len(mapping.ExpectedKeys) > 0 {
-		filtered := make(map[string]interface{})
+		filtered := make(map[string]any)
 		for _, key := range mapping.ExpectedKeys {
 			if v, ok := expected[key]; ok {
 				filtered[key] = v

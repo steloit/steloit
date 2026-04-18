@@ -50,7 +50,7 @@ type DatabaseRunner interface {
 
 	// Information and status
 	Version() (uint, bool, error)
-	GetMigrationInfo() (map[string]interface{}, error)
+	GetMigrationInfo() (map[string]any, error)
 
 	// Lifecycle
 	Close() (error, error)
@@ -58,7 +58,7 @@ type DatabaseRunner interface {
 
 // HealthChecker defines the interface for migration health checks
 type HealthChecker interface {
-	HealthCheck() map[string]interface{}
+	HealthCheck() map[string]any
 	GetStatus() MigrationStatus
 }
 
@@ -80,7 +80,7 @@ type MigrationManager interface {
 	ShowPostgresStatus(ctx context.Context) error
 	ShowClickHouseStatus(ctx context.Context) error
 	GetMigrationInfo() (*MigrationInfo, error)
-	HealthCheck() map[string]interface{}
+	HealthCheck() map[string]any
 	GetStatus() MigrationStatus
 
 	// Migration creation

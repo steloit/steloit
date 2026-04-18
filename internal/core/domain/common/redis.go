@@ -18,7 +18,7 @@ type RedisClient interface {
 	Get(ctx context.Context, key string) (string, error)
 
 	// Set stores a value with TTL
-	Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error
+	Set(ctx context.Context, key string, value any, ttl time.Duration) error
 
 	// Delete removes one or more keys
 	Delete(ctx context.Context, keys ...string) error

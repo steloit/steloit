@@ -211,7 +211,7 @@ func (c *Client) SendText(text string) error {
 }
 
 // SendJSON sends a JSON message
-func (c *Client) SendJSON(data interface{}) error {
+func (c *Client) SendJSON(data any) error {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		return fmt.Errorf("failed to marshal JSON: %w", err)
@@ -396,8 +396,8 @@ func (c *Client) reconnect() {
 }
 
 // GetConnectionInfo returns connection information
-func (c *Client) GetConnectionInfo() map[string]interface{} {
-	return map[string]interface{}{
+func (c *Client) GetConnectionInfo() map[string]any {
+	return map[string]any{
 		"url":           c.config.URL,
 		"state":         c.GetState().String(),
 		"reconnects":    c.reconnects,

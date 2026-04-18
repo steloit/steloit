@@ -85,7 +85,7 @@ func (g *InvoiceGenerator) GenerateInvoice(
 	invoice.TotalAmount = invoice.Subtotal.Sub(invoice.DiscountAmount).Add(invoice.TaxAmount)
 
 	// Add metadata
-	invoice.Metadata = map[string]interface{}{
+	invoice.Metadata = map[string]any{
 		"total_requests":     summary.TotalRequests,
 		"total_tokens":       summary.TotalTokens,
 		"provider_breakdown": summary.ProviderBreakdown,
@@ -277,7 +277,7 @@ func (g *InvoiceGenerator) CancelInvoice(ctx context.Context, invoice *billingDo
 	invoice.UpdatedAt = time.Now()
 
 	if invoice.Metadata == nil {
-		invoice.Metadata = make(map[string]interface{})
+		invoice.Metadata = make(map[string]any)
 	}
 	invoice.Metadata["cancellation_reason"] = reason
 	invoice.Metadata["cancelled_at"] = time.Now()
@@ -425,11 +425,11 @@ func (g *InvoiceGenerator) getTaxConfiguration(billingAddress *billingDomain.Bil
 }
 
 // Health check
-func (g *InvoiceGenerator) GetHealth() map[string]interface{} {
-	return map[string]interface{}{
+func (g *InvoiceGenerator) GetHealth() map[string]any {
+	return map[string]any{
 		"service": "invoice_generator",
 		"status":  "healthy",
-		"config": map[string]interface{}{
+		"config": map[string]any{
 			"default_currency":     g.config.DefaultCurrency,
 			"payment_grace_period": g.config.PaymentGracePeriod.String(),
 			"invoice_generation":   g.config.InvoiceGeneration,

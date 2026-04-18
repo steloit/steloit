@@ -69,7 +69,7 @@ func (r *RedisDB) Health() error {
 }
 
 // Set sets a key-value pair with optional expiration
-func (r *RedisDB) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
+func (r *RedisDB) Set(ctx context.Context, key string, value any, expiration time.Duration) error {
 	return r.Client.Set(ctx, key, value, expiration).Err()
 }
 
@@ -99,7 +99,7 @@ func (r *RedisDB) Scan(ctx context.Context, cursor uint64, pattern string, count
 }
 
 // HSet sets hash field
-func (r *RedisDB) HSet(ctx context.Context, key string, values ...interface{}) error {
+func (r *RedisDB) HSet(ctx context.Context, key string, values ...any) error {
 	return r.Client.HSet(ctx, key, values...).Err()
 }
 

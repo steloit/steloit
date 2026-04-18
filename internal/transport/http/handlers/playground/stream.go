@@ -15,7 +15,7 @@ import (
 
 // StreamRequest represents a streaming execution request.
 type StreamRequest struct {
-	Template        interface{}         `json:"template" binding:"required"`
+	Template        any         `json:"template" binding:"required"`
 	PromptType      prompt.PromptType   `json:"prompt_type" binding:"required"`
 	Variables       map[string]string   `json:"variables"`
 	ConfigOverrides *prompt.ModelConfig `json:"config_overrides"`

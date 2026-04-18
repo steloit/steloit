@@ -18,7 +18,7 @@ import (
 // TelemetryStreamMessage represents a telemetry batch message in Redis Stream
 type TelemetryStreamMessage struct {
 	Timestamp        time.Time              `json:"timestamp"`
-	Metadata         map[string]interface{} `json:"metadata,omitempty"`
+	Metadata         map[string]any `json:"metadata,omitempty"`
 	Events           []TelemetryEventData   `json:"events"`
 	ClaimedSpanIDs   []string               `json:"claimed_span_ids"`
 	DuplicateSpanIDs []string               `json:"duplicate_span_ids,omitempty"`
@@ -29,7 +29,7 @@ type TelemetryStreamMessage struct {
 
 // TelemetryEventData represents individual event data in the stream message
 type TelemetryEventData struct {
-	EventPayload map[string]interface{} `json:"event_payload"`
+	EventPayload map[string]any `json:"event_payload"`
 	SpanID       string                 `json:"span_id"`
 	TraceID      string                 `json:"trace_id"`
 	EventType    string                 `json:"event_type"`
@@ -79,7 +79,7 @@ func (p *TelemetryStreamProducer) PublishBatch(ctx context.Context, batch *Telem
 	// MaxLen would trim unprocessed pending messages during high load or consumer outages
 	result, err := p.redis.Client.XAdd(ctx, &redis.XAddArgs{
 		Stream: streamKey,
-		Values: map[string]interface{}{
+		Values: map[string]any{
 			"batch_id":        batch.BatchID.String(),
 			"project_id":      batch.ProjectID.String(),
 			"organization_id": batch.OrganizationID.String(),

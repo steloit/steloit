@@ -306,7 +306,7 @@ func (r *telemetryDeduplicationRepository) buildRedisKey(dedupID string) string 
 }
 
 // GetStats returns statistics about deduplication cache (approximate)
-func (r *telemetryDeduplicationRepository) GetStats(ctx context.Context) (map[string]interface{}, error) {
+func (r *telemetryDeduplicationRepository) GetStats(ctx context.Context) (map[string]any, error) {
 	// Get approximate count using SCAN (non-blocking)
 	var cursor uint64
 	var count int64
@@ -319,7 +319,7 @@ func (r *telemetryDeduplicationRepository) GetStats(ctx context.Context) (map[st
 
 	count = int64(len(keys))
 
-	return map[string]interface{}{
+	return map[string]any{
 		"approximate_count": count,
 		"pattern":           "dedup:span:*",
 		"storage":           "redis",

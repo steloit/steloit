@@ -204,7 +204,7 @@ func (s *OTLPEventsConverterService) extractMessagesJSON(value string) string {
 	}
 
 	// Validate JSON (basic check)
-	var test interface{}
+	var test any
 	if err := json.Unmarshal([]byte(value), &test); err != nil {
 		s.logger.Warn("invalid JSON in messages attribute, storing as-is", "error", err)
 	}

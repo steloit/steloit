@@ -24,7 +24,7 @@ func NewTraceRepository(db clickhouse.Conn) observability.TraceRepository {
 	return &traceRepository{db: db}
 }
 
-func marshalJSON(m map[string]interface{}) string {
+func marshalJSON(m map[string]any) string {
 	if m == nil || len(m) == 0 {
 		return "{}"
 	}
@@ -143,7 +143,7 @@ func convertArraysToLinks(
 	return links
 }
 
-func textSearchCondition(filter *observability.TraceFilter) (condition string, args []interface{}) {
+func textSearchCondition(filter *observability.TraceFilter) (condition string, args []any) {
 	if filter == nil || filter.Search == nil || *filter.Search == "" {
 		return "", nil
 	}
@@ -157,17 +157,17 @@ func textSearchCondition(filter *observability.TraceFilter) (condition string, a
 	switch searchType {
 	case "id":
 		return " AND (trace_id ILIKE ? OR span_id ILIKE ? OR span_name ILIKE ?)",
-			[]interface{}{searchPattern, searchPattern, searchPattern}
+			[]any{searchPattern, searchPattern, searchPattern}
 	case "content":
 		return " AND (input ILIKE ? OR output ILIKE ?)",
-			[]interface{}{searchPattern, searchPattern}
+			[]any{searchPattern, searchPattern}
 	default: // "all"
 		return " AND (trace_id ILIKE ? OR span_name ILIKE ? OR input ILIKE ? OR output ILIKE ?)",
-			[]interface{}{searchPattern, searchPattern, searchPattern, searchPattern}
+			[]any{searchPattern, searchPattern, searchPattern, searchPattern}
 	}
 }
 
-func statusHavingClauses(filter *observability.TraceFilter) (clauses []string, args []interface{}) {
+func statusHavingClauses(filter *observability.TraceFilter) (clauses []string, args []any) {
 	if filter == nil {
 		return nil, nil
 	}
@@ -184,7 +184,7 @@ func statusHavingClauses(filter *observability.TraceFilter) (clauses []string, a
 		return -1
 	}
 
-	buildInClause := func(statuses []string, not bool) (string, []interface{}) {
+	buildInClause := func(statuses []string, not bool) (string, []any) {
 		var codes []int32
 		for _, s := range statuses {
 			if code := statusToCode(s); code >= 0 {
@@ -196,7 +196,7 @@ func statusHavingClauses(filter *observability.TraceFilter) (clauses []string, a
 		}
 
 		placeholders := make([]string, len(codes))
-		clauseArgs := make([]interface{}, len(codes))
+		clauseArgs := make([]any, len(codes))
 		for i, code := range codes {
 			placeholders[i] = "?"
 			clauseArgs[i] = code
@@ -556,7 +556,7 @@ func (r *traceRepository) GetSpansByFilter(ctx context.Context, filter *observab
 			AND deleted_at IS NULL
 	`
 
-	args := []interface{}{}
+	args := []any{}
 
 	if filter != nil {
 		if filter.ProjectID != uuid.Nil {
@@ -676,7 +676,7 @@ func (r *traceRepository) GetSpansByFilter(ctx context.Context, filter *observab
 
 func (r *traceRepository) CountSpansByFilter(ctx context.Context, filter *observability.SpanFilter) (int64, error) {
 	query := "SELECT count() FROM otel_traces WHERE 1=1 AND deleted_at IS NULL"
-	args := []interface{}{}
+	args := []any{}
 
 	if filter != nil {
 		if filter.ProjectID != uuid.Nil {
@@ -862,9 +862,9 @@ func (r *traceRepository) ListTraces(ctx context.Context, filter *observability.
 		WHERE deleted_at IS NULL
 	`
 
-	args := []interface{}{}
+	args := []any{}
 	havingClauses := []string{}
-	havingArgs := []interface{}{}
+	havingArgs := []any{}
 
 	if filter != nil {
 		if filter.ProjectID != uuid.Nil {
@@ -1058,9 +1058,9 @@ func (r *traceRepository) CountTraces(ctx context.Context, filter *observability
 		WHERE deleted_at IS NULL
 	`
 
-	args := []interface{}{}
+	args := []any{}
 	havingClauses := []string{}
-	havingArgs := []interface{}{}
+	havingArgs := []any{}
 
 	if filter != nil {
 		if filter.ProjectID != uuid.Nil {
@@ -1413,7 +1413,7 @@ func filterEmptyStrings(slice []string) []string {
 	return result
 }
 
-func (r *traceRepository) QuerySpansByExpression(ctx context.Context, query string, args []interface{}) ([]*observability.Span, error) {
+func (r *traceRepository) QuerySpansByExpression(ctx context.Context, query string, args []any) ([]*observability.Span, error) {
 	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query spans by expression: %w", err)
@@ -1423,7 +1423,7 @@ func (r *traceRepository) QuerySpansByExpression(ctx context.Context, query stri
 	return r.scanSpans(rows)
 }
 
-func (r *traceRepository) CountSpansByExpression(ctx context.Context, query string, args []interface{}) (int64, error) {
+func (r *traceRepository) CountSpansByExpression(ctx context.Context, query string, args []any) (int64, error) {
 	var count uint64
 	err := r.db.QueryRow(ctx, query, args...).Scan(&count)
 	if err != nil {
@@ -1483,7 +1483,7 @@ func (r *traceRepository) discoverAttributesFromSource(ctx context.Context, proj
 			AND deleted_at IS NULL
 	`, columnName, columnName, columnName)
 
-	args := []interface{}{projectID}
+	args := []any{projectID}
 
 	// Add prefix filter if specified
 	if prefix != "" {
@@ -1553,7 +1553,7 @@ func (r *traceRepository) countAttributeKeysFromSource(ctx context.Context, proj
 			AND deleted_at IS NULL
 	`, columnName)
 
-	args := []interface{}{projectID}
+	args := []any{projectID}
 
 	// Add NOT IN clause only if there are keys to exclude
 	if len(excludeKeys) > 0 {
@@ -1668,7 +1668,7 @@ func (r *traceRepository) ListSessions(ctx context.Context, filter *observabilit
 			AND session_id != ''
 	`
 
-	args := []interface{}{filter.ProjectID}
+	args := []any{filter.ProjectID}
 
 	if filter.StartTime != nil {
 		query += " AND start_time >= ?"
@@ -1778,7 +1778,7 @@ func (r *traceRepository) CountSessions(ctx context.Context, filter *observabili
 			AND session_id != ''
 	`
 
-	args := []interface{}{filter.ProjectID}
+	args := []any{filter.ProjectID}
 
 	if filter.StartTime != nil {
 		innerQuery += " AND start_time >= ?"

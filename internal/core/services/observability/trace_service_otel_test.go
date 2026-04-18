@@ -178,7 +178,7 @@ func (m *MockTraceRepository) GetFilterOptions(ctx context.Context, projectID uu
 	return args.Get(0).(*observability.TraceFilterOptions), args.Error(1)
 }
 
-func (m *MockTraceRepository) QuerySpansByExpression(ctx context.Context, query string, queryArgs []interface{}) ([]*observability.Span, error) {
+func (m *MockTraceRepository) QuerySpansByExpression(ctx context.Context, query string, queryArgs []any) ([]*observability.Span, error) {
 	args := m.Called(ctx, query, queryArgs)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -186,7 +186,7 @@ func (m *MockTraceRepository) QuerySpansByExpression(ctx context.Context, query 
 	return args.Get(0).([]*observability.Span), args.Error(1)
 }
 
-func (m *MockTraceRepository) CountSpansByExpression(ctx context.Context, query string, queryArgs []interface{}) (int64, error) {
+func (m *MockTraceRepository) CountSpansByExpression(ctx context.Context, query string, queryArgs []any) (int64, error) {
 	args := m.Called(ctx, query, queryArgs)
 	return args.Get(0).(int64), args.Error(1)
 }

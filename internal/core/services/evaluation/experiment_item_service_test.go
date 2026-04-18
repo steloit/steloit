@@ -265,7 +265,7 @@ func TestExperimentItemService_CreateBatch(t *testing.T) {
 		datasetItem := &evaluation.DatasetItem{
 			ID:        datasetItemID,
 			DatasetID: datasetID,
-			Input:     map[string]interface{}{"prompt": "test"},
+			Input:     map[string]any{"prompt": "test"},
 		}
 
 		datasetItemIDStr := datasetItemID.String()
@@ -273,7 +273,7 @@ func TestExperimentItemService_CreateBatch(t *testing.T) {
 			Items: []evaluation.CreateExperimentItemRequest{
 				{
 					DatasetItemID: &datasetItemIDStr,
-					Input:         map[string]interface{}{"prompt": "test"},
+					Input:         map[string]any{"prompt": "test"},
 				},
 			},
 		}
@@ -314,7 +314,7 @@ func TestExperimentItemService_CreateBatch(t *testing.T) {
 			Items: []evaluation.CreateExperimentItemRequest{
 				{
 					DatasetItemID: &differentDatasetItemIDStr,
-					Input:         map[string]interface{}{"prompt": "test"},
+					Input:         map[string]any{"prompt": "test"},
 				},
 			},
 		}
@@ -356,7 +356,7 @@ func TestExperimentItemService_CreateBatch(t *testing.T) {
 			Items: []evaluation.CreateExperimentItemRequest{
 				{
 					DatasetItemID: &datasetItemIDStr,
-					Input:         map[string]interface{}{"prompt": "test"},
+					Input:         map[string]any{"prompt": "test"},
 				},
 			},
 		}
@@ -396,7 +396,7 @@ func TestExperimentItemService_CreateBatch(t *testing.T) {
 			Items: []evaluation.CreateExperimentItemRequest{
 				{
 					DatasetItemID: nil,
-					Input:         map[string]interface{}{"prompt": "ad-hoc test"},
+					Input:         map[string]any{"prompt": "ad-hoc test"},
 				},
 			},
 		}
@@ -433,7 +433,7 @@ func TestExperimentItemService_CreateBatch(t *testing.T) {
 			Items: []evaluation.CreateExperimentItemRequest{
 				{
 					DatasetItemID: nil,
-					Input:         map[string]interface{}{"prompt": "ad-hoc test"},
+					Input:         map[string]any{"prompt": "ad-hoc test"},
 				},
 			},
 		}
@@ -472,7 +472,7 @@ func TestExperimentItemService_CreateBatch(t *testing.T) {
 			Items: []evaluation.CreateExperimentItemRequest{
 				{
 					DatasetItemID: &nonExistentItemIDStr,
-					Input:         map[string]interface{}{"prompt": "test"},
+					Input:         map[string]any{"prompt": "test"},
 				},
 			},
 		}
@@ -514,7 +514,7 @@ func TestExperimentItemService_CreateBatch(t *testing.T) {
 			Items: []evaluation.CreateExperimentItemRequest{
 				{
 					DatasetItemID: &invalidID,
-					Input:         map[string]interface{}{"prompt": "test"},
+					Input:         map[string]any{"prompt": "test"},
 				},
 			},
 		}
@@ -545,7 +545,7 @@ func TestExperimentItemService_CreateBatch(t *testing.T) {
 		req := &evaluation.CreateExperimentItemsBatchRequest{
 			Items: []evaluation.CreateExperimentItemRequest{
 				{
-					Input: map[string]interface{}{"prompt": "test"},
+					Input: map[string]any{"prompt": "test"},
 				},
 			},
 		}

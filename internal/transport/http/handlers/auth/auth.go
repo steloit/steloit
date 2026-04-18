@@ -57,7 +57,7 @@ func NewHandler(
 // LoginRequest represents the login request payload
 // @Description User login credentials
 type LoginRequest struct {
-	DeviceInfo map[string]interface{} `json:"device_info,omitempty" description:"Device information for session tracking"`
+	DeviceInfo map[string]any `json:"device_info,omitempty" description:"Device information for session tracking"`
 	Email      string                 `json:"email" binding:"required,email" example:"user@example.com" description:"User email address"`
 	Password   string                 `json:"password" binding:"required" example:"password123" description:"User password (minimum 8 characters)"`
 }

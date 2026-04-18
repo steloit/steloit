@@ -22,7 +22,7 @@ const (
 	CommentEntityTypeSpan  CommentEntityType = "span"
 )
 
-func (e *CommentEntityType) Scan(src interface{}) error {
+func (e *CommentEntityType) Scan(src any) error {
 	switch s := src.(type) {
 	case []byte:
 		*e = CommentEntityType(s)
@@ -40,7 +40,7 @@ type NullCommentEntityType struct {
 }
 
 // Scan implements the Scanner interface.
-func (ns *NullCommentEntityType) Scan(value interface{}) error {
+func (ns *NullCommentEntityType) Scan(value any) error {
 	if value == nil {
 		ns.CommentEntityType, ns.Valid = "", false
 		return nil
@@ -68,7 +68,7 @@ const (
 	ProviderCustom     Provider = "custom"
 )
 
-func (e *Provider) Scan(src interface{}) error {
+func (e *Provider) Scan(src any) error {
 	switch s := src.(type) {
 	case []byte:
 		*e = Provider(s)
@@ -86,7 +86,7 @@ type NullProvider struct {
 }
 
 // Scan implements the Scanner interface.
-func (ns *NullProvider) Scan(value interface{}) error {
+func (ns *NullProvider) Scan(value any) error {
 	if value == nil {
 		ns.Provider, ns.Valid = "", false
 		return nil

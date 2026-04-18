@@ -525,7 +525,7 @@ func (c *TelemetryStreamConsumer) sortEventsByDependency(events []streams.Teleme
 }
 
 // safeExtractFromPayload safely extracts string from payload map (nil-safe)
-func safeExtractFromPayload(payload map[string]interface{}, key string) string {
+func safeExtractFromPayload(payload map[string]any, key string) string {
 	if payload == nil {
 		return ""
 	}
@@ -543,9 +543,9 @@ func safeExtractFromPayload(payload map[string]interface{}, key string) string {
 	return strVal
 }
 
-// mapToStruct converts map[string]interface{} to a struct using JSON marshaling
+// mapToStruct converts map[string]any to a struct using JSON marshaling
 // This is a type-safe way to convert event payloads to domain types
-func mapToStruct(input map[string]interface{}, output interface{}) error {
+func mapToStruct(input map[string]any, output any) error {
 	// Marshal map to JSON
 	jsonData, err := json.Marshal(input)
 	if err != nil {
@@ -819,7 +819,7 @@ func ptrTime(t time.Time) *time.Time {
 }
 
 // serializeMetadata converts metadata map to JSON string
-func (c *TelemetryStreamConsumer) serializeMetadata(metadata map[string]interface{}) string {
+func (c *TelemetryStreamConsumer) serializeMetadata(metadata map[string]any) string {
 	if metadata == nil {
 		return "{}"
 	}
@@ -849,7 +849,7 @@ func (c *TelemetryStreamConsumer) moveToDLQ(ctx context.Context, streamKey strin
 	dlqKey := fmt.Sprintf("%s:%s", dlqStreamPrefix, batch.ProjectID.String())
 
 	// Serialize DLQ entry with error metadata
-	dlqData := map[string]interface{}{
+	dlqData := map[string]any{
 		"original_stream": streamKey,
 		"original_msg_id": msg.ID,
 		"batch_id":        batch.BatchID.String(),

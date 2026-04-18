@@ -397,7 +397,7 @@ func itemFromRow(row *gen.AnnotationQueueItem) (*annotationDomain.QueueItem, err
 	return it, nil
 }
 
-func marshalItemMetadata(m map[string]interface{}) (json.RawMessage, error) {
+func marshalItemMetadata(m map[string]any) (json.RawMessage, error) {
 	if len(m) == 0 {
 		return json.RawMessage(`{}`), nil
 	}

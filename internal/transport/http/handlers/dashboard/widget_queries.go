@@ -16,7 +16,7 @@ import (
 type ExecuteQueryRequest struct {
 	TimeRange      *TimeRangeRequest      `json:"time_range,omitempty"`
 	ForceRefresh   bool                   `json:"force_refresh,omitempty"`
-	VariableValues map[string]interface{} `json:"variable_values,omitempty"`
+	VariableValues map[string]any `json:"variable_values,omitempty"`
 }
 
 // TimeRangeRequest represents time range parameters
@@ -30,7 +30,7 @@ type TimeRangeRequest struct {
 // This mirrors dashboardDomain.QueryResult for swagger documentation purposes
 type QueryResult struct {
 	WidgetID string                   `json:"widget_id"`
-	Data     []map[string]interface{} `json:"data" swaggertype:"array,object"`
+	Data     []map[string]any `json:"data" swaggertype:"array,object"`
 	Metadata *QueryMetadata           `json:"metadata,omitempty"`
 	Error    string                   `json:"error,omitempty"`
 }

@@ -12,7 +12,7 @@ import (
 type Channel struct {
 	CreatedAt   time.Time              `json:"created_at"`
 	Filters     *EventFilter           `json:"filters,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
 	Name        string                 `json:"name"`
 	Description string                 `json:"description,omitempty"`
 	TTL         time.Duration          `json:"ttl,omitempty"`
@@ -26,7 +26,7 @@ type Subscription struct {
 	CreatedAt time.Time              `json:"created_at"`
 	LastSeen  time.Time              `json:"last_seen"`
 	Filters   *EventFilter           `json:"filters,omitempty"`
-	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+	Metadata  map[string]any `json:"metadata,omitempty"`
 	ID        string                 `json:"id"`
 	Channel   string                 `json:"channel"`
 	UserID    string                 `json:"user_id,omitempty"`
@@ -165,7 +165,7 @@ func (b *Broadcaster) CreateChannel(name, description string, private, persisten
 		Private:     private,
 		Persistent:  persistent,
 		TTL:         b.config.DefaultChannelTTL,
-		Metadata:    make(map[string]interface{}),
+		Metadata:    make(map[string]any),
 		CreatedAt:   time.Now(),
 	}
 
@@ -249,7 +249,7 @@ func (b *Broadcaster) Subscribe(subscriber Subscriber, channelName string, filte
 		ID:        subscriber.ID(),
 		Channel:   channelName,
 		Filters:   filters,
-		Metadata:  make(map[string]interface{}),
+		Metadata:  make(map[string]any),
 		CreatedAt: time.Now(),
 		LastSeen:  time.Now(),
 	}

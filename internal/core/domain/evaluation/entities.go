@@ -461,9 +461,9 @@ func (e *Experiment) Validate() []ValidationError {
 }
 
 type CreateExperimentRequest struct {
-	Name        string                 `json:"name" binding:"required,min=1,max=255"`
-	DatasetID   *string                `json:"dataset_id,omitempty"`
-	Description *string                `json:"description,omitempty"`
+	Name        string         `json:"name" binding:"required,min=1,max=255"`
+	DatasetID   *uuid.UUID     `json:"dataset_id,omitempty"`
+	Description *string        `json:"description,omitempty"`
 	Metadata    map[string]any `json:"metadata,omitempty"`
 }
 

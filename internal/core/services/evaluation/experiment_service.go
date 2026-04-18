@@ -43,13 +43,10 @@ func (s *experimentService) Create(ctx context.Context, projectID uuid.UUID, req
 	}
 
 	if req.DatasetID != nil {
-		datasetID, err := uuid.Parse(*req.DatasetID)
-		if err != nil {
-			return nil, appErrors.NewValidationError("dataset_id", "must be a valid UUID")
-		}
+		datasetID := *req.DatasetID
 		if _, err := s.datasetRepo.GetByID(ctx, datasetID, projectID); err != nil {
 			if errors.Is(err, evaluation.ErrDatasetNotFound) {
-				return nil, appErrors.NewNotFoundError(fmt.Sprintf("dataset %s", *req.DatasetID))
+				return nil, appErrors.NewNotFoundError(fmt.Sprintf("dataset %s", datasetID))
 			}
 			return nil, appErrors.NewInternalError("failed to verify dataset", err)
 		}
@@ -204,14 +201,14 @@ func (s *experimentService) Rerun(ctx context.Context, sourceID uuid.UUID, proje
 		newExp.Metadata = req.Metadata
 	} else if sourceExp.Metadata != nil {
 		// Copy source metadata and add rerun reference
-		newExp.Metadata = make(map[string]interface{})
+		newExp.Metadata = make(map[string]any)
 		for k, v := range sourceExp.Metadata {
 			newExp.Metadata[k] = v
 		}
 	}
 	// Add reference to source experiment (ensure map is initialized)
 	if newExp.Metadata == nil {
-		newExp.Metadata = make(map[string]interface{})
+		newExp.Metadata = make(map[string]any)
 	}
 	newExp.Metadata["source_experiment_id"] = sourceID.String()
 

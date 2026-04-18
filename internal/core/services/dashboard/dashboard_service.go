@@ -665,11 +665,11 @@ func (s *dashboardService) ValidateWidgetQuery(query *dashboardDomain.WidgetQuer
 	return nil
 }
 
-func copyMap(src map[string]interface{}) map[string]interface{} {
+func copyMap(src map[string]any) map[string]any {
 	if src == nil {
 		return nil
 	}
-	dst := make(map[string]interface{}, len(src))
+	dst := make(map[string]any, len(src))
 	for k, v := range src {
 		dst[k] = v
 	}

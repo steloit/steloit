@@ -96,7 +96,7 @@ func (s *authService) Login(ctx context.Context, req *authDomain.LoginRequest) (
 	permissions := []string{}
 
 	// Generate access token with JTI for session tracking
-	accessToken, jti, err := s.jwtService.GenerateAccessTokenWithJTI(ctx, user.ID, map[string]interface{}{
+	accessToken, jti, err := s.jwtService.GenerateAccessTokenWithJTI(ctx, user.ID, map[string]any{
 		"email":           user.Email,
 		"organization_id": user.DefaultOrganizationID,
 		"permissions":     permissions,
@@ -163,7 +163,7 @@ func (s *authService) GenerateTokensForUser(ctx context.Context, userID uuid.UUI
 	permissions := []string{}
 
 	// Generate access token with JTI for session tracking
-	accessToken, jti, err := s.jwtService.GenerateAccessTokenWithJTI(ctx, user.ID, map[string]interface{}{
+	accessToken, jti, err := s.jwtService.GenerateAccessTokenWithJTI(ctx, user.ID, map[string]any{
 		"email":           user.Email,
 		"organization_id": user.DefaultOrganizationID,
 		"permissions":     permissions,
@@ -260,7 +260,7 @@ func (s *authService) RefreshToken(ctx context.Context, req *authDomain.RefreshT
 	permissions := []string{}
 
 	// Generate new access token with JTI for session tracking
-	accessToken, jti, err := s.jwtService.GenerateAccessTokenWithJTI(ctx, user.ID, map[string]interface{}{
+	accessToken, jti, err := s.jwtService.GenerateAccessTokenWithJTI(ctx, user.ID, map[string]any{
 		"email":           user.Email,
 		"organization_id": user.DefaultOrganizationID,
 		"permissions":     permissions,

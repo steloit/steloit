@@ -238,16 +238,16 @@ func billingSummaryFromRow(row *gen.BillingSummary) (*billingDomain.BillingSumma
 
 // marshalBreakdown encodes a map[string]any to JSONB. An empty/nil map
 // becomes `{}` (schema requires NOT NULL with DEFAULT '{}').
-func marshalBreakdown(m map[string]interface{}) (json.RawMessage, error) {
+func marshalBreakdown(m map[string]any) (json.RawMessage, error) {
 	if len(m) == 0 {
 		return json.RawMessage(`{}`), nil
 	}
 	return json.Marshal(m)
 }
 
-func unmarshalBreakdown(raw json.RawMessage, dst *map[string]interface{}) error {
+func unmarshalBreakdown(raw json.RawMessage, dst *map[string]any) error {
 	if len(raw) == 0 {
-		*dst = map[string]interface{}{}
+		*dst = map[string]any{}
 		return nil
 	}
 	return json.Unmarshal(raw, dst)

@@ -67,7 +67,7 @@ func Logger(logger *slog.Logger) gin.HandlerFunc {
 
 // Recovery middleware recovers from panics
 func Recovery(logger *slog.Logger) gin.HandlerFunc {
-	return gin.CustomRecovery(func(c *gin.Context, recovered interface{}) {
+	return gin.CustomRecovery(func(c *gin.Context, recovered any) {
 		// Get request ID from context
 		requestID, exists := c.Get("request_id")
 		if !exists {

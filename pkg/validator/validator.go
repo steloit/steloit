@@ -80,7 +80,7 @@ func (v *Validator) Clear() {
 }
 
 // Required validates that a field is not empty
-func (v *Validator) Required(field string, value interface{}, message ...string) *Validator {
+func (v *Validator) Required(field string, value any, message ...string) *Validator {
 	msg := "is required"
 	if len(message) > 0 {
 		msg = message[0]
@@ -136,7 +136,7 @@ func (v *Validator) Length(field string, value string, length int, message ...st
 }
 
 // Min validates minimum numeric value
-func (v *Validator) Min(field string, value interface{}, min float64, message ...string) *Validator {
+func (v *Validator) Min(field string, value any, min float64, message ...string) *Validator {
 	msg := fmt.Sprintf("must be at least %v", min)
 	if len(message) > 0 {
 		msg = message[0]
@@ -156,7 +156,7 @@ func (v *Validator) Min(field string, value interface{}, min float64, message ..
 }
 
 // Max validates maximum numeric value
-func (v *Validator) Max(field string, value interface{}, max float64, message ...string) *Validator {
+func (v *Validator) Max(field string, value any, max float64, message ...string) *Validator {
 	msg := fmt.Sprintf("must not exceed %v", max)
 	if len(message) > 0 {
 		msg = message[0]
@@ -176,7 +176,7 @@ func (v *Validator) Max(field string, value interface{}, max float64, message ..
 }
 
 // Range validates numeric value within range
-func (v *Validator) Range(field string, value interface{}, min, max float64, message ...string) *Validator {
+func (v *Validator) Range(field string, value any, min, max float64, message ...string) *Validator {
 	msg := fmt.Sprintf("must be between %v and %v", min, max)
 	if len(message) > 0 {
 		msg = message[0]
@@ -349,7 +349,7 @@ func (v *Validator) JSON(field string, value string, message ...string) *Validat
 }
 
 // Custom validates using custom function
-func (v *Validator) Custom(field string, value interface{}, fn func(interface{}) bool, message string) *Validator {
+func (v *Validator) Custom(field string, value any, fn func(any) bool, message string) *Validator {
 	if !fn(value) {
 		v.errors.Add(field, message, fmt.Sprintf("%v", value))
 	}
@@ -367,7 +367,7 @@ func (v *Validator) Conditional(condition bool, fn func(*Validator) *Validator) 
 
 // Helper functions
 
-func isEmpty(value interface{}) bool {
+func isEmpty(value any) bool {
 	if value == nil {
 		return true
 	}
@@ -385,7 +385,7 @@ func isEmpty(value interface{}) bool {
 	}
 }
 
-func toFloat64(value interface{}) (float64, bool) {
+func toFloat64(value any) (float64, bool) {
 	switch v := value.(type) {
 	case float64:
 		return v, true
@@ -473,7 +473,7 @@ func IsValidJSON(s string) bool {
 // Quick validation functions for common cases
 
 // ValidateRequired validates required field
-func ValidateRequired(field string, value interface{}) error {
+func ValidateRequired(field string, value any) error {
 	v := New()
 	v.Required(field, value)
 	if v.HasErrors() {

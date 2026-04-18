@@ -680,7 +680,7 @@ func (w *ManualTriggerWorker) matchFilterClause(clause evaluation.FilterClause, 
 }
 
 // extractSpanFieldValue extracts a value from a span using dot notation for nested paths
-func (w *ManualTriggerWorker) extractSpanFieldValue(span *observability.Span, field string) interface{} {
+func (w *ManualTriggerWorker) extractSpanFieldValue(span *observability.Span, field string) any {
 	parts := strings.Split(field, ".")
 
 	// Handle top-level span fields
@@ -736,14 +736,14 @@ func (w *ManualTriggerWorker) extractSpanFieldValue(span *observability.Span, fi
 }
 
 // extractNestedValue extracts nested value from JSON string or interface using path parts
-func extractNestedValue(data interface{}, path []string) interface{} {
+func extractNestedValue(data any, path []string) any {
 	if len(path) == 0 {
 		return data
 	}
 
 	// Handle string JSON
 	if str, ok := data.(string); ok {
-		var parsed map[string]interface{}
+		var parsed map[string]any
 		if json.Unmarshal([]byte(str), &parsed) == nil {
 			data = parsed
 		} else {
@@ -752,7 +752,7 @@ func extractNestedValue(data interface{}, path []string) interface{} {
 	}
 
 	// Navigate path
-	if m, ok := data.(map[string]interface{}); ok {
+	if m, ok := data.(map[string]any); ok {
 		if val, exists := m[path[0]]; exists {
 			return extractNestedValue(val, path[1:])
 		}
@@ -763,7 +763,7 @@ func extractNestedValue(data interface{}, path []string) interface{} {
 
 func (w *ManualTriggerWorker) createEvaluationJob(trigger *ManualTriggerMessageData, span *observability.Span) *EvaluationJob {
 	// Build span data map from span
-	spanData := make(map[string]interface{})
+	spanData := make(map[string]any)
 	spanData["input"] = span.Input
 	spanData["output"] = span.Output
 	spanData["span_attributes"] = span.SpanAttributes
@@ -805,7 +805,7 @@ func (w *ManualTriggerWorker) emitJob(ctx context.Context, job *EvaluationJob) e
 
 	_, err = w.redis.Client.XAdd(ctx, &redis.XAddArgs{
 		Stream: evaluationJobsStream,
-		Values: map[string]interface{}{
+		Values: map[string]any{
 			"job_id":       job.JobID.String(),
 			"evaluator_id": job.EvaluatorID.String(),
 			"project_id":   job.ProjectID.String(),
@@ -866,7 +866,7 @@ func extractVariablesFromSpan(mapping []evaluation.VariableMap, span *observabil
 	variables := make(map[string]string)
 
 	for _, m := range mapping {
-		var value interface{}
+		var value any
 
 		switch m.Source {
 		case "span_input":
@@ -909,14 +909,14 @@ func extractVariablesFromSpan(mapping []evaluation.VariableMap, span *observabil
 	return variables
 }
 
-func extractFromJSON(data interface{}, path string) interface{} {
+func extractFromJSON(data any, path string) any {
 	if data == nil || path == "" {
 		return data
 	}
 
 	// Handle JSON bytes
 	if bytes, ok := data.([]byte); ok {
-		var parsed interface{}
+		var parsed any
 		if err := json.Unmarshal(bytes, &parsed); err != nil {
 			return nil
 		}
@@ -925,7 +925,7 @@ func extractFromJSON(data interface{}, path string) interface{} {
 
 	// Handle JSON string
 	if str, ok := data.(string); ok {
-		var parsed interface{}
+		var parsed any
 		if err := json.Unmarshal([]byte(str), &parsed); err != nil {
 			return str // Return original string if not JSON
 		}
@@ -934,7 +934,7 @@ func extractFromJSON(data interface{}, path string) interface{} {
 
 	// Simple path extraction (supports dot notation)
 	// For complex JSONPath, would need a library
-	if m, ok := data.(map[string]interface{}); ok {
+	if m, ok := data.(map[string]any); ok {
 		if val, exists := m[path]; exists {
 			return val
 		}

@@ -36,11 +36,11 @@ type Scope struct {
 
 // OTLPSpan represents an OTLP span (wire format)
 type OTLPSpan struct {
-	TraceID           interface{} `json:"traceId"`
-	SpanID            interface{} `json:"spanId"`
-	ParentSpanID      interface{} `json:"parentSpanId,omitempty"`
-	StartTimeUnixNano interface{} `json:"startTimeUnixNano"`
-	EndTimeUnixNano   interface{} `json:"endTimeUnixNano,omitempty"`
+	TraceID           any `json:"traceId"`
+	SpanID            any `json:"spanId"`
+	ParentSpanID      any `json:"parentSpanId,omitempty"`
+	StartTimeUnixNano any `json:"startTimeUnixNano"`
+	EndTimeUnixNano   any `json:"endTimeUnixNano,omitempty"`
 	Status            *Status     `json:"status,omitempty"`
 	Name              string      `json:"name"`
 	Attributes        []KeyValue  `json:"attributes,omitempty"`
@@ -51,13 +51,13 @@ type OTLPSpan struct {
 
 // KeyValue represents an OTLP attribute key-value pair
 type KeyValue struct {
-	Value interface{} `json:"value"`
+	Value any `json:"value"`
 	Key   string      `json:"key"`
 }
 
 // Event represents an OTLP span event (timestamped annotation within a span)
 type Event struct {
-	TimeUnixNano           interface{} `json:"timeUnixNano"`
+	TimeUnixNano           any `json:"timeUnixNano"`
 	Name                   string      `json:"name"`
 	Attributes             []KeyValue  `json:"attributes,omitempty"`
 	DroppedAttributesCount uint32      `json:"droppedAttributesCount,omitempty"` // Number of dropped attributes
@@ -65,9 +65,9 @@ type Event struct {
 
 // Link represents an OTLP span link (reference to span in another trace)
 type Link struct {
-	TraceID                interface{} `json:"traceId"`                          // Linked trace ID (Buffer or hex string)
-	SpanID                 interface{} `json:"spanId"`                           // Linked span ID (Buffer or hex string)
-	TraceState             interface{} `json:"traceState,omitempty"`             // W3C TraceState for linked span
+	TraceID                any `json:"traceId"`                          // Linked trace ID (Buffer or hex string)
+	SpanID                 any `json:"spanId"`                           // Linked span ID (Buffer or hex string)
+	TraceState             any `json:"traceState,omitempty"`             // W3C TraceState for linked span
 	Attributes             []KeyValue  `json:"attributes,omitempty"`             // Link metadata
 	DroppedAttributesCount uint32      `json:"droppedAttributesCount,omitempty"` // Number of dropped attributes
 }
@@ -101,14 +101,14 @@ type ScopeLogs struct {
 
 // LogRecord represents an OTLP log record
 type LogRecord struct {
-	TimeUnixNano         interface{} `json:"timeUnixNano"`
-	ObservedTimeUnixNano interface{} `json:"observedTimeUnixNano,omitempty"`
+	TimeUnixNano         any `json:"timeUnixNano"`
+	ObservedTimeUnixNano any `json:"observedTimeUnixNano,omitempty"`
 	SeverityNumber       int         `json:"severityNumber,omitempty"`
 	SeverityText         string      `json:"severityText,omitempty"`
-	Body                 interface{} `json:"body,omitempty"`
+	Body                 any `json:"body,omitempty"`
 	Attributes           []KeyValue  `json:"attributes,omitempty"`
-	TraceID              interface{} `json:"traceId,omitempty"`
-	SpanID               interface{} `json:"spanId,omitempty"`
+	TraceID              any `json:"traceId,omitempty"`
+	SpanID               any `json:"spanId,omitempty"`
 }
 
 // ============================================================================
@@ -137,5 +137,5 @@ type Metric struct {
 	Name        string      `json:"name"`
 	Description string      `json:"description,omitempty"`
 	Unit        string      `json:"unit,omitempty"`
-	Data        interface{} `json:"data,omitempty"` // Can be Gauge, Sum, Histogram, etc.
+	Data        any `json:"data,omitempty"` // Can be Gauge, Sum, Histogram, etc.
 }

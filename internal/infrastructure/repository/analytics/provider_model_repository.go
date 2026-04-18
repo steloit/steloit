@@ -359,18 +359,18 @@ func providerPricesFromRows(rows []gen.ProviderPrice) []*analyticsDomain.Provide
 	return out
 }
 
-func marshalTokenizerConfig(m map[string]interface{}) (json.RawMessage, error) {
+func marshalTokenizerConfig(m map[string]any) (json.RawMessage, error) {
 	if len(m) == 0 {
 		return nil, nil
 	}
 	return json.Marshal(m)
 }
 
-func unmarshalTokenizerConfig(raw json.RawMessage) (map[string]interface{}, error) {
+func unmarshalTokenizerConfig(raw json.RawMessage) (map[string]any, error) {
 	if len(raw) == 0 {
 		return nil, nil
 	}
-	var m map[string]interface{}
+	var m map[string]any
 	if err := json.Unmarshal(raw, &m); err != nil {
 		return nil, err
 	}

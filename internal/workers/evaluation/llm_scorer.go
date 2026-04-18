@@ -156,9 +156,9 @@ func (s *LLMScorer) parseConfig(config map[string]any) (*evaluation.LLMScorerCon
 
 	// Parse messages
 	var messages []evaluation.LLMMessage
-	if rawMessages, ok := config["messages"].([]interface{}); ok {
+	if rawMessages, ok := config["messages"].([]any); ok {
 		for _, rawMsg := range rawMessages {
-			if msgMap, ok := rawMsg.(map[string]interface{}); ok {
+			if msgMap, ok := rawMsg.(map[string]any); ok {
 				role, _ := msgMap["role"].(string)
 				content, _ := msgMap["content"].(string)
 				if role != "" && content != "" {
@@ -177,9 +177,9 @@ func (s *LLMScorer) parseConfig(config map[string]any) (*evaluation.LLMScorerCon
 
 	// Parse output schema
 	var outputSchema []evaluation.OutputField
-	if rawSchema, ok := config["output_schema"].([]interface{}); ok {
+	if rawSchema, ok := config["output_schema"].([]any); ok {
 		for _, rawField := range rawSchema {
-			if fieldMap, ok := rawField.(map[string]interface{}); ok {
+			if fieldMap, ok := rawField.(map[string]any); ok {
 				field := evaluation.OutputField{
 					Name:        getString(fieldMap, "name"),
 					Type:        getString(fieldMap, "type"),
@@ -191,7 +191,7 @@ func (s *LLMScorer) parseConfig(config map[string]any) (*evaluation.LLMScorerCon
 				if v, ok := fieldMap["max_value"].(float64); ok {
 					field.MaxValue = &v
 				}
-				if cats, ok := fieldMap["categories"].([]interface{}); ok {
+				if cats, ok := fieldMap["categories"].([]any); ok {
 					for _, cat := range cats {
 						if s, ok := cat.(string); ok {
 							field.Categories = append(field.Categories, s)
@@ -237,7 +237,7 @@ func (s *LLMScorer) substituteVariables(template string, variables map[string]st
 
 func (s *LLMScorer) parseResponse(content string, schema []evaluation.OutputField) ([]ScoreOutput, error) {
 	// Try to parse as JSON
-	var parsed map[string]interface{}
+	var parsed map[string]any
 	if err := json.Unmarshal([]byte(content), &parsed); err != nil {
 		// Try to extract JSON from the response
 		content = extractJSON(content)
@@ -353,14 +353,14 @@ func (s *LLMScorer) mapFieldTypeToScoreType(fieldType string) string {
 
 // Helper functions
 
-func getString(m map[string]interface{}, key string) string {
+func getString(m map[string]any, key string) string {
 	if v, ok := m[key].(string); ok {
 		return v
 	}
 	return ""
 }
 
-func toFloat(v interface{}) (float64, bool) {
+func toFloat(v any) (float64, bool) {
 	switch val := v.(type) {
 	case float64:
 		return val, true

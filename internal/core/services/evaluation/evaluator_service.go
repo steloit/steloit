@@ -350,7 +350,7 @@ func (s *evaluatorService) TriggerEvaluator(ctx context.Context, evaluatorID uui
 
 	_, err = s.redis.Client.XAdd(ctx, &redis.XAddArgs{
 		Stream: manualTriggerStream,
-		Values: map[string]interface{}{
+		Values: map[string]any{
 			"data": string(msgData),
 		},
 	}).Result()
@@ -815,8 +815,8 @@ func buildPromptPreview(rule *evaluation.Evaluator) string {
 	}
 	// Extract messages from scorer config if present
 	if messages, ok := rule.ScorerConfig["messages"]; ok {
-		if msgList, ok := messages.([]interface{}); ok && len(msgList) > 0 {
-			if firstMsg, ok := msgList[0].(map[string]interface{}); ok {
+		if msgList, ok := messages.([]any); ok && len(msgList) > 0 {
+			if firstMsg, ok := msgList[0].(map[string]any); ok {
 				if content, ok := firstMsg["content"].(string); ok {
 					// Return first 200 chars of first message
 					if len(content) > 200 {
@@ -1043,7 +1043,7 @@ func (s *evaluatorService) matchFilterClause(clause evaluation.FilterClause, spa
 }
 
 // extractSpanFieldValue extracts a value from a span using dot notation for nested paths
-func (s *evaluatorService) extractSpanFieldValue(span *observability.Span, field string) interface{} {
+func (s *evaluatorService) extractSpanFieldValue(span *observability.Span, field string) any {
 	parts := strings.Split(field, ".")
 
 	// Handle top-level span fields
@@ -1170,14 +1170,14 @@ func (s *evaluatorService) extractSpanFieldValue(span *observability.Span, field
 }
 
 // extractNestedValueForFilter extracts nested value from JSON string or interface using path parts
-func extractNestedValueForFilter(data interface{}, path []string) interface{} {
+func extractNestedValueForFilter(data any, path []string) any {
 	if len(path) == 0 {
 		return data
 	}
 
 	// Handle string JSON
 	if str, ok := data.(string); ok {
-		var parsed map[string]interface{}
+		var parsed map[string]any
 		if json.Unmarshal([]byte(str), &parsed) == nil {
 			data = parsed
 		} else {
@@ -1186,7 +1186,7 @@ func extractNestedValueForFilter(data interface{}, path []string) interface{} {
 	}
 
 	// Navigate path
-	if m, ok := data.(map[string]interface{}); ok {
+	if m, ok := data.(map[string]any); ok {
 		if val, exists := m[path[0]]; exists {
 			return extractNestedValueForFilter(val, path[1:])
 		}
@@ -1197,7 +1197,7 @@ func extractNestedValueForFilter(data interface{}, path []string) interface{} {
 
 // compareNumeric compares two values numerically.
 // Returns (comparison result, true) on success, (0, false) if either value is not numeric.
-func compareNumeric(a, b interface{}) (int, bool) {
+func compareNumeric(a, b any) (int, bool) {
 	aFloat, aOk := toFloat64(a)
 	bFloat, bOk := toFloat64(b)
 
@@ -1216,7 +1216,7 @@ func compareNumeric(a, b interface{}) (int, bool) {
 
 // toFloat64 converts a value to float64 for numeric comparison.
 // Returns (value, true) on success, (0, false) if value is nil or not convertible.
-func toFloat64(v interface{}) (float64, bool) {
+func toFloat64(v any) (float64, bool) {
 	if v == nil {
 		return 0, false
 	}

@@ -80,7 +80,7 @@ func (s *contractService) CreateContract(ctx context.Context, contract *billing.
 	}
 
 	// Log to audit trail
-	s.logContractAction(ctx, contract.ID, billing.ContractActionCreated, contract.CreatedBy, map[string]interface{}{
+	s.logContractAction(ctx, contract.ID, billing.ContractActionCreated, contract.CreatedBy, map[string]any{
 		"contract_name":   contract.ContractName,
 		"organization_id": contract.OrganizationID,
 		"status":          contract.Status,
@@ -249,7 +249,7 @@ func (s *contractService) CancelContract(ctx context.Context, contractID uuid.UU
 		return appErrors.NewInternalError("Failed to cancel contract", err)
 	}
 
-	s.logContractAction(ctx, contractID, billing.ContractActionCancelled, userID.String(), map[string]interface{}{
+	s.logContractAction(ctx, contractID, billing.ContractActionCancelled, userID.String(), map[string]any{
 		"previous_status": contract.Status,
 	}, reason)
 
@@ -284,7 +284,7 @@ func (s *contractService) ExpireContract(ctx context.Context, contractID uuid.UU
 		return appErrors.NewInternalError("Failed to expire contract", err)
 	}
 
-	s.logContractAction(ctx, contractID, billing.ContractActionExpired, "system", map[string]interface{}{
+	s.logContractAction(ctx, contractID, billing.ContractActionExpired, "system", map[string]any{
 		"expired_at": time.Now(),
 	}, "Contract expired automatically")
 
@@ -323,7 +323,7 @@ func (s *contractService) AddVolumeTiers(ctx context.Context, contractID uuid.UU
 		}
 
 		// Log to audit trail (within transaction)
-		tierChanges := map[string]interface{}{
+		tierChanges := map[string]any{
 			"tier_count": len(tiers),
 			"dimensions": extractDimensions(tiers),
 		}
@@ -377,7 +377,7 @@ func (s *contractService) UpdateVolumeTiers(ctx context.Context, contractID uuid
 		}
 
 		// Log to audit trail (within transaction)
-		tierChanges := map[string]interface{}{
+		tierChanges := map[string]any{
 			"tier_count": len(tiers),
 			"dimensions": extractDimensions(tiers),
 		}
@@ -407,7 +407,7 @@ func (s *contractService) GetExpiringContracts(ctx context.Context, days int) ([
 
 // Helper methods
 
-func (s *contractService) logContractAction(ctx context.Context, contractID uuid.UUID, action billing.ContractAction, changedBy string, changes map[string]interface{}, reason string) {
+func (s *contractService) logContractAction(ctx context.Context, contractID uuid.UUID, action billing.ContractAction, changedBy string, changes map[string]any, reason string) {
 	changesJSON, _ := json.Marshal(changes)
 
 	history := &billing.ContractHistory{
@@ -429,8 +429,8 @@ func (s *contractService) logContractAction(ctx context.Context, contractID uuid
 	}
 }
 
-func (s *contractService) trackChanges(old, new *billing.Contract) map[string]interface{} {
-	changes := make(map[string]interface{})
+func (s *contractService) trackChanges(old, new *billing.Contract) map[string]any {
+	changes := make(map[string]any)
 
 	if old.ContractName != new.ContractName {
 		changes["contract_name"] = map[string]string{"old": old.ContractName, "new": new.ContractName}
@@ -442,7 +442,7 @@ func (s *contractService) trackChanges(old, new *billing.Contract) map[string]in
 		changes["start_date"] = map[string]time.Time{"old": old.StartDate, "new": new.StartDate}
 	}
 	if !equalTimePtr(old.EndDate, new.EndDate) {
-		changes["end_date"] = map[string]interface{}{
+		changes["end_date"] = map[string]any{
 			"old": old.EndDate,
 			"new": new.EndDate,
 		}
@@ -450,13 +450,13 @@ func (s *contractService) trackChanges(old, new *billing.Contract) map[string]in
 
 	// Track pricing changes
 	if !equalDecimalPtr(old.CustomPricePer100KSpans, new.CustomPricePer100KSpans) {
-		changes["price_per_100k_spans"] = map[string]interface{}{
+		changes["price_per_100k_spans"] = map[string]any{
 			"old": old.CustomPricePer100KSpans,
 			"new": new.CustomPricePer100KSpans,
 		}
 	}
 	if !equalDecimalPtr(old.CustomPricePerGB, new.CustomPricePerGB) {
-		changes["price_per_gb"] = map[string]interface{}{
+		changes["price_per_gb"] = map[string]any{
 			"old": old.CustomPricePerGB,
 			"new": new.CustomPricePerGB,
 		}
@@ -568,7 +568,7 @@ func (s *contractService) logContractActionTx(
 	action billing.ContractAction,
 	changedBy string,
 	reason string,
-	changes map[string]interface{},
+	changes map[string]any,
 ) error {
 	changesJSON, _ := json.Marshal(changes)
 

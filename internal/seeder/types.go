@@ -62,7 +62,7 @@ type ProviderModelSeed struct {
 	StartDate       string                 `yaml:"start_date"` // Format: "2024-05-13"
 	Unit            string                 `yaml:"unit"`       // Default: "TOKENS"
 	TokenizerID     string                 `yaml:"tokenizer_id,omitempty"`
-	TokenizerConfig map[string]interface{} `yaml:"tokenizer_config,omitempty"`
+	TokenizerConfig map[string]any `yaml:"tokenizer_config,omitempty"`
 	Prices          []PriceSeed            `yaml:"prices"`
 }
 
@@ -133,7 +133,7 @@ type TemplateWidgetSeed struct {
 	Title       string                 `yaml:"title"`
 	Description string                 `yaml:"description"`
 	Query       TemplateQuerySeed      `yaml:"query"`
-	Config      map[string]interface{} `yaml:"config,omitempty"`
+	Config      map[string]any `yaml:"config,omitempty"`
 }
 
 type TemplateQuerySeed struct {
@@ -149,7 +149,7 @@ type TemplateQuerySeed struct {
 type TemplateFilterSeed struct {
 	Field    string      `yaml:"field"`
 	Operator string      `yaml:"operator"`
-	Value    interface{} `yaml:"value"`
+	Value    any `yaml:"value"`
 }
 
 type TemplateLayoutSeed struct {

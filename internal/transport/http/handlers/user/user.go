@@ -71,7 +71,7 @@ type UserProfileData struct {
 
 // OrganizationWithProjects represents an organization with its nested projects
 type OrganizationWithProjects struct {
-	ID            string           `json:"id"`
+	ID            uuid.UUID        `json:"id"`
 	Name          string           `json:"name"`
 	CompositeSlug string           `json:"composite_slug"`
 	Plan          string           `json:"plan"`
@@ -85,11 +85,11 @@ type OrganizationWithProjects struct {
 type ProjectSummary struct {
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
-	ID             string    `json:"id"`
+	ID             uuid.UUID `json:"id"`
 	Name           string    `json:"name"`
 	CompositeSlug  string    `json:"composite_slug"`
 	Description    string    `json:"description,omitempty"`
-	OrganizationID string    `json:"organization_id"`
+	OrganizationID uuid.UUID `json:"organization_id"`
 	Status         string    `json:"status"`
 }
 
@@ -195,11 +195,11 @@ func (h *Handler) GetProfile(c *gin.Context) {
 			projectCompositeSlug := utils.GenerateCompositeSlug(proj.Name, proj.ID)
 
 			projectSummaries = append(projectSummaries, ProjectSummary{
-				ID:             proj.ID.String(),
+				ID:             proj.ID,
 				Name:           proj.Name,
 				CompositeSlug:  projectCompositeSlug,
 				Description:    proj.Description,
-				OrganizationID: proj.OrganizationID.String(),
+				OrganizationID: proj.OrganizationID,
 				Status:         proj.Status,
 				CreatedAt:      proj.CreatedAt,
 				UpdatedAt:      proj.UpdatedAt,
@@ -207,7 +207,7 @@ func (h *Handler) GetProfile(c *gin.Context) {
 		}
 
 		organizationsWithProjects = append(organizationsWithProjects, OrganizationWithProjects{
-			ID:            orgData.Organization.ID.String(),
+			ID:            orgData.Organization.ID,
 			Name:          orgData.Organization.Name,
 			CompositeSlug: orgCompositeSlug,
 			Plan:          orgData.Organization.Plan,

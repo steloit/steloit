@@ -8,9 +8,9 @@ import (
 
 // Test extractGenericInput with LLM messages (highest priority)
 func TestExtractGenericInput_GenAIMessages_Array(t *testing.T) {
-	attrs := map[string]interface{}{
-		"gen_ai.input.messages": []interface{}{
-			map[string]interface{}{"role": "user", "content": "Hello"},
+	attrs := map[string]any{
+		"gen_ai.input.messages": []any{
+			map[string]any{"role": "user", "content": "Hello"},
 		},
 	}
 
@@ -22,7 +22,7 @@ func TestExtractGenericInput_GenAIMessages_Array(t *testing.T) {
 }
 
 func TestExtractGenericInput_GenAIMessages_String(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		"gen_ai.input.messages": `[{"role":"user","content":"Hello"}]`,
 	}
 
@@ -34,7 +34,7 @@ func TestExtractGenericInput_GenAIMessages_String(t *testing.T) {
 
 // Test extractGenericInput with input.value (fallback)
 func TestExtractGenericInput_InputValue_String(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		"input.value": `{"location":"Bangalore","units":"celsius"}`,
 	}
 
@@ -45,7 +45,7 @@ func TestExtractGenericInput_InputValue_String(t *testing.T) {
 }
 
 func TestExtractGenericInput_InputValue_StringWithMimeType(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		"input.value":     "Hello, World!",
 		"input.mime_type": "text/plain",
 	}
@@ -58,8 +58,8 @@ func TestExtractGenericInput_InputValue_StringWithMimeType(t *testing.T) {
 
 // Test extractGenericInput with object input (new capability)
 func TestExtractGenericInput_InputValue_Object(t *testing.T) {
-	attrs := map[string]interface{}{
-		"input.value": map[string]interface{}{
+	attrs := map[string]any{
+		"input.value": map[string]any{
 			"location": "Bangalore",
 			"units":    "celsius",
 		},
@@ -74,8 +74,8 @@ func TestExtractGenericInput_InputValue_Object(t *testing.T) {
 
 // Test extractGenericInput with array input (new capability)
 func TestExtractGenericInput_InputValue_Array(t *testing.T) {
-	attrs := map[string]interface{}{
-		"input.value": []interface{}{"arg1", "arg2", 123},
+	attrs := map[string]any{
+		"input.value": []any{"arg1", "arg2", 123},
 	}
 
 	value, mimeType := extractGenericInput(attrs)
@@ -86,7 +86,7 @@ func TestExtractGenericInput_InputValue_Array(t *testing.T) {
 
 // Test priority: gen_ai.input.messages takes precedence over input.value
 func TestExtractGenericInput_PriorityOrder(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		"gen_ai.input.messages": `[{"role":"user","content":"high priority"}]`,
 		"input.value":           `{"generic":"low priority"}`,
 	}
@@ -99,7 +99,7 @@ func TestExtractGenericInput_PriorityOrder(t *testing.T) {
 
 // Test extractGenericInput returns empty when no input
 func TestExtractGenericInput_Empty(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		"other.attribute": "value",
 	}
 
@@ -111,9 +111,9 @@ func TestExtractGenericInput_Empty(t *testing.T) {
 
 // Test extractGenericOutput with LLM messages (highest priority)
 func TestExtractGenericOutput_GenAIMessages_Array(t *testing.T) {
-	attrs := map[string]interface{}{
-		"gen_ai.output.messages": []interface{}{
-			map[string]interface{}{"role": "assistant", "content": "Hello back!"},
+	attrs := map[string]any{
+		"gen_ai.output.messages": []any{
+			map[string]any{"role": "assistant", "content": "Hello back!"},
 		},
 	}
 
@@ -125,7 +125,7 @@ func TestExtractGenericOutput_GenAIMessages_Array(t *testing.T) {
 }
 
 func TestExtractGenericOutput_GenAIMessages_String(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		"gen_ai.output.messages": `[{"role":"assistant","content":"Response"}]`,
 	}
 
@@ -137,7 +137,7 @@ func TestExtractGenericOutput_GenAIMessages_String(t *testing.T) {
 
 // Test extractGenericOutput with output.value (fallback)
 func TestExtractGenericOutput_OutputValue_String(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		"output.value": `{"temperature":25,"conditions":"sunny"}`,
 	}
 
@@ -149,8 +149,8 @@ func TestExtractGenericOutput_OutputValue_String(t *testing.T) {
 
 // Test extractGenericOutput with object output (new capability)
 func TestExtractGenericOutput_OutputValue_Object(t *testing.T) {
-	attrs := map[string]interface{}{
-		"output.value": map[string]interface{}{
+	attrs := map[string]any{
+		"output.value": map[string]any{
 			"temperature": 25,
 			"conditions":  "sunny",
 		},
@@ -165,8 +165,8 @@ func TestExtractGenericOutput_OutputValue_Object(t *testing.T) {
 
 // Test extractGenericOutput with array output (new capability)
 func TestExtractGenericOutput_OutputValue_Array(t *testing.T) {
-	attrs := map[string]interface{}{
-		"output.value": []interface{}{"result1", "result2"},
+	attrs := map[string]any{
+		"output.value": []any{"result1", "result2"},
 	}
 
 	value, mimeType := extractGenericOutput(attrs)
@@ -177,7 +177,7 @@ func TestExtractGenericOutput_OutputValue_Array(t *testing.T) {
 
 // Test priority: gen_ai.output.messages takes precedence
 func TestExtractGenericOutput_PriorityOrder(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		"gen_ai.output.messages": `[{"role":"assistant","content":"high priority"}]`,
 		"output.value":           `{"generic":"low priority"}`,
 	}
@@ -190,10 +190,10 @@ func TestExtractGenericOutput_PriorityOrder(t *testing.T) {
 
 // Test extractToolMetadata
 func TestExtractToolMetadata_ToolName(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		"gen_ai.tool.name": "get_weather",
 	}
-	payload := make(map[string]interface{})
+	payload := make(map[string]any)
 
 	extractToolMetadata(attrs, payload)
 
@@ -201,11 +201,11 @@ func TestExtractToolMetadata_ToolName(t *testing.T) {
 }
 
 func TestExtractToolMetadata_ToolParameters_String(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		"gen_ai.tool.name":       "get_weather",
 		"gen_ai.tool.parameters": `{"location":"Bangalore"}`,
 	}
-	payload := make(map[string]interface{})
+	payload := make(map[string]any)
 
 	extractToolMetadata(attrs, payload)
 
@@ -214,14 +214,14 @@ func TestExtractToolMetadata_ToolParameters_String(t *testing.T) {
 }
 
 func TestExtractToolMetadata_ToolParameters_Object(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		"gen_ai.tool.name": "get_weather",
-		"gen_ai.tool.parameters": map[string]interface{}{
+		"gen_ai.tool.parameters": map[string]any{
 			"location": "Bangalore",
 			"units":    "celsius",
 		},
 	}
-	payload := make(map[string]interface{})
+	payload := make(map[string]any)
 
 	extractToolMetadata(attrs, payload)
 
@@ -230,11 +230,11 @@ func TestExtractToolMetadata_ToolParameters_Object(t *testing.T) {
 }
 
 func TestExtractToolMetadata_ToolResult_String(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		"gen_ai.tool.name":   "get_weather",
 		"gen_ai.tool.result": `{"temp":25}`,
 	}
-	payload := make(map[string]interface{})
+	payload := make(map[string]any)
 
 	extractToolMetadata(attrs, payload)
 
@@ -243,14 +243,14 @@ func TestExtractToolMetadata_ToolResult_String(t *testing.T) {
 }
 
 func TestExtractToolMetadata_ToolResult_Object(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		"gen_ai.tool.name": "get_weather",
-		"gen_ai.tool.result": map[string]interface{}{
+		"gen_ai.tool.result": map[string]any{
 			"temp":       25,
 			"conditions": "sunny",
 		},
 	}
-	payload := make(map[string]interface{})
+	payload := make(map[string]any)
 
 	extractToolMetadata(attrs, payload)
 
@@ -259,11 +259,11 @@ func TestExtractToolMetadata_ToolResult_Object(t *testing.T) {
 }
 
 func TestExtractToolMetadata_ToolCallID(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		"gen_ai.tool.name":    "get_weather",
 		"gen_ai.tool.call.id": "call_abc123",
 	}
-	payload := make(map[string]interface{})
+	payload := make(map[string]any)
 
 	extractToolMetadata(attrs, payload)
 
@@ -272,13 +272,13 @@ func TestExtractToolMetadata_ToolCallID(t *testing.T) {
 }
 
 func TestExtractToolMetadata_AllFields(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		"gen_ai.tool.name":       "search_database",
 		"gen_ai.tool.parameters": `{"query":"SELECT * FROM users"}`,
 		"gen_ai.tool.result":     `{"rows":10}`,
 		"gen_ai.tool.call.id":    "call_xyz789",
 	}
-	payload := make(map[string]interface{})
+	payload := make(map[string]any)
 
 	extractToolMetadata(attrs, payload)
 
@@ -289,10 +289,10 @@ func TestExtractToolMetadata_AllFields(t *testing.T) {
 }
 
 func TestExtractToolMetadata_Empty(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		"other.attribute": "value",
 	}
-	payload := make(map[string]interface{})
+	payload := make(map[string]any)
 
 	extractToolMetadata(attrs, payload)
 
@@ -345,14 +345,14 @@ func TestTruncateWithIndicator_Truncation(t *testing.T) {
 // Regression test: extractGenAIFields should NOT overwrite payload["input"]/["output"]
 // These are already set by createSpanEvent with proper truncation and MIME type handling.
 func TestExtractGenAIFields_DoesNotOverwriteExistingInputOutput(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		"gen_ai.input.messages":  `[{"role":"user","content":"from attrs"}]`,
 		"gen_ai.output.messages": `[{"role":"assistant","content":"from attrs"}]`,
 		"gen_ai.provider.name":   "openai",
 		"gen_ai.request.model":   "gpt-4",
 	}
 
-	payload := map[string]interface{}{
+	payload := map[string]any{
 		"input":           "already set with truncation",
 		"input_mime_type": "application/json",
 		"output":          "already set with truncation",
@@ -376,7 +376,7 @@ func TestExtractGenAIFields_DoesNotOverwriteExistingInputOutput(t *testing.T) {
 
 // Test Vercel AI SDK - Basic Input (ai.prompt.messages)
 func TestExtractInputOutput_VercelAISDK_PromptMessages(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		AttrVercelPromptMessages: `[{"role":"user","content":"Hello from Vercel"}]`,
 	}
 	input, _, inputMime, _, _ := extractInputOutput(ExtractIOParams{
@@ -389,7 +389,7 @@ func TestExtractInputOutput_VercelAISDK_PromptMessages(t *testing.T) {
 
 // Test Vercel AI SDK - ai.prompt (fallback)
 func TestExtractInputOutput_VercelAISDK_Prompt(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		AttrVercelPrompt: "What is the weather?",
 	}
 	input, _, inputMime, _, _ := extractInputOutput(ExtractIOParams{
@@ -402,7 +402,7 @@ func TestExtractInputOutput_VercelAISDK_Prompt(t *testing.T) {
 
 // Test Vercel AI SDK - ai.toolCall.args
 func TestExtractInputOutput_VercelAISDK_ToolCallArgs(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		AttrVercelToolCallArgs: `{"location":"Bangalore","units":"celsius"}`,
 	}
 	input, _, inputMime, _, _ := extractInputOutput(ExtractIOParams{
@@ -415,7 +415,7 @@ func TestExtractInputOutput_VercelAISDK_ToolCallArgs(t *testing.T) {
 
 // Test Vercel AI SDK - Basic Output (ai.response.text)
 func TestExtractInputOutput_VercelAISDK_ResponseText(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		AttrVercelResponseText: "The weather is sunny.",
 	}
 	_, output, _, outputMime, _ := extractInputOutput(ExtractIOParams{
@@ -428,7 +428,7 @@ func TestExtractInputOutput_VercelAISDK_ResponseText(t *testing.T) {
 
 // Test Vercel AI SDK - Composite Output (text + toolCalls)
 func TestExtractInputOutput_VercelAISDK_CompositeToolCalls(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		AttrVercelResponseText:      "Let me check the weather.",
 		AttrVercelResponseToolCalls: `[{"name":"get_weather","args":{"location":"Bangalore"}}]`,
 	}
@@ -444,7 +444,7 @@ func TestExtractInputOutput_VercelAISDK_CompositeToolCalls(t *testing.T) {
 
 // Test Vercel AI SDK - Legacy result attributes (<4.0)
 func TestExtractInputOutput_VercelAISDK_LegacyResult(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		AttrVercelResultText: "Legacy response text",
 	}
 	_, output, _, outputMime, _ := extractInputOutput(ExtractIOParams{
@@ -457,7 +457,7 @@ func TestExtractInputOutput_VercelAISDK_LegacyResult(t *testing.T) {
 
 // Test Vercel AI SDK - ai.response.object
 func TestExtractInputOutput_VercelAISDK_ResponseObject(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		AttrVercelResponseObject: `{"weather":"sunny","temperature":25}`,
 	}
 	_, output, _, outputMime, _ := extractInputOutput(ExtractIOParams{
@@ -470,7 +470,7 @@ func TestExtractInputOutput_VercelAISDK_ResponseObject(t *testing.T) {
 
 // Test OTEL GenAI Messages (Priority 3 - existing implementation)
 func TestExtractInputOutput_OTELGenAI_Messages(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		AttrGenAIInputMessages:  `[{"role":"user","content":"OTEL message"}]`,
 		AttrGenAIOutputMessages: `[{"role":"assistant","content":"OTEL response"}]`,
 	}
@@ -485,7 +485,7 @@ func TestExtractInputOutput_OTELGenAI_Messages(t *testing.T) {
 
 // Test OpenInference (Priority 4 - fallback)
 func TestExtractInputOutput_OpenInference(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		AttrInputValue:  `{"query":"test query"}`,
 		AttrOutputValue: `{"result":"test result"}`,
 	}
@@ -500,7 +500,7 @@ func TestExtractInputOutput_OpenInference(t *testing.T) {
 
 // Test OpenInference with declared MIME type
 func TestExtractInputOutput_OpenInference_WithMimeType(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		AttrInputValue:     "Plain text input",
 		AttrInputMimeType:  "text/plain",
 		AttrOutputValue:    "Plain text output",
@@ -517,7 +517,7 @@ func TestExtractInputOutput_OpenInference_WithMimeType(t *testing.T) {
 
 // Test Priority Order: Vercel AI SDK > OTEL GenAI > OpenInference
 func TestExtractInputOutput_PriorityOrder_VercelOverOTEL(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		AttrVercelPromptMessages: `[{"role":"user","content":"vercel"}]`,
 		AttrGenAIInputMessages:   `[{"role":"user","content":"otel"}]`,
 		AttrInputValue:           `{"data":"openinference"}`,
@@ -533,7 +533,7 @@ func TestExtractInputOutput_PriorityOrder_VercelOverOTEL(t *testing.T) {
 
 // Test Priority Order: OTEL GenAI > OpenInference (when not Vercel)
 func TestExtractInputOutput_PriorityOrder_OTELOverOpenInference(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		AttrGenAIInputMessages: `[{"role":"user","content":"otel"}]`,
 		AttrInputValue:         `{"data":"openinference"}`,
 	}
@@ -546,7 +546,7 @@ func TestExtractInputOutput_PriorityOrder_OTELOverOpenInference(t *testing.T) {
 
 // Test that Vercel attributes are ignored when scope is not "ai"
 func TestExtractInputOutput_VercelIgnoredWithoutScope(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		AttrVercelPromptMessages: `[{"role":"user","content":"vercel"}]`,
 		AttrGenAIInputMessages:   `[{"role":"user","content":"otel"}]`,
 	}
@@ -560,7 +560,7 @@ func TestExtractInputOutput_VercelIgnoredWithoutScope(t *testing.T) {
 
 // Test OTEL GenAI Span Events - User message
 func TestExtractInputOutput_SpanEvents_UserMessage(t *testing.T) {
-	events := []map[string]interface{}{
+	events := []map[string]any{
 		{
 			"name":       "gen_ai.user.message",
 			"attributes": map[string]string{"content": "Hello from user"},
@@ -576,7 +576,7 @@ func TestExtractInputOutput_SpanEvents_UserMessage(t *testing.T) {
 
 // Test OTEL GenAI Span Events - System + User messages
 func TestExtractInputOutput_SpanEvents_MultipleMessages(t *testing.T) {
-	events := []map[string]interface{}{
+	events := []map[string]any{
 		{
 			"name":       "gen_ai.system.message",
 			"attributes": map[string]string{"content": "You are helpful"},
@@ -597,7 +597,7 @@ func TestExtractInputOutput_SpanEvents_MultipleMessages(t *testing.T) {
 
 // Test OTEL GenAI Span Events - Choice output
 func TestExtractInputOutput_SpanEvents_Choice(t *testing.T) {
-	events := []map[string]interface{}{
+	events := []map[string]any{
 		{
 			"name":       "gen_ai.choice",
 			"attributes": map[string]string{"content": "AI response", "index": "0"},
@@ -616,7 +616,7 @@ func TestExtractInputOutput_Truncation(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		longValue += "This is a long string that needs truncation. "
 	}
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		AttrInputValue: longValue,
 	}
 	input, _, _, _, truncated := extractInputOutput(ExtractIOParams{
@@ -630,7 +630,7 @@ func TestExtractInputOutput_Truncation(t *testing.T) {
 
 // Test Empty attributes
 func TestExtractInputOutput_Empty(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		"other.attribute": "value",
 	}
 	input, output, inputMime, outputMime, truncated := extractInputOutput(ExtractIOParams{
@@ -650,7 +650,7 @@ func TestExtractInputOutput_Empty(t *testing.T) {
 
 func TestExtractVercelAISDK_InputPriority(t *testing.T) {
 	// Test that ai.prompt.messages takes precedence over ai.prompt
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		AttrVercelPromptMessages: `[{"role":"user","content":"messages"}]`,
 		AttrVercelPrompt:         "plain prompt",
 	}
@@ -660,7 +660,7 @@ func TestExtractVercelAISDK_InputPriority(t *testing.T) {
 }
 
 func TestExtractVercelAISDK_OutputWithToolCallsOnly(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		AttrVercelResponseToolCalls: `[{"name":"search"}]`,
 	}
 	_, output := extractVercelAISDK(attrs)
@@ -672,14 +672,14 @@ func TestExtractVercelAISDK_OutputWithToolCallsOnly(t *testing.T) {
 // ============================================================================
 
 func TestExtractFromSpanEvents_Empty(t *testing.T) {
-	events := []map[string]interface{}{}
+	events := []map[string]any{}
 	input, output := extractFromSpanEvents(events)
 	assert.Equal(t, "", input)
 	assert.Equal(t, "", output)
 }
 
 func TestExtractFromSpanEvents_MultipleChoices(t *testing.T) {
-	events := []map[string]interface{}{
+	events := []map[string]any{
 		{
 			"name":       "gen_ai.choice",
 			"attributes": map[string]string{"content": "Choice 1", "index": "0"},
@@ -751,7 +751,7 @@ func TestIsFrameworkIOKey(t *testing.T) {
 // ============================================================================
 
 func TestFilterIOKeysFromMetadata(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		"ai.prompt.messages":    `[{"role":"user"}]`,
 		"ai.response.text":      "response",
 		"gen_ai.provider.name":  "openai",
@@ -776,7 +776,7 @@ func TestFilterIOKeysFromMetadata(t *testing.T) {
 // filterIOKeysFromMetadata works correctly when chained with convertToStringMap
 func TestFilterIOKeysFromMetadata_IntegrationWithConvertToStringMap(t *testing.T) {
 	// Simulate span attributes with both I/O keys and regular attributes
-	spanAttrs := map[string]interface{}{
+	spanAttrs := map[string]any{
 		"input.value":           `{"query":"test"}`,
 		"output.value":          `{"result":"done"}`,
 		"gen_ai.input.messages": `[{"role":"user"}]`,
@@ -805,7 +805,7 @@ func TestFilterIOKeysFromMetadata_IntegrationWithConvertToStringMap(t *testing.T
 func TestExtractFromSpanEvents_TypeHandling(t *testing.T) {
 	t.Run("handles map[string]string attributes", func(t *testing.T) {
 		// This is the actual type stored by createSpanEvent()
-		events := []map[string]interface{}{
+		events := []map[string]any{
 			{
 				"name": "gen_ai.user.message",
 				"attributes": map[string]string{
@@ -818,12 +818,12 @@ func TestExtractFromSpanEvents_TypeHandling(t *testing.T) {
 		assert.Contains(t, input, `"role":"user"`)
 	})
 
-	t.Run("handles map[string]interface{} attributes", func(t *testing.T) {
+	t.Run("handles map[string]any attributes", func(t *testing.T) {
 		// Alternative type that might be used in tests or future code
-		events := []map[string]interface{}{
+		events := []map[string]any{
 			{
 				"name": "gen_ai.user.message",
-				"attributes": map[string]interface{}{
+				"attributes": map[string]any{
 					"content": "Hello from interface",
 				},
 			},
@@ -834,7 +834,7 @@ func TestExtractFromSpanEvents_TypeHandling(t *testing.T) {
 	})
 
 	t.Run("handles nil attributes gracefully", func(t *testing.T) {
-		events := []map[string]interface{}{
+		events := []map[string]any{
 			{
 				"name":       "gen_ai.user.message",
 				"attributes": nil,
@@ -846,7 +846,7 @@ func TestExtractFromSpanEvents_TypeHandling(t *testing.T) {
 	})
 
 	t.Run("handles missing attributes gracefully", func(t *testing.T) {
-		events := []map[string]interface{}{
+		events := []map[string]any{
 			{
 				"name": "gen_ai.user.message",
 				// No attributes key at all
@@ -865,15 +865,15 @@ func TestExtractFromSpanEvents_TypeHandling(t *testing.T) {
 // TestExtractGenAIMessages_WithSystemInstructions verifies system instructions extraction
 func TestExtractGenAIMessages_WithSystemInstructions(t *testing.T) {
 	t.Run("extracts all three components", func(t *testing.T) {
-		attrs := map[string]interface{}{
-			AttrGenAISystemInstructions: []interface{}{
-				map[string]interface{}{"role": "system", "content": "You are helpful"},
+		attrs := map[string]any{
+			AttrGenAISystemInstructions: []any{
+				map[string]any{"role": "system", "content": "You are helpful"},
 			},
-			AttrGenAIInputMessages: []interface{}{
-				map[string]interface{}{"role": "user", "content": "Hello"},
+			AttrGenAIInputMessages: []any{
+				map[string]any{"role": "user", "content": "Hello"},
 			},
-			AttrGenAIOutputMessages: []interface{}{
-				map[string]interface{}{"role": "assistant", "content": "Hi there!"},
+			AttrGenAIOutputMessages: []any{
+				map[string]any{"role": "assistant", "content": "Hi there!"},
 			},
 		}
 
@@ -885,7 +885,7 @@ func TestExtractGenAIMessages_WithSystemInstructions(t *testing.T) {
 	})
 
 	t.Run("handles system instructions as string", func(t *testing.T) {
-		attrs := map[string]interface{}{
+		attrs := map[string]any{
 			AttrGenAISystemInstructions: `[{"role":"system","content":"Be concise"}]`,
 		}
 
@@ -894,9 +894,9 @@ func TestExtractGenAIMessages_WithSystemInstructions(t *testing.T) {
 	})
 
 	t.Run("handles system instructions only", func(t *testing.T) {
-		attrs := map[string]interface{}{
-			AttrGenAISystemInstructions: []interface{}{
-				map[string]interface{}{"role": "system", "content": "System only"},
+		attrs := map[string]any{
+			AttrGenAISystemInstructions: []any{
+				map[string]any{"role": "system", "content": "System only"},
 			},
 		}
 
@@ -942,15 +942,15 @@ func TestCombineMessagesJSON(t *testing.T) {
 // TestExtractInputOutput_WithSystemInstructions verifies system instructions integration
 func TestExtractInputOutput_WithSystemInstructions(t *testing.T) {
 	t.Run("combines system instructions with input messages", func(t *testing.T) {
-		attrs := map[string]interface{}{
-			AttrGenAISystemInstructions: []interface{}{
-				map[string]interface{}{"role": "system", "content": "You are an AI assistant"},
+		attrs := map[string]any{
+			AttrGenAISystemInstructions: []any{
+				map[string]any{"role": "system", "content": "You are an AI assistant"},
 			},
-			AttrGenAIInputMessages: []interface{}{
-				map[string]interface{}{"role": "user", "content": "What is 2+2?"},
+			AttrGenAIInputMessages: []any{
+				map[string]any{"role": "user", "content": "What is 2+2?"},
 			},
-			AttrGenAIOutputMessages: []interface{}{
-				map[string]interface{}{"role": "assistant", "content": "4"},
+			AttrGenAIOutputMessages: []any{
+				map[string]any{"role": "assistant", "content": "4"},
 			},
 		}
 
@@ -964,9 +964,9 @@ func TestExtractInputOutput_WithSystemInstructions(t *testing.T) {
 	})
 
 	t.Run("system instructions only (no input messages)", func(t *testing.T) {
-		attrs := map[string]interface{}{
-			AttrGenAISystemInstructions: []interface{}{
-				map[string]interface{}{"role": "system", "content": "System prompt only"},
+		attrs := map[string]any{
+			AttrGenAISystemInstructions: []any{
+				map[string]any{"role": "system", "content": "System prompt only"},
 			},
 		}
 
@@ -978,9 +978,9 @@ func TestExtractInputOutput_WithSystemInstructions(t *testing.T) {
 	})
 
 	t.Run("input messages only (no system instructions)", func(t *testing.T) {
-		attrs := map[string]interface{}{
-			AttrGenAIInputMessages: []interface{}{
-				map[string]interface{}{"role": "user", "content": "User message only"},
+		attrs := map[string]any{
+			AttrGenAIInputMessages: []any{
+				map[string]any{"role": "user", "content": "User message only"},
 			},
 		}
 
@@ -993,7 +993,7 @@ func TestExtractInputOutput_WithSystemInstructions(t *testing.T) {
 
 // TestFilterIOKeysFromMetadata_SystemInstructions verifies system instructions are filtered
 func TestFilterIOKeysFromMetadata_SystemInstructions(t *testing.T) {
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		AttrGenAISystemInstructions: `[{"role":"system","content":"secret system prompt"}]`,
 		AttrGenAIInputMessages:      `[{"role":"user","content":"message"}]`,
 		AttrGenAIOutputMessages:     `[{"role":"assistant","content":"response"}]`,

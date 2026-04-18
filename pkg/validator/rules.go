@@ -10,7 +10,7 @@ import (
 // Common validation rules for the Brokle platform
 
 // ValidateUserData validates user registration/update data
-func ValidateUserData(data map[string]interface{}) error {
+func ValidateUserData(data map[string]any) error {
 	v := New()
 
 	// Name validation
@@ -39,7 +39,7 @@ func ValidateUserData(data map[string]interface{}) error {
 }
 
 // ValidateOrganizationData validates organization data
-func ValidateOrganizationData(data map[string]interface{}) error {
+func ValidateOrganizationData(data map[string]any) error {
 	v := New()
 
 	// Name validation
@@ -64,7 +64,7 @@ func ValidateOrganizationData(data map[string]interface{}) error {
 }
 
 // ValidateProjectData validates project data
-func ValidateProjectData(data map[string]interface{}) error {
+func ValidateProjectData(data map[string]any) error {
 	v := New()
 
 	// Name validation
@@ -92,7 +92,7 @@ func ValidateProjectData(data map[string]interface{}) error {
 }
 
 // ValidateAPIKeyData validates API key data
-func ValidateAPIKeyData(data map[string]interface{}) error {
+func ValidateAPIKeyData(data map[string]any) error {
 	v := New()
 
 	// Name validation
@@ -103,13 +103,13 @@ func ValidateAPIKeyData(data map[string]interface{}) error {
 	}
 
 	// Permissions validation (optional)
-	if permissions, ok := data["permissions"].([]interface{}); ok && len(permissions) > 0 {
+	if permissions, ok := data["permissions"].([]any); ok && len(permissions) > 0 {
 		for i, perm := range permissions {
 			if permStr, ok := perm.(string); ok {
 				v.Custom(
 					"permissions["+strconv.Itoa(i)+"]",
 					permStr,
-					func(val interface{}) bool {
+					func(val any) bool {
 						return IsValidPermission(val.(string))
 					},
 					"invalid permission: "+permStr,
@@ -121,7 +121,7 @@ func ValidateAPIKeyData(data map[string]interface{}) error {
 	// Expiration date validation (optional)
 	if expiresAt, ok := data["expires_at"].(string); ok && expiresAt != "" {
 		v.Date("expires_at", expiresAt, time.RFC3339, "expires_at must be a valid RFC3339 date").
-			Custom("expires_at", expiresAt, func(val interface{}) bool {
+			Custom("expires_at", expiresAt, func(val any) bool {
 				t, err := time.Parse(time.RFC3339, val.(string))
 				if err != nil {
 					return false
@@ -137,7 +137,7 @@ func ValidateAPIKeyData(data map[string]interface{}) error {
 }
 
 // ValidateAIRoutingConfig validates AI routing configuration
-func ValidateAIRoutingConfig(data map[string]interface{}) error {
+func ValidateAIRoutingConfig(data map[string]any) error {
 	v := New()
 
 	// Provider validation
@@ -171,7 +171,7 @@ func ValidateAIRoutingConfig(data map[string]interface{}) error {
 }
 
 // ValidateBillingData validates billing configuration
-func ValidateBillingData(data map[string]interface{}) error {
+func ValidateBillingData(data map[string]any) error {
 	v := New()
 
 	// Plan validation
@@ -197,7 +197,7 @@ func ValidateBillingData(data map[string]interface{}) error {
 }
 
 // ValidatePaginationParams validates pagination parameters
-func ValidatePaginationParams(data map[string]interface{}) error {
+func ValidatePaginationParams(data map[string]any) error {
 	v := New()
 
 	// Page validation
@@ -227,7 +227,7 @@ func ValidatePaginationParams(data map[string]interface{}) error {
 }
 
 // ValidateWebSocketMessage validates WebSocket message format
-func ValidateWebSocketMessage(data map[string]interface{}) error {
+func ValidateWebSocketMessage(data map[string]any) error {
 	v := New()
 
 	// Type validation
@@ -253,7 +253,7 @@ func ValidateWebSocketMessage(data map[string]interface{}) error {
 // Custom validation functions
 
 // IsStrongPassword validates password strength
-func IsStrongPassword(password interface{}) bool {
+func IsStrongPassword(password any) bool {
 	pwd, ok := password.(string)
 	if !ok {
 		return false

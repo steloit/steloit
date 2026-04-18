@@ -56,10 +56,10 @@ type ListRequest struct {
 type Project struct {
 	CreatedAt      time.Time `json:"created_at" example:"2024-01-01T00:00:00Z" description:"Creation timestamp"`
 	UpdatedAt      time.Time `json:"updated_at" example:"2024-01-01T00:00:00Z" description:"Last update timestamp"`
-	ID             string    `json:"id" example:"proj_1234567890" description:"Unique project identifier"`
+	ID             uuid.UUID `json:"id" example:"proj_1234567890" description:"Unique project identifier"`
 	Name           string    `json:"name" example:"AI Chatbot" description:"Project name"`
 	Description    string    `json:"description,omitempty" example:"Customer support AI chatbot" description:"Optional project description"`
-	OrganizationID string    `json:"organization_id" example:"org_1234567890" description:"Organization ID this project belongs to"`
+	OrganizationID uuid.UUID `json:"organization_id" example:"org_1234567890" description:"Organization ID this project belongs to"`
 	Status         string    `json:"status" example:"active" description:"Project status (active, archived)"`
 }
 
@@ -230,10 +230,10 @@ func (h *Handler) List(c *gin.Context) {
 	responseProjects := make([]Project, len(filteredProjects))
 	for i, proj := range filteredProjects {
 		responseProjects[i] = Project{
-			ID:             proj.ID.String(),
+			ID:             proj.ID,
 			Name:           proj.Name,
 			Description:    proj.Description,
-			OrganizationID: proj.OrganizationID.String(),
+			OrganizationID: proj.OrganizationID,
 			Status:         proj.Status,
 			CreatedAt:      proj.CreatedAt,
 			UpdatedAt:      proj.UpdatedAt,
@@ -328,10 +328,10 @@ func (h *Handler) Create(c *gin.Context) {
 
 	// Convert to response format
 	responseProject := Project{
-		ID:             project.ID.String(),
+		ID:             project.ID,
 		Name:           project.Name,
 		Description:    project.Description,
-		OrganizationID: project.OrganizationID.String(),
+		OrganizationID: project.OrganizationID,
 		Status:         project.Status,
 		CreatedAt:      project.CreatedAt,
 		UpdatedAt:      project.UpdatedAt,
@@ -402,10 +402,10 @@ func (h *Handler) Get(c *gin.Context) {
 
 	// Convert to response format
 	responseProject := Project{
-		ID:             project.ID.String(),
+		ID:             project.ID,
 		Name:           project.Name,
 		Description:    project.Description,
-		OrganizationID: project.OrganizationID.String(),
+		OrganizationID: project.OrganizationID,
 		Status:         project.Status,
 		CreatedAt:      project.CreatedAt,
 		UpdatedAt:      project.UpdatedAt,
@@ -500,10 +500,10 @@ func (h *Handler) Update(c *gin.Context) {
 
 	// Convert to response format
 	responseProject := Project{
-		ID:             project.ID.String(),
+		ID:             project.ID,
 		Name:           project.Name,
 		Description:    project.Description,
-		OrganizationID: project.OrganizationID.String(),
+		OrganizationID: project.OrganizationID,
 		Status:         project.Status,
 		CreatedAt:      project.CreatedAt,
 		UpdatedAt:      project.UpdatedAt,

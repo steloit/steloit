@@ -34,7 +34,7 @@ func (r *scoreAnalyticsRepository) GetStatistics(ctx context.Context, filter *ob
 		  AND name = ?
 		  AND value IS NOT NULL
 	`
-	args := []interface{}{filter.ProjectID, filter.ScoreName}
+	args := []any{filter.ProjectID, filter.ScoreName}
 
 	if filter.FromTimestamp != nil {
 		query += " AND timestamp >= ?"
@@ -74,7 +74,7 @@ func (r *scoreAnalyticsRepository) GetStatistics(ctx context.Context, filter *ob
 		  AND string_value IS NOT NULL
 		  AND string_value != ''
 	`
-	modeArgs := []interface{}{filter.ProjectID, filter.ScoreName}
+	modeArgs := []any{filter.ProjectID, filter.ScoreName}
 
 	if filter.FromTimestamp != nil {
 		modeQuery += " AND timestamp >= ?"
@@ -121,7 +121,7 @@ func (r *scoreAnalyticsRepository) GetTimeSeries(ctx context.Context, filter *ob
 		  AND value IS NOT NULL
 	`, intervalFunc)
 
-	args := []interface{}{filter.ProjectID, filter.ScoreName}
+	args := []any{filter.ProjectID, filter.ScoreName}
 
 	if filter.FromTimestamp != nil {
 		query += " AND timestamp >= ?"
@@ -174,7 +174,7 @@ func (r *scoreAnalyticsRepository) GetDistribution(ctx context.Context, filter *
 		  AND name = ?
 		  AND value IS NOT NULL
 	`
-	boundsArgs := []interface{}{filter.ProjectID, filter.ScoreName}
+	boundsArgs := []any{filter.ProjectID, filter.ScoreName}
 
 	if filter.FromTimestamp != nil {
 		boundsQuery += " AND timestamp >= ?"
@@ -209,7 +209,7 @@ func (r *scoreAnalyticsRepository) GetDistribution(ctx context.Context, filter *
 		  AND name = ?
 		  AND value IS NOT NULL
 	`
-	args := []interface{}{minVal, binWidth, filter.ProjectID, filter.ScoreName}
+	args := []any{minVal, binWidth, filter.ProjectID, filter.ScoreName}
 
 	if filter.FromTimestamp != nil {
 		query += " AND timestamp >= ?"
@@ -278,7 +278,7 @@ func (r *scoreAnalyticsRepository) GetHeatmap(ctx context.Context, filter *obser
 		  AND name IN (?, ?)
 		  AND value IS NOT NULL
 	`
-	boundsArgs := []interface{}{
+	boundsArgs := []any{
 		filter.ScoreName, filter.ScoreName,
 		*filter.CompareScoreName, *filter.CompareScoreName,
 		filter.ProjectID,
@@ -326,7 +326,7 @@ func (r *scoreAnalyticsRepository) GetHeatmap(ctx context.Context, filter *obser
 		  AND s1.value IS NOT NULL
 		  AND s2.value IS NOT NULL
 	`
-	args := []interface{}{
+	args := []any{
 		*s1Min, s1Width,
 		*s2Min, s2Width,
 		filter.ProjectID,
@@ -408,7 +408,7 @@ func (r *scoreAnalyticsRepository) GetComparisonMetrics(ctx context.Context, fil
 		  AND s1.value IS NOT NULL
 		  AND s2.value IS NOT NULL
 	`
-	args := []interface{}{filter.ProjectID, filter.ScoreName, *filter.CompareScoreName}
+	args := []any{filter.ProjectID, filter.ScoreName, *filter.CompareScoreName}
 
 	if filter.FromTimestamp != nil {
 		aggregateQuery += " AND s1.timestamp >= ? AND s2.timestamp >= ?"
@@ -462,7 +462,7 @@ func (r *scoreAnalyticsRepository) GetComparisonMetrics(ctx context.Context, fil
 		  AND s1.value IS NOT NULL
 		  AND s2.value IS NOT NULL
 	`
-	spearmanArgs := []interface{}{filter.ProjectID, filter.ScoreName, *filter.CompareScoreName}
+	spearmanArgs := []any{filter.ProjectID, filter.ScoreName, *filter.CompareScoreName}
 
 	if filter.FromTimestamp != nil {
 		spearmanQuery += " AND s1.timestamp >= ? AND s2.timestamp >= ?"
@@ -688,7 +688,7 @@ func (r *scoreAnalyticsRepository) GetSourceDistribution(ctx context.Context, pr
 		FROM scores_source_distribution
 		WHERE project_id = ?
 	`
-	args := []interface{}{projectID}
+	args := []any{projectID}
 
 	if fromTimestamp != nil {
 		query += " AND day >= toDate(?)"
@@ -749,7 +749,7 @@ func (r *scoreAnalyticsRepository) GetDailySummary(ctx context.Context, projectI
 		WHERE project_id = ?
 		  AND name = ?
 	`
-	args := []interface{}{projectID, scoreName}
+	args := []any{projectID, scoreName}
 
 	if fromTimestamp != nil {
 		query += " AND day >= toDate(?)"

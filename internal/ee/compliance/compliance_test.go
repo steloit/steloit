@@ -16,7 +16,7 @@ func TestStubCompliance(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("ValidateCompliance - stub always passes", func(t *testing.T) {
-		err := compliance.ValidateCompliance(ctx, map[string]interface{}{
+		err := compliance.ValidateCompliance(ctx, map[string]any{
 			"sensitive_data": "test",
 		})
 		assert.NoError(t, err) // Stub always passes validation
@@ -30,7 +30,7 @@ func TestStubCompliance(t *testing.T) {
 	})
 
 	t.Run("AnonymizePII - stub returns data unchanged", func(t *testing.T) {
-		originalData := map[string]interface{}{
+		originalData := map[string]any{
 			"email": "test@example.com",
 			"name":  "John Doe",
 		}
@@ -92,7 +92,7 @@ func TestEnterpriseCompliance_Simulation(t *testing.T) {
 		compliance := NewEnterpriseCompliance(config)
 
 		// Test real PII anonymization
-		data := map[string]interface{}{
+		data := map[string]any{
 			"email": "user@example.com",
 			"ssn": "123-45-6789",
 		}

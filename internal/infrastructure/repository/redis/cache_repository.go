@@ -24,7 +24,7 @@ func NewCacheRepository(db *database.RedisDB) *CacheRepository {
 }
 
 // Set stores a value in cache with expiration
-func (r *CacheRepository) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
+func (r *CacheRepository) Set(ctx context.Context, key string, value any, expiration time.Duration) error {
 	data, err := json.Marshal(value)
 	if err != nil {
 		return fmt.Errorf("failed to marshal cache value: %w", err)
@@ -38,7 +38,7 @@ func (r *CacheRepository) Set(ctx context.Context, key string, value interface{}
 }
 
 // Get retrieves a value from cache
-func (r *CacheRepository) Get(ctx context.Context, key string, dest interface{}) error {
+func (r *CacheRepository) Get(ctx context.Context, key string, dest any) error {
 	data, err := r.db.Get(ctx, key)
 	if err != nil {
 		return fmt.Errorf("failed to get cache: %w", err)
@@ -66,8 +66,8 @@ func (r *CacheRepository) Exists(ctx context.Context, key string) (bool, error) 
 }
 
 // SetHash stores hash fields
-func (r *CacheRepository) SetHash(ctx context.Context, key string, fields map[string]interface{}) error {
-	values := make([]interface{}, 0, len(fields)*2)
+func (r *CacheRepository) SetHash(ctx context.Context, key string, fields map[string]any) error {
+	values := make([]any, 0, len(fields)*2)
 	for field, value := range fields {
 		data, err := json.Marshal(value)
 		if err != nil {
@@ -80,7 +80,7 @@ func (r *CacheRepository) SetHash(ctx context.Context, key string, fields map[st
 }
 
 // GetHash retrieves hash field
-func (r *CacheRepository) GetHash(ctx context.Context, key, field string, dest interface{}) error {
+func (r *CacheRepository) GetHash(ctx context.Context, key, field string, dest any) error {
 	data, err := r.db.HGet(ctx, key, field)
 	if err != nil {
 		return fmt.Errorf("failed to get hash field: %w", err)
@@ -94,15 +94,15 @@ func (r *CacheRepository) GetHash(ctx context.Context, key, field string, dest i
 }
 
 // GetAllHash retrieves all hash fields
-func (r *CacheRepository) GetAllHash(ctx context.Context, key string) (map[string]interface{}, error) {
+func (r *CacheRepository) GetAllHash(ctx context.Context, key string) (map[string]any, error) {
 	data, err := r.db.HGetAll(ctx, key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all hash fields: %w", err)
 	}
 
-	result := make(map[string]interface{})
+	result := make(map[string]any)
 	for field, value := range data {
-		var obj interface{}
+		var obj any
 		if err := json.Unmarshal([]byte(value), &obj); err != nil {
 			// If unmarshal fails, store as string
 			result[field] = value
@@ -142,13 +142,13 @@ func (r *CacheRepository) GetSortedSetRange(ctx context.Context, key string, sta
 // Session management methods
 
 // CreateSession stores session data
-func (r *CacheRepository) CreateSession(ctx context.Context, sessionID string, data interface{}, expiration time.Duration) error {
+func (r *CacheRepository) CreateSession(ctx context.Context, sessionID string, data any, expiration time.Duration) error {
 	key := r.sessionKey(sessionID)
 	return r.Set(ctx, key, data, expiration)
 }
 
 // GetSession retrieves session data
-func (r *CacheRepository) GetSession(ctx context.Context, sessionID string, dest interface{}) error {
+func (r *CacheRepository) GetSession(ctx context.Context, sessionID string, dest any) error {
 	key := r.sessionKey(sessionID)
 	return r.Get(ctx, key, dest)
 }
@@ -190,13 +190,13 @@ func (r *CacheRepository) CheckRateLimit(ctx context.Context, key string, limit 
 // API Key caching methods
 
 // CacheAPIKey caches API key validation result
-func (r *CacheRepository) CacheAPIKey(ctx context.Context, apiKey string, keyData interface{}, expiration time.Duration) error {
+func (r *CacheRepository) CacheAPIKey(ctx context.Context, apiKey string, keyData any, expiration time.Duration) error {
 	key := r.apiKeyKey(apiKey)
 	return r.Set(ctx, key, keyData, expiration)
 }
 
 // GetCachedAPIKey retrieves cached API key data
-func (r *CacheRepository) GetCachedAPIKey(ctx context.Context, apiKey string, dest interface{}) error {
+func (r *CacheRepository) GetCachedAPIKey(ctx context.Context, apiKey string, dest any) error {
 	key := r.apiKeyKey(apiKey)
 	return r.Get(ctx, key, dest)
 }

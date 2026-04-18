@@ -147,7 +147,7 @@ WHERE rp.role_id = $1
 // Returns every resource_action the role has, composed from the split
 // columns. Callers intersect with their "wanted" list in Go — cheaper than
 // passing variadic resource/action pairs into SQL. The ::text cast gives
-// sqlc a concrete return type instead of interface{}.
+// sqlc a concrete return type instead of any.
 func (q *Queries) ListResourceActionsForRole(ctx context.Context, roleID uuid.UUID) ([]string, error) {
 	rows, err := q.db.Query(ctx, listResourceActionsForRole, roleID)
 	if err != nil {

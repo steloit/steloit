@@ -169,7 +169,7 @@ func (h *OTLPHandler) Export(
 		Events:           claimedEventData,
 		ClaimedSpanIDs:   claimedIDs,
 		DuplicateSpanIDs: duplicateIDs,
-		Metadata: map[string]interface{}{
+		Metadata: map[string]any{
 			"source":         "otlp-grpc",
 			"resource_spans": len(req.ResourceSpans),
 			"total_spans":    spanCount,
@@ -313,7 +313,7 @@ func convertProtoToInternal(protoReq *coltracepb.ExportTraceServiceRequest) (obs
 				// Convert byte arrays to hex strings for internal format
 				traceIDHex := hex.EncodeToString(protoSpan.TraceId)
 				spanIDHex := hex.EncodeToString(protoSpan.SpanId)
-				var parentSpanIDHex interface{}
+				var parentSpanIDHex any
 				if len(protoSpan.ParentSpanId) > 0 {
 					parentSpanIDHex = hex.EncodeToString(protoSpan.ParentSpanId)
 				}
@@ -371,9 +371,9 @@ func convertProtoToInternal(protoReq *coltracepb.ExportTraceServiceRequest) (obs
 	return internalReq, nil
 }
 
-// convertProtoAnyValue converts protobuf AnyValue to interface{}
+// convertProtoAnyValue converts protobuf AnyValue to any
 // TODO: Move to shared package internal/transport/otlp/converter.go
-func convertProtoAnyValue(value *commonpb.AnyValue) interface{} {
+func convertProtoAnyValue(value *commonpb.AnyValue) any {
 	if value == nil {
 		return nil
 	}
@@ -391,7 +391,7 @@ func convertProtoAnyValue(value *commonpb.AnyValue) interface{} {
 		if v.ArrayValue == nil {
 			return nil
 		}
-		arr := make([]interface{}, len(v.ArrayValue.Values))
+		arr := make([]any, len(v.ArrayValue.Values))
 		for i, item := range v.ArrayValue.Values {
 			arr[i] = convertProtoAnyValue(item)
 		}
@@ -400,7 +400,7 @@ func convertProtoAnyValue(value *commonpb.AnyValue) interface{} {
 		if v.KvlistValue == nil {
 			return nil
 		}
-		m := make(map[string]interface{})
+		m := make(map[string]any)
 		for _, kv := range v.KvlistValue.Values {
 			m[kv.Key] = convertProtoAnyValue(kv.Value)
 		}

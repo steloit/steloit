@@ -16,7 +16,7 @@ type EnterpriseAnalytics interface {
 	DeleteCustomDashboard(ctx context.Context, dashboardID string) error
 	GenerateAdvancedReport(ctx context.Context, req *ReportRequest) (*Report, error)
 	ExportData(ctx context.Context, format string, query *ExportQuery) ([]byte, error)
-	RunMLModel(ctx context.Context, modelName string, data interface{}) (interface{}, error)
+	RunMLModel(ctx context.Context, modelName string, data any) (any, error)
 }
 
 // PredictiveReport represents ML-powered insights
@@ -43,7 +43,7 @@ type Dashboard struct {
 
 // Widget represents a dashboard widget
 type Widget struct {
-	Config   map[string]interface{} `json:"config"`
+	Config   map[string]any `json:"config"`
 	Position *Position              `json:"position,omitempty"`
 	ID       string                 `json:"id"`
 	Type     string                 `json:"type"`
@@ -67,7 +67,7 @@ type Position struct {
 
 // ReportRequest represents advanced report parameters
 type ReportRequest struct {
-	Filters     map[string]interface{} `json:"filters,omitempty"`
+	Filters     map[string]any `json:"filters,omitempty"`
 	Type        string                 `json:"type"`
 	TimeRange   string                 `json:"time_range"`
 	Aggregation string                 `json:"aggregation,omitempty"`
@@ -78,7 +78,7 @@ type ReportRequest struct {
 type Report struct {
 	GeneratedAt time.Time              `json:"generated_at"`
 	ExpiresAt   time.Time              `json:"expires_at,omitempty"`
-	Data        map[string]interface{} `json:"data"`
+	Data        map[string]any `json:"data"`
 	ID          string                 `json:"id"`
 	Type        string                 `json:"type"`
 }
@@ -87,7 +87,7 @@ type Report struct {
 type ExportQuery struct {
 	Table     string                 `json:"table"`
 	TimeRange string                 `json:"time_range"`
-	Filters   map[string]interface{} `json:"filters,omitempty"`
+	Filters   map[string]any `json:"filters,omitempty"`
 	Columns   []string               `json:"columns,omitempty"`
 }
 
@@ -165,6 +165,6 @@ func (s *StubEnterpriseAnalytics) ExportData(ctx context.Context, format string,
 	return nil, errors.New("data export requires Enterprise license")
 }
 
-func (s *StubEnterpriseAnalytics) RunMLModel(ctx context.Context, modelName string, data interface{}) (interface{}, error) {
+func (s *StubEnterpriseAnalytics) RunMLModel(ctx context.Context, modelName string, data any) (any, error) {
 	return nil, errors.New("ML models require Enterprise license")
 }

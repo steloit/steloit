@@ -189,7 +189,7 @@ func (s *Session) ToSummary() *SessionSummary {
 type JSON json.RawMessage
 
 // Value returns the JSON value for database storage
-func (j JSON) Value() (interface{}, error) {
+func (j JSON) Value() (any, error) {
 	if len(j) == 0 {
 		return nil, nil
 	}
@@ -197,7 +197,7 @@ func (j JSON) Value() (interface{}, error) {
 }
 
 // Scan implements the Scanner interface for reading from the database
-func (j *JSON) Scan(value interface{}) error {
+func (j *JSON) Scan(value any) error {
 	if value == nil {
 		*j = nil
 		return nil

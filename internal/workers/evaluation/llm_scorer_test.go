@@ -29,8 +29,8 @@ func TestLLMScorer_ParseConfig(t *testing.T) {
 			config: map[string]any{
 				"credential_id": "01HNPXYZ123456789ABCDEFGH",
 				"model":         "gpt-4o",
-				"messages": []interface{}{
-					map[string]interface{}{"role": "system", "content": "You are a judge."},
+				"messages": []any{
+					map[string]any{"role": "system", "content": "You are a judge."},
 				},
 			},
 			wantCredID: "01HNPXYZ123456789ABCDEFGH",
@@ -46,12 +46,12 @@ func TestLLMScorer_ParseConfig(t *testing.T) {
 				"model":           "gpt-4o",
 				"temperature":     0.7,
 				"response_format": "text",
-				"messages": []interface{}{
-					map[string]interface{}{"role": "system", "content": "System prompt"},
-					map[string]interface{}{"role": "user", "content": "User prompt {input}"},
+				"messages": []any{
+					map[string]any{"role": "system", "content": "System prompt"},
+					map[string]any{"role": "user", "content": "User prompt {input}"},
 				},
-				"output_schema": []interface{}{
-					map[string]interface{}{
+				"output_schema": []any{
+					map[string]any{
 						"name":      "score",
 						"type":      "numeric",
 						"min_value": 0.0,
@@ -70,8 +70,8 @@ func TestLLMScorer_ParseConfig(t *testing.T) {
 			name: "missing credential_id",
 			config: map[string]any{
 				"model": "gpt-4o",
-				"messages": []interface{}{
-					map[string]interface{}{"role": "user", "content": "test"},
+				"messages": []any{
+					map[string]any{"role": "user", "content": "test"},
 				},
 			},
 			wantErr:    true,
@@ -81,8 +81,8 @@ func TestLLMScorer_ParseConfig(t *testing.T) {
 			name: "missing model",
 			config: map[string]any{
 				"credential_id": "01HNPXYZ123456789ABCDEFGH",
-				"messages": []interface{}{
-					map[string]interface{}{"role": "user", "content": "test"},
+				"messages": []any{
+					map[string]any{"role": "user", "content": "test"},
 				},
 			},
 			wantErr:    true,
@@ -102,7 +102,7 @@ func TestLLMScorer_ParseConfig(t *testing.T) {
 			config: map[string]any{
 				"credential_id": "01HNPXYZ123456789ABCDEFGH",
 				"model":         "gpt-4o",
-				"messages":      []interface{}{},
+				"messages":      []any{},
 			},
 			wantErr:    true,
 			errContain: "at least one message is required",
@@ -112,8 +112,8 @@ func TestLLMScorer_ParseConfig(t *testing.T) {
 			config: map[string]any{
 				"credential_id": "01HNPXYZ123456789ABCDEFGH",
 				"model":         "gpt-4o",
-				"messages": []interface{}{
-					map[string]interface{}{"role": "", "content": "test"},
+				"messages": []any{
+					map[string]any{"role": "", "content": "test"},
 				},
 			},
 			wantErr:    true,
@@ -124,14 +124,14 @@ func TestLLMScorer_ParseConfig(t *testing.T) {
 			config: map[string]any{
 				"credential_id": "01HNPXYZ123456789ABCDEFGH",
 				"model":         "gpt-4o",
-				"messages": []interface{}{
-					map[string]interface{}{"role": "user", "content": "test"},
+				"messages": []any{
+					map[string]any{"role": "user", "content": "test"},
 				},
-				"output_schema": []interface{}{
-					map[string]interface{}{
+				"output_schema": []any{
+					map[string]any{
 						"name":       "quality",
 						"type":       "categorical",
-						"categories": []interface{}{"good", "bad", "neutral"},
+						"categories": []any{"good", "bad", "neutral"},
 					},
 				},
 			},
@@ -568,7 +568,7 @@ func TestExtractJSON(t *testing.T) {
 func TestToFloat(t *testing.T) {
 	tests := []struct {
 		name   string
-		input  interface{}
+		input  any
 		want   float64
 		wantOK bool
 	}{
@@ -636,25 +636,25 @@ func TestToFloat(t *testing.T) {
 func TestGetString(t *testing.T) {
 	tests := []struct {
 		name     string
-		m        map[string]interface{}
+		m        map[string]any
 		key      string
 		expected string
 	}{
 		{
 			name:     "string value",
-			m:        map[string]interface{}{"name": "test"},
+			m:        map[string]any{"name": "test"},
 			key:      "name",
 			expected: "test",
 		},
 		{
 			name:     "number value returns empty",
-			m:        map[string]interface{}{"count": 42},
+			m:        map[string]any{"count": 42},
 			key:      "count",
 			expected: "",
 		},
 		{
 			name:     "missing key",
-			m:        map[string]interface{}{"other": "value"},
+			m:        map[string]any{"other": "value"},
 			key:      "missing",
 			expected: "",
 		},
@@ -666,7 +666,7 @@ func TestGetString(t *testing.T) {
 		},
 		{
 			name:     "empty string value",
-			m:        map[string]interface{}{"empty": ""},
+			m:        map[string]any{"empty": ""},
 			key:      "empty",
 			expected: "",
 		},

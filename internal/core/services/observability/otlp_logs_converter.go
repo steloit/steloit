@@ -31,7 +31,7 @@ func NewOTLPLogsConverterService(logger *slog.Logger) *OTLPLogsConverterService 
 }
 
 // ConvertLogsRequest converts OTLP LogsData to Brokle telemetry events
-// Returns typed domain entities (NOT map[string]interface{}) for type safety
+// Returns typed domain entities (NOT map[string]any) for type safety
 func (s *OTLPLogsConverterService) ConvertLogsRequest(
 	ctx context.Context,
 	logsData *logspb.LogsData,
@@ -175,24 +175,24 @@ func (s *OTLPLogsConverterService) extractLogBody(body *commonpb.AnyValue) strin
 	}
 }
 
-// anyValueArrayToInterface converts OTLP ArrayValue to Go []interface{}
+// anyValueArrayToInterface converts OTLP ArrayValue to Go []any
 // Used for JSON marshaling of array bodies
-func anyValueArrayToInterface(arrayValue *commonpb.ArrayValue) []interface{} {
+func anyValueArrayToInterface(arrayValue *commonpb.ArrayValue) []any {
 	if arrayValue == nil {
-		return []interface{}{}
+		return []any{}
 	}
 
 	values := arrayValue.GetValues()
-	result := make([]interface{}, len(values))
+	result := make([]any, len(values))
 	for i, v := range values {
 		result[i] = anyValueToInterface(v)
 	}
 	return result
 }
 
-// anyValueToInterface converts OTLP AnyValue to Go interface{}
+// anyValueToInterface converts OTLP AnyValue to Go any
 // Preserves type information for JSON marshaling
-func anyValueToInterface(value *commonpb.AnyValue) interface{} {
+func anyValueToInterface(value *commonpb.AnyValue) any {
 	if value == nil {
 		return nil
 	}

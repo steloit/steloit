@@ -35,7 +35,7 @@ type EvaluationJob struct {
 	EvaluatorID  uuid.UUID              `json:"evaluator_id"`
 	ProjectID    uuid.UUID              `json:"project_id"`
 	ExecutionID  *uuid.UUID             `json:"execution_id,omitempty"` // Optional: links job to an evaluator execution (for manual triggers)
-	SpanData     map[string]interface{} `json:"span_data"`
+	SpanData     map[string]any `json:"span_data"`
 	TraceID      string                 `json:"trace_id"`
 	SpanID       string                 `json:"span_id"`
 	ScorerType   evaluation.ScorerType  `json:"scorer_type"`
@@ -625,7 +625,7 @@ func (w *EvaluatorWorker) matchEvaluator(evaluator *evaluation.Evaluator, event 
 	return true
 }
 
-func (w *EvaluatorWorker) matchFilterClause(clause evaluation.FilterClause, payload map[string]interface{}) bool {
+func (w *EvaluatorWorker) matchFilterClause(clause evaluation.FilterClause, payload map[string]any) bool {
 	value := extractFieldValue(payload, clause.Field)
 
 	switch clause.Operator {
@@ -674,13 +674,13 @@ func (w *EvaluatorWorker) matchFilterClause(clause evaluation.FilterClause, payl
 
 // extractFieldValue extracts a value from the payload using dot notation
 // Supports: "input", "output", "span_name", "metadata.key", "span_attributes.key"
-func extractFieldValue(payload map[string]interface{}, field string) interface{} {
+func extractFieldValue(payload map[string]any, field string) any {
 	parts := strings.Split(field, ".")
-	var current interface{} = payload
+	var current any = payload
 
 	for _, part := range parts {
 		switch v := current.(type) {
-		case map[string]interface{}:
+		case map[string]any:
 			current = v[part]
 		case map[string]string:
 			current = v[part]
@@ -697,7 +697,7 @@ func (w *EvaluatorWorker) extractVariables(evaluator *evaluation.Evaluator, even
 	variables := make(map[string]string)
 
 	for _, mapping := range evaluator.VariableMapping {
-		var value interface{}
+		var value any
 
 		switch mapping.Source {
 		case "span_input":
@@ -705,7 +705,7 @@ func (w *EvaluatorWorker) extractVariables(evaluator *evaluation.Evaluator, even
 		case "span_output":
 			value = event.EventPayload["output"]
 		case "span_metadata":
-			if metadata, ok := event.EventPayload["metadata"].(map[string]interface{}); ok {
+			if metadata, ok := event.EventPayload["metadata"].(map[string]any); ok {
 				if mapping.JSONPath != "" {
 					value = extractFieldValue(metadata, mapping.JSONPath)
 				} else {
@@ -713,7 +713,7 @@ func (w *EvaluatorWorker) extractVariables(evaluator *evaluation.Evaluator, even
 				}
 			}
 		case "span_attributes":
-			if attrs, ok := event.EventPayload["span_attributes"].(map[string]interface{}); ok {
+			if attrs, ok := event.EventPayload["span_attributes"].(map[string]any); ok {
 				if mapping.JSONPath != "" {
 					value = extractFieldValue(attrs, mapping.JSONPath)
 				} else {
@@ -756,7 +756,7 @@ func (w *EvaluatorWorker) emitJob(ctx context.Context, job *EvaluationJob) error
 
 	_, err = w.redis.Client.XAdd(ctx, &redis.XAddArgs{
 		Stream: evaluationJobsStream,
-		Values: map[string]interface{}{
+		Values: map[string]any{
 			"job_id":       job.JobID.String(),
 			"evaluator_id": job.EvaluatorID.String(),
 			"project_id":   job.ProjectID.String(),
@@ -786,7 +786,7 @@ func (w *EvaluatorWorker) GetStats() map[string]int64 {
 
 // Utility functions
 
-func safeExtractString(payload map[string]interface{}, key string) string {
+func safeExtractString(payload map[string]any, key string) string {
 	if payload == nil {
 		return ""
 	}
@@ -796,7 +796,7 @@ func safeExtractString(payload map[string]interface{}, key string) string {
 	return ""
 }
 
-func compareNumeric(a, b interface{}) int {
+func compareNumeric(a, b any) int {
 	aFloat := toFloat64(a)
 	bFloat := toFloat64(b)
 
@@ -809,7 +809,7 @@ func compareNumeric(a, b interface{}) int {
 	return 0
 }
 
-func toFloat64(v interface{}) float64 {
+func toFloat64(v any) float64 {
 	switch val := v.(type) {
 	case float64:
 		return val

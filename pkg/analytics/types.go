@@ -174,7 +174,7 @@ type TrendAnalysis struct {
 
 // SegmentationResult represents user/usage segmentation results
 type SegmentationResult struct {
-	Metrics         map[string]interface{} `json:"metrics"`
+	Metrics         map[string]any `json:"metrics"`
 	SegmentName     string                 `json:"segment_name"`
 	Characteristics []string               `json:"characteristics"`
 	Size            int64                  `json:"size"`
@@ -241,7 +241,7 @@ type TrendMetric struct {
 // Alert represents a system alert
 type Alert struct {
 	Timestamp   time.Time              `json:"timestamp"`
-	Metadata    map[string]interface{} `json:"metadata"`
+	Metadata    map[string]any `json:"metadata"`
 	ID          string                 `json:"id"`
 	Type        string                 `json:"type"`
 	Severity    string                 `json:"severity"`
@@ -284,7 +284,7 @@ type CostOptimization struct {
 
 // Recommendation represents an optimization recommendation
 type Recommendation struct {
-	Metadata        map[string]interface{} `json:"metadata"`
+	Metadata        map[string]any `json:"metadata"`
 	Type            string                 `json:"type"`
 	Title           string                 `json:"title"`
 	Description     string                 `json:"description"`
@@ -317,7 +317,7 @@ type CacheOptimization struct {
 
 // ReportConfig represents configuration for generating reports
 type ReportConfig struct {
-	Filters    map[string]interface{} `json:"filters"`
+	Filters    map[string]any `json:"filters"`
 	TimeRange  TimeWindow             `json:"time_range"`
 	Type       string                 `json:"type"`
 	Format     string                 `json:"format"`
@@ -330,8 +330,8 @@ type ReportConfig struct {
 // Report represents a generated analytics report
 type Report struct {
 	CreatedAt time.Time              `json:"created_at"`
-	Data      interface{}            `json:"data"`
-	Metadata  map[string]interface{} `json:"metadata"`
+	Data      any            `json:"data"`
+	Metadata  map[string]any `json:"metadata"`
 	TimeRange TimeWindow             `json:"time_range"`
 	ID        string                 `json:"id"`
 	Type      string                 `json:"type"`
@@ -345,7 +345,7 @@ type Report struct {
 
 // AnalyticsQuery represents a structured analytics query
 type AnalyticsQuery struct {
-	Where     map[string]interface{} `json:"where,omitempty"`
+	Where     map[string]any `json:"where,omitempty"`
 	TimeRange *TimeWindow            `json:"time_range,omitempty"`
 	From      string                 `json:"from"`
 	Select    []string               `json:"select"`
@@ -358,7 +358,7 @@ type AnalyticsQuery struct {
 type QueryResult struct {
 	Query   string          `json:"query,omitempty"`
 	Columns []string        `json:"columns"`
-	Rows    [][]interface{} `json:"rows"`
+	Rows    [][]any `json:"rows"`
 	Count   int64           `json:"count"`
 	Took    time.Duration   `json:"took"`
 }
@@ -369,7 +369,7 @@ type QueryResult struct {
 type MetricValue struct {
 	Timestamp time.Time              `json:"timestamp"`
 	Tags      map[string]string      `json:"tags,omitempty"`
-	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+	Metadata  map[string]any `json:"metadata,omitempty"`
 	Name      string                 `json:"name"`
 	Unit      string                 `json:"unit,omitempty"`
 	Value     float64                `json:"value"`
@@ -387,7 +387,7 @@ type Threshold struct {
 
 // Filter represents a data filter
 type Filter struct {
-	Value    interface{} `json:"value"`
+	Value    any `json:"value"`
 	Field    string      `json:"field"`
 	Operator string      `json:"operator"`
 }

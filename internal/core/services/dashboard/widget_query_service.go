@@ -56,7 +56,7 @@ func (s *widgetQueryService) ExecuteWidgetQuery(
 	switch widget.Type {
 	case dashboardDomain.WidgetTypeText:
 		// Text widgets have static content, no query needed
-		result.Data = []map[string]interface{}{
+		result.Data = []map[string]any{
 			{"content": widget.Config["content"]},
 		}
 		result.Metadata.RowCount = 1
@@ -113,7 +113,7 @@ func (s *widgetQueryService) executeStandardQuery(
 
 	// Ensure Data is never nil - always an empty slice for proper JSON serialization
 	if data == nil {
-		data = make([]map[string]interface{}, 0)
+		data = make([]map[string]any, 0)
 	}
 	result.Data = data
 	result.Metadata.RowCount = len(data)
@@ -170,9 +170,9 @@ func (s *widgetQueryService) executeTraceListQuery(
 		traces = make([]*dashboardDomain.TraceListItem, 0)
 	}
 
-	data := make([]map[string]interface{}, len(traces))
+	data := make([]map[string]any, len(traces))
 	for i, trace := range traces {
-		data[i] = map[string]interface{}{
+		data[i] = map[string]any{
 			"trace_id":      trace.TraceID,
 			"name":          trace.Name,
 			"start_time":    trace.StartTime,
@@ -248,9 +248,9 @@ func (s *widgetQueryService) executeHistogramQuery(
 		}
 	}
 
-	data := make([]map[string]interface{}, len(histogramData.Buckets))
+	data := make([]map[string]any, len(histogramData.Buckets))
 	for i, bucket := range histogramData.Buckets {
-		data[i] = map[string]interface{}{
+		data[i] = map[string]any{
 			"bucket":      i,
 			"lower_bound": bucket.LowerBound,
 			"upper_bound": bucket.UpperBound,

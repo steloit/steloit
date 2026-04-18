@@ -476,8 +476,8 @@ func (c *DiscountCalculator) calculateVolumeDiscount(amount float64, volumeDisco
 }
 
 // Health check
-func (c *DiscountCalculator) GetHealth() map[string]interface{} {
-	return map[string]interface{}{
+func (c *DiscountCalculator) GetHealth() map[string]any {
+	return map[string]any{
 		"service": "discount_calculator",
 		"status":  "healthy",
 	}

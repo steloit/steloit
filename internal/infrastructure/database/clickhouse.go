@@ -84,16 +84,16 @@ func (c *ClickHouseDB) Health() error {
 }
 
 // Execute executes a query without returning results
-func (c *ClickHouseDB) Execute(ctx context.Context, query string, args ...interface{}) error {
+func (c *ClickHouseDB) Execute(ctx context.Context, query string, args ...any) error {
 	return c.Conn.Exec(ctx, query, args...)
 }
 
 // Query executes a query and returns rows
-func (c *ClickHouseDB) Query(ctx context.Context, query string, args ...interface{}) (driver.Rows, error) {
+func (c *ClickHouseDB) Query(ctx context.Context, query string, args ...any) (driver.Rows, error) {
 	return c.Conn.Query(ctx, query, args...)
 }
 
 // QueryRow executes a query and returns a single row
-func (c *ClickHouseDB) QueryRow(ctx context.Context, query string, args ...interface{}) driver.Row {
+func (c *ClickHouseDB) QueryRow(ctx context.Context, query string, args ...any) driver.Row {
 	return c.Conn.QueryRow(ctx, query, args...)
 }

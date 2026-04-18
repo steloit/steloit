@@ -34,10 +34,10 @@ func NewAuthInterceptor(
 func (i *AuthInterceptor) Unary() grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
-		req interface{},
+		req any,
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
-	) (interface{}, error) {
+	) (any, error) {
 		// Extract API key from gRPC metadata
 		apiKey, err := extractAPIKeyFromMetadata(ctx)
 		if err != nil {
@@ -76,10 +76,10 @@ func (i *AuthInterceptor) Unary() grpc.UnaryServerInterceptor {
 func LoggingInterceptor(logger *slog.Logger) grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
-		req interface{},
+		req any,
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
-	) (interface{}, error) {
+	) (any, error) {
 		start := time.Now()
 
 		// Call handler

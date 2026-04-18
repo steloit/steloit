@@ -61,7 +61,7 @@ func (s *organizationSettingsService) GetSetting(ctx context.Context, orgID uuid
 }
 
 // GetAllSettings retrieves all settings for an organization as a map
-func (s *organizationSettingsService) GetAllSettings(ctx context.Context, orgID uuid.UUID) (map[string]interface{}, error) {
+func (s *organizationSettingsService) GetAllSettings(ctx context.Context, orgID uuid.UUID) (map[string]any, error) {
 	return s.settingsRepo.GetSettingsMap(ctx, orgID)
 }
 
@@ -111,7 +111,7 @@ func (s *organizationSettingsService) DeleteSetting(ctx context.Context, orgID u
 }
 
 // UpsertSetting creates or updates a setting
-func (s *organizationSettingsService) UpsertSetting(ctx context.Context, orgID uuid.UUID, key string, value interface{}, userID uuid.UUID) (*orgDomain.OrganizationSettings, error) {
+func (s *organizationSettingsService) UpsertSetting(ctx context.Context, orgID uuid.UUID, key string, value any, userID uuid.UUID) (*orgDomain.OrganizationSettings, error) {
 	// Validate user access
 	if err := s.ValidateSettingsAccess(ctx, userID, orgID, "upsert"); err != nil {
 		return nil, err
@@ -126,7 +126,7 @@ func (s *organizationSettingsService) UpsertSetting(ctx context.Context, orgID u
 }
 
 // CreateMultipleSettings creates multiple settings in bulk
-func (s *organizationSettingsService) CreateMultipleSettings(ctx context.Context, orgID uuid.UUID, userID uuid.UUID, settings map[string]interface{}) error {
+func (s *organizationSettingsService) CreateMultipleSettings(ctx context.Context, orgID uuid.UUID, userID uuid.UUID, settings map[string]any) error {
 	// Validate user access
 	if err := s.ValidateSettingsAccess(ctx, userID, orgID, "bulk_create"); err != nil {
 		return err
@@ -149,13 +149,13 @@ func (s *organizationSettingsService) CreateMultipleSettings(ctx context.Context
 }
 
 // GetSettingsByKeys retrieves specific settings by keys
-func (s *organizationSettingsService) GetSettingsByKeys(ctx context.Context, orgID uuid.UUID, keys []string) (map[string]interface{}, error) {
+func (s *organizationSettingsService) GetSettingsByKeys(ctx context.Context, orgID uuid.UUID, keys []string) (map[string]any, error) {
 	settings, err := s.settingsRepo.GetByKeys(ctx, orgID, keys)
 	if err != nil {
 		return nil, appErrors.NewInternalError("Failed to get settings by keys", err)
 	}
 
-	result := make(map[string]interface{})
+	result := make(map[string]any)
 	for _, setting := range settings {
 		value, err := setting.GetValue()
 		if err != nil {
@@ -232,7 +232,7 @@ func (s *organizationSettingsService) ResetToDefaults(ctx context.Context, orgID
 }
 
 // ExportSettings exports all organization settings
-func (s *organizationSettingsService) ExportSettings(ctx context.Context, orgID uuid.UUID, userID uuid.UUID) (map[string]interface{}, error) {
+func (s *organizationSettingsService) ExportSettings(ctx context.Context, orgID uuid.UUID, userID uuid.UUID) (map[string]any, error) {
 	// Validate user access
 	if err := s.ValidateSettingsAccess(ctx, userID, orgID, "export"); err != nil {
 		return nil, err
@@ -247,7 +247,7 @@ func (s *organizationSettingsService) ExportSettings(ctx context.Context, orgID 
 }
 
 // ImportSettings imports organization settings
-func (s *organizationSettingsService) ImportSettings(ctx context.Context, orgID uuid.UUID, userID uuid.UUID, settings map[string]interface{}) error {
+func (s *organizationSettingsService) ImportSettings(ctx context.Context, orgID uuid.UUID, userID uuid.UUID, settings map[string]any) error {
 	// Validate user access
 	if err := s.ValidateSettingsAccess(ctx, userID, orgID, "import"); err != nil {
 		return err

@@ -314,7 +314,7 @@ func (p *FilterParser) parseIsCondition(field string, alreadyNegated bool) (obsD
 }
 
 // parseValue parses the value based on operator type.
-func (p *FilterParser) parseValue(op obsDomain.FilterOperator) (interface{}, error) {
+func (p *FilterParser) parseValue(op obsDomain.FilterOperator) (any, error) {
 	if op == obsDomain.FilterOpIn || op == obsDomain.FilterOpNotIn {
 		return p.parseInList()
 	}

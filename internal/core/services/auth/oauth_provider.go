@@ -71,7 +71,7 @@ func (s *OAuthProviderService) GenerateState(ctx context.Context, invitationToke
 	state := hex.EncodeToString(bytes)
 
 	// Store state in Redis with invitation token (if any)
-	stateData := map[string]interface{}{
+	stateData := map[string]any{
 		"created_at": time.Now().Unix(),
 	}
 	if invitationToken != nil {
@@ -104,7 +104,7 @@ func (s *OAuthProviderService) ValidateState(ctx context.Context, state string) 
 	// Delete state token (one-time use)
 	s.redis.Del(ctx, key)
 
-	var stateData map[string]interface{}
+	var stateData map[string]any
 	if err := json.Unmarshal([]byte(data), &stateData); err != nil {
 		return nil, appErrors.NewInternalError("Failed to unmarshal state data", err)
 	}

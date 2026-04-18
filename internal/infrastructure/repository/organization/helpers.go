@@ -7,10 +7,8 @@ import (
 )
 
 // Package-local conversion helpers used at the gen ↔ domain boundary.
-// Domain entities use *time.Time for soft-delete (post-gorm strip);
-// sqlc-generated row types also use *time.Time. These helpers survive
-// only for the nil-coalescing cases (empty strings, nil UUIDs) that
-// the domain still encodes as zero values instead of pointers.
+// Nil-coalescing for fields the domain encodes as zero values while
+// sqlc-generated row types use pointers.
 
 func derefString(p *string) string {
 	if p == nil {

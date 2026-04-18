@@ -74,8 +74,8 @@ var frameworkIOKeys = map[string]bool{
 
 // ExtractIOParams contains parameters for input/output extraction
 type ExtractIOParams struct {
-	Attributes               map[string]interface{}
-	Events                   []map[string]interface{}
+	Attributes               map[string]any
+	Events                   []map[string]any
 	InstrumentationScopeName string
 	MaxSize                  int
 }
@@ -108,7 +108,7 @@ func NewOTLPConverterService(
 
 // brokleEvent represents an internal converted event (before domain conversion)
 type brokleEvent struct {
-	Payload   map[string]interface{} `json:"payload"`
+	Payload   map[string]any `json:"payload"`
 	Timestamp *int64                 `json:"timestamp,omitempty"`
 	EventID   string                 `json:"event_id"`
 	SpanID    string                 `json:"span_id"`
@@ -118,7 +118,7 @@ type brokleEvent struct {
 
 // isRootSpanCheck determines if a span is a root span by checking if parent ID is nil, empty, or zero.
 // Handles: nil, empty string, "0000000000000000", zero bytes array, and {data: Buffer} format.
-func isRootSpanCheck(parentSpanID interface{}) bool {
+func isRootSpanCheck(parentSpanID any) bool {
 	if parentSpanID == nil {
 		return true
 	}
@@ -129,8 +129,8 @@ func isRootSpanCheck(parentSpanID interface{}) bool {
 		}
 	}
 
-	if mapVal, ok := parentSpanID.(map[string]interface{}); ok {
-		if data, ok := mapVal["data"].([]interface{}); ok {
+	if mapVal, ok := parentSpanID.(map[string]any); ok {
+		if data, ok := mapVal["data"].([]any); ok {
 			allZero := true
 			for _, b := range data {
 				if intVal, ok := b.(float64); ok && intVal != 0 {
@@ -206,11 +206,11 @@ func validateMimeType(value string, declaredMimeType string) string {
 }
 
 // extractGenericInput extracts input with extended priority chain.
-// Priority: gen_ai.input.messages > input.value (string, []interface{}, or map[string]interface{})
+// Priority: gen_ai.input.messages > input.value (string, []any, or map[string]any)
 // This supports both LLM ChatML format and generic function arguments.
-func extractGenericInput(allAttrs map[string]interface{}) (value string, mimeType string) {
+func extractGenericInput(allAttrs map[string]any) (value string, mimeType string) {
 	// Priority 1: gen_ai.input.messages (LLM ChatML format)
-	if messages, ok := allAttrs["gen_ai.input.messages"].([]interface{}); ok {
+	if messages, ok := allAttrs["gen_ai.input.messages"].([]any); ok {
 		if messagesJSON, err := json.Marshal(messages); err == nil {
 			return string(messagesJSON), "application/json"
 		}
@@ -227,12 +227,12 @@ func extractGenericInput(allAttrs map[string]interface{}) (value string, mimeTyp
 			if v != "" {
 				return v, validateMimeType(v, declaredMime)
 			}
-		case []interface{}:
+		case []any:
 			// Array input (e.g., function positional arguments)
 			if inputJSON, err := json.Marshal(v); err == nil {
 				return string(inputJSON), "application/json"
 			}
-		case map[string]interface{}:
+		case map[string]any:
 			// Object input (e.g., function kwargs or structured data)
 			if inputJSON, err := json.Marshal(v); err == nil {
 				return string(inputJSON), "application/json"
@@ -244,11 +244,11 @@ func extractGenericInput(allAttrs map[string]interface{}) (value string, mimeTyp
 }
 
 // extractGenericOutput extracts output with extended priority chain.
-// Priority: gen_ai.output.messages > output.value (string, []interface{}, or map[string]interface{})
+// Priority: gen_ai.output.messages > output.value (string, []any, or map[string]any)
 // This supports both LLM ChatML format and generic function return values.
-func extractGenericOutput(allAttrs map[string]interface{}) (value string, mimeType string) {
+func extractGenericOutput(allAttrs map[string]any) (value string, mimeType string) {
 	// Priority 1: gen_ai.output.messages (LLM ChatML format)
-	if messages, ok := allAttrs["gen_ai.output.messages"].([]interface{}); ok {
+	if messages, ok := allAttrs["gen_ai.output.messages"].([]any); ok {
 		if messagesJSON, err := json.Marshal(messages); err == nil {
 			return string(messagesJSON), "application/json"
 		}
@@ -265,12 +265,12 @@ func extractGenericOutput(allAttrs map[string]interface{}) (value string, mimeTy
 			if v != "" {
 				return v, validateMimeType(v, declaredMime)
 			}
-		case []interface{}:
+		case []any:
 			// Array output (e.g., multiple return values)
 			if outputJSON, err := json.Marshal(v); err == nil {
 				return string(outputJSON), "application/json"
 			}
-		case map[string]interface{}:
+		case map[string]any:
 			// Object output (e.g., structured return value)
 			if outputJSON, err := json.Marshal(v); err == nil {
 				return string(outputJSON), "application/json"
@@ -283,7 +283,7 @@ func extractGenericOutput(allAttrs map[string]interface{}) (value string, mimeTy
 
 // extractToolMetadata extracts tool/function-specific attributes for non-LLM operations.
 // Supports gen_ai.tool.* attributes for tool calls and function instrumentation.
-func extractToolMetadata(allAttrs map[string]interface{}, payload map[string]interface{}) {
+func extractToolMetadata(allAttrs map[string]any, payload map[string]any) {
 	// Tool name from gen_ai.tool.name
 	if toolName, ok := allAttrs["gen_ai.tool.name"].(string); ok && toolName != "" {
 		payload["tool_name"] = toolName
@@ -292,7 +292,7 @@ func extractToolMetadata(allAttrs map[string]interface{}, payload map[string]int
 	// Tool parameters (function input arguments as JSON)
 	if params, ok := allAttrs["gen_ai.tool.parameters"].(string); ok && params != "" {
 		payload["tool_parameters"] = params
-	} else if params, ok := allAttrs["gen_ai.tool.parameters"].(map[string]interface{}); ok {
+	} else if params, ok := allAttrs["gen_ai.tool.parameters"].(map[string]any); ok {
 		if paramsJSON, err := json.Marshal(params); err == nil {
 			payload["tool_parameters"] = string(paramsJSON)
 		}
@@ -301,7 +301,7 @@ func extractToolMetadata(allAttrs map[string]interface{}, payload map[string]int
 	// Tool result (function return value)
 	if result, ok := allAttrs["gen_ai.tool.result"].(string); ok && result != "" {
 		payload["tool_result"] = result
-	} else if result, ok := allAttrs["gen_ai.tool.result"].(map[string]interface{}); ok {
+	} else if result, ok := allAttrs["gen_ai.tool.result"].(map[string]any); ok {
 		if resultJSON, err := json.Marshal(result); err == nil {
 			payload["tool_result"] = string(resultJSON)
 		}
@@ -314,10 +314,10 @@ func extractToolMetadata(allAttrs map[string]interface{}, payload map[string]int
 }
 
 // extractLLMMetadata extracts LLM-specific metadata from ChatML formatted input.
-func extractLLMMetadata(inputValue string) map[string]interface{} {
-	metadata := make(map[string]interface{})
+func extractLLMMetadata(inputValue string) map[string]any {
+	metadata := make(map[string]any)
 
-	var messages []map[string]interface{}
+	var messages []map[string]any
 	if err := json.Unmarshal([]byte(inputValue), &messages); err != nil {
 		return metadata
 	}
@@ -387,7 +387,7 @@ func extractLLMMetadata(inputValue string) map[string]interface{} {
 	return metadata
 }
 
-func (s *OTLPConverterService) createSpanEvent(ctx context.Context, span observability.OTLPSpan, resourceAttrs, scopeAttrs map[string]interface{}, resource *observability.Resource, scope *observability.Scope, projectID string) (*brokleEvent, error) {
+func (s *OTLPConverterService) createSpanEvent(ctx context.Context, span observability.OTLPSpan, resourceAttrs, scopeAttrs map[string]any, resource *observability.Resource, scope *observability.Scope, projectID string) (*brokleEvent, error) {
 	traceID, err := convertTraceID(span.TraceID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid trace_id: %w", err)
@@ -413,7 +413,7 @@ func (s *OTLPConverterService) createSpanEvent(ctx context.Context, span observa
 	spanKind := convertSpanKind(span.Kind)
 	statusCode := convertStatusCode(span.Status)
 
-	payload := map[string]interface{}{
+	payload := map[string]any{
 		"span_id":        spanID,
 		"trace_id":       traceID,
 		"parent_span_id": parentSpanID,
@@ -445,11 +445,11 @@ func (s *OTLPConverterService) createSpanEvent(ctx context.Context, span observa
 	}
 
 	// Convert span events to the format expected by extractInputOutput
-	var spanEvents []map[string]interface{}
+	var spanEvents []map[string]any
 	if len(span.Events) > 0 {
-		spanEvents = make([]map[string]interface{}, len(span.Events))
+		spanEvents = make([]map[string]any, len(span.Events))
 		for i, event := range span.Events {
-			eventMap := make(map[string]interface{})
+			eventMap := make(map[string]any)
 			if eventTime := convertUnixNano(event.TimeUnixNano); eventTime != nil {
 				eventMap["timestamp"] = eventTime.Format(time.RFC3339Nano)
 			}
@@ -526,9 +526,9 @@ func (s *OTLPConverterService) createSpanEvent(ctx context.Context, span observa
 	}
 
 	if len(span.Links) > 0 {
-		links := make([]map[string]interface{}, len(span.Links))
+		links := make([]map[string]any, len(span.Links))
 		for i, link := range span.Links {
-			linkMap := make(map[string]interface{})
+			linkMap := make(map[string]any)
 			if traceID, err := convertTraceID(link.TraceID); err == nil {
 				linkMap["trace_id"] = traceID
 			}
@@ -604,7 +604,7 @@ func (s *OTLPConverterService) createSpanEvent(ctx context.Context, span observa
 	return event, nil
 }
 
-func convertToStringMap(attrs map[string]interface{}) map[string]string {
+func convertToStringMap(attrs map[string]any) map[string]string {
 	if attrs == nil {
 		return make(map[string]string)
 	}
@@ -616,15 +616,15 @@ func convertToStringMap(attrs map[string]interface{}) map[string]string {
 	return result
 }
 
-func convertTraceID(traceID interface{}) (string, error) {
+func convertTraceID(traceID any) (string, error) {
 	switch v := traceID.(type) {
 	case string:
 		if len(v) == 32 {
 			return v, nil
 		}
 		return "", fmt.Errorf("invalid trace_id length: %d (expected 32)", len(v))
-	case map[string]interface{}:
-		if data, ok := v["data"].([]interface{}); ok {
+	case map[string]any:
+		if data, ok := v["data"].([]any); ok {
 			return bytesToHex(data), nil
 		}
 	case []byte:
@@ -633,15 +633,15 @@ func convertTraceID(traceID interface{}) (string, error) {
 	return "", fmt.Errorf("unsupported trace_id type: %T", traceID)
 }
 
-func convertSpanID(spanID interface{}) (string, error) {
+func convertSpanID(spanID any) (string, error) {
 	switch v := spanID.(type) {
 	case string:
 		if len(v) == 16 {
 			return v, nil
 		}
 		return "", fmt.Errorf("invalid span_id length: %d (expected 16)", len(v))
-	case map[string]interface{}:
-		if data, ok := v["data"].([]interface{}); ok {
+	case map[string]any:
+		if data, ok := v["data"].([]any); ok {
 			return bytesToHex(data), nil
 		}
 	case []byte:
@@ -650,7 +650,7 @@ func convertSpanID(spanID interface{}) (string, error) {
 	return "", fmt.Errorf("unsupported span_id type: %T", spanID)
 }
 
-func convertUnixNano(ts interface{}) *time.Time {
+func convertUnixNano(ts any) *time.Time {
 	if ts == nil {
 		return nil
 	}
@@ -661,7 +661,7 @@ func convertUnixNano(ts interface{}) *time.Time {
 		nanos = v
 	case float64:
 		nanos = int64(v)
-	case map[string]interface{}:
+	case map[string]any:
 		low, lowOk := v["low"].(float64)
 		high, highOk := v["high"].(float64)
 		if !lowOk || !highOk {
@@ -715,8 +715,8 @@ func convertStatusCode(status *observability.Status) uint8 {
 	}
 }
 
-func extractAttributes(obj interface{}) map[string]interface{} {
-	attrs := make(map[string]interface{})
+func extractAttributes(obj any) map[string]any {
+	attrs := make(map[string]any)
 
 	switch v := obj.(type) {
 	case *observability.Resource:
@@ -732,8 +732,8 @@ func extractAttributes(obj interface{}) map[string]interface{} {
 	return attrs
 }
 
-func extractAttributesFromKeyValues(kvs []observability.KeyValue) map[string]interface{} {
-	attrs := make(map[string]interface{})
+func extractAttributesFromKeyValues(kvs []observability.KeyValue) map[string]any {
+	attrs := make(map[string]any)
 
 	for _, kv := range kvs {
 		value := extractValue(kv.Value)
@@ -745,13 +745,13 @@ func extractAttributesFromKeyValues(kvs []observability.KeyValue) map[string]int
 	return attrs
 }
 
-func extractValue(v interface{}) interface{} {
+func extractValue(v any) any {
 	if v == nil {
 		return nil
 	}
 
 	switch val := v.(type) {
-	case map[string]interface{}:
+	case map[string]any:
 		if sv, ok := val["stringValue"].(string); ok {
 			return sv
 		}
@@ -764,9 +764,9 @@ func extractValue(v interface{}) interface{} {
 		if dv, ok := val["doubleValue"].(float64); ok {
 			return dv
 		}
-		if av, ok := val["arrayValue"].(map[string]interface{}); ok {
-			if values, ok := av["values"].([]interface{}); ok {
-				result := make([]interface{}, len(values))
+		if av, ok := val["arrayValue"].(map[string]any); ok {
+			if values, ok := av["values"].([]any); ok {
+				result := make([]any, len(values))
 				for i, item := range values {
 					result[i] = extractValue(item)
 				}
@@ -781,8 +781,8 @@ func extractValue(v interface{}) interface{} {
 	return v
 }
 
-func mergeAttributes(resource, scope, span map[string]interface{}) map[string]interface{} {
-	merged := make(map[string]interface{})
+func mergeAttributes(resource, scope, span map[string]any) map[string]any {
+	merged := make(map[string]any)
 
 	for k, v := range resource {
 		merged[k] = v
@@ -799,7 +799,7 @@ func mergeAttributes(resource, scope, span map[string]interface{}) map[string]in
 	return merged
 }
 
-func marshalAttributes(attrs map[string]interface{}) string {
+func marshalAttributes(attrs map[string]any) string {
 	if len(attrs) == 0 {
 		return "{}"
 	}
@@ -815,7 +815,7 @@ func marshalAttributes(attrs map[string]interface{}) string {
 // extractGenAIFields extracts Gen AI semantic conventions from attributes.
 // Note: input/output extraction is handled in createSpanEvent() with proper
 // truncation and MIME type handling. This function only extracts non-I/O fields.
-func extractGenAIFields(attrs map[string]interface{}, payload map[string]interface{}) {
+func extractGenAIFields(attrs map[string]any, payload map[string]any) {
 	if provider, ok := attrs["gen_ai.provider.name"].(string); ok {
 		payload["provider"] = provider
 	}
@@ -826,7 +826,7 @@ func extractGenAIFields(attrs map[string]interface{}, payload map[string]interfa
 		payload["model_name"] = requestModel
 	}
 
-	modelParams := make(map[string]interface{})
+	modelParams := make(map[string]any)
 	if temp, ok := attrs["gen_ai.request.temperature"].(float64); ok {
 		modelParams["temperature"] = temp
 	}
@@ -880,7 +880,7 @@ func extractGenAIFields(attrs map[string]interface{}, payload map[string]interfa
 	}
 }
 
-func bytesToHex(data []interface{}) string {
+func bytesToHex(data []any) string {
 	bytes := make([]byte, len(data))
 	for i, v := range data {
 		if f, ok := v.(float64); ok {
@@ -918,8 +918,8 @@ func convertToDomainEvents(events []*brokleEvent) []*observability.TelemetryEven
 // calculateProviderCostsAtIngestion calculates provider costs for cost visibility.
 func (s *OTLPConverterService) calculateProviderCostsAtIngestion(
 	ctx context.Context,
-	attrs map[string]interface{},
-	payload map[string]interface{},
+	attrs map[string]any,
+	payload map[string]any,
 	projectID string,
 ) {
 	modelName := extractStringFromInterface(attrs["gen_ai.request.model"])
@@ -1022,14 +1022,14 @@ func (s *OTLPConverterService) calculateProviderCostsAtIngestion(
 	s.logger.Debug("Provider costs calculated successfully", "model", modelName, "usage_types", len(usage), "total_tokens", total, "provider_cost_usd", providerCost["total"], "provider_pricing_date", providerPricing.SnapshotTime)
 }
 
-func extractStringFromInterface(val interface{}) string {
+func extractStringFromInterface(val any) string {
 	if str, ok := val.(string); ok {
 		return str
 	}
 	return ""
 }
 
-func extractUint64FromInterface(val interface{}) uint64 {
+func extractUint64FromInterface(val any) uint64 {
 	switch v := val.(type) {
 	case float64:
 		return uint64(v)
@@ -1050,7 +1050,7 @@ func extractUint64FromInterface(val interface{}) uint64 {
 	}
 }
 
-func extractBoolFromInterface(val interface{}) bool {
+func extractBoolFromInterface(val any) bool {
 	if b, ok := val.(bool); ok {
 		return b
 	}
@@ -1058,14 +1058,14 @@ func extractBoolFromInterface(val interface{}) bool {
 }
 
 // stringify converts various types to JSON string representation
-func stringify(v interface{}) string {
+func stringify(v any) string {
 	if v == nil {
 		return ""
 	}
 	switch val := v.(type) {
 	case string:
 		return val
-	case []interface{}, map[string]interface{}:
+	case []any, map[string]any:
 		if jsonBytes, err := json.Marshal(val); err == nil {
 			return string(jsonBytes)
 		}
@@ -1075,7 +1075,7 @@ func stringify(v interface{}) string {
 
 // extractVercelAISDK extracts input/output from Vercel AI SDK attributes.
 // Handles composite output (text + toolCalls) and legacy attributes (<4.0).
-func extractVercelAISDK(attrs map[string]interface{}) (input, output string) {
+func extractVercelAISDK(attrs map[string]any) (input, output string) {
 	// Input priority: ai.prompt.messages > ai.prompt > ai.toolCall.args
 	if v, ok := attrs[AttrVercelPromptMessages]; ok && v != nil {
 		input = stringify(v)
@@ -1137,27 +1137,27 @@ func quoteIfNotJSON(s string) string {
 // extractFromSpanEvents extracts input/output from OTEL GenAI span events.
 // Handles gen_ai.user.message, gen_ai.system.message, gen_ai.assistant.message,
 // gen_ai.tool.message (input) and gen_ai.choice (output).
-func extractFromSpanEvents(events []map[string]interface{}) (input, output string) {
-	var inputMessages []map[string]interface{}
-	var outputChoices []map[string]interface{}
+func extractFromSpanEvents(events []map[string]any) (input, output string) {
+	var inputMessages []map[string]any
+	var outputChoices []map[string]any
 
 	for _, event := range events {
 		eventName, _ := event["name"].(string)
 
-		// Handle both map[string]string and map[string]interface{} for robustness
+		// Handle both map[string]string and map[string]any for robustness
 		// createSpanEvent() stores attributes as map[string]string via convertToStringMap(),
 		// but we handle both types for flexibility and future-proofing
-		var attrMap map[string]interface{}
+		var attrMap map[string]any
 		switch attrs := event["attributes"].(type) {
 		case map[string]string:
-			attrMap = make(map[string]interface{}, len(attrs))
+			attrMap = make(map[string]any, len(attrs))
 			for k, v := range attrs {
 				attrMap[k] = v
 			}
-		case map[string]interface{}:
+		case map[string]any:
 			attrMap = attrs
 		default:
-			attrMap = make(map[string]interface{})
+			attrMap = make(map[string]any)
 		}
 
 		switch eventName {
@@ -1165,7 +1165,7 @@ func extractFromSpanEvents(events []map[string]interface{}) (input, output strin
 			"gen_ai.assistant.message", "gen_ai.tool.message":
 			// Extract role from event name
 			role := extractRoleFromEventName(eventName)
-			msg := map[string]interface{}{"role": role}
+			msg := map[string]any{"role": role}
 			for k, v := range attrMap {
 				msg[k] = v
 			}
@@ -1252,9 +1252,9 @@ func extractInputOutput(params ExtractIOParams) (input, output, inputMime, outpu
 
 // extractGenAIMessages extracts I/O from gen_ai.input/output.messages and system_instructions attributes
 // Returns: input, output, systemInstructions
-func extractGenAIMessages(attrs map[string]interface{}) (input, output, systemInstructions string) {
+func extractGenAIMessages(attrs map[string]any) (input, output, systemInstructions string) {
 	// Input: gen_ai.input.messages
-	if messages, ok := attrs[AttrGenAIInputMessages].([]interface{}); ok {
+	if messages, ok := attrs[AttrGenAIInputMessages].([]any); ok {
 		if jsonBytes, err := json.Marshal(messages); err == nil {
 			input = string(jsonBytes)
 		}
@@ -1263,7 +1263,7 @@ func extractGenAIMessages(attrs map[string]interface{}) (input, output, systemIn
 	}
 
 	// Output: gen_ai.output.messages
-	if messages, ok := attrs[AttrGenAIOutputMessages].([]interface{}); ok {
+	if messages, ok := attrs[AttrGenAIOutputMessages].([]any); ok {
 		if jsonBytes, err := json.Marshal(messages); err == nil {
 			output = string(jsonBytes)
 		}
@@ -1272,7 +1272,7 @@ func extractGenAIMessages(attrs map[string]interface{}) (input, output, systemIn
 	}
 
 	// System Instructions: gen_ai.system_instructions (OTEL GenAI 1.28+)
-	if instructions, ok := attrs[AttrGenAISystemInstructions].([]interface{}); ok {
+	if instructions, ok := attrs[AttrGenAISystemInstructions].([]any); ok {
 		if jsonBytes, err := json.Marshal(instructions); err == nil {
 			systemInstructions = string(jsonBytes)
 		}
@@ -1286,7 +1286,7 @@ func extractGenAIMessages(attrs map[string]interface{}) (input, output, systemIn
 // combineMessagesJSON combines two JSON arrays of messages.
 // Used to prepend system instructions to input messages for complete LLM context.
 func combineMessagesJSON(systemJSON, inputJSON string) string {
-	var systemMsgs, inputMsgs []interface{}
+	var systemMsgs, inputMsgs []any
 
 	if err := json.Unmarshal([]byte(systemJSON), &systemMsgs); err != nil {
 		return inputJSON // Fallback to input only
@@ -1304,7 +1304,7 @@ func combineMessagesJSON(systemJSON, inputJSON string) string {
 }
 
 // extractOpenInference extracts I/O from input.value/output.value attributes (OpenInference)
-func extractOpenInference(attrs map[string]interface{}, maxSize int) (input, output, inputMime, outputMime string, truncated InputOutputTruncated) {
+func extractOpenInference(attrs map[string]any, maxSize int) (input, output, inputMime, outputMime string, truncated InputOutputTruncated) {
 	declaredInputMime, _ := attrs[AttrInputMimeType].(string)
 	declaredOutputMime, _ := attrs[AttrOutputMimeType].(string)
 
@@ -1316,7 +1316,7 @@ func extractOpenInference(attrs map[string]interface{}, maxSize int) (input, out
 				input = v
 				inputMime = validateMimeType(v, declaredInputMime)
 			}
-		case []interface{}, map[string]interface{}:
+		case []any, map[string]any:
 			if jsonBytes, err := json.Marshal(v); err == nil {
 				input = string(jsonBytes)
 				inputMime = "application/json"
@@ -1332,7 +1332,7 @@ func extractOpenInference(attrs map[string]interface{}, maxSize int) (input, out
 				output = v
 				outputMime = validateMimeType(v, declaredOutputMime)
 			}
-		case []interface{}, map[string]interface{}:
+		case []any, map[string]any:
 			if jsonBytes, err := json.Marshal(v); err == nil {
 				output = string(jsonBytes)
 				outputMime = "application/json"
@@ -1374,8 +1374,8 @@ func isFrameworkIOKey(key string) bool {
 }
 
 // filterIOKeysFromMetadata filters framework I/O keys from attributes to prevent duplication
-func filterIOKeysFromMetadata(attrs map[string]interface{}) map[string]interface{} {
-	filtered := make(map[string]interface{})
+func filterIOKeysFromMetadata(attrs map[string]any) map[string]any {
+	filtered := make(map[string]any)
 	for k, v := range attrs {
 		if !isFrameworkIOKey(k) {
 			filtered[k] = v

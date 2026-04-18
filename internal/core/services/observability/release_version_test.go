@@ -12,19 +12,19 @@ import (
 func TestMetadataStorageForRelease(t *testing.T) {
 	tests := []struct {
 		name               string
-		resourceAttrs      map[string]interface{}
+		resourceAttrs      map[string]any
 		expectTraceRelease string
 	}{
 		{
 			name: "release_present",
-			resourceAttrs: map[string]interface{}{
+			resourceAttrs: map[string]any{
 				"brokle.release": "v2.1.24",
 			},
 			expectTraceRelease: "v2.1.24",
 		},
 		{
 			name:               "no_release",
-			resourceAttrs:      map[string]interface{}{},
+			resourceAttrs:      map[string]any{},
 			expectTraceRelease: "",
 		},
 	}
@@ -32,13 +32,13 @@ func TestMetadataStorageForRelease(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Merge attributes (simulating createTraceEvent logic)
-			allAttrs := make(map[string]interface{})
+			allAttrs := make(map[string]any)
 			for k, v := range tt.resourceAttrs {
 				allAttrs[k] = v
 			}
 
 			// Create metadata map
-			metadata := make(map[string]interface{})
+			metadata := make(map[string]any)
 
 			// Extract release
 			if release, ok := allAttrs["brokle.release"].(string); ok && release != "" {

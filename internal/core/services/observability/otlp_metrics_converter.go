@@ -30,7 +30,7 @@ func NewOTLPMetricsConverterService(logger *slog.Logger) *OTLPMetricsConverterSe
 }
 
 // ConvertMetricsRequest converts OTLP MetricsData to Brokle telemetry events
-// Returns typed domain entities (NOT map[string]interface{}) for type safety
+// Returns typed domain entities (NOT map[string]any) for type safety
 func (s *OTLPMetricsConverterService) ConvertMetricsRequest(
 	ctx context.Context,
 	metricsData *metricspb.MetricsData,

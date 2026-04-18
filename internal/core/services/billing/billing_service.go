@@ -164,8 +164,8 @@ func (s *BillingService) CalculateBill(ctx context.Context, orgID uuid.UUID, per
 		PeriodStart:       start,
 		PeriodEnd:         end,
 		Currency:          usageRecords[0].Currency,
-		ProviderBreakdown: make(map[string]interface{}),
-		ModelBreakdown:    make(map[string]interface{}),
+		ProviderBreakdown: make(map[string]any),
+		ModelBreakdown:    make(map[string]any),
 		GeneratedAt:       time.Now(),
 	}
 
@@ -375,8 +375,8 @@ func (s *BillingService) calculatePeriodBounds(period string) (start, end time.T
 }
 
 // Health check
-func (s *BillingService) GetHealth() map[string]interface{} {
-	return map[string]interface{}{
+func (s *BillingService) GetHealth() map[string]any {
+	return map[string]any{
 		"service":           "billing",
 		"status":            "healthy",
 		"usage_tracker":     s.usageTracker.GetHealth(),

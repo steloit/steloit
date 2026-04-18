@@ -233,7 +233,7 @@ func (ls *LicenseService) performLicenseValidation(ctx context.Context) (*Licens
 func (ls *LicenseService) validateLicenseLocally(license *config.LicenseConfig) (*LicenseInfo, error) {
 	if ls.publicKey != nil {
 		// Parse and validate JWT license
-		token, err := jwt.Parse(license.Key, func(token *jwt.Token) (interface{}, error) {
+		token, err := jwt.Parse(license.Key, func(token *jwt.Token) (any, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
@@ -266,7 +266,7 @@ func (ls *LicenseService) validateLicenseLocally(license *config.LicenseConfig) 
 // validateLicenseOnline validates license with Brokle license server
 func (ls *LicenseService) validateLicenseOnline(ctx context.Context, license *config.LicenseConfig) (*LicenseInfo, error) {
 	// Prepare validation request
-	req := map[string]interface{}{
+	req := map[string]any{
 		"license_key": license.Key,
 		"platform":    "brokle-platform",
 		"version":     ls.config.App.Version,
@@ -350,7 +350,7 @@ func (ls *LicenseService) parseLicenseClaims(claims jwt.MapClaims) (*LicenseInfo
 		info.MaxRequests = int64(maxReq)
 	}
 
-	if features, ok := claims["features"].([]interface{}); ok {
+	if features, ok := claims["features"].([]any); ok {
 		for _, f := range features {
 			if feature, ok := f.(string); ok {
 				info.Features = append(info.Features, feature)

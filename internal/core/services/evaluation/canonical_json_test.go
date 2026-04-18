@@ -7,15 +7,15 @@ import (
 )
 
 func TestComputeContentHash_Deterministic(t *testing.T) {
-	input := map[string]interface{}{
+	input := map[string]any{
 		"z_key": "value1",
 		"a_key": "value2",
-		"m_key": map[string]interface{}{
+		"m_key": map[string]any{
 			"nested_z": 1,
 			"nested_a": 2,
 		},
 	}
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"output": "result",
 	}
 
@@ -29,22 +29,22 @@ func TestComputeContentHash_Deterministic(t *testing.T) {
 }
 
 func TestComputeContentHash_SameDataDifferentMapOrder(t *testing.T) {
-	input1 := map[string]interface{}{
+	input1 := map[string]any{
 		"a": 1,
 		"b": 2,
 		"c": 3,
 	}
-	expected1 := map[string]interface{}{
+	expected1 := map[string]any{
 		"x": "foo",
 		"y": "bar",
 	}
 
-	input2 := make(map[string]interface{})
+	input2 := make(map[string]any)
 	input2["c"] = 3
 	input2["a"] = 1
 	input2["b"] = 2
 
-	expected2 := make(map[string]interface{})
+	expected2 := make(map[string]any)
 	expected2["y"] = "bar"
 	expected2["x"] = "foo"
 
@@ -55,11 +55,11 @@ func TestComputeContentHash_SameDataDifferentMapOrder(t *testing.T) {
 }
 
 func TestComputeContentHash_DifferentDataDifferentHash(t *testing.T) {
-	input1 := map[string]interface{}{"key": "value1"}
-	expected1 := map[string]interface{}{"output": "result1"}
+	input1 := map[string]any{"key": "value1"}
+	expected1 := map[string]any{"output": "result1"}
 
-	input2 := map[string]interface{}{"key": "value2"}
-	expected2 := map[string]interface{}{"output": "result2"}
+	input2 := map[string]any{"key": "value2"}
+	expected2 := map[string]any{"output": "result2"}
 
 	hash1 := ComputeContentHash(input1, expected1)
 	hash2 := ComputeContentHash(input2, expected2)
@@ -68,8 +68,8 @@ func TestComputeContentHash_DifferentDataDifferentHash(t *testing.T) {
 }
 
 func TestComputeContentHash_EmptyMaps(t *testing.T) {
-	input := map[string]interface{}{}
-	expected := map[string]interface{}{}
+	input := map[string]any{}
+	expected := map[string]any{}
 
 	hash := ComputeContentHash(input, expected)
 	assert.NotEmpty(t, hash, "Hash should not be empty for empty maps")
@@ -79,29 +79,29 @@ func TestComputeContentHash_EmptyMaps(t *testing.T) {
 }
 
 func TestComputeContentHash_NilMaps(t *testing.T) {
-	var input map[string]interface{}
-	var expected map[string]interface{}
+	var input map[string]any
+	var expected map[string]any
 
 	hash := ComputeContentHash(input, expected)
 	assert.NotEmpty(t, hash, "Hash should not be empty for nil maps")
 }
 
 func TestComputeContentHash_NestedStructures(t *testing.T) {
-	input := map[string]interface{}{
-		"level1": map[string]interface{}{
-			"level2": map[string]interface{}{
+	input := map[string]any{
+		"level1": map[string]any{
+			"level2": map[string]any{
 				"z_key": "deep",
 				"a_key": "value",
 			},
-			"array": []interface{}{
-				map[string]interface{}{
+			"array": []any{
+				map[string]any{
 					"z": 1,
 					"a": 2,
 				},
 			},
 		},
 	}
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"output": "nested_result",
 	}
 
@@ -113,7 +113,7 @@ func TestComputeContentHash_NestedStructures(t *testing.T) {
 }
 
 func TestCanonicalJSONMarshal_SortedKeys(t *testing.T) {
-	data := map[string]interface{}{
+	data := map[string]any{
 		"z": 1,
 		"a": 2,
 		"m": 3,
@@ -127,8 +127,8 @@ func TestCanonicalJSONMarshal_SortedKeys(t *testing.T) {
 }
 
 func TestCanonicalJSONMarshal_NestedMaps(t *testing.T) {
-	data := map[string]interface{}{
-		"outer_z": map[string]interface{}{
+	data := map[string]any{
+		"outer_z": map[string]any{
 			"inner_z": 1,
 			"inner_a": 2,
 		},
@@ -143,13 +143,13 @@ func TestCanonicalJSONMarshal_NestedMaps(t *testing.T) {
 }
 
 func TestCanonicalJSONMarshal_Arrays(t *testing.T) {
-	data := map[string]interface{}{
-		"array": []interface{}{
-			map[string]interface{}{
+	data := map[string]any{
+		"array": []any{
+			map[string]any{
 				"z": 1,
 				"a": 2,
 			},
-			map[string]interface{}{
+			map[string]any{
 				"y": 3,
 				"b": 4,
 			},

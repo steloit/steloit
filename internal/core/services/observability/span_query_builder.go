@@ -51,7 +51,7 @@ func NewSpanQueryBuilder() *SpanQueryBuilder {
 // QueryResult contains the built query and its arguments.
 type QueryResult struct {
 	Query string
-	Args  []interface{}
+	Args  []any
 	Count int // number of conditions
 }
 
@@ -72,7 +72,7 @@ func (b *SpanQueryBuilder) BuildQuery(
 
 	// PREWHERE conditions: indexed columns that benefit from early filtering
 	prewhereConditions := []string{"project_id = ?", "deleted_at IS NULL"}
-	prewhereArgs := []interface{}{projectID}
+	prewhereArgs := []any{projectID}
 
 	if startTime != nil {
 		prewhereConditions = append(prewhereConditions, "start_time >= ?")
@@ -135,7 +135,7 @@ func (b *SpanQueryBuilder) BuildCountQuery(
 
 	// PREWHERE conditions: indexed columns that benefit from early filtering
 	prewhereConditions := []string{"project_id = ?", "deleted_at IS NULL"}
-	prewhereArgs := []interface{}{projectID}
+	prewhereArgs := []any{projectID}
 
 	if startTime != nil {
 		prewhereConditions = append(prewhereConditions, "start_time >= ?")
@@ -178,7 +178,7 @@ func (b *SpanQueryBuilder) BuildCountQuery(
 }
 
 // buildNode recursively builds SQL from a filter AST node.
-func (b *SpanQueryBuilder) buildNode(node obsDomain.FilterNode) (string, []interface{}, error) {
+func (b *SpanQueryBuilder) buildNode(node obsDomain.FilterNode) (string, []any, error) {
 	if node == nil {
 		return "", nil, nil
 	}
@@ -194,7 +194,7 @@ func (b *SpanQueryBuilder) buildNode(node obsDomain.FilterNode) (string, []inter
 }
 
 // buildBinaryNode handles AND/OR binary expressions.
-func (b *SpanQueryBuilder) buildBinaryNode(node *obsDomain.BinaryNode) (string, []interface{}, error) {
+func (b *SpanQueryBuilder) buildBinaryNode(node *obsDomain.BinaryNode) (string, []any, error) {
 	// Validate operator to prevent injection via directly created AST nodes
 	if node.Operator != obsDomain.LogicAnd && node.Operator != obsDomain.LogicOr {
 		return "", nil, fmt.Errorf("invalid logic operator: %s", node.Operator)
@@ -217,7 +217,7 @@ func (b *SpanQueryBuilder) buildBinaryNode(node *obsDomain.BinaryNode) (string, 
 }
 
 // buildConditionNode converts a single condition to SQL.
-func (b *SpanQueryBuilder) buildConditionNode(node *obsDomain.ConditionNode) (string, []interface{}, error) {
+func (b *SpanQueryBuilder) buildConditionNode(node *obsDomain.ConditionNode) (string, []any, error) {
 	column, err := b.getColumn(node.Field)
 	if err != nil {
 		return "", nil, err
@@ -307,36 +307,36 @@ func (b *SpanQueryBuilder) getColumn(field string) (string, error) {
 }
 
 // buildComparison builds a simple comparison (=, !=).
-func (b *SpanQueryBuilder) buildComparison(column, op string, value interface{}) (string, []interface{}, error) {
+func (b *SpanQueryBuilder) buildComparison(column, op string, value any) (string, []any, error) {
 	b.paramCount++
-	return fmt.Sprintf("%s %s ?", column, op), []interface{}{value}, nil
+	return fmt.Sprintf("%s %s ?", column, op), []any{value}, nil
 }
 
 // buildNumericComparison builds a numeric comparison with type coercion.
-func (b *SpanQueryBuilder) buildNumericComparison(column, field, op string, value interface{}) (string, []interface{}, error) {
+func (b *SpanQueryBuilder) buildNumericComparison(column, field, op string, value any) (string, []any, error) {
 	b.paramCount++
 
 	if obsDomain.IsMaterializedColumn(field) {
-		return fmt.Sprintf("%s %s ?", column, op), []interface{}{value}, nil
+		return fmt.Sprintf("%s %s ?", column, op), []any{value}, nil
 	}
 
 	// toFloat64OrNull handles non-numeric values gracefully for map columns
-	return fmt.Sprintf("toFloat64OrNull(%s) %s ?", column, op), []interface{}{value}, nil
+	return fmt.Sprintf("toFloat64OrNull(%s) %s ?", column, op), []any{value}, nil
 }
 
 // buildContains builds a case-insensitive substring search.
 // Uses positionCaseInsensitive for efficient ClickHouse substring search.
-func (b *SpanQueryBuilder) buildContains(column string, value interface{}, negated bool) (string, []interface{}, error) {
+func (b *SpanQueryBuilder) buildContains(column string, value any, negated bool) (string, []any, error) {
 	b.paramCount++
 
 	if negated {
-		return fmt.Sprintf("positionCaseInsensitive(%s, ?) = 0", column), []interface{}{value}, nil
+		return fmt.Sprintf("positionCaseInsensitive(%s, ?) = 0", column), []any{value}, nil
 	}
-	return fmt.Sprintf("positionCaseInsensitive(%s, ?) > 0", column), []interface{}{value}, nil
+	return fmt.Sprintf("positionCaseInsensitive(%s, ?) > 0", column), []any{value}, nil
 }
 
 // buildInClause builds an IN clause with array parameter.
-func (b *SpanQueryBuilder) buildInClause(column string, value interface{}, negated bool) (string, []interface{}, error) {
+func (b *SpanQueryBuilder) buildInClause(column string, value any, negated bool) (string, []any, error) {
 	values, ok := value.([]string)
 	if !ok {
 		return "", nil, obsDomain.ErrInvalidValue
@@ -350,7 +350,7 @@ func (b *SpanQueryBuilder) buildInClause(column string, value interface{}, negat
 	}
 
 	placeholders := make([]string, len(values))
-	args := make([]interface{}, len(values))
+	args := make([]any, len(values))
 	for i, v := range values {
 		placeholders[i] = "?"
 		args[i] = v
@@ -366,7 +366,7 @@ func (b *SpanQueryBuilder) buildInClause(column string, value interface{}, negat
 }
 
 // buildExists builds an EXISTS check using mapContains for efficient ClickHouse existence checks.
-func (b *SpanQueryBuilder) buildExists(field string, negated bool) (string, []interface{}, error) {
+func (b *SpanQueryBuilder) buildExists(field string, negated bool) (string, []any, error) {
 	if err := validateFieldName(field); err != nil {
 		return "", nil, err
 	}
@@ -395,20 +395,20 @@ func (b *SpanQueryBuilder) buildExists(field string, negated bool) (string, []in
 }
 
 // buildStartsWith builds a STARTS WITH condition using ClickHouse's startsWith function.
-func (b *SpanQueryBuilder) buildStartsWith(column string, value interface{}) (string, []interface{}, error) {
+func (b *SpanQueryBuilder) buildStartsWith(column string, value any) (string, []any, error) {
 	b.paramCount++
-	return fmt.Sprintf("startsWith(%s, ?)", column), []interface{}{value}, nil
+	return fmt.Sprintf("startsWith(%s, ?)", column), []any{value}, nil
 }
 
 // buildEndsWith builds an ENDS WITH condition using ClickHouse's endsWith function.
-func (b *SpanQueryBuilder) buildEndsWith(column string, value interface{}) (string, []interface{}, error) {
+func (b *SpanQueryBuilder) buildEndsWith(column string, value any) (string, []any, error) {
 	b.paramCount++
-	return fmt.Sprintf("endsWith(%s, ?)", column), []interface{}{value}, nil
+	return fmt.Sprintf("endsWith(%s, ?)", column), []any{value}, nil
 }
 
 // buildRegex builds a REGEX condition using ClickHouse's match function.
 // Includes validation to prevent ReDoS attacks.
-func (b *SpanQueryBuilder) buildRegex(column string, value interface{}, negated bool) (string, []interface{}, error) {
+func (b *SpanQueryBuilder) buildRegex(column string, value any, negated bool) (string, []any, error) {
 	pattern, ok := value.(string)
 	if !ok {
 		return "", nil, obsDomain.ErrInvalidValue
@@ -422,9 +422,9 @@ func (b *SpanQueryBuilder) buildRegex(column string, value interface{}, negated 
 	b.paramCount++
 
 	if negated {
-		return fmt.Sprintf("NOT match(%s, ?)", column), []interface{}{value}, nil
+		return fmt.Sprintf("NOT match(%s, ?)", column), []any{value}, nil
 	}
-	return fmt.Sprintf("match(%s, ?)", column), []interface{}{value}, nil
+	return fmt.Sprintf("match(%s, ?)", column), []any{value}, nil
 }
 
 // validateRegexPattern validates a regex pattern to prevent ReDoS attacks.
@@ -453,7 +453,7 @@ func validateRegexPattern(pattern string) error {
 
 // buildIsEmpty builds an IS EMPTY / IS NOT EMPTY condition.
 // Checks for NULL or empty string values.
-func (b *SpanQueryBuilder) buildIsEmpty(column string, notEmpty bool) (string, []interface{}, error) {
+func (b *SpanQueryBuilder) buildIsEmpty(column string, notEmpty bool) (string, []any, error) {
 	if notEmpty {
 		return fmt.Sprintf("(%s IS NOT NULL AND %s != '')", column, column), nil, nil
 	}
@@ -462,17 +462,17 @@ func (b *SpanQueryBuilder) buildIsEmpty(column string, notEmpty bool) (string, [
 
 // buildSearch builds a full-text search condition using case-insensitive substring matching.
 // Uses positionCaseInsensitive for efficient ClickHouse text search.
-func (b *SpanQueryBuilder) buildSearch(column string, value interface{}) (string, []interface{}, error) {
+func (b *SpanQueryBuilder) buildSearch(column string, value any) (string, []any, error) {
 	b.paramCount++
 	// Use positionCaseInsensitive for case-insensitive substring matching
 	// This is similar to CONTAINS but optimized for search use cases
-	return fmt.Sprintf("positionCaseInsensitive(%s, ?) > 0", column), []interface{}{value}, nil
+	return fmt.Sprintf("positionCaseInsensitive(%s, ?) > 0", column), []any{value}, nil
 }
 
 // BuildTextSearchCondition builds a full-text search condition across multiple columns.
 // Uses hasToken() for tokenized columns (input_preview, output_preview) which leverages bloom filter indexes.
 // Uses positionCaseInsensitive() for ID columns (trace_id, span_id, span_name).
-func (b *SpanQueryBuilder) BuildTextSearchCondition(query string, searchTypes []obsDomain.SearchType) (string, []interface{}, error) {
+func (b *SpanQueryBuilder) BuildTextSearchCondition(query string, searchTypes []obsDomain.SearchType) (string, []any, error) {
 	if query == "" {
 		return "", nil, nil
 	}
@@ -480,7 +480,7 @@ func (b *SpanQueryBuilder) BuildTextSearchCondition(query string, searchTypes []
 	types := obsDomain.NormalizeSearchTypes(searchTypes)
 
 	var conditions []string
-	var args []interface{}
+	var args []any
 
 	for _, searchType := range types {
 		switch searchType {
@@ -533,7 +533,7 @@ func (b *SpanQueryBuilder) BuildQueryWithSearch(
 
 	// PREWHERE conditions: indexed columns that benefit from early filtering
 	prewhereConditions := []string{"project_id = ?", "deleted_at IS NULL"}
-	prewhereArgs := []interface{}{projectID}
+	prewhereArgs := []any{projectID}
 
 	// Add time range conditions to PREWHERE (uses partition key)
 	if startTime != nil {
@@ -546,7 +546,7 @@ func (b *SpanQueryBuilder) BuildQueryWithSearch(
 	}
 
 	var whereConditions []string
-	var whereArgs []interface{}
+	var whereArgs []any
 
 	if node != nil {
 		whereClause, filterArgs, err := b.buildNode(node)
@@ -613,7 +613,7 @@ func (b *SpanQueryBuilder) BuildCountQueryWithSearch(
 
 	// PREWHERE conditions: indexed columns that benefit from early filtering
 	prewhereConditions := []string{"project_id = ?", "deleted_at IS NULL"}
-	prewhereArgs := []interface{}{projectID}
+	prewhereArgs := []any{projectID}
 
 	// Add time range conditions to PREWHERE (uses partition key)
 	if startTime != nil {
@@ -626,7 +626,7 @@ func (b *SpanQueryBuilder) BuildCountQueryWithSearch(
 	}
 
 	var whereConditions []string
-	var whereArgs []interface{}
+	var whereArgs []any
 
 	if node != nil {
 		whereClause, filterArgs, err := b.buildNode(node)

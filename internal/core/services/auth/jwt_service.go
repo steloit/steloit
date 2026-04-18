@@ -23,8 +23,8 @@ import (
 // jwtService implements the auth.JWTService interface with flexible signing methods
 type jwtService struct {
 	config     *config.AuthConfig
-	privateKey interface{} // RSA private key for RS256 or []byte for HS256
-	publicKey  interface{} // RSA public key for RS256 or []byte for HS256
+	privateKey any // RSA private key for RS256 or []byte for HS256
+	publicKey  any // RSA public key for RS256 or []byte for HS256
 }
 
 // NewJWTService creates a new JWT service instance with flexible configuration
@@ -146,13 +146,13 @@ func (s *jwtService) loadRSAKeys() error {
 }
 
 // GenerateAccessToken generates an access token with custom claims
-func (s *jwtService) GenerateAccessToken(ctx context.Context, userID uuid.UUID, customClaims map[string]interface{}) (string, error) {
+func (s *jwtService) GenerateAccessToken(ctx context.Context, userID uuid.UUID, customClaims map[string]any) (string, error) {
 	token, _, err := s.GenerateAccessTokenWithJTI(ctx, userID, customClaims)
 	return token, err
 }
 
 // GenerateAccessTokenWithJTI generates an access token and returns both token and JTI for session tracking
-func (s *jwtService) GenerateAccessTokenWithJTI(ctx context.Context, userID uuid.UUID, customClaims map[string]interface{}) (string, string, error) {
+func (s *jwtService) GenerateAccessTokenWithJTI(ctx context.Context, userID uuid.UUID, customClaims map[string]any) (string, string, error) {
 	now := time.Now()
 
 	// Generate JTI for this token
@@ -273,7 +273,7 @@ func (s *jwtService) GenerateAPIKeyToken(ctx context.Context, keyID uuid.UUID, s
 
 // ValidateToken validates any JWT token and returns claims
 func (s *jwtService) ValidateToken(ctx context.Context, tokenString string) (*authDomain.JWTClaims, error) {
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
 		// Verify signing method matches configuration
 		switch s.config.JWTSigningMethod {
 		case "HS256":

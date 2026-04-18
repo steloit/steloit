@@ -164,7 +164,7 @@ func (s *executionService) ExecuteStream(ctx context.Context, prompt *promptDoma
 	return eventChan, resultChan, nil
 }
 
-func (s *executionService) Preview(ctx context.Context, prompt *promptDomain.PromptResponse, variables map[string]string) (interface{}, error) {
+func (s *executionService) Preview(ctx context.Context, prompt *promptDomain.PromptResponse, variables map[string]string) (any, error) {
 	return s.compiler.Compile(prompt.Template, prompt.Type, variables)
 }
 
@@ -335,7 +335,7 @@ func (s *executionService) getOpenAICompatibleConfig(provider AIModelProvider, c
 	return baseURL, authHeader, authValue, nil
 }
 
-func (s *executionService) executeOpenAICompatible(ctx context.Context, promptType promptDomain.PromptType, compiled interface{}, config *promptDomain.ModelConfig, provider AIModelProvider) (*promptDomain.LLMResponse, error) {
+func (s *executionService) executeOpenAICompatible(ctx context.Context, promptType promptDomain.PromptType, compiled any, config *promptDomain.ModelConfig, provider AIModelProvider) (*promptDomain.LLMResponse, error) {
 	if config.APIKey == "" {
 		return nil, errors.NewValidationError("API key not provided", fmt.Sprintf("%s API key must be provided via project credentials", provider))
 	}
@@ -503,7 +503,7 @@ type anthropicResponse struct {
 	} `json:"error,omitempty"`
 }
 
-func (s *executionService) executeAnthropic(ctx context.Context, promptType promptDomain.PromptType, compiled interface{}, config *promptDomain.ModelConfig) (*promptDomain.LLMResponse, error) {
+func (s *executionService) executeAnthropic(ctx context.Context, promptType promptDomain.PromptType, compiled any, config *promptDomain.ModelConfig) (*promptDomain.LLMResponse, error) {
 	if config.APIKey == "" {
 		return nil, errors.NewValidationError("API key not provided", "Anthropic API key must be provided via project credentials")
 	}
@@ -792,7 +792,7 @@ type geminiError struct {
 
 // executeGemini executes prompts using Google Gemini API.
 // Uses x-goog-api-key header for security (API keys in URLs get logged).
-func (s *executionService) executeGemini(ctx context.Context, promptType promptDomain.PromptType, compiled interface{}, config *promptDomain.ModelConfig) (*promptDomain.LLMResponse, error) {
+func (s *executionService) executeGemini(ctx context.Context, promptType promptDomain.PromptType, compiled any, config *promptDomain.ModelConfig) (*promptDomain.LLMResponse, error) {
 	if config.APIKey == "" {
 		return nil, errors.NewValidationError("API key not provided", "Gemini API key must be provided via project credentials")
 	}
@@ -957,7 +957,7 @@ func (acc *streamAccumulator) getToolCalls() []json.RawMessage {
 	result := make([]json.RawMessage, 0, len(indices))
 	for _, idx := range indices {
 		tc := acc.toolCalls[idx]
-		toolCall := map[string]interface{}{
+		toolCall := map[string]any{
 			"id":   tc.ID,
 			"type": tc.Type,
 			"function": map[string]string{
@@ -1081,7 +1081,7 @@ type anthropicMessageDelta struct {
 func (s *executionService) streamOpenAICompatible(
 	ctx context.Context,
 	promptType promptDomain.PromptType,
-	compiled interface{},
+	compiled any,
 	config *promptDomain.ModelConfig,
 	provider AIModelProvider,
 	eventChan chan<- promptDomain.StreamEvent,
@@ -1319,7 +1319,7 @@ func (s *executionService) streamOpenAICompatible(
 func (s *executionService) streamAnthropic(
 	ctx context.Context,
 	promptType promptDomain.PromptType,
-	compiled interface{},
+	compiled any,
 	config *promptDomain.ModelConfig,
 	eventChan chan<- promptDomain.StreamEvent,
 	resultChan chan<- *promptDomain.StreamResult,
@@ -1566,7 +1566,7 @@ type geminiStreamChunk struct {
 func (s *executionService) streamGemini(
 	ctx context.Context,
 	promptType promptDomain.PromptType,
-	compiled interface{},
+	compiled any,
 	config *promptDomain.ModelConfig,
 	eventChan chan<- promptDomain.StreamEvent,
 	resultChan chan<- *promptDomain.StreamResult,

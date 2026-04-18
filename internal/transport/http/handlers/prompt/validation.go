@@ -11,7 +11,7 @@ import (
 
 // ValidateTemplateRequest represents the request body for template validation.
 type ValidateTemplateRequest struct {
-	Template interface{}                  `json:"template" binding:"required"`
+	Template any                  `json:"template" binding:"required"`
 	Type     promptDomain.PromptType      `json:"type" binding:"required" swaggertype:"string"`
 	Dialect  promptDomain.TemplateDialect `json:"dialect,omitempty" swaggertype:"string"` // Optional: auto-detect if not specified
 }
@@ -27,7 +27,7 @@ type ValidateTemplateResponse struct {
 
 // PreviewTemplateRequest represents the request body for template preview/compilation.
 type PreviewTemplateRequest struct {
-	Template  interface{}                  `json:"template" binding:"required"`
+	Template  any                  `json:"template" binding:"required"`
 	Type      promptDomain.PromptType      `json:"type" binding:"required" swaggertype:"string"`
 	Variables map[string]any               `json:"variables" binding:"required" swaggertype:"object"`
 	Dialect   promptDomain.TemplateDialect `json:"dialect,omitempty" swaggertype:"string"` // Optional: auto-detect if not specified
@@ -35,7 +35,7 @@ type PreviewTemplateRequest struct {
 
 // PreviewTemplateResponse represents the response for template preview.
 type PreviewTemplateResponse struct {
-	Compiled interface{}                  `json:"compiled"`
+	Compiled any                  `json:"compiled"`
 	Dialect  promptDomain.TemplateDialect `json:"dialect" swaggertype:"string"`
 }
 
@@ -167,7 +167,7 @@ func (h *Handler) PreviewTemplate(c *gin.Context) {
 	}
 
 	// Wrap compiled output in appropriate template structure to match frontend expectations
-	var wrappedCompiled interface{}
+	var wrappedCompiled any
 	switch req.Type {
 	case promptDomain.PromptTypeText:
 		content, ok := compiled.(string)
@@ -246,7 +246,7 @@ func (h *Handler) DetectDialect(c *gin.Context) {
 
 // DetectDialectRequest represents the request body for dialect detection.
 type DetectDialectRequest struct {
-	Template interface{}             `json:"template" binding:"required"`
+	Template any             `json:"template" binding:"required"`
 	Type     promptDomain.PromptType `json:"type" binding:"required" swaggertype:"string"`
 }
 

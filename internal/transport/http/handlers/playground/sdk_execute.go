@@ -32,7 +32,7 @@ func NewSDKPlaygroundHandler(
 // SDKExecuteRequest represents a playground execution request from SDK.
 // Project ID is derived from API key authentication, not from request body.
 type SDKExecuteRequest struct {
-	Template        interface{}         `json:"template" binding:"required"`
+	Template        any         `json:"template" binding:"required"`
 	PromptType      prompt.PromptType   `json:"prompt_type" binding:"required"`
 	Variables       map[string]string   `json:"variables"`
 	ConfigOverrides *prompt.ModelConfig `json:"config_overrides"`

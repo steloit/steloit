@@ -121,7 +121,7 @@ func (h *OTLPLogsHandler) Export(
 		BatchID:   batchID,
 		ProjectID: *projectIDPtr,
 		Events:    eventData,
-		Metadata: map[string]interface{}{
+		Metadata: map[string]any{
 			"source":        "otlp-grpc-logs",
 			"resource_logs": len(req.ResourceLogs),
 			"total_logs":    logCount,

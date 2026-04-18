@@ -24,7 +24,7 @@ func NewHandler(config *config.Config, logger *slog.Logger) *Handler {
 // AIRequest represents a logged AI request
 type AIRequest struct {
 	Timestamp    time.Time              `json:"timestamp" example:"2024-01-01T00:00:00Z" description:"Request timestamp"`
-	Metadata     map[string]interface{} `json:"metadata,omitempty" description:"Additional request metadata"`
+	Metadata     map[string]any `json:"metadata,omitempty" description:"Additional request metadata"`
 	Project      string                 `json:"project_id" example:"proj_1234567890" description:"Project ID"`
 	UserAgent    string                 `json:"user_agent,omitempty" example:"MyApp/1.0" description:"Client user agent"`
 	Path         string                 `json:"path" example:"/v1/chat/completions" description:"Request path"`
@@ -50,8 +50,8 @@ type AIRequest struct {
 // AIRequestDetail provides detailed information about a specific request
 type AIRequestDetail struct {
 	AIRequest
-	RequestBody  interface{}       `json:"request_body,omitempty" description:"Original request payload (may be truncated)"`
-	ResponseBody interface{}       `json:"response_body,omitempty" description:"Response payload (may be truncated)"`
+	RequestBody  any       `json:"request_body,omitempty" description:"Original request payload (may be truncated)"`
+	ResponseBody any       `json:"response_body,omitempty" description:"Response payload (may be truncated)"`
 	Headers      map[string]string `json:"headers,omitempty" description:"Request headers (sensitive headers removed)"`
 	Trace        []TraceEvent      `json:"trace,omitempty" description:"Detailed execution trace"`
 }
@@ -59,7 +59,7 @@ type AIRequestDetail struct {
 // TraceEvent represents an event in the request execution trace
 type TraceEvent struct {
 	Timestamp   time.Time              `json:"timestamp" example:"2024-01-01T00:00:00Z" description:"Event timestamp"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty" description:"Additional event metadata"`
+	Metadata    map[string]any `json:"metadata,omitempty" description:"Additional event metadata"`
 	Event       string                 `json:"event" example:"provider_request_start" description:"Event type"`
 	Description string                 `json:"description" example:"Starting request to OpenAI" description:"Event description"`
 	Duration    int64                  `json:"duration_ms,omitempty" example:"25" description:"Event duration in milliseconds"`
@@ -78,7 +78,7 @@ type ListRequestsResponse struct {
 type ExportRequest struct {
 	StartTime   time.Time              `json:"start_time" binding:"required" example:"2024-01-01T00:00:00Z" description:"Start time for export range"`
 	EndTime     time.Time              `json:"end_time" binding:"required" example:"2024-01-31T23:59:59Z" description:"End time for export range"`
-	Filters     map[string]interface{} `json:"filters,omitempty" description:"Additional filters to apply"`
+	Filters     map[string]any `json:"filters,omitempty" description:"Additional filters to apply"`
 	Format      string                 `json:"format" binding:"required,oneof=json csv xlsx" example:"json" description:"Export format (json, csv, xlsx)"`
 	IncludeBody bool                   `json:"include_body" example:"false" description:"Whether to include request/response bodies"`
 }

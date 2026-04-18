@@ -97,7 +97,7 @@ func (h *Handler) Handle(c *gin.Context) {
 }
 
 // BroadcastToUser broadcasts a message to all connections of a specific user
-func (h *Handler) BroadcastToUser(userID string, messageType string, data interface{}) {
+func (h *Handler) BroadcastToUser(userID string, messageType string, data any) {
 	message := Message{
 		Type:      messageType,
 		Data:      data,
@@ -108,7 +108,7 @@ func (h *Handler) BroadcastToUser(userID string, messageType string, data interf
 }
 
 // BroadcastToOrganization broadcasts a message to all users in an organization
-func (h *Handler) BroadcastToOrganization(orgID string, messageType string, data interface{}) {
+func (h *Handler) BroadcastToOrganization(orgID string, messageType string, data any) {
 	message := Message{
 		Type:      messageType,
 		Data:      data,
@@ -119,7 +119,7 @@ func (h *Handler) BroadcastToOrganization(orgID string, messageType string, data
 }
 
 // BroadcastToProject broadcasts a message to all users in a project
-func (h *Handler) BroadcastToProject(projectID string, messageType string, data interface{}) {
+func (h *Handler) BroadcastToProject(projectID string, messageType string, data any) {
 	message := Message{
 		Type:      messageType,
 		Data:      data,
@@ -133,7 +133,7 @@ func (h *Handler) BroadcastToProject(projectID string, messageType string, data 
 func (h *Handler) getUserID(r *http.Request) string {
 	// Try to get user from JWT context
 	if user := r.Context().Value("user"); user != nil {
-		if userMap, ok := user.(map[string]interface{}); ok {
+		if userMap, ok := user.(map[string]any); ok {
 			if userID, ok := userMap["id"].(string); ok {
 				return userID
 			}
@@ -142,7 +142,7 @@ func (h *Handler) getUserID(r *http.Request) string {
 
 	// Try to get user from API key context
 	if apiKey := r.Context().Value("api_key"); apiKey != nil {
-		if keyMap, ok := apiKey.(map[string]interface{}); ok {
+		if keyMap, ok := apiKey.(map[string]any); ok {
 			if userID, ok := keyMap["user_id"].(string); ok {
 				return userID
 			}
@@ -452,7 +452,7 @@ func (c *Client) SendMessage(message Message) {
 // Message represents a WebSocket message
 type Message struct {
 	Type      string      `json:"type"`
-	Data      interface{} `json:"data"`
+	Data      any `json:"data"`
 	Timestamp time.Time   `json:"timestamp"`
 }
 

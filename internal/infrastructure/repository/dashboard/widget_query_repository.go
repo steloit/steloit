@@ -26,8 +26,8 @@ func NewWidgetQueryRepository(db clickhouse.Conn) dashboardDomain.WidgetQueryRep
 func (r *widgetQueryRepository) ExecuteQuery(
 	ctx context.Context,
 	query string,
-	args []interface{},
-) ([]map[string]interface{}, error) {
+	args []any,
+) ([]map[string]any, error) {
 	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("execute query: %w", err)
@@ -41,11 +41,11 @@ func (r *widgetQueryRepository) ExecuteQuery(
 		columnNames[i] = ct.Name()
 	}
 
-	results := make([]map[string]interface{}, 0)
+	results := make([]map[string]any, 0)
 
 	for rows.Next() {
 		// Create typed pointers based on column types to satisfy ClickHouse driver requirements
-		valuePtrs := make([]interface{}, len(columnTypes))
+		valuePtrs := make([]any, len(columnTypes))
 		for i, ct := range columnTypes {
 			valuePtrs[i] = createScanTarget(ct.ScanType())
 		}
@@ -55,7 +55,7 @@ func (r *widgetQueryRepository) ExecuteQuery(
 		}
 
 		// Convert to map with dereferenced and type-converted values
-		row := make(map[string]interface{})
+		row := make(map[string]any)
 		for i, name := range columnNames {
 			row[name] = convertScannedValue(valuePtrs[i])
 		}
@@ -73,7 +73,7 @@ func (r *widgetQueryRepository) ExecuteQuery(
 func (r *widgetQueryRepository) ExecuteTraceListQuery(
 	ctx context.Context,
 	query string,
-	args []interface{},
+	args []any,
 ) ([]*dashboardDomain.TraceListItem, error) {
 	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
@@ -128,7 +128,7 @@ func (r *widgetQueryRepository) ExecuteTraceListQuery(
 func (r *widgetQueryRepository) ExecuteHistogramQuery(
 	ctx context.Context,
 	query string,
-	args []interface{},
+	args []any,
 ) (*dashboardDomain.HistogramData, error) {
 	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
@@ -168,7 +168,7 @@ func (r *widgetQueryRepository) ExecuteHistogramQuery(
 
 // convertValue converts ClickHouse values to JSON-friendly types.
 // It ensures all returned values can be safely marshaled to JSON.
-func convertValue(v interface{}) interface{} {
+func convertValue(v any) any {
 	switch val := v.(type) {
 	// Time types
 	case time.Time:
@@ -325,16 +325,16 @@ func convertValue(v interface{}) interface{} {
 // createScanTarget creates a properly typed pointer based on reflect.Type.
 // This is necessary because ClickHouse's Go driver requires explicit typed pointers
 // for scanning aggregate function results (UInt64, Float64, etc.).
-func createScanTarget(t reflect.Type) interface{} {
+func createScanTarget(t reflect.Type) any {
 	if t == nil {
-		return new(interface{})
+		return new(any)
 	}
 	return reflect.New(t).Interface()
 }
 
 // convertScannedValue dereferences a scanned pointer and converts to JSON-friendly type.
 // It uses reflection to handle dynamically typed scan targets created by createScanTarget.
-func convertScannedValue(ptr interface{}) interface{} {
+func convertScannedValue(ptr any) any {
 	if ptr == nil {
 		return nil
 	}
@@ -348,6 +348,6 @@ func convertScannedValue(ptr interface{}) interface{} {
 		val = val.Elem()
 	}
 
-	// Convert to interface{} and apply type conversions
+	// Convert to any and apply type conversions
 	return convertValue(val.Interface())
 }

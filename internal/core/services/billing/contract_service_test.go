@@ -431,7 +431,7 @@ func TestContractService_GetContractHistory_Success(t *testing.T) {
 
 	contractID := uid.New()
 
-	changes := map[string]interface{}{
+	changes := map[string]any{
 		"contract_name": "Enterprise Contract",
 		"status":        "active",
 	}

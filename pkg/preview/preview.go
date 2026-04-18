@@ -159,7 +159,7 @@ func isTextContent(content string) bool {
 // generateJSONPreview generates a preview for JSON content with structure analysis
 func generateJSONPreview(content string, maxChars int) (string, error) {
 	// Parse JSON to analyze structure
-	var data interface{}
+	var data any
 	if err := json.Unmarshal([]byte(content), &data); err != nil {
 		return "", err
 	}
@@ -191,9 +191,9 @@ func generateJSONPreview(content string, maxChars int) (string, error) {
 }
 
 // analyzeJSONStructure analyzes JSON structure and returns a concise description
-func analyzeJSONStructure(data interface{}) string {
+func analyzeJSONStructure(data any) string {
 	switch v := data.(type) {
-	case map[string]interface{}:
+	case map[string]any:
 		keys := make([]string, 0, len(v))
 		for key, val := range v {
 			valueType := getJSONValueType(val)
@@ -204,7 +204,7 @@ func analyzeJSONStructure(data interface{}) string {
 			}
 		}
 		return "{" + strings.Join(keys, ", ") + "}"
-	case []interface{}:
+	case []any:
 		if len(v) == 0 {
 			return "[]"
 		}
@@ -217,11 +217,11 @@ func analyzeJSONStructure(data interface{}) string {
 }
 
 // getJSONValueType returns the type of a JSON value
-func getJSONValueType(val interface{}) string {
+func getJSONValueType(val any) string {
 	switch v := val.(type) {
-	case map[string]interface{}:
+	case map[string]any:
 		return "object"
-	case []interface{}:
+	case []any:
 		if len(v) == 0 {
 			return "array"
 		}

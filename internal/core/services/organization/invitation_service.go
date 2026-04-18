@@ -456,7 +456,7 @@ func (s *invitationService) CleanupExpiredInvitations(ctx context.Context) error
 }
 
 // createAuditEvent creates an audit event for an invitation action
-func (s *invitationService) createAuditEvent(ctx context.Context, invitationID uuid.UUID, eventType orgDomain.InvitationAuditEventType, actorID *uuid.UUID, metadata map[string]interface{}) {
+func (s *invitationService) createAuditEvent(ctx context.Context, invitationID uuid.UUID, eventType orgDomain.InvitationAuditEventType, actorID *uuid.UUID, metadata map[string]any) {
 	actorType := orgDomain.ActorTypeSystem
 	if actorID != nil {
 		actorType = orgDomain.ActorTypeUser

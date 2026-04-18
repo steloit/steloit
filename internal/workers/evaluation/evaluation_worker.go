@@ -490,7 +490,7 @@ func (w *EvaluationWorker) FlushExecutionStats(ctx context.Context) {
 }
 
 func (w *EvaluationWorker) buildScoreMetadata(job EvaluationJob) json.RawMessage {
-	metadata := map[string]interface{}{
+	metadata := map[string]any{
 		"evaluator_id": job.EvaluatorID.String(),
 		"scorer_type":  string(job.ScorerType),
 		"job_id":       job.JobID.String(),

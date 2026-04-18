@@ -121,7 +121,7 @@ func (h *SpanQueryHandler) HandleQuery(c *gin.Context) {
 // @Produce json
 // @Security ApiKeyAuth
 // @Param request body ValidateFilterRequest true "Filter validation request"
-// @Success 200 {object} response.APIResponse{data=map[string]interface{}} "Filter is valid"
+// @Success 200 {object} response.APIResponse{data=map[string]any} "Filter is valid"
 // @Failure 400 {object} response.APIResponse{error=response.APIError} "Invalid filter syntax"
 // @Failure 401 {object} response.APIResponse{error=response.APIError} "Invalid or missing API key"
 // @Router /v1/spans/query/validate [post]
@@ -143,7 +143,7 @@ func (h *SpanQueryHandler) HandleValidate(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, map[string]interface{}{
+	response.Success(c, map[string]any{
 		"valid":   true,
 		"message": "Filter expression is valid",
 	})

@@ -391,8 +391,8 @@ func (m *Manager) GetMigrationInfo() (*MigrationInfo, error) {
 }
 
 // HealthCheck returns health status for monitoring endpoints
-func (m *Manager) HealthCheck() map[string]interface{} {
-	health := make(map[string]interface{})
+func (m *Manager) HealthCheck() map[string]any {
+	health := make(map[string]any)
 
 	var pgErr, chErr error
 	var pgDirty, chDirty bool
@@ -400,39 +400,39 @@ func (m *Manager) HealthCheck() map[string]interface{} {
 
 	// Check PostgreSQL
 	if m.postgresRunner == nil {
-		health["postgres"] = map[string]interface{}{
+		health["postgres"] = map[string]any{
 			"status": "not_initialized",
 			"error":  "PostgreSQL not initialized - run with -db postgres or -db all",
 		}
 		pgErr = errors.New("not initialized")
 	} else {
 		pgVersion, pgDirty, pgErr = m.postgresRunner.Version()
-		health["postgres"] = map[string]interface{}{
+		health["postgres"] = map[string]any{
 			"status":          m.getHealthStatus(pgErr, pgDirty),
 			"current_version": pgVersion,
 			"dirty":           pgDirty,
 		}
 		if pgErr != nil {
-			health["postgres"].(map[string]interface{})["error"] = pgErr.Error()
+			health["postgres"].(map[string]any)["error"] = pgErr.Error()
 		}
 	}
 
 	// Check ClickHouse
 	if m.clickhouseRunner == nil {
-		health["clickhouse"] = map[string]interface{}{
+		health["clickhouse"] = map[string]any{
 			"status": "not_initialized",
 			"error":  "ClickHouse not initialized - run with -db clickhouse or -db all",
 		}
 		chErr = errors.New("not initialized")
 	} else {
 		chVersion, chDirty, chErr = m.clickhouseRunner.Version()
-		health["clickhouse"] = map[string]interface{}{
+		health["clickhouse"] = map[string]any{
 			"status":          m.getHealthStatus(chErr, chDirty),
 			"current_version": chVersion,
 			"dirty":           chDirty,
 		}
 		if chErr != nil {
-			health["clickhouse"].(map[string]interface{})["error"] = chErr.Error()
+			health["clickhouse"].(map[string]any)["error"] = chErr.Error()
 		}
 	}
 

@@ -40,7 +40,7 @@ type Handler struct {
 type Organization struct {
 	CreatedAt          time.Time `json:"created_at" example:"2024-01-01T00:00:00Z" description:"Creation timestamp"`
 	UpdatedAt          time.Time `json:"updated_at" example:"2024-01-01T00:00:00Z" description:"Last update timestamp"`
-	ID                 string    `json:"id" example:"org_1234567890" description:"Unique organization identifier"`
+	ID                 uuid.UUID `json:"id" example:"org_1234567890" description:"Unique organization identifier"`
 	Name               string    `json:"name" example:"Acme Corporation" description:"Organization name"`
 	Description        string    `json:"description,omitempty" example:"Leading AI solutions provider" description:"Optional organization description"`
 	Plan               string    `json:"plan" example:"pro" description:"Subscription plan (free, pro, business, enterprise)"`
@@ -66,7 +66,7 @@ type OrganizationMember struct {
 	CreatedAt time.Time `json:"created_at" example:"2024-01-01T00:00:00Z" description:"When membership was created"`
 	UpdatedAt time.Time `json:"updated_at" example:"2024-01-01T00:00:00Z" description:"When membership was last updated"`
 	InvitedBy *string   `json:"invited_by,omitempty" example:"john@inviter.com" description:"Email of user who sent invitation"`
-	UserID    string    `json:"user_id" example:"usr_1234567890" description:"User ID"`
+	UserID    uuid.UUID `json:"user_id" example:"usr_1234567890" description:"User ID"`
 	Email     string    `json:"email" example:"john@acme.com" description:"User email address"`
 	FirstName string    `json:"first_name" example:"John" description:"User first name"`
 	LastName  string    `json:"last_name" example:"Doe" description:"User last name"`
@@ -178,7 +178,7 @@ func (h *Handler) List(c *gin.Context) {
 		}
 
 		filteredOrgs = append(filteredOrgs, Organization{
-			ID:                 org.ID.String(),
+			ID:                 org.ID,
 			Name:               org.Name,
 			Plan:               org.Plan,
 			SubscriptionStatus: org.SubscriptionStatus,
@@ -210,10 +210,7 @@ func (h *Handler) List(c *gin.Context) {
 	limit := params.Limit
 
 	// Calculate end index for slicing
-	end := offset + limit
-	if end > len(filteredOrgs) {
-		end = len(filteredOrgs)
-	}
+	end := min(offset+limit, len(filteredOrgs))
 
 	// Apply pagination slice
 	if offset < len(filteredOrgs) {
@@ -277,7 +274,7 @@ func (h *Handler) Create(c *gin.Context) {
 
 	// Convert to response format
 	responseData := Organization{
-		ID:                 org.ID.String(),
+		ID:                 org.ID,
 		Name:               org.Name,
 		Plan:               org.Plan,
 		SubscriptionStatus: org.SubscriptionStatus,
@@ -354,7 +351,7 @@ func (h *Handler) Get(c *gin.Context) {
 
 	// Convert to response format
 	responseData := Organization{
-		ID:                 org.ID.String(),
+		ID:                 org.ID,
 		Name:               org.Name,
 		Plan:               org.Plan,
 		SubscriptionStatus: org.SubscriptionStatus,
@@ -449,7 +446,7 @@ func (h *Handler) Update(c *gin.Context) {
 
 	// Convert to response format
 	responseData := Organization{
-		ID:                 org.ID.String(),
+		ID:                 org.ID,
 		Name:               org.Name,
 		Plan:               org.Plan,
 		SubscriptionStatus: org.SubscriptionStatus,
@@ -626,7 +623,7 @@ func (h *Handler) ListMembers(c *gin.Context) {
 		}
 
 		memberList = append(memberList, OrganizationMember{
-			UserID:    member.UserID.String(),
+			UserID:    member.UserID,
 			Email:     userDetails.Email,
 			FirstName: userDetails.FirstName,
 			LastName:  userDetails.LastName,
@@ -662,10 +659,7 @@ func (h *Handler) ListMembers(c *gin.Context) {
 	limit := params.Limit
 
 	// Calculate end index for slicing
-	end := offset + limit
-	if end > len(memberList) {
-		end = len(memberList)
-	}
+	end := min(offset+limit, len(memberList))
 
 	// Apply pagination slice
 	if offset < len(memberList) {
@@ -879,7 +873,7 @@ func (h *Handler) ResetToDefaults(c *gin.Context)    { h.Settings.ResetToDefault
 type InvitationDetailsResponse struct {
 	ExpiresAt        time.Time `json:"expires_at"`
 	OrganizationName string    `json:"organization_name" example:"Acme Corp"`
-	OrganizationID   string    `json:"organization_id" example:"01HX..."`
+	OrganizationID   uuid.UUID `json:"organization_id" example:"01HX..."`
 	InviterName      string    `json:"inviter_name" example:"John"`
 	Role             string    `json:"role" example:"developer"`
 	Email            string    `json:"email" example:"user@example.com"`
@@ -949,7 +943,7 @@ func (h *Handler) ValidateInvitationToken(c *gin.Context) {
 
 	resp := InvitationDetailsResponse{
 		OrganizationName: org.Name,
-		OrganizationID:   org.ID.String(),
+		OrganizationID:   org.ID,
 		InviterName:      inviterName,
 		Role:             roleName,
 		Email:            invitation.Email,

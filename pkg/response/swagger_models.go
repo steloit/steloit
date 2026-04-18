@@ -5,7 +5,7 @@ package response
 // SuccessResponse represents a successful API response
 // @Description Standard successful response
 type SuccessResponse struct {
-	Data    interface{} `json:"data" description:"Response data payload"`
+	Data    any `json:"data" description:"Response data payload"`
 	Meta    *Meta       `json:"meta,omitempty" description:"Response metadata"`
 	Success bool        `json:"success" example:"true" description:"Always true for successful responses"`
 }
@@ -33,7 +33,7 @@ type IDResponse struct {
 // ListResponse represents a cursor-paginated list response
 // @Description Cursor-paginated list response wrapper
 type ListResponse struct {
-	Data    interface{} `json:"data" description:"Array of items"`
+	Data    any `json:"data" description:"Array of items"`
 	Meta    *Meta       `json:"meta" description:"Response metadata with cursor pagination"`
 	Success bool        `json:"success" example:"true" description:"Request success status"`
 }

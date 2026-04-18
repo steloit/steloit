@@ -40,14 +40,14 @@ type TimeWindow struct {
 type DataPoint struct {
 	Timestamp time.Time              `json:"timestamp"`
 	Labels    map[string]string      `json:"labels,omitempty"`
-	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+	Metadata  map[string]any `json:"metadata,omitempty"`
 	Value     float64                `json:"value"`
 }
 
 // TimeSeries represents a time series of data points
 type TimeSeries struct {
 	Labels     map[string]string      `json:"labels,omitempty"`
-	Metadata   map[string]interface{} `json:"metadata,omitempty"`
+	Metadata   map[string]any `json:"metadata,omitempty"`
 	Name       string                 `json:"name"`
 	DataPoints []DataPoint            `json:"data_points"`
 }
@@ -56,7 +56,7 @@ type TimeSeries struct {
 type AggregationRequest struct {
 	Filters     map[string]string      `json:"filters,omitempty"`
 	FillValue   *float64               `json:"fill_value,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
 	TimeWindow  TimeWindow             `json:"time_window"`
 	MetricName  string                 `json:"metric_name"`
 	Aggregation AggregationType        `json:"aggregation"`
@@ -68,7 +68,7 @@ type AggregationRequest struct {
 type AggregationResult struct {
 	ComputedAt  time.Time              `json:"computed_at"`
 	Labels      map[string]string      `json:"labels,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
 	TimeWindow  TimeWindow             `json:"time_window"`
 	MetricName  string                 `json:"metric_name"`
 	Aggregation AggregationType        `json:"aggregation"`
@@ -142,7 +142,7 @@ func (a *Aggregator) Aggregate(req *AggregationRequest) (*AggregationResult, err
 		TimeWindow:  req.TimeWindow,
 		Count:       int64(len(filteredPoints)),
 		ComputedAt:  time.Now().UTC(),
-		Metadata:    make(map[string]interface{}),
+		Metadata:    make(map[string]any),
 	}
 
 	// Group by labels if specified
@@ -373,7 +373,7 @@ func (a *Aggregator) createTimeSeries(metricName string, labels map[string]strin
 		Name:       metricName,
 		Labels:     labels,
 		DataPoints: make([]DataPoint, 0),
-		Metadata:   make(map[string]interface{}),
+		Metadata:   make(map[string]any),
 	}
 
 	if interval <= 0 {

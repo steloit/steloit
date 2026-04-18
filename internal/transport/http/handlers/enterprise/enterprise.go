@@ -128,44 +128,44 @@ func (h *Handler) GetLicenseStatus(c *gin.Context) {
 func (h *Handler) GetAvailableFeatures(c *gin.Context) {
 	tier := h.config.GetLicenseTier()
 
-	allFeatures := map[string]interface{}{
-		"advanced_rbac": map[string]interface{}{
+	allFeatures := map[string]any{
+		"advanced_rbac": map[string]any{
 			"name":          "Advanced Role-Based Access Control",
 			"description":   "Custom roles and fine-grained permissions",
 			"required_tier": "business",
 			"available":     h.config.IsEnterpriseFeatureEnabled("advanced_rbac"),
 		},
-		"sso_integration": map[string]interface{}{
+		"sso_integration": map[string]any{
 			"name":          "Single Sign-On Integration",
 			"description":   "SAML, OIDC, and OAuth2 integration",
 			"required_tier": "business",
 			"available":     h.config.IsEnterpriseFeatureEnabled("sso_integration"),
 		},
-		"custom_compliance": map[string]interface{}{
+		"custom_compliance": map[string]any{
 			"name":          "Custom Compliance Controls",
 			"description":   "SOC2, HIPAA, GDPR compliance features",
 			"required_tier": "business",
 			"available":     h.config.IsEnterpriseFeatureEnabled("custom_compliance"),
 		},
-		"predictive_insights": map[string]interface{}{
+		"predictive_insights": map[string]any{
 			"name":          "Predictive Analytics",
 			"description":   "ML-powered insights and forecasting",
 			"required_tier": "business",
 			"available":     h.config.IsEnterpriseFeatureEnabled("predictive_insights"),
 		},
-		"custom_dashboards": map[string]interface{}{
+		"custom_dashboards": map[string]any{
 			"name":          "Custom Dashboard Builder",
 			"description":   "Create custom analytics dashboards",
 			"required_tier": "business",
 			"available":     h.config.IsEnterpriseFeatureEnabled("custom_dashboards"),
 		},
-		"on_premise_deployment": map[string]interface{}{
+		"on_premise_deployment": map[string]any{
 			"name":          "On-Premise Deployment",
 			"description":   "Deploy in your own infrastructure",
 			"required_tier": "enterprise",
 			"available":     h.config.IsEnterpriseFeatureEnabled("on_premise_deployment"),
 		},
-		"dedicated_support": map[string]interface{}{
+		"dedicated_support": map[string]any{
 			"name":          "Dedicated Support",
 			"description":   "Priority support and dedicated success manager",
 			"required_tier": "enterprise",
@@ -368,7 +368,7 @@ func (h *Handler) GetUserPermissions(c *gin.Context) {
 // Compliance Handlers
 
 func (h *Handler) ValidateCompliance(c *gin.Context) {
-	var data interface{}
+	var data any
 	if err := c.ShouldBindJSON(&data); err != nil {
 		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
@@ -395,7 +395,7 @@ func (h *Handler) GenerateAuditReport(c *gin.Context) {
 }
 
 func (h *Handler) AnonymizePII(c *gin.Context) {
-	var data interface{}
+	var data any
 	if err := c.ShouldBindJSON(&data); err != nil {
 		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return
@@ -419,7 +419,7 @@ func (h *Handler) CheckSOC2Compliance(c *gin.Context) {
 
 	response.Success(c, gin.H{
 		"soc2_compliant": compliant,
-		"status": map[string]interface{}{
+		"status": map[string]any{
 			"compliant":    compliant,
 			"framework":    "SOC 2 Type II",
 			"last_checked": "2024-01-01T00:00:00Z",
@@ -436,7 +436,7 @@ func (h *Handler) CheckHIPAACompliance(c *gin.Context) {
 
 	response.Success(c, gin.H{
 		"hipaa_compliant": compliant,
-		"status": map[string]interface{}{
+		"status": map[string]any{
 			"compliant":    compliant,
 			"framework":    "HIPAA",
 			"last_checked": "2024-01-01T00:00:00Z",
@@ -453,7 +453,7 @@ func (h *Handler) CheckGDPRCompliance(c *gin.Context) {
 
 	response.Success(c, gin.H{
 		"gdpr_compliant": compliant,
-		"status": map[string]interface{}{
+		"status": map[string]any{
 			"compliant":    compliant,
 			"framework":    "GDPR",
 			"last_checked": "2024-01-01T00:00:00Z",
@@ -607,7 +607,7 @@ func (h *Handler) RunMLModel(c *gin.Context) {
 		return
 	}
 
-	var data interface{}
+	var data any
 	if err := c.ShouldBindJSON(&data); err != nil {
 		response.Error(c, appErrors.NewValidationError("Invalid request body", err.Error()))
 		return

@@ -23,7 +23,7 @@ import (
 // APIResponse represents the standard API response format
 // @Description Standard API response wrapper
 type APIResponse struct {
-	Data    interface{} `json:"data,omitempty" description:"Response data payload"`
+	Data    any `json:"data,omitempty" description:"Response data payload"`
 	Error   *APIError   `json:"error,omitempty" description:"Error information if request failed"`
 	Meta    *Meta       `json:"meta,omitempty" description:"Response metadata"`
 	Success bool        `json:"success" example:"true" description:"Indicates if the request was successful"`
@@ -59,7 +59,7 @@ type Meta struct {
 }
 
 // Success returns a successful response with data
-func Success(c *gin.Context, data interface{}) {
+func Success(c *gin.Context, data any) {
 	c.JSON(http.StatusOK, APIResponse{
 		Success: true,
 		Data:    data,
@@ -68,7 +68,7 @@ func Success(c *gin.Context, data interface{}) {
 }
 
 // SuccessWithPagination returns a successful response with offset pagination in meta
-func SuccessWithPagination(c *gin.Context, data interface{}, pag *Pagination) {
+func SuccessWithPagination(c *gin.Context, data any, pag *Pagination) {
 	meta := getMeta(c)
 	meta.Pagination = pag
 
@@ -80,7 +80,7 @@ func SuccessWithPagination(c *gin.Context, data interface{}, pag *Pagination) {
 }
 
 // SuccessWithStatus returns a successful response with custom status code
-func SuccessWithStatus(c *gin.Context, statusCode int, data interface{}) {
+func SuccessWithStatus(c *gin.Context, statusCode int, data any) {
 	c.JSON(statusCode, APIResponse{
 		Success: true,
 		Data:    data,
@@ -89,7 +89,7 @@ func SuccessWithStatus(c *gin.Context, statusCode int, data interface{}) {
 }
 
 // SuccessWithMeta returns a successful response with custom metadata
-func SuccessWithMeta(c *gin.Context, data interface{}, meta *Meta) {
+func SuccessWithMeta(c *gin.Context, data any, meta *Meta) {
 	if meta == nil {
 		meta = getMeta(c)
 	} else {
@@ -110,7 +110,7 @@ func SuccessWithMeta(c *gin.Context, data interface{}, meta *Meta) {
 }
 
 // Created returns a 201 Created response
-func Created(c *gin.Context, data interface{}) {
+func Created(c *gin.Context, data any) {
 	c.JSON(http.StatusCreated, APIResponse{
 		Success: true,
 		Data:    data,
@@ -119,7 +119,7 @@ func Created(c *gin.Context, data interface{}) {
 }
 
 // Accepted returns a 202 Accepted response
-func Accepted(c *gin.Context, data interface{}) {
+func Accepted(c *gin.Context, data any) {
 	c.JSON(http.StatusAccepted, APIResponse{
 		Success: true,
 		Data:    data,

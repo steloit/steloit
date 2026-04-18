@@ -97,17 +97,17 @@ func TestBuiltinScorer_GetTargetText(t *testing.T) {
 		},
 		{
 			name:     "from span data output",
-			job:      &EvaluationJob{SpanData: map[string]interface{}{"output": "span output"}},
+			job:      &EvaluationJob{SpanData: map[string]any{"output": "span output"}},
 			expected: "span output",
 		},
 		{
 			name:     "from span data input",
-			job:      &EvaluationJob{SpanData: map[string]interface{}{"input": "span input"}},
+			job:      &EvaluationJob{SpanData: map[string]any{"input": "span input"}},
 			expected: "span input",
 		},
 		{
 			name:     "prefer variables over span data",
-			job:      &EvaluationJob{Variables: map[string]string{"output": "var out"}, SpanData: map[string]interface{}{"output": "span out"}},
+			job:      &EvaluationJob{Variables: map[string]string{"output": "var out"}, SpanData: map[string]any{"output": "span out"}},
 			expected: "var out",
 		},
 		{
@@ -117,7 +117,7 @@ func TestBuiltinScorer_GetTargetText(t *testing.T) {
 		},
 		{
 			name:     "empty variables fallback to span data",
-			job:      &EvaluationJob{Variables: map[string]string{"output": ""}, SpanData: map[string]interface{}{"output": "span output"}},
+			job:      &EvaluationJob{Variables: map[string]string{"output": ""}, SpanData: map[string]any{"output": "span output"}},
 			expected: "span output",
 		},
 	}

@@ -28,7 +28,7 @@ func TestEnterpriseInterfaceCompliance(t *testing.T) {
 
 		// Test all interface methods are callable (should not panic)
 		assert.NotPanics(t, func() {
-			err := service.ValidateCompliance(ctx, map[string]interface{}{"test": "data"})
+			err := service.ValidateCompliance(ctx, map[string]any{"test": "data"})
 			// In stub mode, this should return nil (no error)
 			// In enterprise mode, this might return validation results
 			assert.NoError(t, err) // Stubs should not error
@@ -41,7 +41,7 @@ func TestEnterpriseInterfaceCompliance(t *testing.T) {
 		})
 
 		assert.NotPanics(t, func() {
-			result, err := service.AnonymizePII(ctx, map[string]interface{}{"email": "test@example.com"})
+			result, err := service.AnonymizePII(ctx, map[string]any{"email": "test@example.com"})
 			assert.NoError(t, err)
 			assert.NotNil(t, result)
 		})
@@ -198,7 +198,7 @@ func TestEnterpriseInterfaceCompliance(t *testing.T) {
 		})
 
 		assert.NotPanics(t, func() {
-			_, err := service.RunMLModel(ctx, "cost_prediction", map[string]interface{}{"data": "test"})
+			_, err := service.RunMLModel(ctx, "cost_prediction", map[string]any{"data": "test"})
 			// Stub should return error
 			assert.Error(t, err)
 		})
@@ -238,7 +238,7 @@ func TestStubBehaviorConsistency(t *testing.T) {
 	t.Run("Stub services provide safe defaults", func(t *testing.T) {
 		// Compliance should be permissive in stub mode
 		compliance := compliance.New()
-		err := compliance.ValidateCompliance(ctx, map[string]interface{}{"test": "data"})
+		err := compliance.ValidateCompliance(ctx, map[string]any{"test": "data"})
 		assert.NoError(t, err, "Stub compliance should not block operations")
 
 		// RBAC should allow basic permissions in stub mode for development

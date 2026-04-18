@@ -57,7 +57,7 @@ func NewOTLPHandler(
 // @Produce json
 // @Security ApiKeyAuth
 // @Param request body observability.OTLPRequest true "OTLP trace export request"
-// @Success 200 {object} response.APIResponse{data=map[string]interface{}} "Traces accepted"
+// @Success 200 {object} response.APIResponse{data=map[string]any} "Traces accepted"
 // @Failure 400 {object} response.APIResponse{error=response.APIError} "Invalid OTLP request"
 // @Failure 401 {object} response.APIResponse{error=response.APIError} "Invalid or missing API key"
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
@@ -241,7 +241,7 @@ func (h *OTLPHandler) HandleTraces(c *gin.Context) {
 	if len(claimedIDs) == 0 && !hasTraces {
 		h.logger.Info("All OTLP spans were duplicates, skipping", "project_id", projectID, "duplicates", len(duplicateIDs))
 
-		response.Success(c, map[string]interface{}{
+		response.Success(c, map[string]any{
 			"status":          "all_duplicates",
 			"duplicate_spans": len(duplicateIDs),
 		})
@@ -297,7 +297,7 @@ func (h *OTLPHandler) HandleTraces(c *gin.Context) {
 		Events:           claimedEventData,
 		ClaimedSpanIDs:   claimedIDs,
 		DuplicateSpanIDs: duplicateIDs,
-		Metadata: map[string]interface{}{
+		Metadata: map[string]any{
 			"source":         "otlp",
 			"content_type":   contentType,
 			"resource_spans": len(otlpReq.ResourceSpans),
@@ -319,7 +319,7 @@ func (h *OTLPHandler) HandleTraces(c *gin.Context) {
 	h.logger.Info("OTLP traces published to stream successfully", "batch_id", batchID.String(), "stream_id", streamID, "claimed_events", len(claimedIDs), "duplicates", len(duplicateIDs), "project_id", projectID)
 
 	// 6. Return OTLP-compatible success response (using standard APIResponse envelope)
-	response.Success(c, map[string]interface{}{
+	response.Success(c, map[string]any{
 		"status":          "accepted",
 		"batch_id":        batchID.String(),
 		"stream_id":       streamID,
@@ -382,7 +382,7 @@ func convertProtoToInternal(protoReq *coltracepb.ExportTraceServiceRequest) (obs
 				// Convert byte arrays to hex strings for internal format
 				traceIDHex := hex.EncodeToString(protoSpan.TraceId)
 				spanIDHex := hex.EncodeToString(protoSpan.SpanId)
-				var parentSpanIDHex interface{}
+				var parentSpanIDHex any
 				if len(protoSpan.ParentSpanId) > 0 {
 					parentSpanIDHex = hex.EncodeToString(protoSpan.ParentSpanId)
 				}
@@ -440,8 +440,8 @@ func convertProtoToInternal(protoReq *coltracepb.ExportTraceServiceRequest) (obs
 	return internalReq, nil
 }
 
-// convertProtoAnyValue converts protobuf AnyValue to interface{}
-func convertProtoAnyValue(value *commonpb.AnyValue) interface{} {
+// convertProtoAnyValue converts protobuf AnyValue to any
+func convertProtoAnyValue(value *commonpb.AnyValue) any {
 	if value == nil {
 		return nil
 	}
@@ -459,7 +459,7 @@ func convertProtoAnyValue(value *commonpb.AnyValue) interface{} {
 		if v.ArrayValue == nil {
 			return nil
 		}
-		arr := make([]interface{}, len(v.ArrayValue.Values))
+		arr := make([]any, len(v.ArrayValue.Values))
 		for i, item := range v.ArrayValue.Values {
 			arr[i] = convertProtoAnyValue(item)
 		}
@@ -468,7 +468,7 @@ func convertProtoAnyValue(value *commonpb.AnyValue) interface{} {
 		if v.KvlistValue == nil {
 			return nil
 		}
-		m := make(map[string]interface{})
+		m := make(map[string]any)
 		for _, kv := range v.KvlistValue.Values {
 			m[kv.Key] = convertProtoAnyValue(kv.Value)
 		}

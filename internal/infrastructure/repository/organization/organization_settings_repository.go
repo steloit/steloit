@@ -95,14 +95,14 @@ func (r *organizationSettingsRepository) GetAllByOrganizationID(ctx context.Cont
 // a flat key → value map. Values that fail to decode are surfaced as
 // raw strings so the operator can see the bytes rather than silently
 // dropping them.
-func (r *organizationSettingsRepository) GetSettingsMap(ctx context.Context, orgID uuid.UUID) (map[string]interface{}, error) {
+func (r *organizationSettingsRepository) GetSettingsMap(ctx context.Context, orgID uuid.UUID) (map[string]any, error) {
 	settings, err := r.GetAllByOrganizationID(ctx, orgID)
 	if err != nil {
 		return nil, err
 	}
-	out := make(map[string]interface{}, len(settings))
+	out := make(map[string]any, len(settings))
 	for _, s := range settings {
-		var v interface{}
+		var v any
 		if err := json.Unmarshal([]byte(s.Value), &v); err != nil {
 			v = s.Value
 		}
@@ -124,7 +124,7 @@ func (r *organizationSettingsRepository) DeleteByKey(ctx context.Context, orgID 
 // UpsertSetting creates-or-updates a single setting atomically. One
 // round trip via ON CONFLICT replaces the previous get-then-create-or-
 // update dance.
-func (r *organizationSettingsRepository) UpsertSetting(ctx context.Context, orgID uuid.UUID, key string, value interface{}) (*orgDomain.OrganizationSettings, error) {
+func (r *organizationSettingsRepository) UpsertSetting(ctx context.Context, orgID uuid.UUID, key string, value any) (*orgDomain.OrganizationSettings, error) {
 	raw, err := json.Marshal(value)
 	if err != nil {
 		return nil, fmt.Errorf("marshal setting %s/%s: %w", orgID, key, err)

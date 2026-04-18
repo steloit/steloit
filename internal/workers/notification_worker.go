@@ -24,14 +24,14 @@ type NotificationWorker struct {
 // NotificationJob represents a notification processing job
 type NotificationJob struct {
 	Timestamp time.Time   `json:"timestamp"`
-	Data      interface{} `json:"data"`
+	Data      any `json:"data"`
 	Type      string      `json:"type"`
 	Retry     int         `json:"retry"`
 }
 
 // EmailJob represents an email notification job
 type EmailJob struct {
-	TemplateData map[string]interface{} `json:"template_data,omitempty"`
+	TemplateData map[string]any `json:"template_data,omitempty"`
 	Subject      string                 `json:"subject"`
 	Body         string                 `json:"body"`
 	BodyHTML     string                 `json:"body_html,omitempty"`
@@ -46,7 +46,7 @@ type EmailJob struct {
 // WebhookJob represents a webhook notification job
 type WebhookJob struct {
 	Headers    map[string]string      `json:"headers,omitempty"`
-	Payload    map[string]interface{} `json:"payload"`
+	Payload    map[string]any `json:"payload"`
 	URL        string                 `json:"url"`
 	Method     string                 `json:"method"`
 	UserID     string                 `json:"user_id,omitempty"`
@@ -63,7 +63,7 @@ type SlackJob struct {
 	IconEmoji string                   `json:"icon_emoji,omitempty"`
 	UserID    string                   `json:"user_id,omitempty"`
 	EventType string                   `json:"event_type,omitempty"`
-	Blocks    []map[string]interface{} `json:"blocks,omitempty"`
+	Blocks    []map[string]any `json:"blocks,omitempty"`
 }
 
 // SMSJob represents an SMS notification job
@@ -75,7 +75,7 @@ type SMSJob struct {
 
 // PushJob represents a push notification job
 type PushJob struct {
-	Data         map[string]interface{} `json:"data,omitempty"`
+	Data         map[string]any `json:"data,omitempty"`
 	Title        string                 `json:"title"`
 	Body         string                 `json:"body"`
 	Sound        string                 `json:"sound,omitempty"`
@@ -121,7 +121,7 @@ func (w *NotificationWorker) Stop() {
 }
 
 // QueueJob queues a notification job for processing
-func (w *NotificationWorker) QueueJob(jobType string, data interface{}) {
+func (w *NotificationWorker) QueueJob(jobType string, data any) {
 	job := NotificationJob{
 		Type:      jobType,
 		Data:      data,
@@ -224,11 +224,11 @@ func (w *NotificationWorker) processJob(workerID int, job NotificationJob) {
 }
 
 // processEmail processes an email notification
-func (w *NotificationWorker) processEmail(ctx context.Context, data interface{}) error {
+func (w *NotificationWorker) processEmail(ctx context.Context, data any) error {
 	jobData, ok := data.(EmailJob)
 	if !ok {
 		// Try to unmarshal if it's a map
-		if mapData, ok := data.(map[string]interface{}); ok {
+		if mapData, ok := data.(map[string]any); ok {
 			jsonData, err := json.Marshal(mapData)
 			if err != nil {
 				return fmt.Errorf("failed to marshal email data: %w", err)
@@ -254,11 +254,11 @@ func (w *NotificationWorker) processEmail(ctx context.Context, data interface{})
 }
 
 // processWebhook processes a webhook notification
-func (w *NotificationWorker) processWebhook(ctx context.Context, data interface{}) error {
+func (w *NotificationWorker) processWebhook(ctx context.Context, data any) error {
 	jobData, ok := data.(WebhookJob)
 	if !ok {
 		// Try to unmarshal if it's a map
-		if mapData, ok := data.(map[string]interface{}); ok {
+		if mapData, ok := data.(map[string]any); ok {
 			jsonData, err := json.Marshal(mapData)
 			if err != nil {
 				return fmt.Errorf("failed to marshal webhook data: %w", err)
@@ -284,11 +284,11 @@ func (w *NotificationWorker) processWebhook(ctx context.Context, data interface{
 }
 
 // processSlack processes a Slack notification
-func (w *NotificationWorker) processSlack(ctx context.Context, data interface{}) error {
+func (w *NotificationWorker) processSlack(ctx context.Context, data any) error {
 	jobData, ok := data.(SlackJob)
 	if !ok {
 		// Try to unmarshal if it's a map
-		if mapData, ok := data.(map[string]interface{}); ok {
+		if mapData, ok := data.(map[string]any); ok {
 			jsonData, err := json.Marshal(mapData)
 			if err != nil {
 				return fmt.Errorf("failed to marshal slack data: %w", err)
@@ -314,11 +314,11 @@ func (w *NotificationWorker) processSlack(ctx context.Context, data interface{})
 }
 
 // processSMS processes an SMS notification
-func (w *NotificationWorker) processSMS(ctx context.Context, data interface{}) error {
+func (w *NotificationWorker) processSMS(ctx context.Context, data any) error {
 	jobData, ok := data.(SMSJob)
 	if !ok {
 		// Try to unmarshal if it's a map
-		if mapData, ok := data.(map[string]interface{}); ok {
+		if mapData, ok := data.(map[string]any); ok {
 			jsonData, err := json.Marshal(mapData)
 			if err != nil {
 				return fmt.Errorf("failed to marshal sms data: %w", err)
@@ -344,11 +344,11 @@ func (w *NotificationWorker) processSMS(ctx context.Context, data interface{}) e
 }
 
 // processPush processes a push notification
-func (w *NotificationWorker) processPush(ctx context.Context, data interface{}) error {
+func (w *NotificationWorker) processPush(ctx context.Context, data any) error {
 	jobData, ok := data.(PushJob)
 	if !ok {
 		// Try to unmarshal if it's a map
-		if mapData, ok := data.(map[string]interface{}); ok {
+		if mapData, ok := data.(map[string]any); ok {
 			jsonData, err := json.Marshal(mapData)
 			if err != nil {
 				return fmt.Errorf("failed to marshal push data: %w", err)
@@ -379,8 +379,8 @@ func (w *NotificationWorker) GetQueueLength() int {
 }
 
 // GetStats returns worker statistics
-func (w *NotificationWorker) GetStats() map[string]interface{} {
-	return map[string]interface{}{
+func (w *NotificationWorker) GetStats() map[string]any {
+	return map[string]any{
 		"queue_length":   w.GetQueueLength(),
 		"queue_capacity": cap(w.queue),
 		"workers":        w.config.Workers.NotificationWorkers,
@@ -395,7 +395,7 @@ func (w *NotificationWorker) SendWelcomeEmail(userEmail, userName string) {
 		To:       []string{userEmail},
 		Subject:  "Welcome to Brokle!",
 		Template: "welcome",
-		TemplateData: map[string]interface{}{
+		TemplateData: map[string]any{
 			"name": userName,
 		},
 		Priority: "normal",
@@ -408,7 +408,7 @@ func (w *NotificationWorker) SendPasswordResetEmail(userEmail, resetToken string
 		To:       []string{userEmail},
 		Subject:  "Reset your Brokle password",
 		Template: "password_reset",
-		TemplateData: map[string]interface{}{
+		TemplateData: map[string]any{
 			"reset_token": resetToken,
 		},
 		Priority: "high",
@@ -421,7 +421,7 @@ func (w *NotificationWorker) SendBillingAlert(userEmail string, amount float64, 
 		To:       []string{userEmail},
 		Subject:  "Billing Alert - Usage Threshold Exceeded",
 		Template: "billing_alert",
-		TemplateData: map[string]interface{}{
+		TemplateData: map[string]any{
 			"amount":    amount,
 			"threshold": threshold,
 		},
@@ -445,7 +445,7 @@ func (w *NotificationWorker) SendSystemAlert(message, severity string) {
 		w.QueueWebhook(WebhookJob{
 			URL:    w.config.Notifications.AlertWebhookURL,
 			Method: "POST",
-			Payload: map[string]interface{}{
+			Payload: map[string]any{
 				"type":      "system_alert",
 				"severity":  severity,
 				"message":   message,

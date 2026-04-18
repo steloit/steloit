@@ -114,7 +114,7 @@ func TestRegexScorer_GetTargetText(t *testing.T) {
 		},
 		{
 			name:     "from span data output",
-			job:      &EvaluationJob{SpanData: map[string]interface{}{"output": "span output"}},
+			job:      &EvaluationJob{SpanData: map[string]any{"output": "span output"}},
 			expected: "span output",
 		},
 		{
@@ -462,7 +462,7 @@ func TestRegexScorer_EmptyText(t *testing.T) {
 	job := &EvaluationJob{
 		ScorerConfig: map[string]any{"pattern": "test"},
 		Variables:    map[string]string{},
-		SpanData:     map[string]interface{}{},
+		SpanData:     map[string]any{},
 	}
 
 	result, err := scorer.Execute(ctx, job)

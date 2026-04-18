@@ -239,29 +239,29 @@ func (hs *HealthService) HTTPHealthHandler() http.HandlerFunc {
 }
 
 // GetSimpleHealthStatus returns a simple health status for basic monitoring
-func (hs *HealthService) GetSimpleHealthStatus(ctx context.Context) map[string]interface{} {
-	health := make(map[string]interface{})
+func (hs *HealthService) GetSimpleHealthStatus(ctx context.Context) map[string]any {
+	health := make(map[string]any)
 
 	// Check PostgreSQL
 	pgVersion, pgDirty, pgErr := hs.manager.postgresRunner.Version()
-	health["postgres"] = map[string]interface{}{
+	health["postgres"] = map[string]any{
 		"status":          hs.getSimpleHealthStatus(pgErr, pgDirty),
 		"current_version": pgVersion,
 		"dirty":           pgDirty,
 	}
 	if pgErr != nil {
-		health["postgres"].(map[string]interface{})["error"] = pgErr.Error()
+		health["postgres"].(map[string]any)["error"] = pgErr.Error()
 	}
 
 	// Check ClickHouse
 	chVersion, chDirty, chErr := hs.manager.clickhouseRunner.Version()
-	health["clickhouse"] = map[string]interface{}{
+	health["clickhouse"] = map[string]any{
 		"status":          hs.getSimpleHealthStatus(chErr, chDirty),
 		"current_version": chVersion,
 		"dirty":           chDirty,
 	}
 	if chErr != nil {
-		health["clickhouse"].(map[string]interface{})["error"] = chErr.Error()
+		health["clickhouse"].(map[string]any)["error"] = chErr.Error()
 	}
 
 	// Overall status

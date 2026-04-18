@@ -44,7 +44,7 @@ func TestGeneratePreview_JSONContent(t *testing.T) {
 	}
 
 	// Verify it's valid JSON (at least the source)
-	var data interface{}
+	var data any
 	if err := json.Unmarshal([]byte(jsonContent), &data); err != nil {
 		t.Errorf("Source JSON is invalid: %v", err)
 	}
@@ -168,7 +168,7 @@ func TestGeneratePreview_LargeJSONContent(t *testing.T) {
 			"description": "This is a sample description for testing purposes.",
 		})
 	}
-	largeJSON, _ := json.Marshal(map[string]interface{}{
+	largeJSON, _ := json.Marshal(map[string]any{
 		"items": largeArray,
 		"total": 1000,
 	})
@@ -272,22 +272,22 @@ func TestTruncateAtWordBoundary(t *testing.T) {
 func TestAnalyzeJSONStructure(t *testing.T) {
 	tests := []struct {
 		name     string
-		data     interface{}
+		data     any
 		expected string
 	}{
 		{
 			name:     "Simple object",
-			data:     map[string]interface{}{"name": "John", "age": 30.0}, // JSON unmarshal converts to float64
+			data:     map[string]any{"name": "John", "age": 30.0}, // JSON unmarshal converts to float64
 			expected: "{name:string, age:number}",
 		},
 		{
 			name:     "Empty array",
-			data:     []interface{}{},
+			data:     []any{},
 			expected: "[]",
 		},
 		{
 			name:     "Array of strings",
-			data:     []interface{}{"a", "b", "c"},
+			data:     []any{"a", "b", "c"},
 			expected: "[string (length:3)]",
 		},
 		{
@@ -419,7 +419,7 @@ func BenchmarkGeneratePreview_LargeJSON(b *testing.B) {
 			"data": strings.Repeat("x", 100),
 		})
 	}
-	content, _ := json.Marshal(map[string]interface{}{"items": largeArray})
+	content, _ := json.Marshal(map[string]any{"items": largeArray})
 	b.ResetTimer()
 	for range b.N {
 		_ = GeneratePreview(string(content))

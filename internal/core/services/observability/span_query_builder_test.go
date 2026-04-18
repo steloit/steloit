@@ -22,7 +22,7 @@ func TestSpanQueryBuilder_BuildQuery(t *testing.T) {
 		offset        int
 		wantContains  []string // SQL fragments that should be present
 		wantArgCount  int      // Expected number of arguments
-		wantFirstArgs []interface{}
+		wantFirstArgs []any
 		wantErr       bool
 	}{
 		{
@@ -37,7 +37,7 @@ func TestSpanQueryBuilder_BuildQuery(t *testing.T) {
 			offset:        0,
 			wantContains:  []string{"service_name = ?", "project_id = ?", "deleted_at IS NULL"},
 			wantArgCount:  4, // projectID, filter value, limit, offset
-			wantFirstArgs: []interface{}{"proj123"},
+			wantFirstArgs: []any{"proj123"},
 			wantErr:       false,
 		},
 		{
@@ -656,7 +656,7 @@ func TestSpanQueryBuilder_SQLInjectionPrevention(t *testing.T) {
 		name       string
 		node       obsDomain.FilterNode
 		checkQuery func(t *testing.T, query string)
-		checkArgs  func(t *testing.T, args []interface{})
+		checkArgs  func(t *testing.T, args []any)
 	}{
 		{
 			name: "malicious value in equality",
@@ -672,7 +672,7 @@ func TestSpanQueryBuilder_SQLInjectionPrevention(t *testing.T) {
 				// Should use parameterized placeholder
 				assert.Contains(t, query, "service_name = ?")
 			},
-			checkArgs: func(t *testing.T, args []interface{}) {
+			checkArgs: func(t *testing.T, args []any) {
 				// Malicious string should be safely in args
 				found := false
 				for _, arg := range args {
@@ -695,7 +695,7 @@ func TestSpanQueryBuilder_SQLInjectionPrevention(t *testing.T) {
 				assert.NotContains(t, query, "DELETE FROM")
 				assert.Contains(t, query, "positionCaseInsensitive(span_name, ?) > 0")
 			},
-			checkArgs: func(t *testing.T, args []interface{}) {
+			checkArgs: func(t *testing.T, args []any) {
 				found := false
 				for _, arg := range args {
 					if s, ok := arg.(string); ok && strings.Contains(s, "DELETE FROM") {
@@ -717,7 +717,7 @@ func TestSpanQueryBuilder_SQLInjectionPrevention(t *testing.T) {
 				assert.NotContains(t, query, "DROP TABLE")
 				assert.Contains(t, query, "IN (?, ?, ?)")
 			},
-			checkArgs: func(t *testing.T, args []interface{}) {
+			checkArgs: func(t *testing.T, args []any) {
 				// All IN values should be in args
 				argStrs := make([]string, 0)
 				for _, arg := range args {
