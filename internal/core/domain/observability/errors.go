@@ -30,13 +30,6 @@ var (
 	ErrDuplicateQualityScore = errors.New("duplicate quality score for the same trace/span and score name")
 	ErrFilterPresetNotFound  = errors.New("filter preset not found")
 
-	// Model pricing errors
-	ErrModelNotFound         = errors.New("model not found")
-	ErrInvalidPricingPattern = errors.New("invalid pricing pattern")
-	ErrPricingDataIncomplete = errors.New("incomplete pricing data")
-	ErrPricingExpired        = errors.New("pricing has expired")
-	ErrInvalidPricingData    = errors.New("invalid pricing data")
-
 	// General validation errors
 	ErrValidationFailed        = errors.New("validation failed")
 	ErrInvalidProjectID        = errors.New("invalid project ID")
@@ -79,12 +72,6 @@ const (
 	ErrCodeEvaluatorNotFound     = "EVALUATOR_NOT_FOUND"
 	ErrCodeDuplicateQualityScore = "DUPLICATE_QUALITY_SCORE"
 
-	// Model pricing error codes
-	ErrCodeModelNotFound         = "MODEL_NOT_FOUND"
-	ErrCodeInvalidPricingPattern = "INVALID_PRICING_PATTERN"
-	ErrCodePricingDataIncomplete = "PRICING_DATA_INCOMPLETE"
-	ErrCodePricingExpired        = "PRICING_EXPIRED"
-	ErrCodeInvalidPricingData    = "INVALID_PRICING_DATA"
 
 	// General validation error codes
 	ErrCodeValidationFailed        = "VALIDATION_FAILED"
