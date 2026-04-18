@@ -1,6 +1,7 @@
 package observability
 
 import (
+	"github.com/google/uuid"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -513,7 +514,7 @@ func (r *traceRepository) GetSpan(ctx context.Context, spanID string) (*observab
 // GetSpanByProject retrieves a span with project ownership validation.
 // Returns error if span doesn't exist or doesn't belong to the specified project.
 // This prevents cross-project data access when importing spans into datasets.
-func (r *traceRepository) GetSpanByProject(ctx context.Context, spanID string, projectID string) (*observability.Span, error) {
+func (r *traceRepository) GetSpanByProject(ctx context.Context, spanID string, projectID uuid.UUID) (*observability.Span, error) {
 	query := "SELECT " + observability.SpanSelectFields + " FROM otel_traces WHERE span_id = ? AND project_id = ? AND deleted_at IS NULL LIMIT 1"
 
 	row := r.db.QueryRow(ctx, query, spanID, projectID)
@@ -558,7 +559,7 @@ func (r *traceRepository) GetSpansByFilter(ctx context.Context, filter *observab
 	args := []interface{}{}
 
 	if filter != nil {
-		if filter.ProjectID != "" {
+		if filter.ProjectID != uuid.Nil {
 			query += " AND project_id = ?"
 			args = append(args, filter.ProjectID)
 		}
@@ -678,7 +679,7 @@ func (r *traceRepository) CountSpansByFilter(ctx context.Context, filter *observ
 	args := []interface{}{}
 
 	if filter != nil {
-		if filter.ProjectID != "" {
+		if filter.ProjectID != uuid.Nil {
 			query += " AND project_id = ?"
 			args = append(args, filter.ProjectID)
 		}
@@ -734,7 +735,7 @@ func (r *traceRepository) GetRootSpan(ctx context.Context, traceID string) (*obs
 // GetRootSpanByProject retrieves the root span of a trace with project ownership validation.
 // Returns error if trace doesn't exist or doesn't belong to the specified project.
 // This prevents cross-project data access when importing traces into datasets.
-func (r *traceRepository) GetRootSpanByProject(ctx context.Context, traceID string, projectID string) (*observability.Span, error) {
+func (r *traceRepository) GetRootSpanByProject(ctx context.Context, traceID string, projectID uuid.UUID) (*observability.Span, error) {
 	query := `
 		SELECT ` + observability.SpanSelectFields + `
 		FROM otel_traces
@@ -866,7 +867,7 @@ func (r *traceRepository) ListTraces(ctx context.Context, filter *observability.
 	havingArgs := []interface{}{}
 
 	if filter != nil {
-		if filter.ProjectID != "" {
+		if filter.ProjectID != uuid.Nil {
 			query += " AND project_id = ?"
 			args = append(args, filter.ProjectID)
 		}
@@ -1062,7 +1063,7 @@ func (r *traceRepository) CountTraces(ctx context.Context, filter *observability
 	havingArgs := []interface{}{}
 
 	if filter != nil {
-		if filter.ProjectID != "" {
+		if filter.ProjectID != uuid.Nil {
 			innerQuery += " AND project_id = ?"
 			args = append(args, filter.ProjectID)
 		}
@@ -1184,7 +1185,7 @@ func (r *traceRepository) DeleteTrace(ctx context.Context, traceID string) error
 // UpdateTraceTags updates the tags for a trace (all spans in the trace).
 // Uses ALTER TABLE UPDATE which is ClickHouse's mutation mechanism for updates.
 // Tags are normalized (lowercase, trimmed, unique, sorted) before storage.
-func (r *traceRepository) UpdateTraceTags(ctx context.Context, projectID, traceID string, tags []string) error {
+func (r *traceRepository) UpdateTraceTags(ctx context.Context, projectID uuid.UUID, traceID string, tags []string) error {
 	// Normalize tags before storage
 	normalized := observability.NormalizeTags(tags)
 
@@ -1200,7 +1201,7 @@ func (r *traceRepository) UpdateTraceTags(ctx context.Context, projectID, traceI
 
 // UpdateTraceBookmark updates the bookmark status for a trace.
 // Uses ALTER TABLE UPDATE which is ClickHouse's mutation mechanism for updates.
-func (r *traceRepository) UpdateTraceBookmark(ctx context.Context, projectID, traceID string, bookmarked bool) error {
+func (r *traceRepository) UpdateTraceBookmark(ctx context.Context, projectID uuid.UUID, traceID string, bookmarked bool) error {
 	query := `
 		ALTER TABLE otel_traces
 		UPDATE bookmarked = ?
@@ -1261,7 +1262,7 @@ func (r *traceRepository) CalculateTotalTokens(ctx context.Context, traceID stri
 	return total, nil
 }
 
-func (r *traceRepository) GetFilterOptions(ctx context.Context, projectID string) (*observability.TraceFilterOptions, error) {
+func (r *traceRepository) GetFilterOptions(ctx context.Context, projectID uuid.UUID) (*observability.TraceFilterOptions, error) {
 	query := `
 		SELECT
 			arrayDistinct(groupArray(root_model_name)) as models,
@@ -1466,7 +1467,7 @@ func (r *traceRepository) DiscoverAttributes(ctx context.Context, req *observabi
 }
 
 // discoverAttributesFromSource extracts attribute keys from a single source (span_attributes or resource_attributes).
-func (r *traceRepository) discoverAttributesFromSource(ctx context.Context, projectID string, source observability.AttributeSource, prefix string, limit int) ([]observability.AttributeKey, error) {
+func (r *traceRepository) discoverAttributesFromSource(ctx context.Context, projectID uuid.UUID, source observability.AttributeSource, prefix string, limit int) ([]observability.AttributeKey, error) {
 	columnName := string(source)
 
 	// Build query using mapKeys() and arrayJoin() for efficient key extraction
@@ -1535,7 +1536,7 @@ func (r *traceRepository) discoverAttributesFromSource(ctx context.Context, proj
 // countAttributeKeysFromSource counts unique attribute keys from a source without LIMIT.
 // Used to provide accurate TotalCount for pagination.
 // Excludes materialized columns to match the filtering in discoverAttributesFromSource.
-func (r *traceRepository) countAttributeKeysFromSource(ctx context.Context, projectID string, source observability.AttributeSource, prefix string) (int64, error) {
+func (r *traceRepository) countAttributeKeysFromSource(ctx context.Context, projectID uuid.UUID, source observability.AttributeSource, prefix string) (int64, error) {
 	columnName := string(source)
 
 	// Build exclusion list for materialized columns
@@ -1643,7 +1644,7 @@ func (r *traceRepository) ListSessions(ctx context.Context, filter *observabilit
 	if filter == nil {
 		return nil, fmt.Errorf("filter is required")
 	}
-	if filter.ProjectID == "" {
+	if filter.ProjectID == uuid.Nil {
 		return nil, fmt.Errorf("project_id is required")
 	}
 
@@ -1764,7 +1765,7 @@ func (r *traceRepository) CountSessions(ctx context.Context, filter *observabili
 	if filter == nil {
 		return 0, fmt.Errorf("filter is required")
 	}
-	if filter.ProjectID == "" {
+	if filter.ProjectID == uuid.Nil {
 		return 0, fmt.Errorf("project_id is required")
 	}
 

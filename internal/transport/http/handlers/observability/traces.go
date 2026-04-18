@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"brokle/internal/core/domain/observability"
 	"brokle/internal/transport/http/middleware"
@@ -90,7 +91,7 @@ func (h *Handler) ListTraces(c *gin.Context) {
 	// Project scoping + membership check is enforced by RequireProjectAccess
 	// middleware; the resolved projectID is pinned to the context.
 	filter := &observability.TraceFilter{
-		ProjectID: middleware.MustGetProjectID(c).String(),
+		ProjectID: middleware.MustGetProjectID(c),
 	}
 
 	if sessionID := c.Query("session_id"); sessionID != "" {
@@ -328,9 +329,9 @@ func (h *Handler) UpdateTraceTags(c *gin.Context) {
 		response.Error(c, appErrors.NewValidationError("Missing trace ID", "id is required"))
 		return
 	}
-	projectID := c.Query("project_id")
-	if projectID == "" {
-		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
+	projectID, err := uuid.Parse(c.Query("project_id"))
+	if err != nil {
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid UUID"))
 		return
 	}
 
@@ -381,9 +382,9 @@ func (h *Handler) UpdateTraceBookmark(c *gin.Context) {
 		response.Error(c, appErrors.NewValidationError("Missing trace ID", "id is required"))
 		return
 	}
-	projectID := c.Query("project_id")
-	if projectID == "" {
-		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
+	projectID, err := uuid.Parse(c.Query("project_id"))
+	if err != nil {
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid UUID"))
 		return
 	}
 
@@ -415,9 +416,9 @@ func (h *Handler) UpdateTraceBookmark(c *gin.Context) {
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/traces/filter-options [get]
 func (h *Handler) GetTraceFilterOptions(c *gin.Context) {
-	projectID := c.Query("project_id")
-	if projectID == "" {
-		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
+	projectID, err := uuid.Parse(c.Query("project_id"))
+	if err != nil {
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid UUID"))
 		return
 	}
 
@@ -447,9 +448,9 @@ func (h *Handler) GetTraceFilterOptions(c *gin.Context) {
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/traces/attributes [get]
 func (h *Handler) DiscoverAttributes(c *gin.Context) {
-	projectID := c.Query("project_id")
-	if projectID == "" {
-		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
+	projectID, err := uuid.Parse(c.Query("project_id"))
+	if err != nil {
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid UUID"))
 		return
 	}
 

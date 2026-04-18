@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // SpanQueryRequest represents an SDK request for querying spans with filter expressions.
@@ -69,7 +71,7 @@ func (b *BinaryNode) isFilterNode() {}
 type ConditionNode struct {
 	Field    string         // Attribute path: service.name, gen_ai.system
 	Operator FilterOperator // Comparison operator
-	Value    interface{}    // string, float64, []string (for IN clause)
+	Value    any    // string, float64, []string (for IN clause)
 	Negated  bool           // For NOT EXISTS
 }
 
@@ -360,7 +362,7 @@ type AttributeKey struct {
 
 // AttributeDiscoveryRequest represents a request for discovering attribute keys.
 type AttributeDiscoveryRequest struct {
-	ProjectID string            `json:"project_id"`
+	ProjectID uuid.UUID         `json:"project_id"`
 	Sources   []AttributeSource `json:"sources,omitempty"` // defaults to all sources
 	Prefix    string            `json:"prefix,omitempty"`  // filter by key prefix
 	Limit     int               `json:"limit,omitempty"`   // default 100, max 500

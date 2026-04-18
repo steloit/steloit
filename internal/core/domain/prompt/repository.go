@@ -103,22 +103,22 @@ type CacheRepository interface {
 
 // CachedPrompt represents a prompt stored in the cache.
 type CachedPrompt struct {
-	PromptID      string       `json:"prompt_id"`
-	ProjectID     string       `json:"project_id"`
+	PromptID      uuid.UUID    `json:"prompt_id"`
+	ProjectID     uuid.UUID    `json:"project_id"`
 	Name          string       `json:"name"`
 	Type          PromptType   `json:"type"`
 	Description   string       `json:"description"`
 	Tags          []string     `json:"tags"`
 	Version       int          `json:"version"`
-	VersionID     string       `json:"version_id"`
+	VersionID     uuid.UUID    `json:"version_id"`
 	Labels        []string     `json:"labels"`
-	Template      interface{}  `json:"template"`
+	Template      any          `json:"template"`
 	Config        *ModelConfig `json:"config,omitempty"`
 	Variables     []string     `json:"variables"`
 	CommitMessage string       `json:"commit_message"`
 	CreatedAt     time.Time    `json:"created_at"`
 	UpdatedAt     time.Time    `json:"updated_at"`
-	CreatedBy     string       `json:"created_by"`
+	CreatedBy     *uuid.UUID   `json:"created_by,omitempty"`
 	CachedAt      time.Time    `json:"cached_at"`
 	ExpiresAt     time.Time    `json:"expires_at"`
 }

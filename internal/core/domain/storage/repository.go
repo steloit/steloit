@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
+
 	"brokle/pkg/pagination"
 )
 
@@ -14,7 +16,7 @@ type BlobStorageRepository interface {
 	Delete(ctx context.Context, id string) error
 	GetByID(ctx context.Context, id string) (*BlobStorageFileLog, error)
 	GetByEntityID(ctx context.Context, entityType, entityID string) ([]*BlobStorageFileLog, error)
-	GetByProjectID(ctx context.Context, projectID string, filter *BlobStorageFilter) ([]*BlobStorageFileLog, error)
+	GetByProjectID(ctx context.Context, projectID uuid.UUID, filter *BlobStorageFilter) ([]*BlobStorageFileLog, error)
 	Count(ctx context.Context, filter *BlobStorageFilter) (int64, error)
 }
 

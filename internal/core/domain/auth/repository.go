@@ -33,7 +33,7 @@ type UserSessionRepository interface {
 	MarkAsUsed(ctx context.Context, id uuid.UUID) error
 
 	// Device-specific queries
-	GetByDeviceInfo(ctx context.Context, userID uuid.UUID, deviceInfo interface{}) ([]*UserSession, error)
+	GetByDeviceInfo(ctx context.Context, userID uuid.UUID, deviceInfo any) ([]*UserSession, error)
 	GetActiveSessionsCount(ctx context.Context, userID uuid.UUID) (int, error)
 }
 

@@ -66,7 +66,7 @@ func (h *SDKScoreHandler) Create(c *gin.Context) {
 	}
 
 	// Build observability Score entity
-	score := h.buildScore(projectID.String(), &req)
+	score := h.buildScore(projectID, &req)
 
 	// Create score using observability service
 	if err := h.scoreService.CreateScore(ctx, score); err != nil {
@@ -125,7 +125,7 @@ func (h *SDKScoreHandler) CreateBatch(c *gin.Context) {
 			response.Error(c, err)
 			return
 		}
-		scores = append(scores, h.buildScore(projectID.String(), &scoreReq))
+		scores = append(scores, h.buildScore(projectID, &scoreReq))
 	}
 
 	// Create scores using observability service
@@ -207,7 +207,7 @@ func (h *SDKScoreHandler) validateAgainstConfig(
 	return nil
 }
 
-func (h *SDKScoreHandler) buildScore(projectID string, req *CreateScoreRequest) *observability.Score {
+func (h *SDKScoreHandler) buildScore(projectID uuid.UUID, req *CreateScoreRequest) *observability.Score {
 	metadata := json.RawMessage("{}")
 	if req.Metadata != nil {
 		if jsonBytes, err := json.Marshal(req.Metadata); err == nil {
@@ -216,7 +216,7 @@ func (h *SDKScoreHandler) buildScore(projectID string, req *CreateScoreRequest) 
 	}
 
 	score := &observability.Score{
-		ID:               uid.New().String(),
+		ID:               uid.New(),
 		ProjectID:        projectID,
 		TraceID:          req.TraceID,
 		Name:             req.Name,

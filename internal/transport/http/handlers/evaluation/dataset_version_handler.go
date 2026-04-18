@@ -264,25 +264,15 @@ func (h *DatasetVersionHandler) PinVersion(c *gin.Context) {
 		return
 	}
 
-	var versionID *uuid.UUID
-	if req.VersionID != nil && *req.VersionID != "" {
-		parsed, err := uuid.Parse(*req.VersionID)
-		if err != nil {
-			response.Error(c, appErrors.NewValidationError("Invalid version ID", "version_id must be a valid UUID"))
-			return
-		}
-		versionID = &parsed
-	}
-
-	dataset, err := h.service.PinVersion(c.Request.Context(), datasetID, projectID, versionID)
+	dataset, err := h.service.PinVersion(c.Request.Context(), datasetID, projectID, req.VersionID)
 	if err != nil {
 		response.Error(c, err)
 		return
 	}
 
 	action := "unpinned"
-	if versionID != nil {
-		action = "pinned to version " + versionID.String()
+	if req.VersionID != nil {
+		action = "pinned to version " + req.VersionID.String()
 	}
 	h.logger.Info("dataset "+action,
 		"dataset_id", datasetID,

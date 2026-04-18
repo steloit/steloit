@@ -489,7 +489,7 @@ func (s *experimentService) buildMetricsResponse(
 	}
 
 	return &evaluation.ExperimentMetricsResponse{
-		ExperimentID: exp.ID.String(),
+		ExperimentID: exp.ID,
 		Status:       exp.Status,
 		Progress: evaluation.ExperimentProgressMetrics{
 			TotalItems:     exp.TotalItems,

@@ -8,6 +8,8 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/config"
 	"brokle/internal/core/domain/storage"
 	infraStorage "brokle/internal/infrastructure/storage"
@@ -44,7 +46,7 @@ func NewBlobStorageService(
 
 // CreateBlobReference creates a new blob storage reference
 func (s *BlobStorageService) CreateBlobReference(ctx context.Context, blob *storage.BlobStorageFileLog) error {
-	if blob.ProjectID == "" {
+	if blob.ProjectID == uuid.Nil {
 		return appErrors.NewValidationError("project_id is required", "blob must have a valid project_id")
 	}
 	if blob.EntityType == "" {
@@ -144,7 +146,7 @@ func (s *BlobStorageService) GetBlobsByEntityID(ctx context.Context, entityType,
 }
 
 // GetBlobsByProjectID retrieves blobs by project ID with optional filters
-func (s *BlobStorageService) GetBlobsByProjectID(ctx context.Context, projectID string, filter *storage.BlobStorageFilter) ([]*storage.BlobStorageFileLog, error) {
+func (s *BlobStorageService) GetBlobsByProjectID(ctx context.Context, projectID uuid.UUID, filter *storage.BlobStorageFilter) ([]*storage.BlobStorageFileLog, error) {
 	blobs, err := s.blobRepo.GetByProjectID(ctx, projectID, filter)
 	if err != nil {
 		return nil, appErrors.NewInternalError("failed to get blobs by project", err)
@@ -159,7 +161,7 @@ func (s *BlobStorageService) ShouldOffload(content string) bool {
 }
 
 // UploadToS3 uploads content to S3 and creates a blob reference
-func (s *BlobStorageService) UploadToS3(ctx context.Context, content string, projectID, entityType, entityID, eventID string) (*storage.BlobStorageFileLog, error) {
+func (s *BlobStorageService) UploadToS3(ctx context.Context, content string, projectID uuid.UUID, entityType, entityID, eventID string) (*storage.BlobStorageFileLog, error) {
 	if s.s3Client == nil {
 		return nil, appErrors.NewInternalError("S3 client not initialized - check BLOB_STORAGE configuration in environment", nil)
 	}
@@ -200,7 +202,7 @@ func (s *BlobStorageService) UploadToS3(ctx context.Context, content string, pro
 }
 
 // UploadToS3WithPreview uploads content to S3 and returns blob info + preview
-func (s *BlobStorageService) UploadToS3WithPreview(ctx context.Context, content string, projectID, entityType, entityID, eventID string) (*storage.BlobStorageFileLog, string, error) {
+func (s *BlobStorageService) UploadToS3WithPreview(ctx context.Context, content string, projectID uuid.UUID, entityType, entityID, eventID string) (*storage.BlobStorageFileLog, string, error) {
 	blob, err := s.UploadToS3(ctx, content, projectID, entityType, entityID, eventID)
 	if err != nil {
 		return nil, "", err

@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	authService "brokle/internal/core/services/auth"
+	authDomain "brokle/internal/core/domain/auth"
 	"brokle/pkg/response"
 )
 
@@ -161,7 +161,7 @@ func (h *Handler) GoogleCallback(c *gin.Context) {
 	}
 
 	// New user - create OAuth session for Step 2
-	session := &authService.OAuthSession{
+	session := &authDomain.OAuthSession{
 		Email:           userProfile.Email,
 		FirstName:       userProfile.FirstName,
 		LastName:        userProfile.LastName,
@@ -325,7 +325,7 @@ func (h *Handler) GitHubCallback(c *gin.Context) {
 	}
 
 	// New user - create OAuth session for Step 2
-	session := &authService.OAuthSession{
+	session := &authDomain.OAuthSession{
 		Email:           userProfile.Email,
 		FirstName:       userProfile.FirstName,
 		LastName:        userProfile.LastName,

@@ -13,7 +13,7 @@ type TraceService interface {
 	IngestSpanBatch(ctx context.Context, spans []*Span) error
 
 	GetSpan(ctx context.Context, spanID string) (*Span, error)
-	GetSpanByProject(ctx context.Context, spanID string, projectID string) (*Span, error)
+	GetSpanByProject(ctx context.Context, spanID string, projectID uuid.UUID) (*Span, error)
 	GetSpansByFilter(ctx context.Context, filter *SpanFilter) ([]*Span, error)
 	CountSpans(ctx context.Context, filter *SpanFilter) (int64, error)
 
@@ -31,8 +31,8 @@ type TraceService interface {
 
 	DeleteSpan(ctx context.Context, spanID string) error
 	DeleteTrace(ctx context.Context, traceID string) error
-	UpdateTraceTags(ctx context.Context, projectID, traceID string, tags []string) ([]string, error)
-	UpdateTraceBookmark(ctx context.Context, projectID, traceID string, bookmarked bool) error
+	UpdateTraceTags(ctx context.Context, projectID uuid.UUID, traceID string, tags []string) ([]string, error)
+	UpdateTraceBookmark(ctx context.Context, projectID uuid.UUID, traceID string, bookmarked bool) error
 }
 
 // ScoreService used by both workers (CreateScore) and handlers (GetScoresByTraceID, etc.)
@@ -40,14 +40,14 @@ type ScoreService interface {
 	CreateScore(ctx context.Context, score *Score) error
 	CreateScoreBatch(ctx context.Context, scores []*Score) error
 
-	GetScoreByID(ctx context.Context, id string) (*Score, error)
+	GetScoreByID(ctx context.Context, id uuid.UUID) (*Score, error)
 	GetScoresByTraceID(ctx context.Context, traceID string) ([]*Score, error)
 	GetScoresBySpanID(ctx context.Context, spanID string) ([]*Score, error)
 	GetScoresByFilter(ctx context.Context, filter *ScoreFilter) ([]*Score, error)
 
 	UpdateScore(ctx context.Context, score *Score) error
 
-	DeleteScore(ctx context.Context, id string) error
+	DeleteScore(ctx context.Context, id uuid.UUID) error
 
 	CountScores(ctx context.Context, filter *ScoreFilter) (int64, error)
 }

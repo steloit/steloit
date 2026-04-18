@@ -1,6 +1,7 @@
 package observability
 
 import (
+	"github.com/google/uuid"
 	"context"
 	"database/sql"
 	"errors"
@@ -47,7 +48,7 @@ func (s *TraceService) IngestSpan(ctx context.Context, span *observability.Span)
 	if span.TraceID == "" {
 		return appErrors.NewValidationError("trace_id is required", "span must be linked to a trace")
 	}
-	if span.ProjectID == "" {
+	if span.ProjectID == uuid.Nil {
 		return appErrors.NewValidationError("project_id is required", "span must have a valid project_id")
 	}
 	if span.SpanName == "" {
@@ -94,7 +95,7 @@ func (s *TraceService) IngestSpanBatch(ctx context.Context, spans []*observabili
 		if span.TraceID == "" {
 			return appErrors.NewValidationError(fmt.Sprintf("span[%d].trace_id", i), "trace_id is required")
 		}
-		if span.ProjectID == "" {
+		if span.ProjectID == uuid.Nil {
 			return appErrors.NewValidationError(fmt.Sprintf("span[%d].project_id", i), "project_id is required")
 		}
 		if span.SpanName == "" {
@@ -143,7 +144,7 @@ func (s *TraceService) GetSpan(ctx context.Context, spanID string) (*observabili
 	return span, nil
 }
 
-func (s *TraceService) GetSpanByProject(ctx context.Context, spanID string, projectID string) (*observability.Span, error) {
+func (s *TraceService) GetSpanByProject(ctx context.Context, spanID string, projectID uuid.UUID) (*observability.Span, error) {
 	span, err := s.traceRepo.GetSpanByProject(ctx, spanID, projectID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -244,7 +245,7 @@ func (s *TraceService) ListTraces(ctx context.Context, filter *observability.Tra
 	if filter == nil {
 		return nil, appErrors.NewValidationError("filter is required", "trace filter cannot be nil")
 	}
-	if filter.ProjectID == "" {
+	if filter.ProjectID == uuid.Nil {
 		return nil, appErrors.NewValidationError("project_id is required", "filter must include project_id for scoping")
 	}
 
@@ -361,8 +362,8 @@ func (s *TraceService) DeleteTrace(ctx context.Context, traceID string) error {
 
 // UpdateTraceTags updates the tags for a trace.
 // Validates that the trace exists and belongs to the specified project before updating.
-func (s *TraceService) UpdateTraceTags(ctx context.Context, projectID, traceID string, tags []string) ([]string, error) {
-	if projectID == "" {
+func (s *TraceService) UpdateTraceTags(ctx context.Context, projectID uuid.UUID, traceID string, tags []string) ([]string, error) {
+	if projectID == uuid.Nil {
 		return nil, appErrors.NewValidationError("project_id is required", "project_id cannot be empty")
 	}
 	if len(traceID) != 32 {
@@ -398,8 +399,8 @@ func (s *TraceService) UpdateTraceTags(ctx context.Context, projectID, traceID s
 
 // UpdateTraceBookmark updates the bookmark status for a trace.
 // Validates that the trace exists and belongs to the specified project before updating.
-func (s *TraceService) UpdateTraceBookmark(ctx context.Context, projectID, traceID string, bookmarked bool) error {
-	if projectID == "" {
+func (s *TraceService) UpdateTraceBookmark(ctx context.Context, projectID uuid.UUID, traceID string, bookmarked bool) error {
+	if projectID == uuid.Nil {
 		return appErrors.NewValidationError("project_id is required", "project_id cannot be empty")
 	}
 	if len(traceID) != 32 {
@@ -429,12 +430,12 @@ func (s *TraceService) UpdateTraceBookmark(ctx context.Context, projectID, trace
 
 // GetFilterOptions returns available filter values for the traces filter UI.
 // Results are cached for 5 minutes to reduce database load.
-func (s *TraceService) GetFilterOptions(ctx context.Context, projectID string) (*observability.TraceFilterOptions, error) {
-	if projectID == "" {
+func (s *TraceService) GetFilterOptions(ctx context.Context, projectID uuid.UUID) (*observability.TraceFilterOptions, error) {
+	if projectID == uuid.Nil {
 		return nil, appErrors.NewValidationError("project_id is required", "project_id cannot be empty")
 	}
 
-	cacheKey := "filter_options:" + projectID
+	cacheKey := "filter_options:" + projectID.String()
 
 	s.filterOptionsCacheMu.Lock()
 	cached, ok := s.filterOptionsCache.Get(cacheKey)
@@ -466,8 +467,8 @@ func (s *TraceService) GetFilterOptions(ctx context.Context, projectID string) (
 
 // InvalidateFilterOptionsCache removes cached filter options for a project.
 // Call this when traces are added/deleted to ensure fresh data.
-func (s *TraceService) InvalidateFilterOptionsCache(projectID string) {
-	cacheKey := "filter_options:" + projectID
+func (s *TraceService) InvalidateFilterOptionsCache(projectID uuid.UUID) {
+	cacheKey := "filter_options:" + projectID.String()
 	s.filterOptionsCacheMu.Lock()
 	s.filterOptionsCache.Remove(cacheKey)
 	s.filterOptionsCacheMu.Unlock()
@@ -479,7 +480,7 @@ func (s *TraceService) DiscoverAttributes(ctx context.Context, req *observabilit
 	if req == nil {
 		return nil, appErrors.NewValidationError("request is required", "attribute discovery request cannot be nil")
 	}
-	if req.ProjectID == "" {
+	if req.ProjectID == uuid.Nil {
 		return nil, appErrors.NewValidationError("project_id is required", "project_id cannot be empty")
 	}
 
@@ -502,7 +503,7 @@ func (s *TraceService) ListSessions(ctx context.Context, filter *observability.S
 	if filter == nil {
 		return nil, appErrors.NewValidationError("filter is required", "session filter cannot be nil")
 	}
-	if filter.ProjectID == "" {
+	if filter.ProjectID == uuid.Nil {
 		return nil, appErrors.NewValidationError("project_id is required", "filter must include project_id for scoping")
 	}
 
@@ -525,7 +526,7 @@ func (s *TraceService) CountSessions(ctx context.Context, filter *observability.
 	if filter == nil {
 		return 0, appErrors.NewValidationError("filter is required", "session filter cannot be nil")
 	}
-	if filter.ProjectID == "" {
+	if filter.ProjectID == uuid.Nil {
 		return 0, appErrors.NewValidationError("project_id is required", "filter must include project_id for scoping")
 	}
 

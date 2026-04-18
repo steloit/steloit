@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
+
 	"brokle/internal/core/domain/storage"
 	"brokle/pkg/pagination"
 
@@ -93,7 +95,7 @@ func (r *blobStorageRepository) GetByEntityID(ctx context.Context, entityType, e
 	return r.scanBlobs(rows)
 }
 
-func (r *blobStorageRepository) GetByProjectID(ctx context.Context, projectID string, filter *storage.BlobStorageFilter) ([]*storage.BlobStorageFileLog, error) {
+func (r *blobStorageRepository) GetByProjectID(ctx context.Context, projectID uuid.UUID, filter *storage.BlobStorageFilter) ([]*storage.BlobStorageFileLog, error) {
 	query := `
 		SELECT
 			id, project_id, entity_type, entity_id, event_id,
@@ -104,7 +106,7 @@ func (r *blobStorageRepository) GetByProjectID(ctx context.Context, projectID st
 		WHERE project_id = ?
 	`
 
-	args := []interface{}{projectID}
+	args := []any{projectID}
 
 	if filter != nil {
 		if filter.EntityType != nil {
@@ -173,7 +175,7 @@ func (r *blobStorageRepository) GetByProjectID(ctx context.Context, projectID st
 
 func (r *blobStorageRepository) Count(ctx context.Context, filter *storage.BlobStorageFilter) (int64, error) {
 	query := "SELECT count() FROM blob_storage_file_log WHERE 1=1"
-	args := []interface{}{}
+	args := []any{}
 
 	if filter != nil {
 		if filter.EntityType != nil {

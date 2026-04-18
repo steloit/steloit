@@ -382,7 +382,7 @@ func (s *promptService) ListPrompts(ctx context.Context, projectID uuid.UUID, fi
 	items := make([]*promptDomain.PromptListItem, 0, len(prompts))
 	for _, prompt := range prompts {
 		item := &promptDomain.PromptListItem{
-			ID:          prompt.ID.String(),
+			ID:          prompt.ID,
 			Name:        prompt.Name,
 			Type:        prompt.Type,
 			Description: prompt.Description,
@@ -982,23 +982,18 @@ func (s *promptService) buildPromptResponse(prompt *promptDomain.Prompt, version
 		labelNames = append(labelNames, l.Name)
 	}
 
-	var createdBy string
-	if version.CreatedBy != nil {
-		createdBy = version.CreatedBy.String()
-	}
-
 	// Detect dialect from template content
 	dialect, _ := s.compiler.DetectDialect(template, prompt.Type)
 
 	return &promptDomain.PromptResponse{
-		ID:            prompt.ID.String(),
-		ProjectID:     prompt.ProjectID.String(),
+		ID:            prompt.ID,
+		ProjectID:     prompt.ProjectID,
 		Name:          prompt.Name,
 		Type:          prompt.Type,
 		Description:   prompt.Description,
 		Tags:          []string(prompt.Tags),
 		Version:       version.Version,
-		VersionID:     version.ID.String(),
+		VersionID:     version.ID,
 		Labels:        labelNames,
 		Template:      template,
 		Config:        version.Config,
@@ -1007,7 +1002,7 @@ func (s *promptService) buildPromptResponse(prompt *promptDomain.Prompt, version
 		CommitMessage: version.CommitMessage,
 		CreatedAt:     version.CreatedAt,
 		UpdatedAt:     prompt.UpdatedAt,
-		CreatedBy:     createdBy,
+		CreatedBy:     version.CreatedBy,
 	}
 }
 
@@ -1023,17 +1018,12 @@ func (s *promptService) buildVersionResponseWithLabels(v *promptDomain.Version, 
 		labels = []string{}
 	}
 
-	var createdBy string
-	if v.CreatedBy != nil {
-		createdBy = v.CreatedBy.String()
-	}
-
 	// Detect dialect from template content (infer type from template structure)
 	promptType := s.inferPromptType(template)
 	dialect, _ := s.compiler.DetectDialect(template, promptType)
 
 	return &promptDomain.VersionResponse{
-		ID:            v.ID.String(),
+		ID:            v.ID,
 		Version:       v.Version,
 		Template:      template,
 		Config:        v.Config,
@@ -1042,7 +1032,7 @@ func (s *promptService) buildVersionResponseWithLabels(v *promptDomain.Version, 
 		CommitMessage: v.CommitMessage,
 		Labels:        labels,
 		CreatedAt:     v.CreatedAt,
-		CreatedBy:     createdBy,
+		CreatedBy:     v.CreatedBy,
 	}, nil
 }
 

@@ -397,7 +397,7 @@ func (w *ManualTriggerWorker) processTrigger(ctx context.Context, trigger *Manua
 
 func (w *ManualTriggerWorker) buildSpanFilter(trigger *ManualTriggerMessageData) *observability.SpanFilter {
 	filter := &observability.SpanFilter{
-		ProjectID: trigger.ProjectID.String(),
+		ProjectID: trigger.ProjectID,
 		SpanNames: trigger.SpanNames, // Push to database level for efficient filtering
 		Params: pagination.Params{
 			Page:  1,
@@ -491,7 +491,7 @@ func (w *ManualTriggerWorker) fetchSpansWithFilters(
 // buildSpanFilterForPage creates a filter for a specific page during pagination
 func (w *ManualTriggerWorker) buildSpanFilterForPage(trigger *ManualTriggerMessageData, page int) *observability.SpanFilter {
 	filter := &observability.SpanFilter{
-		ProjectID: trigger.ProjectID.String(),
+		ProjectID: trigger.ProjectID,
 		SpanNames: trigger.SpanNames, // Push to database level
 		Params: pagination.Params{
 			Page:  page,
@@ -564,7 +564,7 @@ func (w *ManualTriggerWorker) fetchSpansByIDs(
 	ctx context.Context,
 	trigger *ManualTriggerMessageData,
 ) ([]*observability.Span, error) {
-	projectID := trigger.ProjectID.String()
+	projectID := trigger.ProjectID
 	spans := make([]*observability.Span, 0, len(trigger.SpanIDs))
 
 	for _, spanID := range trigger.SpanIDs {

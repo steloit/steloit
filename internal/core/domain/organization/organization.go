@@ -255,20 +255,20 @@ type OrganizationSettings struct {
 
 // Settings-related DTOs
 type CreateOrganizationSettingRequest struct {
-	Value interface{} `json:"value" validate:"required"`
+	Value any `json:"value" validate:"required"`
 	Key   string      `json:"key" validate:"required,min=1,max=255"`
 }
 
 type UpdateOrganizationSettingRequest struct {
-	Value interface{} `json:"value" validate:"required"`
+	Value any `json:"value" validate:"required"`
 }
 
 type GetOrganizationSettingsResponse struct {
-	Settings map[string]interface{} `json:"settings"`
+	Settings map[string]any `json:"settings"`
 }
 
 // OrganizationSetting utility methods
-func NewOrganizationSettings(orgID uuid.UUID, key string, value interface{}) (*OrganizationSettings, error) {
+func NewOrganizationSettings(orgID uuid.UUID, key string, value any) (*OrganizationSettings, error) {
 	// Convert value to JSON string for storage
 	valueBytes, err := json.Marshal(value)
 	if err != nil {
@@ -285,13 +285,13 @@ func NewOrganizationSettings(orgID uuid.UUID, key string, value interface{}) (*O
 	}, nil
 }
 
-func (os *OrganizationSettings) GetValue() (interface{}, error) {
-	var value interface{}
+func (os *OrganizationSettings) GetValue() (any, error) {
+	var value any
 	err := json.Unmarshal([]byte(os.Value), &value)
 	return value, err
 }
 
-func (os *OrganizationSettings) SetValue(value interface{}) error {
+func (os *OrganizationSettings) SetValue(value any) error {
 	valueBytes, err := json.Marshal(value)
 	if err != nil {
 		return err
@@ -356,7 +356,7 @@ func NewInvitationAuditEvent(invitationID uuid.UUID, eventType InvitationAuditEv
 }
 
 // WithMetadata adds metadata to the audit event
-func (e *InvitationAuditEvent) WithMetadata(metadata map[string]interface{}) *InvitationAuditEvent {
+func (e *InvitationAuditEvent) WithMetadata(metadata map[string]any) *InvitationAuditEvent {
 	if metadata != nil {
 		bytes, err := json.Marshal(metadata)
 		if err == nil {

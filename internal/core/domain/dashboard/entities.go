@@ -74,7 +74,7 @@ const (
 type QueryFilter struct {
 	Field    string         `json:"field"`
 	Operator FilterOperator `json:"operator"`
-	Value    interface{}    `json:"value"`
+	Value    any    `json:"value"`
 }
 
 // TimeRange defines a time range for widget queries.
@@ -103,7 +103,7 @@ type Widget struct {
 	Title       string                 `json:"title"`
 	Description string                 `json:"description,omitempty"`
 	Query       WidgetQuery            `json:"query"`
-	Config      map[string]interface{} `json:"config,omitempty"` // widget-specific config
+	Config      map[string]any `json:"config,omitempty"` // widget-specific config
 }
 
 // LayoutItem defines widget position in the dashboard grid.

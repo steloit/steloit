@@ -92,7 +92,7 @@ type Invoice struct {
 	IssueDate        time.Time              `json:"issue_date"`
 	PaidAt           *time.Time             `json:"paid_at,omitempty"`
 	BillingAddress   *BillingAddress        `json:"billing_address"`
-	Metadata         map[string]interface{} `json:"metadata,omitempty"`
+	Metadata         map[string]any `json:"metadata,omitempty"`
 	Currency         string                 `json:"currency"`
 	Period           string                 `json:"period"`
 	InvoiceNumber    string                 `json:"invoice_number"`
@@ -217,7 +217,7 @@ type VolumeTier struct {
 type BillingRecord struct {
 	UpdatedAt      time.Time              `json:"updated_at"`
 	CreatedAt      time.Time              `json:"created_at"`
-	Metadata       map[string]interface{} `json:"metadata"`
+	Metadata       map[string]any `json:"metadata"`
 	TransactionID  *string                `json:"transaction_id,omitempty"`
 	PaymentMethod  *string                `json:"payment_method,omitempty"`
 	ProcessedAt    *time.Time             `json:"processed_at,omitempty"`
@@ -236,8 +236,8 @@ type BillingSummary struct {
 	PeriodEnd         time.Time              `json:"period_end"`
 	CreatedAt         time.Time              `json:"created_at"`
 	GeneratedAt       time.Time              `json:"generated_at"`
-	ModelBreakdown    map[string]interface{} `json:"model_breakdown"`
-	ProviderBreakdown map[string]interface{} `json:"provider_breakdown"`
+	ModelBreakdown    map[string]any `json:"model_breakdown"`
+	ProviderBreakdown map[string]any `json:"provider_breakdown"`
 	Currency          string                 `json:"currency"`
 	Period            string                 `json:"period"`
 	Status            string                 `json:"status"`

@@ -199,7 +199,7 @@ func (s *OTLPMetricsConverterService) convertSum(
 			ExemplarsFilteredAttributes: exemplarsFilteredAttrs,
 			ExemplarsTraceID:            exemplarsTraceID,
 			ExemplarsSpanID:             exemplarsSpanID,
-			ProjectID:                   projectID.String(),
+			ProjectID: projectID,
 		}
 
 		timestamp := entity.TimeUnix
@@ -276,7 +276,7 @@ func (s *OTLPMetricsConverterService) convertGauge(
 			ExemplarsFilteredAttributes: exemplarsFilteredAttrs,
 			ExemplarsTraceID:            exemplarsTraceID,
 			ExemplarsSpanID:             exemplarsSpanID,
-			ProjectID:                   projectID.String(),
+			ProjectID: projectID,
 		}
 
 		timestamp := entity.TimeUnix
@@ -374,7 +374,7 @@ func (s *OTLPMetricsConverterService) convertHistogram(
 			ExemplarsFilteredAttributes: exemplarsFilteredAttrs,
 			ExemplarsTraceID:            exemplarsTraceID,
 			ExemplarsSpanID:             exemplarsSpanID,
-			ProjectID:                   projectID.String(),
+			ProjectID: projectID,
 		}
 
 		timestamp := entity.TimeUnix
@@ -495,7 +495,7 @@ func (s *OTLPMetricsConverterService) convertExponentialHistogram(
 			ExemplarsFilteredAttributes: exemplarsFilteredAttrs,
 			ExemplarsTraceID:            exemplarsTraceID,
 			ExemplarsSpanID:             exemplarsSpanID,
-			ProjectID:                   projectID.String(),
+			ProjectID: projectID,
 		}
 
 		timestamp := entity.TimeUnix

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -86,7 +87,7 @@ func (m *MockTraceRepository) GetRootSpan(ctx context.Context, traceID string) (
 	return args.Get(0).(*observability.Span), args.Error(1)
 }
 
-func (m *MockTraceRepository) GetRootSpanByProject(ctx context.Context, traceID string, projectID string) (*observability.Span, error) {
+func (m *MockTraceRepository) GetRootSpanByProject(ctx context.Context, traceID string, projectID uuid.UUID) (*observability.Span, error) {
 	args := m.Called(ctx, traceID, projectID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -94,7 +95,7 @@ func (m *MockTraceRepository) GetRootSpanByProject(ctx context.Context, traceID 
 	return args.Get(0).(*observability.Span), args.Error(1)
 }
 
-func (m *MockTraceRepository) GetSpanByProject(ctx context.Context, spanID string, projectID string) (*observability.Span, error) {
+func (m *MockTraceRepository) GetSpanByProject(ctx context.Context, spanID string, projectID uuid.UUID) (*observability.Span, error) {
 	args := m.Called(ctx, spanID, projectID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -159,17 +160,17 @@ func (m *MockTraceRepository) DeleteTrace(ctx context.Context, traceID string) e
 	return args.Error(0)
 }
 
-func (m *MockTraceRepository) UpdateTraceTags(ctx context.Context, projectID, traceID string, tags []string) error {
+func (m *MockTraceRepository) UpdateTraceTags(ctx context.Context, projectID uuid.UUID, traceID string, tags []string) error {
 	args := m.Called(ctx, projectID, traceID, tags)
 	return args.Error(0)
 }
 
-func (m *MockTraceRepository) UpdateTraceBookmark(ctx context.Context, projectID, traceID string, bookmarked bool) error {
+func (m *MockTraceRepository) UpdateTraceBookmark(ctx context.Context, projectID uuid.UUID, traceID string, bookmarked bool) error {
 	args := m.Called(ctx, projectID, traceID, bookmarked)
 	return args.Error(0)
 }
 
-func (m *MockTraceRepository) GetFilterOptions(ctx context.Context, projectID string) (*observability.TraceFilterOptions, error) {
+func (m *MockTraceRepository) GetFilterOptions(ctx context.Context, projectID uuid.UUID) (*observability.TraceFilterOptions, error) {
 	args := m.Called(ctx, projectID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -227,7 +228,7 @@ func TestTraceService_GetRootSpan(t *testing.T) {
 					TraceID:      "12345678901234567890123456789012",
 					ParentSpanID: nil,
 					SpanName:     "root-span",
-					ProjectID:    "proj123",
+					ProjectID:    uuid.New(),
 				}
 				repo.On("GetRootSpan", mock.Anything, "12345678901234567890123456789012").
 					Return(rootSpan, nil)
@@ -277,7 +278,7 @@ func TestTraceService_GetTrace(t *testing.T) {
 				summary := &observability.TraceSummary{
 					TraceID:     "12345678901234567890123456789012",
 					RootSpanID:  "root1234567890123",
-					ProjectID:   "proj123",
+					ProjectID:   uuid.New(),
 					TotalCost:   decimal.NewFromFloat(0.05),
 					TotalTokens: 1000,
 					SpanCount:   5,
@@ -325,7 +326,7 @@ func TestTraceService_GetTrace(t *testing.T) {
 }
 
 func TestTraceService_ListTraces(t *testing.T) {
-	projectID := "proj123"
+	projectID := uuid.New()
 	now := time.Now()
 
 	tests := []struct {
@@ -378,7 +379,7 @@ func TestTraceService_ListTraces(t *testing.T) {
 		{
 			name: "error - empty project_id",
 			filter: &observability.TraceFilter{
-				ProjectID: "",
+				ProjectID: uuid.Nil,
 			},
 			mockSetup:   func(repo *MockTraceRepository) {},
 			expectedErr: true,
@@ -522,7 +523,7 @@ func TestTraceService_IngestSpan(t *testing.T) {
 			span: &observability.Span{
 				SpanID:    "1234567890123456",
 				TraceID:   "12345678901234567890123456789012",
-				ProjectID: "proj123",
+				ProjectID: uuid.New(),
 				SpanName:  "test-span",
 			},
 			mockSetup: func(repo *MockTraceRepository) {
@@ -535,7 +536,7 @@ func TestTraceService_IngestSpan(t *testing.T) {
 			name: "error - missing trace_id",
 			span: &observability.Span{
 				SpanID:    "1234567890123456",
-				ProjectID: "proj123",
+				ProjectID: uuid.New(),
 				SpanName:  "test-span",
 			},
 			mockSetup:   func(repo *MockTraceRepository) {},
@@ -545,7 +546,7 @@ func TestTraceService_IngestSpan(t *testing.T) {
 			name: "error - missing span_id",
 			span: &observability.Span{
 				TraceID:   "12345678901234567890123456789012",
-				ProjectID: "proj123",
+				ProjectID: uuid.New(),
 				SpanName:  "test-span",
 			},
 			mockSetup:   func(repo *MockTraceRepository) {},
@@ -556,7 +557,7 @@ func TestTraceService_IngestSpan(t *testing.T) {
 			span: &observability.Span{
 				SpanID:    "short",
 				TraceID:   "12345678901234567890123456789012",
-				ProjectID: "proj123",
+				ProjectID: uuid.New(),
 				SpanName:  "test-span",
 			},
 			mockSetup:   func(repo *MockTraceRepository) {},

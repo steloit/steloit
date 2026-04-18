@@ -120,7 +120,7 @@ func (s *OTLPLogsConverterService) convertLogRecord(
 		ScopeName:          scopeName,
 		ScopeAttributes:    scopeAttrs,
 		LogAttributes:      logAttributes,
-		ProjectID:          projectID.String(),
+		ProjectID: projectID,
 	}
 }
 

@@ -372,7 +372,7 @@ func (s *commentService) CreateReply(ctx context.Context, projectID uuid.UUID, t
 }
 
 func (s *commentService) validateTraceOwnership(ctx context.Context, traceID string, projectID uuid.UUID) error {
-	_, err := s.traceRepo.GetRootSpanByProject(ctx, traceID, projectID.String())
+	_, err := s.traceRepo.GetRootSpanByProject(ctx, traceID, projectID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return appErrors.NewNotFoundError(fmt.Sprintf("trace %s", traceID))

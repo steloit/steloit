@@ -44,22 +44,22 @@ type PromptService interface {
 // CompilerService defines the template compilation service interface.
 type CompilerService interface {
 	// Variable extraction
-	ExtractVariables(template interface{}, promptType PromptType) ([]string, error)
+	ExtractVariables(template any, promptType PromptType) ([]string, error)
 
 	// Template compilation
-	Compile(template interface{}, promptType PromptType, variables map[string]string) (interface{}, error)
+	Compile(template any, promptType PromptType, variables map[string]string) (any, error)
 	CompileText(template string, variables map[string]string) (string, error)
 	CompileChat(messages []ChatMessage, variables map[string]string) ([]ChatMessage, error)
 
 	// Validation
-	ValidateTemplate(template interface{}, promptType PromptType) error
+	ValidateTemplate(template any, promptType PromptType) error
 	ValidateVariables(required []string, provided map[string]string) error
 
 	// Dialect-aware operations (new)
-	DetectDialect(template interface{}, promptType PromptType) (TemplateDialect, error)
-	ValidateSyntax(template interface{}, promptType PromptType, dialect TemplateDialect) (*ValidationResult, error)
-	CompileWithDialect(template interface{}, promptType PromptType, variables map[string]any, dialect TemplateDialect) (interface{}, error)
-	ExtractVariablesWithDialect(template interface{}, promptType PromptType, dialect TemplateDialect) ([]string, error)
+	DetectDialect(template any, promptType PromptType) (TemplateDialect, error)
+	ValidateSyntax(template any, promptType PromptType, dialect TemplateDialect) (*ValidationResult, error)
+	CompileWithDialect(template any, promptType PromptType, variables map[string]any, dialect TemplateDialect) (any, error)
+	ExtractVariablesWithDialect(template any, promptType PromptType, dialect TemplateDialect) ([]string, error)
 
 	// Registry access
 	GetDialectRegistry() DialectRegistry
@@ -76,5 +76,5 @@ type ExecutionService interface {
 	ExecuteStream(ctx context.Context, prompt *PromptResponse, variables map[string]string, configOverrides *ModelConfig) (<-chan StreamEvent, <-chan *StreamResult, error)
 
 	// Compile and preview without execution
-	Preview(ctx context.Context, prompt *PromptResponse, variables map[string]string) (interface{}, error)
+	Preview(ctx context.Context, prompt *PromptResponse, variables map[string]string) (any, error)
 }

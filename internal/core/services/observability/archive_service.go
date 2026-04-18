@@ -43,7 +43,7 @@ func NewArchiveService(
 // ArchiveBatch writes raw telemetry records to S3 as Parquet and returns the S3 path.
 func (s *ArchiveService) ArchiveBatch(
 	ctx context.Context,
-	projectID string,
+	projectID uuid.UUID,
 	batchID uuid.UUID,
 	records []observability.RawTelemetryRecord,
 ) (*observability.ArchiveBatchResult, error) {
@@ -102,7 +102,7 @@ func (s *ArchiveService) ArchiveBatch(
 }
 
 // GenerateS3Path creates Hive-style partition path: {prefix}/project_id={id}/signal={type}/year={y}/month={m}/day={d}/{batch_id}.parquet
-func (s *ArchiveService) GenerateS3Path(projectID, signalType string, timestamp time.Time, batchID uuid.UUID) string {
+func (s *ArchiveService) GenerateS3Path(projectID uuid.UUID, signalType string, timestamp time.Time, batchID uuid.UUID) string {
 	return fmt.Sprintf(
 		"%sproject_id=%s/signal=%s/year=%04d/month=%02d/day=%02d/%s.parquet",
 		s.config.PathPrefix,

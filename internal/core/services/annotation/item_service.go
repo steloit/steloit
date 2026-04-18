@@ -248,17 +248,7 @@ func (s *itemService) submitScores(
 	now := time.Now()
 
 	for _, sub := range submissions {
-		// Look up the score config to get the name and data type
-		scoreConfigID, err := uuid.Parse(sub.ScoreConfigID)
-		if err != nil {
-			s.logger.Warn("invalid score config ID, skipping",
-				"score_config_id", sub.ScoreConfigID,
-				"error", err,
-			)
-			continue
-		}
-
-		scoreConfig, err := s.scoreConfigService.GetByID(ctx, scoreConfigID, projectID)
+		scoreConfig, err := s.scoreConfigService.GetByID(ctx, sub.ScoreConfigID, projectID)
 		if err != nil {
 			s.logger.Warn("score config not found, skipping",
 				"score_config_id", sub.ScoreConfigID,
@@ -269,9 +259,9 @@ func (s *itemService) submitScores(
 
 		// Create the score entity
 		score := &observability.Score{
-			ID:             uid.New().String(),
-			ProjectID:      projectID.String(),
-			OrganizationID: project.OrganizationID.String(),
+			ID:             uid.New(),
+			ProjectID:      projectID,
+			OrganizationID: project.OrganizationID,
 			Name:           scoreConfig.Name,
 			Type:           string(scoreConfig.Type),
 			Source:         observability.ScoreSourceAnnotation,
@@ -352,7 +342,7 @@ func (s *itemService) buildScoreMetadata(
 	userID uuid.UUID,
 	comment *string,
 ) json.RawMessage {
-	metadata := map[string]interface{}{
+	metadata := map[string]any{
 		"source":       "annotation_queue",
 		"queue_id":     queue.ID.String(),
 		"queue_name":   queue.Name,

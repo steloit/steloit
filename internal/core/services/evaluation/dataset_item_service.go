@@ -506,7 +506,7 @@ func (s *datasetItemService) CreateFromTraces(ctx context.Context, datasetID uui
 	traceDataMap := make(map[string]*traceData)
 	for _, traceID := range req.TraceIDs {
 		// Use project-scoped query to prevent cross-project data access
-		rootSpan, err := s.traceRepo.GetRootSpanByProject(ctx, traceID, projectID.String())
+		rootSpan, err := s.traceRepo.GetRootSpanByProject(ctx, traceID, projectID)
 		if err != nil {
 			// Generic error message to prevent enumeration attacks
 			result.Errors = append(result.Errors, fmt.Sprintf("trace %s: not found or unauthorized", traceID))
@@ -610,7 +610,7 @@ func (s *datasetItemService) CreateFromSpans(ctx context.Context, datasetID uuid
 	spanDataMap := make(map[string]*spanData)
 	for _, spanID := range req.SpanIDs {
 		// Use project-scoped query to prevent cross-project data access
-		span, err := s.traceRepo.GetSpanByProject(ctx, spanID, projectID.String())
+		span, err := s.traceRepo.GetSpanByProject(ctx, spanID, projectID)
 		if err != nil {
 			// Generic error message to prevent enumeration attacks
 			result.Errors = append(result.Errors, fmt.Sprintf("span %s: not found or unauthorized", spanID))

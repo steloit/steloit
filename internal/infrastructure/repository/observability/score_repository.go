@@ -1,6 +1,7 @@
 package observability
 
 import (
+	"github.com/google/uuid"
 	"context"
 	"fmt"
 
@@ -57,14 +58,14 @@ func (r *scoreRepository) Update(ctx context.Context, score *observability.Score
 }
 
 // Delete performs hard deletion (MergeTree supports lightweight deletes with DELETE mutation)
-func (r *scoreRepository) Delete(ctx context.Context, id string) error {
+func (r *scoreRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	// MergeTree lightweight DELETE (async mutation, eventually consistent)
 	query := `ALTER TABLE scores DELETE WHERE score_id = ?`
 	return r.db.Exec(ctx, query, id)
 }
 
 // GetByID retrieves a score by its ID (returns latest version)
-func (r *scoreRepository) GetByID(ctx context.Context, id string) (*observability.Score, error) {
+func (r *scoreRepository) GetByID(ctx context.Context, id uuid.UUID) (*observability.Score, error) {
 	query := `
 		SELECT
 			score_id, project_id, organization_id, trace_id, span_id,
@@ -140,7 +141,7 @@ func (r *scoreRepository) GetByFilter(ctx context.Context, filter *observability
 
 	if filter != nil {
 		// Project ID filter (required for project-scoped queries)
-		if filter.ProjectID != "" {
+		if filter.ProjectID != uuid.Nil {
 			query += " AND project_id = ?"
 			args = append(args, filter.ProjectID)
 		}
@@ -279,7 +280,7 @@ func (r *scoreRepository) Count(ctx context.Context, filter *observability.Score
 
 	if filter != nil {
 		// Project ID filter (required for project-scoped queries)
-		if filter.ProjectID != "" {
+		if filter.ProjectID != uuid.Nil {
 			query += " AND project_id = ?"
 			args = append(args, filter.ProjectID)
 		}

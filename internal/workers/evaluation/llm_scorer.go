@@ -45,12 +45,7 @@ func (s *LLMScorer) Execute(ctx context.Context, job *EvaluationJob) (*ScorerRes
 		return nil, fmt.Errorf("invalid LLM scorer config: %w", err)
 	}
 
-	// Resolve credentials
-	credentialID, err := uuid.Parse(config.CredentialID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid credential_id: %w", err)
-	}
-
+	credentialID := config.CredentialID
 	keyConfig, err := s.credentialsService.GetDecryptedByID(ctx, credentialID, job.ProjectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get credentials: %w", err)
@@ -72,7 +67,7 @@ func (s *LLMScorer) Execute(ctx context.Context, job *EvaluationJob) (*ScorerRes
 		Model:        config.Model,
 		Temperature:  &config.Temperature,
 		APIKey:       keyConfig.APIKey,
-		CredentialID: &config.CredentialID,
+		CredentialID: &credentialID,
 	}
 
 	if keyConfig.BaseURL != "" {
@@ -135,9 +130,13 @@ func (s *LLMScorer) Execute(ctx context.Context, job *EvaluationJob) (*ScorerRes
 }
 
 func (s *LLMScorer) parseConfig(config map[string]any) (*evaluation.LLMScorerConfig, error) {
-	credentialID, ok := config["credential_id"].(string)
-	if !ok || credentialID == "" {
+	credentialIDStr, ok := config["credential_id"].(string)
+	if !ok || credentialIDStr == "" {
 		return nil, fmt.Errorf("credential_id is required")
+	}
+	credentialID, err := uuid.Parse(credentialIDStr)
+	if err != nil {
+		return nil, fmt.Errorf("credential_id must be a valid UUID: %w", err)
 	}
 
 	model, ok := config["model"].(string)

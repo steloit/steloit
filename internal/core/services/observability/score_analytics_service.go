@@ -1,6 +1,7 @@
 package observability
 
 import (
+	"github.com/google/uuid"
 	"context"
 	"log/slog"
 
@@ -27,7 +28,7 @@ func NewScoreAnalyticsService(analyticsRepo observability.ScoreAnalyticsReposito
 }
 
 func (s *ScoreAnalyticsService) GetAnalytics(ctx context.Context, filter *observability.ScoreAnalyticsFilter) (*observability.ScoreAnalyticsResponse, error) {
-	if filter.ProjectID == "" {
+	if filter.ProjectID == uuid.Nil {
 		return nil, appErrors.NewValidationError("project_id is required", "analytics query requires a project_id")
 	}
 	if filter.ScoreName == "" {

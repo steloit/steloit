@@ -1,6 +1,7 @@
 package observability
 
 import (
+	"github.com/google/uuid"
 	"context"
 	"database/sql"
 	"errors"
@@ -28,7 +29,7 @@ func NewScoreService(
 }
 
 func (s *ScoreService) CreateScore(ctx context.Context, score *observability.Score) error {
-	if score.ProjectID == "" {
+	if score.ProjectID == uuid.Nil {
 		return appErrors.NewValidationError("project_id is required", "score must have a valid project_id")
 	}
 	if score.Name == "" {
@@ -38,7 +39,7 @@ func (s *ScoreService) CreateScore(ctx context.Context, score *observability.Sco
 	// Scores must have EITHER trace/span linkage OR experiment linkage
 	hasTraceLinkage := score.TraceID != nil && *score.TraceID != "" &&
 		score.SpanID != nil && *score.SpanID != ""
-	hasExperimentLinkage := score.ExperimentID != nil && *score.ExperimentID != ""
+	hasExperimentLinkage := score.ExperimentID != nil && *score.ExperimentID != uuid.Nil
 
 	if !hasTraceLinkage && !hasExperimentLinkage {
 		return appErrors.NewValidationError(
@@ -49,8 +50,8 @@ func (s *ScoreService) CreateScore(ctx context.Context, score *observability.Sco
 	if err := s.validateScoreData(score); err != nil {
 		return err
 	}
-	if score.ID == "" {
-		score.ID = uid.New().String()
+	if score.ID == uuid.Nil {
+		score.ID = uid.New()
 	}
 	if score.Timestamp.IsZero() {
 		score.Timestamp = time.Now()
@@ -69,7 +70,7 @@ func (s *ScoreService) UpdateScore(ctx context.Context, score *observability.Sco
 	existing, err := s.scoreRepo.GetByID(ctx, score.ID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return appErrors.NewNotFoundError("score " + score.ID)
+			return appErrors.NewNotFoundError("score " + score.ID.String())
 		}
 		return appErrors.NewInternalError("failed to get score", err)
 	}
@@ -113,11 +114,11 @@ func mergeScoreFields(dst *observability.Score, src *observability.Score) {
 	}
 }
 
-func (s *ScoreService) DeleteScore(ctx context.Context, id string) error {
+func (s *ScoreService) DeleteScore(ctx context.Context, id uuid.UUID) error {
 	_, err := s.scoreRepo.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return appErrors.NewNotFoundError("score " + id)
+			return appErrors.NewNotFoundError("score " + id.String())
 		}
 		return appErrors.NewInternalError("failed to get score", err)
 	}
@@ -128,10 +129,10 @@ func (s *ScoreService) DeleteScore(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *ScoreService) GetScoreByID(ctx context.Context, id string) (*observability.Score, error) {
+func (s *ScoreService) GetScoreByID(ctx context.Context, id uuid.UUID) (*observability.Score, error) {
 	score, err := s.scoreRepo.GetByID(ctx, id)
 	if err != nil {
-		return nil, appErrors.NewNotFoundError("score " + id)
+		return nil, appErrors.NewNotFoundError("score " + id.String())
 	}
 
 	return score, nil
@@ -179,7 +180,7 @@ func (s *ScoreService) CreateScoreBatch(ctx context.Context, scores []*observabi
 
 	// Validate all scores
 	for i, score := range scores {
-		if score.ProjectID == "" {
+		if score.ProjectID == uuid.Nil {
 			return appErrors.NewValidationError(
 				fmt.Sprintf("score[%d]: project_id is required", i),
 				"all scores must have valid project_id",
@@ -195,7 +196,7 @@ func (s *ScoreService) CreateScoreBatch(ctx context.Context, scores []*observabi
 		// Scores must have EITHER trace/span linkage OR experiment linkage
 		hasTraceLinkage := score.TraceID != nil && *score.TraceID != "" &&
 			score.SpanID != nil && *score.SpanID != ""
-		hasExperimentLinkage := score.ExperimentID != nil && *score.ExperimentID != ""
+		hasExperimentLinkage := score.ExperimentID != nil && *score.ExperimentID != uuid.Nil
 
 		if !hasTraceLinkage && !hasExperimentLinkage {
 			return appErrors.NewValidationError(
@@ -210,8 +211,8 @@ func (s *ScoreService) CreateScoreBatch(ctx context.Context, scores []*observabi
 		}
 
 		// Generate ID if not provided
-		if score.ID == "" {
-			score.ID = uid.New().String()
+		if score.ID == uuid.Nil {
+			score.ID = uid.New()
 		}
 
 		// Set timestamp if not provided

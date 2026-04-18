@@ -36,16 +36,16 @@ func NewHandler(
 
 // APIKey represents an API key entity for response
 type APIKey struct {
-	ID         string     `json:"id" example:"key_01234567890123456789012345" description:"Unique API key identifier"`
+	ID         uuid.UUID  `json:"id" description:"Unique API key identifier"`
 	Name       string     `json:"name" example:"Production API Key" description:"Human-readable name for the API key"`
 	Key        string     `json:"key,omitempty" example:"bk_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCd" description:"The actual API key (only shown on creation)"`
 	KeyPreview string     `json:"key_preview" example:"bk_AbCd...AbCd" description:"Truncated version of the key for display"`
-	ProjectID  string     `json:"project_id" example:"proj_01234567890123456789012345" description:"Project ID this key belongs to"`
+	ProjectID  uuid.UUID  `json:"project_id" description:"Project ID this key belongs to"`
 	Status     string     `json:"status" example:"active" description:"API key status (active, expired)"`
 	LastUsed   *time.Time `json:"last_used,omitempty" example:"2024-01-01T00:00:00Z" description:"Last time this key was used (null if never used)"`
 	CreatedAt  time.Time  `json:"created_at" example:"2024-01-01T00:00:00Z" description:"Creation timestamp"`
 	ExpiresAt  *time.Time `json:"expires_at,omitempty" example:"2024-12-31T23:59:59Z" description:"Expiration timestamp (null if never expires)"`
-	CreatedBy  string     `json:"created_by" example:"usr_01234567890123456789012345" description:"User ID who created this key"`
+	CreatedBy  uuid.UUID  `json:"created_by" description:"User ID who created this key"`
 }
 
 // CreateAPIKeyRequest represents the request to create an API key
@@ -135,15 +135,15 @@ func (h *Handler) List(c *gin.Context) {
 	responseKeys := make([]APIKey, len(apiKeys))
 	for i, key := range apiKeys {
 		responseKeys[i] = APIKey{
-			ID:         key.ID.String(),
+			ID:         key.ID,
 			Name:       key.Name,
 			KeyPreview: key.KeyPreview, // Use stored preview
-			ProjectID:  key.ProjectID.String(),
+			ProjectID:  key.ProjectID,
 			Status:     getKeyStatus(*key),
 			LastUsed:   key.LastUsedAt, // Pointer, will be null if nil
 			CreatedAt:  key.CreatedAt,
 			ExpiresAt:  key.ExpiresAt, // Pointer, will be null if nil
-			CreatedBy:  key.UserID.String(),
+			CreatedBy:  key.UserID,
 		}
 	}
 
@@ -251,7 +251,7 @@ func (h *Handler) Create(c *gin.Context) {
 		LastUsed:   nil, // New keys have never been used
 		CreatedAt:  apiKeyResp.CreatedAt,
 		ExpiresAt:  apiKeyResp.ExpiresAt, // Pointer, will be null if nil
-		CreatedBy:  userID.String(),
+		CreatedBy:  userID,
 	}
 
 	h.logger.Info("API key created successfully",

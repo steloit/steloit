@@ -60,12 +60,6 @@ func (h *AssignmentHandler) Assign(c *gin.Context) {
 		return
 	}
 
-	userIDToAssign, err := uuid.Parse(req.UserID)
-	if err != nil {
-		response.Error(c, appErrors.NewValidationError("user_id", "must be a valid UUID"))
-		return
-	}
-
 	// Get assigner's user ID
 	assignedByID, exists := middleware.GetUserIDFromContext(c)
 	var assignedByPtr *uuid.UUID
@@ -75,7 +69,7 @@ func (h *AssignmentHandler) Assign(c *gin.Context) {
 
 	role := annotationDomain.AssignmentRole(req.Role)
 
-	assignment, err := h.service.Assign(c.Request.Context(), queueID, projectID, userIDToAssign, role, assignedByPtr)
+	assignment, err := h.service.Assign(c.Request.Context(), queueID, projectID, req.UserID, role, assignedByPtr)
 	if err != nil {
 		response.Error(c, err)
 		return
@@ -84,7 +78,7 @@ func (h *AssignmentHandler) Assign(c *gin.Context) {
 	h.logger.Info("user assigned to annotation queue",
 		"assignment_id", assignment.ID,
 		"queue_id", queueID,
-		"user_id", userIDToAssign,
+		"user_id", req.UserID,
 		"role", role,
 	)
 
@@ -200,16 +194,12 @@ func (h *AssignmentHandler) GetMyAssignments(c *gin.Context) {
 // Helper function to convert domain assignment to response
 
 func toAssignmentResponse(assignment *annotationDomain.QueueAssignment) *AssignmentResponse {
-	resp := &AssignmentResponse{
-		ID:         assignment.ID.String(),
-		QueueID:    assignment.QueueID.String(),
-		UserID:     assignment.UserID.String(),
+	return &AssignmentResponse{
+		ID:         assignment.ID,
+		QueueID:    assignment.QueueID,
+		UserID:     assignment.UserID,
 		Role:       string(assignment.Role),
 		AssignedAt: assignment.AssignedAt,
+		AssignedBy: assignment.AssignedBy,
 	}
-	if assignment.AssignedBy != nil {
-		assignedBy := assignment.AssignedBy.String()
-		resp.AssignedBy = &assignedBy
-	}
-	return resp
 }

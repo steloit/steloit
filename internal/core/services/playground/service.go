@@ -360,7 +360,7 @@ func (s *playgroundService) resolveCredentials(ctx context.Context, orgID uuid.U
 	}
 
 	// Credential ID is required (no fallback to adapter-based lookup)
-	if overrides.CredentialID == nil || *overrides.CredentialID == "" {
+	if overrides.CredentialID == nil || *overrides.CredentialID == uuid.Nil {
 		return nil, appErrors.NewValidationError("Credential required", "credential_id must be specified")
 	}
 
@@ -368,10 +368,7 @@ func (s *playgroundService) resolveCredentials(ctx context.Context, orgID uuid.U
 		return nil, appErrors.NewInternalError("Credentials service not configured", nil)
 	}
 
-	credID, err := uuid.Parse(*overrides.CredentialID)
-	if err != nil {
-		return nil, appErrors.NewValidationError("Invalid credential ID", "credential_id must be a valid UUID")
-	}
+	credID := *overrides.CredentialID
 
 	keyConfig, err := s.credentialsService.GetExecutionConfig(ctx, orgID, credID, credentialsDomain.Provider(overrides.Provider))
 	if err != nil {

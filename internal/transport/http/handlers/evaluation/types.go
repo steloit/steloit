@@ -3,6 +3,8 @@ package evaluation
 import (
 	"encoding/json"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // @Description Score type (NUMERIC, CATEGORICAL, BOOLEAN)
@@ -16,15 +18,15 @@ const (
 
 // @Description Dataset item data
 type DatasetItemResponse struct {
-	ID            string                 `json:"id"`
-	DatasetID     string                 `json:"dataset_id"`
-	Input         map[string]interface{} `json:"input"`
-	Expected      map[string]interface{} `json:"expected,omitempty"`
-	Metadata      map[string]interface{} `json:"metadata,omitempty"`
-	Source        string                 `json:"source"`
-	SourceTraceID *string                `json:"source_trace_id,omitempty"`
-	SourceSpanID  *string                `json:"source_span_id,omitempty"`
-	CreatedAt     time.Time              `json:"created_at"`
+	ID            uuid.UUID      `json:"id"`
+	DatasetID     uuid.UUID      `json:"dataset_id"`
+	Input         map[string]any `json:"input"`
+	Expected      map[string]any `json:"expected,omitempty"`
+	Metadata      map[string]any `json:"metadata,omitempty"`
+	Source        string         `json:"source"`
+	SourceTraceID *string        `json:"source_trace_id,omitempty"` // W3C hex
+	SourceSpanID  *string        `json:"source_span_id,omitempty"`  // W3C hex
+	CreatedAt     time.Time      `json:"created_at"`
 }
 
 // @Description Bulk import result
@@ -43,7 +45,7 @@ type KeysMappingRequest struct {
 
 // @Description Import from JSON request
 type ImportFromJSONRequest struct {
-	Items       []map[string]interface{} `json:"items" binding:"required,min=1"`
+	Items       []map[string]any `json:"items" binding:"required,min=1"`
 	KeysMapping *KeysMappingRequest      `json:"keys_mapping,omitempty"`
 	Deduplicate bool                     `json:"deduplicate"`
 	Source      string                   `json:"source,omitempty"`
@@ -80,16 +82,16 @@ type ImportFromCSVRequest struct {
 
 // @Description Experiment item data
 type ExperimentItemResponse struct {
-	ID            string                 `json:"id"`
-	ExperimentID  string                 `json:"experiment_id"`
-	DatasetItemID *string                `json:"dataset_item_id,omitempty"`
-	TraceID       *string                `json:"trace_id,omitempty"`
-	Input         map[string]interface{} `json:"input"`
-	Output        interface{}            `json:"output,omitempty"`
-	Expected      interface{}            `json:"expected,omitempty"`
-	TrialNumber   int                    `json:"trial_number"`
-	Metadata      map[string]interface{} `json:"metadata,omitempty"`
-	CreatedAt     time.Time              `json:"created_at"`
+	ID            uuid.UUID      `json:"id"`
+	ExperimentID  uuid.UUID      `json:"experiment_id"`
+	DatasetItemID *uuid.UUID     `json:"dataset_item_id,omitempty"`
+	TraceID       *string        `json:"trace_id,omitempty"` // W3C hex
+	Input         map[string]any `json:"input"`
+	Output        any            `json:"output,omitempty"`
+	Expected      any            `json:"expected,omitempty"`
+	TrialNumber   int            `json:"trial_number"`
+	Metadata      map[string]any `json:"metadata,omitempty"`
+	CreatedAt     time.Time      `json:"created_at"`
 }
 
 // @Description Paginated experiment items response
@@ -106,7 +108,7 @@ type CreateRequest struct {
 	MinValue    *float64               `json:"min_value,omitempty"`
 	MaxValue    *float64               `json:"max_value,omitempty"`
 	Categories  []string               `json:"categories,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
 }
 
 // @Description Score config update request
@@ -117,7 +119,7 @@ type UpdateRequest struct {
 	MinValue    *float64               `json:"min_value,omitempty"`
 	MaxValue    *float64               `json:"max_value,omitempty"`
 	Categories  []string               `json:"categories,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
 }
 
 // @Description Batch creation response with count
@@ -132,16 +134,16 @@ type SDKBatchCreateExperimentItemsResponse struct {
 
 // @Description SDK score creation request
 type CreateScoreRequest struct {
-	TraceID          *string        `json:"trace_id,omitempty"` // Optional: required for trace-linked scores, nil for experiment-only scores
-	SpanID           *string        `json:"span_id,omitempty"`
+	TraceID          *string        `json:"trace_id,omitempty"` // W3C hex — required for trace-linked scores, nil for experiment-only scores
+	SpanID           *string        `json:"span_id,omitempty"`  // W3C hex
 	Name             string         `json:"name" binding:"required"`
 	Value            *float64       `json:"value,omitempty"`
 	StringValue      *string        `json:"string_value,omitempty"`
 	Type             string         `json:"type" binding:"required,oneof=NUMERIC CATEGORICAL BOOLEAN"`
 	Reason           *string        `json:"reason,omitempty"`
 	Metadata         map[string]any `json:"metadata,omitempty"`
-	ExperimentID     *string        `json:"experiment_id,omitempty"`
-	ExperimentItemID *string        `json:"experiment_item_id,omitempty"`
+	ExperimentID     *uuid.UUID     `json:"experiment_id,omitempty"`
+	ExperimentItemID *string        `json:"experiment_item_id,omitempty"` // CH column is Nullable(String)
 }
 
 // @Description Batch score creation request
@@ -151,10 +153,10 @@ type BatchScoreRequest struct {
 
 // @Description Score data
 type ScoreResponse struct {
-	ID               string          `json:"id"`
-	ProjectID        string          `json:"project_id"`
-	TraceID          *string         `json:"trace_id,omitempty"` // Nil for experiment-only scores
-	SpanID           *string         `json:"span_id,omitempty"`  // Nil for experiment-only scores
+	ID               uuid.UUID       `json:"id"`
+	ProjectID        uuid.UUID       `json:"project_id"`
+	TraceID          *string         `json:"trace_id,omitempty"` // W3C hex; nil for experiment-only scores
+	SpanID           *string         `json:"span_id,omitempty"`  // W3C hex; nil for experiment-only scores
 	Name             string          `json:"name"`
 	Value            *float64        `json:"value,omitempty"`
 	StringValue      *string         `json:"string_value,omitempty"`
@@ -162,7 +164,7 @@ type ScoreResponse struct {
 	Source           string          `json:"source"`
 	Reason           *string         `json:"reason,omitempty"`
 	Metadata         json.RawMessage `json:"metadata,omitempty"`
-	ExperimentID     *string         `json:"experiment_id,omitempty"`
+	ExperimentID     *uuid.UUID      `json:"experiment_id,omitempty"`
 	ExperimentItemID *string         `json:"experiment_item_id,omitempty"`
 	Timestamp        time.Time       `json:"timestamp"`
 }

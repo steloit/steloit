@@ -417,25 +417,20 @@ func (h *Handler) GetPromptByName(c *gin.Context) {
 }
 
 func buildPromptResponse(prompt *promptDomain.Prompt, version *promptDomain.Version, labels []string) *promptDomain.PromptResponse {
-	resp := &promptDomain.PromptResponse{
-		ID:            prompt.ID.String(),
+	return &promptDomain.PromptResponse{
+		ID:            prompt.ID,
 		Name:          prompt.Name,
 		Type:          prompt.Type,
 		Description:   prompt.Description,
 		Tags:          []string(prompt.Tags),
 		Version:       version.Version,
-		VersionID:     version.ID.String(),
+		VersionID:     version.ID,
 		Labels:        labels,
 		Template:      version.Template,
 		Config:        version.Config,
 		Variables:     []string(version.Variables),
 		CommitMessage: version.CommitMessage,
 		CreatedAt:     version.CreatedAt,
+		CreatedBy:     version.CreatedBy,
 	}
-
-	if version.CreatedBy != nil {
-		resp.CreatedBy = version.CreatedBy.String()
-	}
-
-	return resp
 }

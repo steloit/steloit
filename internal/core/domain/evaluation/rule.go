@@ -45,7 +45,7 @@ const (
 type FilterClause struct {
 	Field    string      `json:"field"`    // e.g., "input", "output", "metadata.key", "span_kind"
 	Operator string      `json:"operator"` // equals, not_equals, contains, gt, lt, is_empty
-	Value    interface{} `json:"value"`
+	Value    any `json:"value"`
 }
 
 // VariableMap defines how to extract a variable from span data.
@@ -171,8 +171,8 @@ type UpdateEvaluatorRequest struct {
 }
 
 type EvaluatorResponse struct {
-	ID              string           `json:"id"`
-	ProjectID       string           `json:"project_id"`
+	ID              uuid.UUID        `json:"id"`
+	ProjectID       uuid.UUID        `json:"project_id"`
 	Name            string           `json:"name"`
 	Description     *string          `json:"description,omitempty"`
 	Status          EvaluatorStatus  `json:"status"`
@@ -211,8 +211,8 @@ func (e *Evaluator) ToResponse() *EvaluatorResponse {
 	}
 
 	return &EvaluatorResponse{
-		ID:              e.ID.String(),
-		ProjectID:       e.ProjectID.String(),
+		ID:              e.ID,
+		ProjectID:       e.ProjectID,
 		Name:            e.Name,
 		Description:     e.Description,
 		Status:          e.Status,
@@ -254,7 +254,7 @@ type OutputField struct {
 }
 
 type LLMScorerConfig struct {
-	CredentialID   string        `json:"credential_id"`   // Project's AI credential
+	CredentialID   uuid.UUID     `json:"credential_id"`   // Project's AI credential
 	Model          string        `json:"model"`           // gpt-4o, claude-3-5-sonnet
 	Messages       []LLMMessage  `json:"messages"`        // System + User messages
 	Temperature    float64       `json:"temperature"`     // 0.0-1.0

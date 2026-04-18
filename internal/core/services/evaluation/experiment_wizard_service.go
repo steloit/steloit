@@ -59,21 +59,9 @@ func (s *experimentWizardService) CreateFromWizard(
 	userID *uuid.UUID,
 	req *evaluation.CreateExperimentFromWizardRequest,
 ) (*evaluation.Experiment, error) {
-	// Parse and validate IDs
-	promptID, err := uuid.Parse(req.PromptID)
-	if err != nil {
-		return nil, appErrors.NewValidationError("prompt_id", "must be a valid UUID")
-	}
-
-	promptVersionID, err := uuid.Parse(req.PromptVersionID)
-	if err != nil {
-		return nil, appErrors.NewValidationError("prompt_version_id", "must be a valid UUID")
-	}
-
-	datasetID, err := uuid.Parse(req.DatasetID)
-	if err != nil {
-		return nil, appErrors.NewValidationError("dataset_id", "must be a valid UUID")
-	}
+	promptID := req.PromptID
+	promptVersionID := req.PromptVersionID
+	datasetID := req.DatasetID
 
 	// Verify prompt exists AND belongs to this project
 	p, err := s.promptRepo.GetByID(ctx, promptID)
@@ -107,17 +95,13 @@ func (s *experimentWizardService) CreateFromWizard(
 		return nil, appErrors.NewInternalError("failed to verify dataset", err)
 	}
 
-	// Parse optional dataset version ID
+	// Optional dataset version ID
 	var datasetVersionID *uuid.UUID
 	if req.DatasetVersionID != nil {
-		parsed, err := uuid.Parse(*req.DatasetVersionID)
-		if err != nil {
-			return nil, appErrors.NewValidationError("dataset_version_id", "must be a valid UUID")
-		}
-		datasetVersionID = &parsed
+		datasetVersionID = req.DatasetVersionID
 
 		// Verify dataset version exists AND belongs to this dataset
-		if _, err := s.datasetVersionRepo.GetByID(ctx, parsed, datasetID); err != nil {
+		if _, err := s.datasetVersionRepo.GetByID(ctx, *datasetVersionID, datasetID); err != nil {
 			if errors.Is(err, evaluation.ErrDatasetVersionNotFound) {
 				return nil, appErrors.NewNotFoundError(fmt.Sprintf("dataset version %s", *req.DatasetVersionID))
 			}
@@ -453,10 +437,7 @@ func (s *experimentWizardService) EstimateCost(
 	req *evaluation.EstimateCostRequest,
 ) (*evaluation.EstimateCostResponse, error) {
 	// Parse dataset ID
-	datasetID, err := uuid.Parse(req.DatasetID)
-	if err != nil {
-		return nil, appErrors.NewValidationError("dataset_id", "must be a valid UUID")
-	}
+	datasetID := req.DatasetID
 
 	// Validate dataset belongs to this project (security: prevent cross-project information disclosure)
 	if _, err := s.datasetRepo.GetByID(ctx, datasetID, projectID); err != nil {

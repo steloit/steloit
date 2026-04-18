@@ -17,7 +17,7 @@ type EvaluatorAnalyticsParams struct {
 
 // EvaluatorAnalyticsResponse contains comprehensive analytics for an evaluator.
 type EvaluatorAnalyticsResponse struct {
-	EvaluatorID        string               `json:"evaluator_id"`
+	EvaluatorID        uuid.UUID            `json:"evaluator_id"`
 	Period             string               `json:"period"`
 	TotalExecutions    int64                `json:"total_executions"`
 	TotalSpansScored   int64                `json:"total_spans_scored"`
@@ -148,9 +148,9 @@ type EvaluatorSnapshot struct {
 // Uses flattened structure for frontend compatibility (execution fields at root level).
 type EvaluatorExecutionDetailFlat struct {
 	// Embedded execution fields (flattened from EvaluatorExecutionResponse)
-	ID           string          `json:"id"`
-	EvaluatorID  string          `json:"evaluator_id"`
-	ProjectID    string          `json:"project_id"`
+	ID           uuid.UUID       `json:"id"`
+	EvaluatorID  uuid.UUID       `json:"evaluator_id"`
+	ProjectID    uuid.UUID       `json:"project_id"`
 	Status       ExecutionStatus `json:"status"`
 	TriggerType  TriggerType     `json:"trigger_type"`
 	SpansMatched int             `json:"spans_matched"`

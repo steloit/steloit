@@ -1,6 +1,10 @@
 package observability
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // ==================================
 // OTLP Metrics Entities
@@ -33,7 +37,7 @@ type MetricSum struct {
 	ExemplarsFilteredAttributes []map[string]string `ch:"exemplars_filtered_attributes"` // Array(Map(LowCardinality(String), String))
 	ExemplarsTraceID            []string            `ch:"exemplars_trace_id"`
 	ExemplarsSpanID             []string            `ch:"exemplars_span_id"`
-	ProjectID                   string              `ch:"project_id"`
+	ProjectID                   uuid.UUID           `ch:"project_id"`
 }
 
 // MetricGauge represents a gauge metric (instantaneous value)
@@ -59,7 +63,7 @@ type MetricGauge struct {
 	ExemplarsFilteredAttributes []map[string]string `ch:"exemplars_filtered_attributes"` // Array(Map(LowCardinality(String), String))
 	ExemplarsTraceID            []string            `ch:"exemplars_trace_id"`
 	ExemplarsSpanID             []string            `ch:"exemplars_span_id"`
-	ProjectID                   string              `ch:"project_id"`
+	ProjectID                   uuid.UUID           `ch:"project_id"`
 }
 
 // MetricHistogram represents a histogram metric (distribution)
@@ -91,7 +95,7 @@ type MetricHistogram struct {
 	ExemplarsFilteredAttributes []map[string]string `ch:"exemplars_filtered_attributes"` // Array(Map(LowCardinality(String), String))
 	ExemplarsTraceID            []string            `ch:"exemplars_trace_id"`
 	ExemplarsSpanID             []string            `ch:"exemplars_span_id"`
-	ProjectID                   string              `ch:"project_id"`
+	ProjectID                   uuid.UUID           `ch:"project_id"`
 }
 
 // MetricExponentialHistogram represents an exponential histogram metric (memory-efficient distribution)
@@ -128,7 +132,7 @@ type MetricExponentialHistogram struct {
 	ExemplarsFilteredAttributes []map[string]string `ch:"exemplars_filtered_attributes"` // Array(Map(LowCardinality(String), String))
 	ExemplarsTraceID            []string            `ch:"exemplars_trace_id"`
 	ExemplarsSpanID             []string            `ch:"exemplars_span_id"`
-	ProjectID                   string              `ch:"project_id"`
+	ProjectID                   uuid.UUID           `ch:"project_id"`
 }
 
 // ==================================

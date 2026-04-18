@@ -156,7 +156,7 @@ func (r *userSessionRepository) MarkAsUsed(ctx context.Context, id uuid.UUID) er
 	return nil
 }
 
-func (r *userSessionRepository) GetByDeviceInfo(ctx context.Context, userID uuid.UUID, deviceInfo interface{}) ([]*authDomain.UserSession, error) {
+func (r *userSessionRepository) GetByDeviceInfo(ctx context.Context, userID uuid.UUID, deviceInfo any) ([]*authDomain.UserSession, error) {
 	raw, err := json.Marshal(deviceInfo)
 	if err != nil {
 		return nil, fmt.Errorf("marshal device info: %w", err)
@@ -291,10 +291,10 @@ func ipAddrToString(ip *netip.Addr) *string {
 	return &s
 }
 
-// marshalDeviceInfo converts the opaque interface{} domain field into
+// marshalDeviceInfo converts the opaque any domain field into
 // json.RawMessage for the sqlc-generated params. Empty/nil in = null on
 // the wire; the JSONB column is nullable.
-func marshalDeviceInfo(v interface{}) (json.RawMessage, error) {
+func marshalDeviceInfo(v any) (json.RawMessage, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -322,19 +322,17 @@ func marshalDeviceInfo(v interface{}) (json.RawMessage, error) {
 	return data, nil
 }
 
-// decodeDeviceInfo restores the domain's interface{} field from the raw
-// JSONB bytes. The domain has never relied on a concrete type here, so
-// we return the decoded Go value (map/slice/literal) rather than keeping
-// the bytes.
-func decodeDeviceInfo(raw json.RawMessage) interface{} {
+// decodeDeviceInfo restores the domain's DeviceInfo map from the raw JSONB
+// bytes. Returns nil for empty or malformed payloads; structured client-
+// reported fingerprint data is decoded into a string-keyed map (browser,
+// OS, etc. are caller-defined).
+func decodeDeviceInfo(raw json.RawMessage) map[string]any {
 	if len(raw) == 0 {
 		return nil
 	}
-	var out interface{}
+	var out map[string]any
 	if err := json.Unmarshal(raw, &out); err != nil {
-		// Surface the raw payload on decode failure so callers can still
-		// audit it; swallowing would lose forensic data.
-		return string(raw)
+		return nil
 	}
 	return out
 }

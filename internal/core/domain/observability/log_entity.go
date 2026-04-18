@@ -1,6 +1,10 @@
 package observability
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // ==================================
 // OTLP Logs Entity
@@ -25,7 +29,7 @@ type Log struct {
 	ScopeName          string            `ch:"scope_name"`          // Instrumentation scope name
 	ScopeAttributes    map[string]string `ch:"scope_attributes"`    // Instrumentation scope attributes
 	LogAttributes      map[string]string `ch:"log_attributes"`      // Log-specific attributes
-	ProjectID          string            `ch:"project_id"`
+	ProjectID          uuid.UUID         `ch:"project_id"`
 }
 
 // ==================================

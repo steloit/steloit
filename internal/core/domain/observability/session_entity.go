@@ -3,9 +3,10 @@ package observability
 import (
 	"time"
 
-	"brokle/pkg/pagination"
-
+	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
+
+	"brokle/pkg/pagination"
 )
 
 // SessionSummary represents aggregated session-level metrics computed from traces.
@@ -24,7 +25,7 @@ type SessionSummary struct {
 
 // SessionFilter represents filtering options for listing sessions.
 type SessionFilter struct {
-	ProjectID string `json:"project_id"`
+	ProjectID uuid.UUID `json:"project_id"`
 
 	// Time range filter
 	StartTime *time.Time `json:"start_time,omitempty"`

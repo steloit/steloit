@@ -30,7 +30,7 @@ type ProviderModel struct {
 	StartDate       time.Time              `json:"start_date"`
 	Unit            string                 `json:"unit"`
 	TokenizerID     *string                `json:"tokenizer_id,omitempty"`
-	TokenizerConfig map[string]interface{} `json:"tokenizer_config,omitempty"`
+	TokenizerConfig map[string]any `json:"tokenizer_config,omitempty"`
 }
 
 

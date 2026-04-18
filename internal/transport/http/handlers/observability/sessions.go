@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"brokle/internal/core/domain/observability"
 	appErrors "brokle/pkg/errors"
@@ -33,9 +34,9 @@ import (
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/projects/{projectId}/sessions [get]
 func (h *Handler) ListSessions(c *gin.Context) {
-	projectID := c.Param("projectId")
-	if projectID == "" {
-		response.Error(c, appErrors.NewValidationError("Missing project ID", "projectId is required"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
+	if err != nil {
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 

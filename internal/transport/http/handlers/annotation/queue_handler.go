@@ -301,9 +301,9 @@ func (h *QueueHandler) Delete(c *gin.Context) {
 // Helper functions for converting domain types to response types
 
 func toQueueResponse(queue *annotationDomain.AnnotationQueue) *QueueResponse {
-	resp := &QueueResponse{
-		ID:             queue.ID.String(),
-		ProjectID:      queue.ProjectID.String(),
+	return &QueueResponse{
+		ID:             queue.ID,
+		ProjectID:      queue.ProjectID,
 		Name:           queue.Name,
 		Description:    queue.Description,
 		Instructions:   queue.Instructions,
@@ -313,14 +313,10 @@ func toQueueResponse(queue *annotationDomain.AnnotationQueue) *QueueResponse {
 			LockTimeoutSeconds: queue.Settings.LockTimeoutSeconds,
 			AutoAssignment:     queue.Settings.AutoAssignment,
 		},
+		CreatedBy: queue.CreatedBy,
 		CreatedAt: queue.CreatedAt,
 		UpdatedAt: queue.UpdatedAt,
 	}
-	if queue.CreatedBy != nil {
-		createdBy := queue.CreatedBy.String()
-		resp.CreatedBy = &createdBy
-	}
-	return resp
 }
 
 func toStatsResponse(stats *annotationDomain.QueueStats) *StatsResponse {

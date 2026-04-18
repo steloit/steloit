@@ -131,9 +131,9 @@ func (e *EvaluatorExecution) IsTerminal() bool {
 // Response types
 
 type EvaluatorExecutionResponse struct {
-	ID           string          `json:"id"`
-	EvaluatorID  string          `json:"evaluator_id"`
-	ProjectID    string          `json:"project_id"`
+	ID           uuid.UUID       `json:"id"`
+	EvaluatorID  uuid.UUID       `json:"evaluator_id"`
+	ProjectID    uuid.UUID       `json:"project_id"`
 	Status       ExecutionStatus `json:"status"`
 	TriggerType  TriggerType     `json:"trigger_type"`
 	SpansMatched int             `json:"spans_matched"`
@@ -154,9 +154,9 @@ func (e *EvaluatorExecution) ToResponse() *EvaluatorExecutionResponse {
 	}
 
 	return &EvaluatorExecutionResponse{
-		ID:           e.ID.String(),
-		EvaluatorID:  e.EvaluatorID.String(),
-		ProjectID:    e.ProjectID.String(),
+		ID:           e.ID,
+		EvaluatorID:  e.EvaluatorID,
+		ProjectID:    e.ProjectID,
 		Status:       e.Status,
 		TriggerType:  e.TriggerType,
 		SpansMatched: e.SpansMatched,
@@ -194,7 +194,7 @@ type TriggerOptions struct {
 
 // TriggerResponse returned when triggering manual evaluation
 type TriggerResponse struct {
-	ExecutionID string `json:"execution_id"`
-	SpansQueued int    `json:"spans_queued"`
-	Message     string `json:"message"`
+	ExecutionID uuid.UUID `json:"execution_id"`
+	SpansQueued int       `json:"spans_queued"`
+	Message     string    `json:"message"`
 }

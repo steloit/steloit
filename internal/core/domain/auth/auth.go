@@ -5,7 +5,6 @@
 package auth
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -22,7 +21,7 @@ type UserSession struct {
 	UpdatedAt           time.Time   `json:"updated_at"`
 	CreatedAt           time.Time   `json:"created_at"`
 	RefreshExpiresAt    time.Time   `json:"refresh_expires_at"`
-	DeviceInfo          interface{} `json:"device_info,omitempty"`
+	DeviceInfo          map[string]any `json:"device_info,omitempty"`
 	IPAddress           *string     `json:"ip_address,omitempty"`
 	UserAgent           *string     `json:"user_agent,omitempty"`
 	LastUsedAt          *time.Time  `json:"last_used_at,omitempty"`
@@ -55,22 +54,6 @@ type SessionStats struct {
 	SessionsToday    int64 `json:"sessions_today"`
 	SessionsThisWeek int64 `json:"sessions_this_week"`
 	AvgSessionLength int64 `json:"avg_session_length_minutes"`
-}
-
-// External repository interfaces to avoid circular imports
-// These will be implemented by the actual user and organization repositories
-
-// UserRepository defines the interface for user data access needed by auth services
-type UserRepository interface {
-	GetByID(ctx context.Context, id uuid.UUID) (interface{}, error)
-	GetByEmail(ctx context.Context, email string) (interface{}, error)
-	UpdateLastLogin(ctx context.Context, id uuid.UUID) error
-}
-
-// OrganizationRepository defines the interface for organization data access needed by auth services
-type OrganizationRepository interface {
-	GetByID(ctx context.Context, id uuid.UUID) (interface{}, error)
-	IsMember(ctx context.Context, userID, orgID uuid.UUID) (bool, error)
 }
 
 // APIKey represents an industry-standard API key with secure hash storage.
@@ -302,10 +285,10 @@ type AuditLog struct {
 
 // Request/Response DTOs
 type LoginRequest struct {
-	DeviceInfo map[string]interface{} `json:"device_info,omitempty"`
-	Email      string                 `json:"email" validate:"required,email"`
-	Password   string                 `json:"password" validate:"required"`
-	Remember   bool                   `json:"remember"`
+	DeviceInfo map[string]any `json:"device_info,omitempty"`
+	Email      string         `json:"email" validate:"required,email"`
+	Password   string         `json:"password" validate:"required"`
+	Remember   bool           `json:"remember"`
 }
 
 type LoginResponse struct {
@@ -333,11 +316,11 @@ type CreateAPIKeyRequest struct {
 type CreateAPIKeyResponse struct {
 	CreatedAt  time.Time  `json:"created_at"`
 	ExpiresAt  *time.Time `json:"expires_at,omitempty"`
-	ID         string     `json:"id" example:"key_01234567890123456789012345"`
+	ID         uuid.UUID  `json:"id"`
 	Name       string     `json:"name" example:"Production API Key"`
 	Key        string     `json:"key" example:"bk_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789AbCd"`
 	KeyPreview string     `json:"key_preview" example:"bk_AbCd...AbCd"`
-	ProjectID  string     `json:"project_id" example:"proj_01234567890123456789012345"`
+	ProjectID  uuid.UUID  `json:"project_id"`
 }
 
 type RefreshTokenRequest struct {
@@ -352,10 +335,29 @@ type AuthContext struct {
 	UserID    uuid.UUID  `json:"user_id"`
 }
 
-// Deprecated: StandardPermissions removed
-// Use scope-based permissions instead (see seeds/dev.yaml for full list)
-// Organization-level: organizations:*, members:*, billing:*, settings:*, etc.
-// Project-level: traces:*, analytics:*, models:*, providers:*, etc.
+// OAuthSession holds the temporary state of an in-progress OAuth signup.
+// Persisted in Redis for 15 minutes between provider callback and the
+// frontend confirmation step. Not a DB entity.
+type OAuthSession struct {
+	ExpiresAt       time.Time `json:"expires_at"`
+	InvitationToken *string   `json:"invitation_token,omitempty"`
+	Email           string    `json:"email"`
+	FirstName       string    `json:"first_name"`
+	LastName        string    `json:"last_name"`
+	Provider        string    `json:"provider"`
+	ProviderID      string    `json:"provider_id"`
+}
+
+// LoginTokenSession holds the temporary one-time-use redirect payload
+// returned to the frontend after an OAuth login completes. The session is
+// deleted on first read.
+type LoginTokenSession struct {
+	AccessToken  string    `json:"access_token"`
+	RefreshToken string    `json:"refresh_token"`
+	ExpiresIn    int64     `json:"expires_in"`
+	UserID       uuid.UUID `json:"user_id"`
+	CreatedAt    time.Time `json:"created_at"`
+}
 
 // Blacklisted token types
 const (
@@ -372,7 +374,7 @@ const (
 //   - viewer: 15 scopes (read-only)
 
 // Constructor functions
-func NewUserSession(userID uuid.UUID, refreshTokenHash string, currentJTI string, expiresAt, refreshExpiresAt time.Time, ipAddress, userAgent *string, deviceInfo interface{}) *UserSession {
+func NewUserSession(userID uuid.UUID, refreshTokenHash string, currentJTI string, expiresAt, refreshExpiresAt time.Time, ipAddress, userAgent *string, deviceInfo map[string]any) *UserSession {
 	return &UserSession{
 		ID:                  uid.New(),
 		UserID:              userID,

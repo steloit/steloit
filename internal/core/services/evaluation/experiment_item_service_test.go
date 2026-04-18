@@ -190,7 +190,7 @@ func (m *MockScoreService) CreateScoreBatch(ctx context.Context, scores []*obser
 	return args.Error(0)
 }
 
-func (m *MockScoreService) GetScoreByID(ctx context.Context, id string) (*observability.Score, error) {
+func (m *MockScoreService) GetScoreByID(ctx context.Context, id uuid.UUID) (*observability.Score, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -227,7 +227,7 @@ func (m *MockScoreService) UpdateScore(ctx context.Context, score *observability
 	return args.Error(0)
 }
 
-func (m *MockScoreService) DeleteScore(ctx context.Context, id string) error {
+func (m *MockScoreService) DeleteScore(ctx context.Context, id uuid.UUID) error {
 	args := m.Called(ctx, id)
 	return args.Error(0)
 }
@@ -509,7 +509,7 @@ func TestExperimentItemService_CreateBatch(t *testing.T) {
 			Status:    evaluation.ExperimentStatusRunning,
 		}
 
-		invalidID := "not-a-valid-ulid"
+		invalidID := "not-a-valid-uuid"
 		req := &evaluation.CreateExperimentItemsBatchRequest{
 			Items: []evaluation.CreateExperimentItemRequest{
 				{

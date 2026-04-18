@@ -83,7 +83,7 @@ type ChatMessage struct {
 type ModelConfig struct {
 	Model            string   `json:"model,omitempty"`
 	Provider         string   `json:"provider,omitempty"`      // Adapter type (openai, anthropic, azure, gemini, openrouter, custom)
-	CredentialID     *string  `json:"credential_id,omitempty"` // Specific credential config ID (optional, falls back to adapter-based lookup)
+	CredentialID     *uuid.UUID `json:"credential_id,omitempty"` // Specific credential config ID (optional, falls back to adapter-based lookup)
 	Temperature      *float64 `json:"temperature,omitempty"`
 	MaxTokens        *int     `json:"max_tokens,omitempty"`
 	TopP             *float64 `json:"top_p,omitempty"`
@@ -128,7 +128,7 @@ func (mc ModelConfig) Value() (driver.Value, error) {
 }
 
 // Scan implements sql.Scanner for GORM JSONB retrieval
-func (mc *ModelConfig) Scan(value interface{}) error {
+func (mc *ModelConfig) Scan(value any) error {
 	if value == nil {
 		return nil
 	}
@@ -161,7 +161,7 @@ func (j JSON) Value() (driver.Value, error) {
 	return []byte(j), nil
 }
 
-func (j *JSON) Scan(value interface{}) error {
+func (j *JSON) Scan(value any) error {
 	if value == nil {
 		*j = nil
 		return nil
@@ -196,7 +196,7 @@ type CreatePromptRequest struct {
 	Type          PromptType   `json:"type,omitempty"`
 	Description   string       `json:"description,omitempty"`
 	Tags          []string     `json:"tags,omitempty"`
-	Template      interface{}  `json:"template" validate:"required"`
+	Template      any  `json:"template" validate:"required"`
 	Config        *ModelConfig `json:"config,omitempty"`
 	Labels        []string     `json:"labels,omitempty"`
 	CommitMessage string       `json:"commit_message,omitempty"`
@@ -209,7 +209,7 @@ type UpdatePromptRequest struct {
 }
 
 type CreateVersionRequest struct {
-	Template      interface{}  `json:"template" validate:"required"`
+	Template      any  `json:"template" validate:"required"`
 	Config        *ModelConfig `json:"config,omitempty"`
 	Labels        []string     `json:"labels,omitempty"`
 	CommitMessage string       `json:"commit_message,omitempty"`
@@ -221,7 +221,7 @@ type UpsertPromptRequest struct {
 	Type          PromptType   `json:"type,omitempty"`
 	Description   string       `json:"description,omitempty"`
 	Tags          []string     `json:"tags,omitempty"`
-	Template      interface{}  `json:"template" validate:"required"`
+	Template      any  `json:"template" validate:"required"`
 	Config        *ModelConfig `json:"config,omitempty"`
 	Labels        []string     `json:"labels,omitempty"`
 	CommitMessage string       `json:"commit_message,omitempty"`
@@ -244,29 +244,29 @@ type ProtectedLabelsRequest struct {
 
 // PromptResponse is the response for a prompt with version info.
 type PromptResponse struct {
-	ID            string          `json:"id"`
-	ProjectID     string          `json:"project_id"`
+	ID            uuid.UUID       `json:"id"`
+	ProjectID     uuid.UUID       `json:"project_id"`
 	Name          string          `json:"name"`
 	Type          PromptType      `json:"type"`
 	Description   string          `json:"description,omitempty"`
 	Tags          []string        `json:"tags"`
 	Version       int             `json:"version"`
-	VersionID     string          `json:"version_id"` // UUID of the specific version (for linking)
+	VersionID     uuid.UUID       `json:"version_id"`
 	Labels        []string        `json:"labels"`
-	Template      interface{}     `json:"template"`
+	Template      any             `json:"template"`
 	Config        *ModelConfig    `json:"config,omitempty"`
 	Variables     []string        `json:"variables"`
 	Dialect       TemplateDialect `json:"dialect,omitempty"` // Template dialect (simple, mustache, jinja2)
 	CommitMessage string          `json:"commit_message,omitempty"`
 	CreatedAt     time.Time       `json:"created_at"`
 	UpdatedAt     time.Time       `json:"updated_at"`
-	CreatedBy     string          `json:"created_by,omitempty"`
+	CreatedBy     *uuid.UUID      `json:"created_by,omitempty"`
 	IsFallback    bool            `json:"is_fallback,omitempty"`
 }
 
 // PromptListItem is a summary item for prompt listing.
 type PromptListItem struct {
-	ID            string                `json:"id"`
+	ID            uuid.UUID             `json:"id"`
 	Name          string                `json:"name"`
 	Type          PromptType            `json:"type"`
 	Description   string                `json:"description,omitempty"`
@@ -284,29 +284,29 @@ type PromptListLabelInfo struct {
 }
 
 type VersionResponse struct {
-	ID            string          `json:"id"`
+	ID            uuid.UUID       `json:"id"`
 	Version       int             `json:"version"`
-	Template      interface{}     `json:"template"`
+	Template      any             `json:"template"`
 	Config        *ModelConfig    `json:"config,omitempty"`
 	Variables     []string        `json:"variables"`
 	Dialect       TemplateDialect `json:"dialect,omitempty"` // Template dialect (simple, mustache, jinja2)
 	CommitMessage string          `json:"commit_message,omitempty"`
 	Labels        []string        `json:"labels"`
 	CreatedAt     time.Time       `json:"created_at"`
-	CreatedBy     string          `json:"created_by,omitempty"`
+	CreatedBy     *uuid.UUID      `json:"created_by,omitempty"`
 }
 
 type VersionDiffResponse struct {
 	FromVersion      int         `json:"from_version"`
 	ToVersion        int         `json:"to_version"`
-	TemplateFrom     interface{} `json:"template_from"`
-	TemplateTo       interface{} `json:"template_to"`
+	TemplateFrom     any `json:"template_from"`
+	TemplateTo       any `json:"template_to"`
 	VariablesAdded   []string    `json:"variables_added"`
 	VariablesRemoved []string    `json:"variables_removed"`
 }
 
 type ExecutePromptResponse struct {
-	CompiledPrompt interface{}  `json:"compiled_prompt"`
+	CompiledPrompt any  `json:"compiled_prompt"`
 	Response       *LLMResponse `json:"response,omitempty"`
 	LatencyMs      int64        `json:"latency_ms"`
 	Error          string       `json:"error,omitempty"`
@@ -451,7 +451,7 @@ func (v *Version) GetChatTemplate() (*ChatTemplate, error) {
 	return &t, nil
 }
 
-func (v *Version) SetTemplate(template interface{}) error {
+func (v *Version) SetTemplate(template any) error {
 	data, err := json.Marshal(template)
 	if err != nil {
 		return err

@@ -31,7 +31,7 @@ func (h *Handler) ListSpans(c *gin.Context) {
 	// middleware; SpanFilter.ProjectID is required so repository queries are
 	// tenant-bounded.
 	filter := &observability.SpanFilter{
-		ProjectID: middleware.MustGetProjectID(c).String(),
+		ProjectID: middleware.MustGetProjectID(c),
 	}
 
 	if traceID := c.Query("trace_id"); traceID != "" {

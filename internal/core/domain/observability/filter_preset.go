@@ -31,7 +31,7 @@ type FilterCondition struct {
 	ID       string      `json:"id"`
 	Column   string      `json:"column"`
 	Operator string      `json:"operator"`
-	Value    interface{} `json:"value"`
+	Value    any `json:"value"`
 	Type     string      `json:"type"` // "string", "number", "date", etc.
 }
 

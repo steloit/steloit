@@ -256,8 +256,8 @@ func (s *datasetVersionService) GetDatasetWithVersionInfo(ctx context.Context, d
 	}
 
 	response := &evaluation.DatasetWithVersionResponse{
-		ID:          dataset.ID.String(),
-		ProjectID:   dataset.ProjectID.String(),
+		ID:          dataset.ID,
+		ProjectID:   dataset.ProjectID,
 		Name:        dataset.Name,
 		Description: dataset.Description,
 		Metadata:    dataset.Metadata,
@@ -267,8 +267,7 @@ func (s *datasetVersionService) GetDatasetWithVersionInfo(ctx context.Context, d
 
 	// Add current version ID if pinned
 	if dataset.CurrentVersionID != nil {
-		id := dataset.CurrentVersionID.String()
-		response.CurrentVersionID = &id
+		response.CurrentVersionID = dataset.CurrentVersionID
 
 		// Get the pinned version number
 		version, err := s.versionRepo.GetByID(ctx, *dataset.CurrentVersionID, datasetID)

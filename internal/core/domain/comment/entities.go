@@ -79,13 +79,6 @@ func (c *Comment) IsSoftDeleted() bool {
 	return c.DeletedAt != nil
 }
 
-func (c *Comment) getCreatedByString() string {
-	if c.CreatedBy == nil {
-		return ""
-	}
-	return c.CreatedBy.String()
-}
-
 type CommentUser struct {
 	ID        uuid.UUID `json:"id"`
 	Name      string    `json:"name"`
@@ -102,14 +95,14 @@ type UpdateCommentRequest struct {
 }
 
 type CommentResponse struct {
-	ID         string             `json:"id"`
+	ID         uuid.UUID          `json:"id"`
 	EntityType EntityType         `json:"entity_type"`
-	EntityID   string             `json:"entity_id"`
-	ProjectID  string             `json:"project_id"`
-	ParentID   *string            `json:"parent_id,omitempty"`
+	EntityID   string             `json:"entity_id"` // trace_id or span_id — W3C hex, not UUID
+	ProjectID  uuid.UUID          `json:"project_id"`
+	ParentID   *uuid.UUID         `json:"parent_id,omitempty"`
 	Content    string             `json:"content"`
-	CreatedBy  string             `json:"created_by"`
-	UpdatedBy  *string            `json:"updated_by,omitempty"`
+	CreatedBy  *uuid.UUID         `json:"created_by"`
+	UpdatedBy  *uuid.UUID         `json:"updated_by,omitempty"`
 	CreatedAt  time.Time          `json:"created_at"`
 	UpdatedAt  time.Time          `json:"updated_at"`
 	IsEdited   bool               `json:"is_edited"`
@@ -122,18 +115,6 @@ type CommentResponse struct {
 }
 
 func (c *Comment) ToResponse() *CommentResponse {
-	var updatedBy *string
-	if c.UpdatedBy != nil {
-		id := c.UpdatedBy.String()
-		updatedBy = &id
-	}
-
-	var parentID *string
-	if c.ParentID != nil {
-		id := c.ParentID.String()
-		parentID = &id
-	}
-
 	// For tombstones (soft-deleted comments), hide the content
 	content := c.Content
 	isDeleted := c.IsSoftDeleted()
@@ -142,14 +123,14 @@ func (c *Comment) ToResponse() *CommentResponse {
 	}
 
 	return &CommentResponse{
-		ID:         c.ID.String(),
+		ID:         c.ID,
 		EntityType: c.EntityType,
 		EntityID:   c.EntityID,
-		ProjectID:  c.ProjectID.String(),
-		ParentID:   parentID,
+		ProjectID:  c.ProjectID,
+		ParentID:   c.ParentID,
 		Content:    content,
-		CreatedBy:  c.getCreatedByString(),
-		UpdatedBy:  updatedBy,
+		CreatedBy:  c.CreatedBy,
+		UpdatedBy:  c.UpdatedBy,
 		CreatedAt:  c.CreatedAt,
 		UpdatedAt:  c.UpdatedAt,
 		IsEdited:   c.IsEdited(),

@@ -188,17 +188,7 @@ func (h *ItemHandler) ClaimNext(c *gin.Context) {
 	var req ClaimNextRequest
 	_ = c.ShouldBindJSON(&req) // Ignore errors - body is optional
 
-	var seenItemIDs []uuid.UUID
-	if len(req.SeenItemIDs) > 0 {
-		seenItemIDs = make([]uuid.UUID, 0, len(req.SeenItemIDs))
-		for _, idStr := range req.SeenItemIDs {
-			if id, err := uuid.Parse(idStr); err == nil {
-				seenItemIDs = append(seenItemIDs, id)
-			}
-		}
-	}
-
-	item, err := h.service.ClaimNext(c.Request.Context(), queueID, projectID, userID, seenItemIDs)
+	item, err := h.service.ClaimNext(c.Request.Context(), queueID, projectID, userID, req.SeenItemIDs)
 	if err != nil {
 		response.Error(c, err)
 		return
@@ -575,28 +565,19 @@ func (h *ItemHandler) ListItemsSDK(c *gin.Context) {
 // Helper function to convert domain item to response
 
 func toItemResponse(item *annotationDomain.QueueItem) *ItemResponse {
-	resp := &ItemResponse{
-		ID:         item.ID.String(),
-		QueueID:    item.QueueID.String(),
-		ObjectID:   item.ObjectID,
-		ObjectType: string(item.ObjectType),
-		Status:     string(item.Status),
-		Priority:   item.Priority,
-		LockedAt:   item.LockedAt,
-		Metadata:   item.Metadata,
-		CreatedAt:  item.CreatedAt,
-		UpdatedAt:  item.UpdatedAt,
+	return &ItemResponse{
+		ID:              item.ID,
+		QueueID:         item.QueueID,
+		ObjectID:        item.ObjectID,
+		ObjectType:      string(item.ObjectType),
+		Status:          string(item.Status),
+		Priority:        item.Priority,
+		LockedAt:        item.LockedAt,
+		LockedByUserID:  item.LockedByUserID,
+		AnnotatorUserID: item.AnnotatorUserID,
+		CompletedAt:     item.CompletedAt,
+		Metadata:        item.Metadata,
+		CreatedAt:       item.CreatedAt,
+		UpdatedAt:       item.UpdatedAt,
 	}
-	if item.LockedByUserID != nil {
-		lockedBy := item.LockedByUserID.String()
-		resp.LockedByUserID = &lockedBy
-	}
-	if item.AnnotatorUserID != nil {
-		annotator := item.AnnotatorUserID.String()
-		resp.AnnotatorUserID = &annotator
-	}
-	if item.CompletedAt != nil {
-		resp.CompletedAt = item.CompletedAt
-	}
-	return resp
 }

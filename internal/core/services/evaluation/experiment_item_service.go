@@ -174,12 +174,11 @@ func (s *experimentItemService) createExperimentScores(
 				dataType = "NUMERIC"
 			}
 
-			expID := experimentID.String()
 			itemID := itemData.itemID.String()
 
 			score := &observability.Score{
-				ID:               uid.New().String(),
-				ProjectID:        projectID.String(),
+				ID:               uid.New(),
+				ProjectID:        projectID,
 				TraceID:          nil, // No trace for experiment-only scores
 				SpanID:           nil,
 				Name:             sc.Name,
@@ -189,7 +188,7 @@ func (s *experimentItemService) createExperimentScores(
 				Source:           observability.ScoreSourceAPI,
 				Reason:           sc.Reason,
 				Metadata:         metadataJSON,
-				ExperimentID:     &expID,
+				ExperimentID:     &experimentID,
 				ExperimentItemID: &itemID,
 				Timestamp:        time.Now(),
 			}

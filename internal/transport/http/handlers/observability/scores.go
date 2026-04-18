@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"brokle/internal/core/domain/observability"
 	"brokle/internal/transport/http/middleware"
@@ -17,10 +18,10 @@ import (
 // Metadata is json.RawMessage to preserve the stored JSON exactly as-is,
 // avoiding lossy map[string]any conversion that silently drops non-object values.
 type ScoreResponse struct {
-	ID               string          `json:"id"`
-	ProjectID        string          `json:"project_id"`
-	TraceID          *string         `json:"trace_id,omitempty"`
-	SpanID           *string         `json:"span_id,omitempty"`
+	ID               uuid.UUID       `json:"id"`
+	ProjectID        uuid.UUID       `json:"project_id"`
+	TraceID          *string         `json:"trace_id,omitempty"` // W3C hex
+	SpanID           *string         `json:"span_id,omitempty"`  // W3C hex
 	Name             string          `json:"name"`
 	Value            *float64        `json:"value,omitempty"`
 	StringValue      *string         `json:"string_value,omitempty"`
@@ -28,7 +29,7 @@ type ScoreResponse struct {
 	Source           string          `json:"source"`
 	Reason           *string         `json:"reason,omitempty"`
 	Metadata         json.RawMessage `json:"metadata,omitempty"`
-	ExperimentID     *string         `json:"experiment_id,omitempty"`
+	ExperimentID     *uuid.UUID      `json:"experiment_id,omitempty"`
 	ExperimentItemID *string         `json:"experiment_item_id,omitempty"`
 	CreatedBy        *string         `json:"created_by,omitempty"`
 	Timestamp        time.Time       `json:"timestamp"`
@@ -93,9 +94,9 @@ func toScoreResponses(scores []*observability.Score) []*ScoreResponse {
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/projects/{projectId}/scores [get]
 func (h *Handler) ListProjectScores(c *gin.Context) {
-	projectID := c.Param("projectId")
-	if projectID == "" {
-		response.Error(c, appErrors.NewValidationError("Missing project ID", "projectId is required"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
+	if err != nil {
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
@@ -167,7 +168,7 @@ func (h *Handler) ListScores(c *gin.Context) {
 	// middleware; ScoreFilter.ProjectID is required so repository queries are
 	// tenant-bounded.
 	filter := &observability.ScoreFilter{
-		ProjectID: middleware.MustGetProjectID(c).String(),
+		ProjectID: middleware.MustGetProjectID(c),
 	}
 
 	if traceID := c.Query("trace_id"); traceID != "" {
@@ -224,9 +225,9 @@ func (h *Handler) ListScores(c *gin.Context) {
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/scores/{id} [get]
 func (h *Handler) GetScore(c *gin.Context) {
-	scoreID := c.Param("id")
-	if scoreID == "" {
-		response.Error(c, appErrors.NewValidationError("Missing score ID", "id is required"))
+	scoreID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.Error(c, appErrors.NewValidationError("Invalid score ID", "id must be a valid UUID"))
 		return
 	}
 
@@ -267,9 +268,9 @@ type UpdateScoreRequest struct {
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/scores/{id} [put]
 func (h *Handler) UpdateScore(c *gin.Context) {
-	scoreID := c.Param("id")
-	if scoreID == "" {
-		response.Error(c, appErrors.NewValidationError("Missing score ID", "id is required"))
+	scoreID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.Error(c, appErrors.NewValidationError("Invalid score ID", "id must be a valid UUID"))
 		return
 	}
 
@@ -331,9 +332,9 @@ func (h *Handler) UpdateScore(c *gin.Context) {
 // @Failure 500 {object} response.APIResponse{error=response.APIError} "Internal server error"
 // @Router /api/v1/projects/{projectId}/scores/analytics [get]
 func (h *Handler) GetScoreAnalytics(c *gin.Context) {
-	projectID := c.Param("projectId")
-	if projectID == "" {
-		response.Error(c, appErrors.NewValidationError("Missing project ID", "projectId is required"))
+	projectID, err := uuid.Parse(c.Param("projectId"))
+	if err != nil {
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "projectId must be a valid UUID"))
 		return
 	}
 
@@ -434,9 +435,9 @@ func (h *Handler) CreateTraceScore(c *gin.Context) {
 	}
 
 	// Get project ID from query
-	projectIDStr := c.Query("project_id")
-	if projectIDStr == "" {
-		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
+	projectID, parseErr := uuid.Parse(c.Query("project_id"))
+	if parseErr != nil {
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid UUID"))
 		return
 	}
 
@@ -458,7 +459,7 @@ func (h *Handler) CreateTraceScore(c *gin.Context) {
 	}
 
 	// Validate that the trace belongs to the requested project
-	if rootSpan.ProjectID != projectIDStr {
+	if rootSpan.ProjectID != projectID {
 		response.Error(c, appErrors.NewValidationError("project_id", "does not match trace's project"))
 		return
 	}
@@ -466,8 +467,8 @@ func (h *Handler) CreateTraceScore(c *gin.Context) {
 	// Build the score entity
 	userIDStr := userID.String()
 	score := &observability.Score{
-		ID:             uid.New().String(),
-		ProjectID:      projectIDStr,
+		ID:             uid.New(),
+		ProjectID:      projectID,
 		OrganizationID: rootSpan.OrganizationID,
 		TraceID:        &traceID,
 		SpanID:         &rootSpan.SpanID, // Use the actual root span's ID
@@ -490,7 +491,7 @@ func (h *Handler) CreateTraceScore(c *gin.Context) {
 
 	h.logger.Info("annotation created",
 		"score_id", score.ID,
-		"project_id", projectIDStr,
+		"project_id", projectID,
 		"trace_id", traceID,
 		"user_id", userID,
 		"name", req.Name,
@@ -600,19 +601,18 @@ func (h *Handler) DeleteTraceScore(c *gin.Context) {
 	}
 
 	// Get score ID from path
-	scoreID := c.Param("score_id")
-	if scoreID == "" {
-		response.Error(c, appErrors.NewValidationError("Missing score ID", "score_id is required"))
+	scoreID, err := uuid.Parse(c.Param("score_id"))
+	if err != nil {
+		response.Error(c, appErrors.NewValidationError("Invalid score ID", "score_id must be a valid UUID"))
 		return
 	}
 
-	// Get project ID from query
-	projectIDStr := c.Query("project_id")
-	if projectIDStr == "" {
-		response.Error(c, appErrors.NewValidationError("Missing project ID", "project_id is required"))
+	// Get project ID from query (for authorization context)
+	if _, err := uuid.Parse(c.Query("project_id")); err != nil {
+		response.Error(c, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid UUID"))
 		return
 	}
-	_ = projectIDStr // used for authorization context
+	projectIDStr := c.Query("project_id")
 
 	// Get user ID from JWT
 	userID := middleware.MustGetUserID(c)

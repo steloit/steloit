@@ -181,11 +181,11 @@ func (a *auditDecorator) GetAuthContext(ctx context.Context, token string) (*aut
 }
 
 // OAuth session methods - delegate without audit
-func (a *auditDecorator) CreateOAuthSession(ctx context.Context, session interface{}) (string, error) {
+func (a *auditDecorator) CreateOAuthSession(ctx context.Context, session *authDomain.OAuthSession) (string, error) {
 	return a.authService.CreateOAuthSession(ctx, session)
 }
 
-func (a *auditDecorator) GetOAuthSession(ctx context.Context, sessionID string) (interface{}, error) {
+func (a *auditDecorator) GetOAuthSession(ctx context.Context, sessionID string) (*authDomain.OAuthSession, error) {
 	return a.authService.GetOAuthSession(ctx, sessionID)
 }
 
@@ -203,6 +203,6 @@ func (a *auditDecorator) CreateLoginTokenSession(ctx context.Context, accessToke
 	return a.authService.CreateLoginTokenSession(ctx, accessToken, refreshToken, expiresIn, userID)
 }
 
-func (a *auditDecorator) GetLoginTokenSession(ctx context.Context, sessionID string) (map[string]interface{}, error) {
+func (a *auditDecorator) GetLoginTokenSession(ctx context.Context, sessionID string) (*authDomain.LoginTokenSession, error) {
 	return a.authService.GetLoginTokenSession(ctx, sessionID)
 }

@@ -18,13 +18,13 @@ type AuthService interface {
 	RefreshToken(ctx context.Context, req *RefreshTokenRequest) (*LoginResponse, error)
 
 	// OAuth session management (for two-step OAuth signup)
-	CreateOAuthSession(ctx context.Context, session interface{}) (string, error)
-	GetOAuthSession(ctx context.Context, sessionID string) (interface{}, error)
+	CreateOAuthSession(ctx context.Context, session *OAuthSession) (string, error)
+	GetOAuthSession(ctx context.Context, sessionID string) (*OAuthSession, error)
 	DeleteOAuthSession(ctx context.Context, sessionID string) error
 
 	// OAuth login token sessions (for existing user OAuth login)
 	CreateLoginTokenSession(ctx context.Context, accessToken, refreshToken string, expiresIn int64, userID uuid.UUID) (string, error)
-	GetLoginTokenSession(ctx context.Context, sessionID string) (map[string]interface{}, error)
+	GetLoginTokenSession(ctx context.Context, sessionID string) (*LoginTokenSession, error)
 
 	// Password management
 	ChangePassword(ctx context.Context, userID uuid.UUID, currentPassword, newPassword string) error
@@ -184,8 +184,8 @@ type PermissionService interface {
 // JWTService defines the JWT token management service interface.
 type JWTService interface {
 	// Token generation
-	GenerateAccessToken(ctx context.Context, userID uuid.UUID, claims map[string]interface{}) (string, error)
-	GenerateAccessTokenWithJTI(ctx context.Context, userID uuid.UUID, claims map[string]interface{}) (string, string, error)
+	GenerateAccessToken(ctx context.Context, userID uuid.UUID, claims map[string]any) (string, error)
+	GenerateAccessTokenWithJTI(ctx context.Context, userID uuid.UUID, claims map[string]any) (string, string, error)
 	GenerateRefreshToken(ctx context.Context, userID uuid.UUID) (string, error)
 	GenerateAPIKeyToken(ctx context.Context, keyID uuid.UUID, scopes []string) (string, error)
 
@@ -227,9 +227,9 @@ type BlacklistedTokenService interface {
 // AuditLogService defines the audit logging service interface.
 type AuditLogService interface {
 	// Audit logging
-	LogUserAction(ctx context.Context, userID *uuid.UUID, action, resource, resourceID string, metadata map[string]interface{}, ipAddress, userAgent string) error
-	LogSystemAction(ctx context.Context, action, resource, resourceID string, metadata map[string]interface{}) error
-	LogSecurityEvent(ctx context.Context, userID *uuid.UUID, event, description string, metadata map[string]interface{}, ipAddress, userAgent string) error
+	LogUserAction(ctx context.Context, userID *uuid.UUID, action, resource, resourceID string, metadata map[string]any, ipAddress, userAgent string) error
+	LogSystemAction(ctx context.Context, action, resource, resourceID string, metadata map[string]any) error
+	LogSecurityEvent(ctx context.Context, userID *uuid.UUID, event, description string, metadata map[string]any, ipAddress, userAgent string) error
 
 	// Audit log queries
 	GetUserAuditLogs(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*AuditLog, error)

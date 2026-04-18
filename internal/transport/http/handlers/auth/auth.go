@@ -272,18 +272,10 @@ func (h *Handler) CompleteOAuthSignup(c *gin.Context) {
 	}
 
 	// Get OAuth session from Redis
-	sessionInterface, err := h.authService.GetOAuthSession(c.Request.Context(), req.SessionID)
+	session, err := h.authService.GetOAuthSession(c.Request.Context(), req.SessionID)
 	if err != nil {
 		h.logger.Error("Failed to get OAuth session", "error", err)
 		response.Error(c, err)
-		return
-	}
-
-	// Type assert to *OAuthSession (correct type from oauth_session.go)
-	session, ok := sessionInterface.(*authService.OAuthSession)
-	if !ok {
-		h.logger.Error("Invalid OAuth session type")
-		response.Error(c, appErrors.NewValidationError("Invalid session data", ""))
 		return
 	}
 
@@ -395,43 +387,31 @@ func (h *Handler) ExchangeLoginSession(c *gin.Context) {
 		return
 	}
 
-	// Extract and validate tokens
-	accessToken, ok := sessionData["access_token"].(string)
-	if !ok || accessToken == "" {
+	accessToken := sessionData.AccessToken
+	if accessToken == "" {
 		h.logger.Error("Missing access_token in login session")
 		response.Error(c, appErrors.NewValidationError("Invalid session data: missing access token", ""))
 		return
 	}
 
-	refreshToken, ok := sessionData["refresh_token"].(string)
-	if !ok || refreshToken == "" {
+	refreshToken := sessionData.RefreshToken
+	if refreshToken == "" {
 		h.logger.Error("Missing refresh_token in login session")
 		response.Error(c, appErrors.NewValidationError("Invalid session data: missing refresh token", ""))
 		return
 	}
 
-	// JSON unmarshaling uses float64 for numbers, not int64
-	expiresInFloat, ok := sessionData["expires_in"].(float64)
-	if !ok {
+	expiresIn := sessionData.ExpiresIn
+	if expiresIn <= 0 {
 		h.logger.Error("Missing or invalid expires_in in login session")
 		response.Error(c, appErrors.NewValidationError("Invalid session data: missing expiration", ""))
 		return
 	}
-	expiresIn := int64(expiresInFloat)
 
-	// Extract user ID from session to fetch user data
-	userIDStr, ok := sessionData["user_id"].(string)
-	if !ok || userIDStr == "" {
+	userID := sessionData.UserID
+	if userID == uuid.Nil {
 		h.logger.Error("Missing user_id in login session")
 		response.Error(c, appErrors.NewValidationError("Invalid session data: missing user ID", ""))
-		return
-	}
-
-	// Parse user ID
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		h.logger.Error("Invalid user ID format in session", "error", err)
-		response.Error(c, appErrors.NewValidationError("Invalid session data: malformed user ID", ""))
 		return
 	}
 

@@ -230,8 +230,8 @@ func buildVersionResponse(version *promptDomain.Version, labels []string) *promp
 	if labels == nil {
 		labels = []string{}
 	}
-	resp := &promptDomain.VersionResponse{
-		ID:            version.ID.String(),
+	return &promptDomain.VersionResponse{
+		ID:            version.ID,
 		Version:       version.Version,
 		Template:      version.Template,
 		Config:        version.Config,
@@ -239,11 +239,6 @@ func buildVersionResponse(version *promptDomain.Version, labels []string) *promp
 		CommitMessage: version.CommitMessage,
 		Labels:        labels,
 		CreatedAt:     version.CreatedAt,
+		CreatedBy:     version.CreatedBy,
 	}
-
-	if version.CreatedBy != nil {
-		resp.CreatedBy = version.CreatedBy.String()
-	}
-
-	return resp
 }

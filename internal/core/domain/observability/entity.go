@@ -33,9 +33,9 @@ type SpanLink struct {
 // Computed from spans via GROUP BY queries (OTEL-native approach)
 // Note: Traces are virtual in OTLP - they are derived from root spans (parent_span_id IS NULL)
 type TraceSummary struct {
-	TraceID        string          `json:"trace_id" db:"trace_id"`
-	RootSpanID     string          `json:"root_span_id" db:"root_span_id"`
-	ProjectID      string          `json:"project_id" db:"project_id"`
+	TraceID        string          `json:"trace_id" db:"trace_id"`         // W3C hex
+	RootSpanID     string          `json:"root_span_id" db:"root_span_id"` // W3C hex
+	ProjectID      uuid.UUID       `json:"project_id" db:"project_id"`
 	Name           string          `json:"name" db:"name"` // Root span's span_name
 	StartTime      time.Time       `json:"start_time" db:"start_time"`
 	EndTime        *time.Time      `json:"end_time,omitempty" db:"end_time"` // Nullable for in-flight traces
@@ -68,11 +68,11 @@ type Span struct {
 	TraceState     *string `json:"trace_state,omitempty" db:"trace_state"`
 	Input          *string `json:"input,omitempty" db:"input"`
 	Output         *string `json:"output,omitempty" db:"output"`
-	TraceID        string  `json:"trace_id" db:"trace_id"`
-	SpanName       string  `json:"span_name" db:"span_name"`
-	SpanID         string  `json:"span_id" db:"span_id"`
-	ProjectID      string  `json:"project_id" db:"project_id"`
-	OrganizationID string  `json:"organization_id" db:"organization_id"`
+	TraceID        string    `json:"trace_id" db:"trace_id"` // W3C hex
+	SpanName       string    `json:"span_name" db:"span_name"`
+	SpanID         string    `json:"span_id" db:"span_id"` // W3C hex
+	ProjectID      uuid.UUID `json:"project_id" db:"project_id"`
+	OrganizationID uuid.UUID `json:"organization_id" db:"organization_id"`
 
 	Events []SpanEvent `json:"events,omitempty" db:"events"`
 	Links  []SpanLink  `json:"links,omitempty" db:"links"`
@@ -112,13 +112,13 @@ type Span struct {
 // Score represents a quality evaluation score linked to traces and spans
 type Score struct {
 	// Identity
-	ID             string `json:"id" db:"score_id"`
-	ProjectID      string `json:"project_id" db:"project_id"`
-	OrganizationID string `json:"organization_id" db:"organization_id"`
+	ID             uuid.UUID `json:"id" db:"score_id"`
+	ProjectID      uuid.UUID `json:"project_id" db:"project_id"`
+	OrganizationID uuid.UUID `json:"organization_id" db:"organization_id"`
 
 	// Links (optional - experiment-only scores may not have trace/span)
-	TraceID *string `json:"trace_id,omitempty" db:"trace_id"`
-	SpanID  *string `json:"span_id,omitempty" db:"span_id"`
+	TraceID *string `json:"trace_id,omitempty" db:"trace_id"` // W3C hex
+	SpanID  *string `json:"span_id,omitempty" db:"span_id"`   // W3C hex
 
 	// Score data
 	Name        string   `json:"name" db:"name"`
@@ -132,8 +132,8 @@ type Score struct {
 	Metadata json.RawMessage `json:"metadata" db:"metadata"`
 
 	// Experiment tracking
-	ExperimentID     *string `json:"experiment_id,omitempty" db:"experiment_id"`
-	ExperimentItemID *string `json:"experiment_item_id,omitempty" db:"experiment_item_id"`
+	ExperimentID     *uuid.UUID `json:"experiment_id,omitempty" db:"experiment_id"`
+	ExperimentItemID *string    `json:"experiment_item_id,omitempty" db:"experiment_item_id"` // CH: Nullable(String)
 
 	// Audit trail (for human annotations)
 	CreatedBy *string `json:"created_by,omitempty" db:"created_by"`

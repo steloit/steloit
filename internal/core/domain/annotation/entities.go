@@ -132,8 +132,8 @@ type AnnotationQueue struct {
 	ProjectID      uuid.UUID     `json:"project_id"`
 	Name           string        `json:"name"`
 	Description    *string       `json:"description,omitempty"`
-	Instructions   *string       `json:"instructions,omitempty"`                         // Annotation guidelines (from Opik pattern)
-	ScoreConfigIDs []string      `json:"score_config_ids"` // Which scores to collect
+	Instructions   *string       `json:"instructions,omitempty"` // Annotation guidelines (from Opik pattern)
+	ScoreConfigIDs []uuid.UUID   `json:"score_config_ids"`       // Which scores to collect
 	Status         QueueStatus   `json:"status"`
 	Settings       QueueSettings `json:"settings"` // Lock timeout, auto-assignment, etc.
 	CreatedBy      *uuid.UUID    `json:"created_by,omitempty"`
@@ -141,7 +141,6 @@ type AnnotationQueue struct {
 	UpdatedAt      time.Time     `json:"updated_at"`
 }
 
-// TableName returns the database table name for GORM.
 // NewAnnotationQueue creates a new annotation queue with default settings.
 func NewAnnotationQueue(projectID uuid.UUID, name string) *AnnotationQueue {
 	now := time.Now()
@@ -149,7 +148,7 @@ func NewAnnotationQueue(projectID uuid.UUID, name string) *AnnotationQueue {
 		ID:             uid.New(),
 		ProjectID:      projectID,
 		Name:           name,
-		ScoreConfigIDs: []string{},
+		ScoreConfigIDs: []uuid.UUID{},
 		Status:         QueueStatusActive,
 		Settings:       DefaultQueueSettings(),
 		CreatedAt:      now,
@@ -197,22 +196,21 @@ func (q *AnnotationQueue) GetLockDuration() time.Duration {
 // QueueItem represents an individual item pending human review in an annotation queue.
 // Design follows Langfuse pattern: dual-user tracking (locked_by vs annotator_user_id).
 type QueueItem struct {
-	ID              uuid.UUID              `json:"id"`
-	QueueID         uuid.UUID              `json:"queue_id"`
-	ObjectID        string                 `json:"object_id"` // trace_id or span_id
-	ObjectType      ObjectType             `json:"object_type"`
-	Status          ItemStatus             `json:"status"`
-	Priority        int                    `json:"priority"`           // Higher = more urgent
-	LockedAt        *time.Time             `json:"locked_at,omitempty"`                          // When item was locked for review
-	LockedByUserID  *uuid.UUID             `json:"locked_by_user_id,omitempty"` // Who currently holds the lock
-	AnnotatorUserID *uuid.UUID             `json:"annotator_user_id,omitempty"` // Who completed the annotation
-	CompletedAt     *time.Time             `json:"completed_at,omitempty"`
-	Metadata        map[string]interface{} `json:"metadata,omitempty"` // Source info, sampling reason, etc.
-	CreatedAt       time.Time              `json:"created_at"`
-	UpdatedAt       time.Time              `json:"updated_at"`
+	ID              uuid.UUID      `json:"id"`
+	QueueID         uuid.UUID      `json:"queue_id"`
+	ObjectID        string         `json:"object_id"` // trace_id or span_id — W3C hex, not UUID
+	ObjectType      ObjectType     `json:"object_type"`
+	Status          ItemStatus     `json:"status"`
+	Priority        int            `json:"priority"`                    // Higher = more urgent
+	LockedAt        *time.Time     `json:"locked_at,omitempty"`         // When item was locked for review
+	LockedByUserID  *uuid.UUID     `json:"locked_by_user_id,omitempty"` // Who currently holds the lock
+	AnnotatorUserID *uuid.UUID     `json:"annotator_user_id,omitempty"` // Who completed the annotation
+	CompletedAt     *time.Time     `json:"completed_at,omitempty"`
+	Metadata        map[string]any `json:"metadata,omitempty"` // Source info, sampling reason, etc.
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
 }
 
-// TableName returns the database table name for GORM.
 // NewQueueItem creates a new queue item with default values.
 func NewQueueItem(queueID uuid.UUID, objectID string, objectType ObjectType) *QueueItem {
 	now := time.Now()
@@ -223,7 +221,7 @@ func NewQueueItem(queueID uuid.UUID, objectID string, objectType ObjectType) *Qu
 		ObjectType: objectType,
 		Status:     ItemStatusPending,
 		Priority:   0,
-		Metadata:   make(map[string]interface{}),
+		Metadata:   make(map[string]any),
 		CreatedAt:  now,
 		UpdatedAt:  now,
 	}
@@ -396,12 +394,12 @@ func (s *QueueStats) ProcessedPercentage() float64 {
 
 // CreateQueueRequest is the request body for creating an annotation queue.
 type CreateQueueRequest struct {
-	Name           string                 `json:"name" binding:"required,min=1,max=255"`
-	Description    *string                `json:"description,omitempty"`
-	Instructions   *string                `json:"instructions,omitempty"` // Annotation guidelines (from Opik pattern)
-	ScoreConfigIDs []string               `json:"score_config_ids,omitempty"`
-	Settings       *QueueSettings         `json:"settings,omitempty"` // Optional, defaults to 5-min lock
-	Metadata       map[string]interface{} `json:"metadata,omitempty"`
+	Name           string         `json:"name" binding:"required,min=1,max=255"`
+	Description    *string        `json:"description,omitempty"`
+	Instructions   *string        `json:"instructions,omitempty"` // Annotation guidelines (from Opik pattern)
+	ScoreConfigIDs []uuid.UUID    `json:"score_config_ids,omitempty"`
+	Settings       *QueueSettings `json:"settings,omitempty"` // Optional, defaults to 5-min lock
+	Metadata       map[string]any `json:"metadata,omitempty"`
 }
 
 // UpdateQueueRequest is the request body for updating an annotation queue.
@@ -409,7 +407,7 @@ type UpdateQueueRequest struct {
 	Name           *string        `json:"name,omitempty" binding:"omitempty,min=1,max=255"`
 	Description    *string        `json:"description,omitempty"`
 	Instructions   *string        `json:"instructions,omitempty"`
-	ScoreConfigIDs *[]string      `json:"score_config_ids,omitempty"` // Pointer to distinguish nil (no change) from empty (clear all)
+	ScoreConfigIDs *[]uuid.UUID   `json:"score_config_ids,omitempty"` // Pointer to distinguish nil (no change) from empty (clear all)
 	Status         *QueueStatus   `json:"status,omitempty"`
 	Settings       *QueueSettings `json:"settings,omitempty"`
 }
@@ -422,15 +420,15 @@ type QueueFilter struct {
 
 // QueueResponse is the API response for an annotation queue.
 type QueueResponse struct {
-	ID             string        `json:"id"`
-	ProjectID      string        `json:"project_id"`
+	ID             uuid.UUID     `json:"id"`
+	ProjectID      uuid.UUID     `json:"project_id"`
 	Name           string        `json:"name"`
 	Description    *string       `json:"description,omitempty"`
 	Instructions   *string       `json:"instructions,omitempty"`
-	ScoreConfigIDs []string      `json:"score_config_ids"`
+	ScoreConfigIDs []uuid.UUID   `json:"score_config_ids"`
 	Status         QueueStatus   `json:"status"`
 	Settings       QueueSettings `json:"settings"`
-	CreatedBy      *string       `json:"created_by,omitempty"`
+	CreatedBy      *uuid.UUID    `json:"created_by,omitempty"`
 	CreatedAt      time.Time     `json:"created_at"`
 	UpdatedAt      time.Time     `json:"updated_at"`
 	Stats          *QueueStats   `json:"stats,omitempty"` // Optional stats when requested
@@ -438,21 +436,16 @@ type QueueResponse struct {
 
 // ToResponse converts an AnnotationQueue to a QueueResponse.
 func (q *AnnotationQueue) ToResponse() *QueueResponse {
-	var createdBy *string
-	if q.CreatedBy != nil {
-		id := q.CreatedBy.String()
-		createdBy = &id
-	}
 	return &QueueResponse{
-		ID:             q.ID.String(),
-		ProjectID:      q.ProjectID.String(),
+		ID:             q.ID,
+		ProjectID:      q.ProjectID,
 		Name:           q.Name,
 		Description:    q.Description,
 		Instructions:   q.Instructions,
 		ScoreConfigIDs: q.ScoreConfigIDs,
 		Status:         q.Status,
 		Settings:       q.Settings,
-		CreatedBy:      createdBy,
+		CreatedBy:      q.CreatedBy,
 		CreatedAt:      q.CreatedAt,
 		UpdatedAt:      q.UpdatedAt,
 	}
@@ -460,10 +453,10 @@ func (q *AnnotationQueue) ToResponse() *QueueResponse {
 
 // AddItemRequest is the request to add an item to a queue.
 type AddItemRequest struct {
-	ObjectID   string                 `json:"object_id" binding:"required,max=32"`
-	ObjectType ObjectType             `json:"object_type" binding:"required,oneof=trace span"`
-	Priority   int                    `json:"priority,omitempty"`
-	Metadata   map[string]interface{} `json:"metadata,omitempty"`
+	ObjectID   string         `json:"object_id" binding:"required,max=32"` // W3C hex trace/span ID
+	ObjectType ObjectType     `json:"object_type" binding:"required,oneof=trace span"`
+	Priority   int            `json:"priority,omitempty"`
+	Metadata   map[string]any `json:"metadata,omitempty"`
 }
 
 // AddItemsBatchRequest is the request to add multiple items to a queue.
@@ -480,42 +473,33 @@ type ItemFilter struct {
 
 // ItemResponse is the API response for a queue item.
 type ItemResponse struct {
-	ID              string                 `json:"id"`
-	QueueID         string                 `json:"queue_id"`
-	ObjectID        string                 `json:"object_id"`
-	ObjectType      ObjectType             `json:"object_type"`
-	Status          ItemStatus             `json:"status"`
-	Priority        int                    `json:"priority"`
-	LockedAt        *time.Time             `json:"locked_at,omitempty"`
-	LockedByUserID  *string                `json:"locked_by_user_id,omitempty"`
-	AnnotatorUserID *string                `json:"annotator_user_id,omitempty"`
-	CompletedAt     *time.Time             `json:"completed_at,omitempty"`
-	Metadata        map[string]interface{} `json:"metadata,omitempty"`
-	CreatedAt       time.Time              `json:"created_at"`
-	UpdatedAt       time.Time              `json:"updated_at"`
+	ID              uuid.UUID      `json:"id"`
+	QueueID         uuid.UUID      `json:"queue_id"`
+	ObjectID        string         `json:"object_id"` // W3C hex trace/span ID
+	ObjectType      ObjectType     `json:"object_type"`
+	Status          ItemStatus     `json:"status"`
+	Priority        int            `json:"priority"`
+	LockedAt        *time.Time     `json:"locked_at,omitempty"`
+	LockedByUserID  *uuid.UUID     `json:"locked_by_user_id,omitempty"`
+	AnnotatorUserID *uuid.UUID     `json:"annotator_user_id,omitempty"`
+	CompletedAt     *time.Time     `json:"completed_at,omitempty"`
+	Metadata        map[string]any `json:"metadata,omitempty"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
 }
 
 // ToResponse converts a QueueItem to an ItemResponse.
 func (i *QueueItem) ToResponse() *ItemResponse {
-	var lockedByUserID, annotatorUserID *string
-	if i.LockedByUserID != nil {
-		id := i.LockedByUserID.String()
-		lockedByUserID = &id
-	}
-	if i.AnnotatorUserID != nil {
-		id := i.AnnotatorUserID.String()
-		annotatorUserID = &id
-	}
 	return &ItemResponse{
-		ID:              i.ID.String(),
-		QueueID:         i.QueueID.String(),
+		ID:              i.ID,
+		QueueID:         i.QueueID,
 		ObjectID:        i.ObjectID,
 		ObjectType:      i.ObjectType,
 		Status:          i.Status,
 		Priority:        i.Priority,
 		LockedAt:        i.LockedAt,
-		LockedByUserID:  lockedByUserID,
-		AnnotatorUserID: annotatorUserID,
+		LockedByUserID:  i.LockedByUserID,
+		AnnotatorUserID: i.AnnotatorUserID,
 		CompletedAt:     i.CompletedAt,
 		Metadata:        i.Metadata,
 		CreatedAt:       i.CreatedAt,
@@ -524,10 +508,12 @@ func (i *QueueItem) ToResponse() *ItemResponse {
 }
 
 // ScoreSubmission represents a score submitted during annotation completion.
+// Value is genuinely polymorphic: float64, string, or bool depending on the
+// referenced score config's data type. Validated at the service layer.
 type ScoreSubmission struct {
-	ScoreConfigID string      `json:"score_config_id" binding:"required"`
-	Value         interface{} `json:"value"` // float64, string, or bool depending on score type
-	Comment       *string     `json:"comment,omitempty"`
+	ScoreConfigID uuid.UUID `json:"score_config_id" binding:"required"`
+	Value         any       `json:"value"`
+	Comment       *string   `json:"comment,omitempty"`
 }
 
 // CompleteItemRequest is the request body for completing an annotation.
@@ -542,39 +528,34 @@ type SkipItemRequest struct {
 
 // ClaimNextRequest is the request body for claiming the next item.
 type ClaimNextRequest struct {
-	SeenItemIDs []string `json:"seen_item_ids,omitempty"` // Items to skip (already shown to user)
+	SeenItemIDs []uuid.UUID `json:"seen_item_ids,omitempty"` // Items to skip (already shown to user)
 }
 
 // AssignmentRequest is the request body for assigning a user to a queue.
 type AssignmentRequest struct {
-	UserID string         `json:"user_id" binding:"required"`
+	UserID uuid.UUID      `json:"user_id" binding:"required"`
 	Role   AssignmentRole `json:"role,omitempty"` // Default: annotator
 }
 
 // AssignmentResponse is the API response for a queue assignment.
 type AssignmentResponse struct {
-	ID         string         `json:"id"`
-	QueueID    string         `json:"queue_id"`
-	UserID     string         `json:"user_id"`
+	ID         uuid.UUID      `json:"id"`
+	QueueID    uuid.UUID      `json:"queue_id"`
+	UserID     uuid.UUID      `json:"user_id"`
 	Role       AssignmentRole `json:"role"`
 	AssignedAt time.Time      `json:"assigned_at"`
-	AssignedBy *string        `json:"assigned_by,omitempty"`
+	AssignedBy *uuid.UUID     `json:"assigned_by,omitempty"`
 }
 
 // ToResponse converts a QueueAssignment to an AssignmentResponse.
 func (a *QueueAssignment) ToResponse() *AssignmentResponse {
-	var assignedBy *string
-	if a.AssignedBy != nil {
-		id := a.AssignedBy.String()
-		assignedBy = &id
-	}
 	return &AssignmentResponse{
-		ID:         a.ID.String(),
-		QueueID:    a.QueueID.String(),
-		UserID:     a.UserID.String(),
+		ID:         a.ID,
+		QueueID:    a.QueueID,
+		UserID:     a.UserID,
 		Role:       a.Role,
 		AssignedAt: a.AssignedAt,
-		AssignedBy: assignedBy,
+		AssignedBy: a.AssignedBy,
 	}
 }
 
@@ -583,7 +564,7 @@ func (a *QueueAssignment) ToResponse() *AssignmentResponse {
 // ============================================================================
 
 // Scan implements the sql.Scanner interface for QueueSettings.
-func (s *QueueSettings) Scan(value interface{}) error {
+func (s *QueueSettings) Scan(value any) error {
 	if value == nil {
 		*s = DefaultQueueSettings()
 		return nil

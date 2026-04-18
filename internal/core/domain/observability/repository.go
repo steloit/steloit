@@ -23,30 +23,30 @@ type TraceRepository interface {
 	GetRootSpan(ctx context.Context, traceID string) (*Span, error)
 	// GetRootSpanByProject retrieves root span with project ownership validation.
 	// Returns error if trace doesn't exist or doesn't belong to the specified project.
-	GetRootSpanByProject(ctx context.Context, traceID string, projectID string) (*Span, error)
+	GetRootSpanByProject(ctx context.Context, traceID string, projectID uuid.UUID) (*Span, error)
 	// GetSpanByProject retrieves span with project ownership validation.
 	// Returns error if span doesn't exist or doesn't belong to the specified project.
-	GetSpanByProject(ctx context.Context, spanID string, projectID string) (*Span, error)
+	GetSpanByProject(ctx context.Context, spanID string, projectID uuid.UUID) (*Span, error)
 	GetTraceSummary(ctx context.Context, traceID string) (*TraceSummary, error)
 	ListTraces(ctx context.Context, filter *TraceFilter) ([]*TraceSummary, error)
 	CountTraces(ctx context.Context, filter *TraceFilter) (int64, error)
 	CountSpansInTrace(ctx context.Context, traceID string) (int64, error)
 	DeleteTrace(ctx context.Context, traceID string) error
 	// UpdateTraceTags updates the tags for a trace (updates root span in ClickHouse)
-	UpdateTraceTags(ctx context.Context, projectID, traceID string, tags []string) error
+	UpdateTraceTags(ctx context.Context, projectID uuid.UUID, traceID string, tags []string) error
 	// UpdateTraceBookmark updates the bookmark status for a trace
-	UpdateTraceBookmark(ctx context.Context, projectID, traceID string, bookmarked bool) error
+	UpdateTraceBookmark(ctx context.Context, projectID uuid.UUID, traceID string, bookmarked bool) error
 
 	// GetFilterOptions returns available filter values for populating the traces filter UI
-	GetFilterOptions(ctx context.Context, projectID string) (*TraceFilterOptions, error)
+	GetFilterOptions(ctx context.Context, projectID uuid.UUID) (*TraceFilterOptions, error)
 
 	GetTracesBySessionID(ctx context.Context, sessionID string) ([]*TraceSummary, error)
 	GetTracesByUserID(ctx context.Context, userID string, filter *TraceFilter) ([]*TraceSummary, error)
 	CalculateTotalCost(ctx context.Context, traceID string) (float64, error)
 	CalculateTotalTokens(ctx context.Context, traceID string) (uint64, error)
 
-	QuerySpansByExpression(ctx context.Context, query string, args []interface{}) ([]*Span, error)
-	CountSpansByExpression(ctx context.Context, query string, args []interface{}) (int64, error)
+	QuerySpansByExpression(ctx context.Context, query string, args []any) ([]*Span, error)
+	CountSpansByExpression(ctx context.Context, query string, args []any) (int64, error)
 
 	// DiscoverAttributes extracts unique attribute keys from span_attributes and resource_attributes.
 	// Returns attribute keys with occurrence counts, useful for populating filter UI autocomplete.
@@ -64,8 +64,8 @@ type TraceRepository interface {
 type ScoreRepository interface {
 	Create(ctx context.Context, score *Score) error
 	Update(ctx context.Context, score *Score) error
-	Delete(ctx context.Context, id string) error
-	GetByID(ctx context.Context, id string) (*Score, error)
+	Delete(ctx context.Context, id uuid.UUID) error
+	GetByID(ctx context.Context, id uuid.UUID) (*Score, error)
 
 	GetByTraceID(ctx context.Context, traceID string) ([]*Score, error)
 	GetBySpanID(ctx context.Context, spanID string) ([]*Score, error)
@@ -91,7 +91,7 @@ type ScoreAggregation struct {
 }
 
 type ScoreAnalyticsFilter struct {
-	ProjectID        string     `json:"project_id"`
+	ProjectID        uuid.UUID  `json:"project_id"`
 	ScoreName        string     `json:"score_name"`
 	CompareScoreName *string    `json:"compare_score_name,omitempty"`
 	FromTimestamp    *time.Time `json:"from_timestamp,omitempty"`
@@ -215,7 +215,7 @@ type TraceFilter struct {
 	HasError     *bool
 
 	pagination.Params
-	ProjectID string
+	ProjectID uuid.UUID
 	Tags      []string
 
 	// Text search
@@ -226,7 +226,7 @@ type TraceFilter struct {
 }
 
 type SpanFilter struct {
-	ProjectID string // Required for scoping queries to project
+	ProjectID uuid.UUID // Required for scoping queries to project
 
 	TraceID      *string
 	ParentID     *string
@@ -248,7 +248,7 @@ type SpanFilter struct {
 }
 
 type ScoreFilter struct {
-	ProjectID string // Required for scoping queries to project
+	ProjectID uuid.UUID // Required for scoping queries to project
 
 	TraceID   *string
 	SpanID    *string

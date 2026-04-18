@@ -345,8 +345,8 @@ func (w *EvaluationWorker) processJob(ctx context.Context, msg redis.XMessage) e
 	scores := make([]*observability.Score, 0, len(result.Scores))
 	for _, output := range result.Scores {
 		score := &observability.Score{
-			ID:          uid.New().String(),
-			ProjectID:   job.ProjectID.String(),
+			ID:          uid.New(),
+			ProjectID:   job.ProjectID,
 			TraceID:     &job.TraceID,
 			SpanID:      &job.SpanID,
 			Name:        output.Name,

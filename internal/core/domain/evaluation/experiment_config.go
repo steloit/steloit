@@ -175,13 +175,13 @@ type CreateExperimentFromWizardRequest struct {
 	Description *string `json:"description,omitempty"`
 
 	// Step 1: Prompt Configuration
-	PromptID            string         `json:"prompt_id" binding:"required"`
-	PromptVersionID     string         `json:"prompt_version_id" binding:"required"`
+	PromptID            uuid.UUID      `json:"prompt_id" binding:"required"`
+	PromptVersionID     uuid.UUID      `json:"prompt_version_id" binding:"required"`
 	ModelConfigOverride map[string]any `json:"model_config_override,omitempty"`
 
 	// Step 2: Dataset Configuration
-	DatasetID        string                      `json:"dataset_id" binding:"required"`
-	DatasetVersionID *string                     `json:"dataset_version_id,omitempty"`
+	DatasetID        uuid.UUID                   `json:"dataset_id" binding:"required"`
+	DatasetVersionID *uuid.UUID                  `json:"dataset_version_id,omitempty"`
 	VariableMapping  []ExperimentVariableMapping `json:"variable_mapping" binding:"required"`
 
 	// Step 3: Evaluators
@@ -206,10 +206,10 @@ type ValidateStepResponse struct {
 
 // EstimateCostRequest is the request to estimate experiment cost.
 type EstimateCostRequest struct {
-	PromptID         string                `json:"prompt_id" binding:"required"`
-	PromptVersionID  string                `json:"prompt_version_id" binding:"required"`
-	DatasetID        string                `json:"dataset_id" binding:"required"`
-	DatasetVersionID *string               `json:"dataset_version_id,omitempty"`
+	PromptID         uuid.UUID             `json:"prompt_id" binding:"required"`
+	PromptVersionID  uuid.UUID             `json:"prompt_version_id" binding:"required"`
+	DatasetID        uuid.UUID             `json:"dataset_id" binding:"required"`
+	DatasetVersionID *uuid.UUID            `json:"dataset_version_id,omitempty"`
 	Evaluators       []ExperimentEvaluator `json:"evaluators" binding:"required,min=1"`
 }
 
@@ -246,13 +246,13 @@ type DatasetFieldsResponse struct {
 
 // ExperimentConfigResponse is the API response for an experiment config.
 type ExperimentConfigResponse struct {
-	ID               string                      `json:"id"`
-	ExperimentID     string                      `json:"experiment_id"`
-	PromptID         string                      `json:"prompt_id"`
-	PromptVersionID  string                      `json:"prompt_version_id"`
+	ID               uuid.UUID                   `json:"id"`
+	ExperimentID     uuid.UUID                   `json:"experiment_id"`
+	PromptID         uuid.UUID                   `json:"prompt_id"`
+	PromptVersionID  uuid.UUID                   `json:"prompt_version_id"`
 	ModelConfig      map[string]any              `json:"model_config,omitempty"`
-	DatasetID        string                      `json:"dataset_id"`
-	DatasetVersionID *string                     `json:"dataset_version_id,omitempty"`
+	DatasetID        uuid.UUID                   `json:"dataset_id"`
+	DatasetVersionID *uuid.UUID                  `json:"dataset_version_id,omitempty"`
 	VariableMapping  []ExperimentVariableMapping `json:"variable_mapping"`
 	Evaluators       []ExperimentEvaluator       `json:"evaluators"`
 	CreatedAt        time.Time                   `json:"created_at"`
@@ -261,11 +261,6 @@ type ExperimentConfigResponse struct {
 
 // ToResponse converts ExperimentConfig to its API response format.
 func (c *ExperimentConfig) ToResponse() *ExperimentConfigResponse {
-	var datasetVersionID *string
-	if c.DatasetVersionID != nil {
-		id := c.DatasetVersionID.String()
-		datasetVersionID = &id
-	}
 
 	variableMapping := c.VariableMapping
 	if variableMapping == nil {
@@ -278,13 +273,13 @@ func (c *ExperimentConfig) ToResponse() *ExperimentConfigResponse {
 	}
 
 	return &ExperimentConfigResponse{
-		ID:               c.ID.String(),
-		ExperimentID:     c.ExperimentID.String(),
-		PromptID:         c.PromptID.String(),
-		PromptVersionID:  c.PromptVersionID.String(),
+		ID:               c.ID,
+		ExperimentID:     c.ExperimentID,
+		PromptID:         c.PromptID,
+		PromptVersionID:  c.PromptVersionID,
 		ModelConfig:      c.ModelConfig,
-		DatasetID:        c.DatasetID.String(),
-		DatasetVersionID: datasetVersionID,
+		DatasetID:        c.DatasetID,
+		DatasetVersionID: c.DatasetVersionID,
 		VariableMapping:  variableMapping,
 		Evaluators:       evaluators,
 		CreatedAt:        c.CreatedAt,

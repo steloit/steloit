@@ -72,11 +72,11 @@ func (s *apiKeyService) CreateAPIKey(ctx context.Context, userID uuid.UUID, req 
 
 	// Return response with the full key (only shown once)
 	return &authDomain.CreateAPIKeyResponse{
-		ID:         apiKeyEntity.ID.String(),
+		ID:         apiKeyEntity.ID,
 		Name:       apiKeyEntity.Name,
 		Key:        fullKey, // Full key - only returned once
 		KeyPreview: apiKeyEntity.KeyPreview,
-		ProjectID:  apiKeyEntity.ProjectID.String(),
+		ProjectID:  apiKeyEntity.ProjectID,
 		CreatedAt:  apiKeyEntity.CreatedAt,
 		ExpiresAt:  apiKeyEntity.ExpiresAt,
 	}, nil

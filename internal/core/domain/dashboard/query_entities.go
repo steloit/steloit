@@ -14,7 +14,7 @@ type QueryExecutionRequest struct {
 	WidgetID       *string                `json:"widget_id,omitempty"` // nil = all widgets
 	TimeRange      *TimeRange             `json:"time_range,omitempty"`
 	ForceRefresh   bool                   `json:"force_refresh,omitempty"`
-	VariableValues map[string]interface{} `json:"variable_values,omitempty" swaggertype:"object"`
+	VariableValues map[string]any `json:"variable_values,omitempty" swaggertype:"object"`
 }
 
 // VariableOptionsRequest represents a request to get variable options
@@ -33,7 +33,7 @@ type VariableOptionsResponse struct {
 // QueryResult represents the result of a widget query
 type QueryResult struct {
 	WidgetID string                   `json:"widget_id"`
-	Data     []map[string]interface{} `json:"data" swaggertype:"array,object"`
+	Data     []map[string]any `json:"data" swaggertype:"array,object"`
 	Metadata *QueryMetadata           `json:"metadata,omitempty"`
 	Error    string                   `json:"error,omitempty"`
 }
@@ -139,11 +139,11 @@ type WidgetQueryService interface {
 // WidgetQueryRepository defines the interface for widget query data access
 type WidgetQueryRepository interface {
 	// ExecuteQuery executes a raw query and returns results
-	ExecuteQuery(ctx context.Context, query string, args []interface{}) ([]map[string]interface{}, error)
+	ExecuteQuery(ctx context.Context, query string, args []any) ([]map[string]any, error)
 
 	// ExecuteTraceListQuery executes a trace list query
-	ExecuteTraceListQuery(ctx context.Context, query string, args []interface{}) ([]*TraceListItem, error)
+	ExecuteTraceListQuery(ctx context.Context, query string, args []any) ([]*TraceListItem, error)
 
 	// ExecuteHistogramQuery executes a histogram query
-	ExecuteHistogramQuery(ctx context.Context, query string, args []interface{}) (*HistogramData, error)
+	ExecuteHistogramQuery(ctx context.Context, query string, args []any) (*HistogramData, error)
 }

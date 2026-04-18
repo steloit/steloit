@@ -598,8 +598,8 @@ func (c *TelemetryStreamConsumer) processBatch(ctx context.Context, batch *strea
 				failedCount++
 				continue
 			}
-			span.ProjectID = projectID.String()
-			span.OrganizationID = batch.OrganizationID.String()
+			span.ProjectID = projectID
+			span.OrganizationID = batch.OrganizationID
 			spans = append(spans, &span)
 
 		case observability.TelemetryEventTypeQualityScore:
@@ -610,8 +610,8 @@ func (c *TelemetryStreamConsumer) processBatch(ctx context.Context, batch *strea
 				failedCount++
 				continue
 			}
-			score.ProjectID = projectID.String()
-			score.OrganizationID = batch.OrganizationID.String()
+			score.ProjectID = projectID
+			score.OrganizationID = batch.OrganizationID
 			scores = append(scores, &score)
 
 		case observability.TelemetryEventTypeMetricSum:
@@ -622,7 +622,7 @@ func (c *TelemetryStreamConsumer) processBatch(ctx context.Context, batch *strea
 				failedCount++
 				continue
 			}
-			metricSum.ProjectID = projectID.String()
+			metricSum.ProjectID = projectID
 			metricsSums = append(metricsSums, &metricSum)
 
 		case observability.TelemetryEventTypeMetricGauge:
@@ -633,7 +633,7 @@ func (c *TelemetryStreamConsumer) processBatch(ctx context.Context, batch *strea
 				failedCount++
 				continue
 			}
-			metricGauge.ProjectID = projectID.String()
+			metricGauge.ProjectID = projectID
 			metricsGauges = append(metricsGauges, &metricGauge)
 
 		case observability.TelemetryEventTypeMetricHistogram:
@@ -644,7 +644,7 @@ func (c *TelemetryStreamConsumer) processBatch(ctx context.Context, batch *strea
 				failedCount++
 				continue
 			}
-			metricHistogram.ProjectID = projectID.String()
+			metricHistogram.ProjectID = projectID
 			metricsHistograms = append(metricsHistograms, &metricHistogram)
 
 		case observability.TelemetryEventTypeMetricExponentialHistogram:
@@ -655,7 +655,7 @@ func (c *TelemetryStreamConsumer) processBatch(ctx context.Context, batch *strea
 				failedCount++
 				continue
 			}
-			metricExpHistogram.ProjectID = projectID.String()
+			metricExpHistogram.ProjectID = projectID
 			metricsExpHistograms = append(metricsExpHistograms, &metricExpHistogram)
 
 		case observability.TelemetryEventTypeLog:
@@ -666,7 +666,7 @@ func (c *TelemetryStreamConsumer) processBatch(ctx context.Context, batch *strea
 				failedCount++
 				continue
 			}
-			log.ProjectID = projectID.String()
+			log.ProjectID = projectID
 			logs = append(logs, &log)
 
 		case observability.TelemetryEventTypeGenAIEvent:
@@ -677,7 +677,7 @@ func (c *TelemetryStreamConsumer) processBatch(ctx context.Context, batch *strea
 				failedCount++
 				continue
 			}
-			genaiEvent.ProjectID = projectID.String()
+			genaiEvent.ProjectID = projectID
 			genaiEvents = append(genaiEvents, &genaiEvent)
 
 		default:
@@ -1116,7 +1116,7 @@ func (c *TelemetryStreamConsumer) archiveSignalGroup(
 			c.logger.Debug("Retrying S3 archive", "batch_id", signalBatchID.String(), "signal_type", signalType, "attempt", attempt+1, "backoff", backoff)
 		}
 
-		result, err := c.archiveService.ArchiveBatch(ctx, batch.ProjectID.String(), signalBatchID, records)
+		result, err := c.archiveService.ArchiveBatch(ctx, batch.ProjectID, signalBatchID, records)
 		if err == nil {
 			// Success!
 			c.logger.Debug("Successfully archived batch to S3", "batch_id", signalBatchID.String(), "project_id", batch.ProjectID.String(), "signal_type", signalType, "s3_path", result.S3Path, "record_count", result.RecordCount, "file_size", result.FileSizeBytes)

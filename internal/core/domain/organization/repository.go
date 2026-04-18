@@ -160,9 +160,9 @@ type OrganizationSettingsRepository interface {
 
 	// Organization scoped operations
 	GetAllByOrganizationID(ctx context.Context, orgID uuid.UUID) ([]*OrganizationSettings, error)
-	GetSettingsMap(ctx context.Context, orgID uuid.UUID) (map[string]interface{}, error)
+	GetSettingsMap(ctx context.Context, orgID uuid.UUID) (map[string]any, error)
 	DeleteByKey(ctx context.Context, orgID uuid.UUID, key string) error
-	UpsertSetting(ctx context.Context, orgID uuid.UUID, key string, value interface{}) (*OrganizationSettings, error)
+	UpsertSetting(ctx context.Context, orgID uuid.UUID, key string, value any) (*OrganizationSettings, error)
 
 	// Bulk operations
 	CreateMultiple(ctx context.Context, settings []*OrganizationSettings) error

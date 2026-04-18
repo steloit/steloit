@@ -368,7 +368,7 @@ func (s *evaluatorService) TriggerEvaluator(ctx context.Context, evaluatorID uui
 	)
 
 	return &evaluation.TriggerResponse{
-		ExecutionID: execution.ID.String(),
+		ExecutionID: execution.ID,
 		SpansQueued: 0, // Will be updated by worker when it starts processing
 		Message:     "Manual evaluation queued successfully",
 	}, nil
@@ -412,7 +412,7 @@ func (s *evaluatorService) TestEvaluator(ctx context.Context, evaluatorID uuid.U
 	}
 
 	// Query matching spans from ClickHouse
-	spans, matchedCount, err := s.queryMatchingSpans(ctx, projectID.String(), evaluator, req, startTime, endTime, limit)
+	spans, matchedCount, err := s.queryMatchingSpans(ctx, projectID, evaluator, req, startTime, endTime, limit)
 	if err != nil {
 		s.logger.Error("failed to query spans for test",
 			"error", err,
@@ -511,7 +511,7 @@ func (s *evaluatorService) TestEvaluator(ctx context.Context, evaluatorID uuid.U
 // 4. Generic filter - apply time range, span names, and rule filters
 func (s *evaluatorService) queryMatchingSpans(
 	ctx context.Context,
-	projectID string,
+	projectID uuid.UUID,
 	rule *evaluation.Evaluator,
 	req *evaluation.TestEvaluatorRequest,
 	startTime, endTime time.Time,
@@ -769,7 +769,7 @@ func (s *evaluatorService) GetAnalytics(ctx context.Context, evaluatorID uuid.UU
 	// Full implementation would query ClickHouse for score distribution and trends.
 	// TODO: Use 'from' and 'to' to filter execution records when real analytics are implemented
 	response := &evaluation.EvaluatorAnalyticsResponse{
-		EvaluatorID:        evaluatorID.String(),
+		EvaluatorID:        evaluatorID,
 		Period:             period,
 		TotalExecutions:    0,
 		TotalSpansScored:   0,
@@ -845,7 +845,7 @@ func (s *evaluatorService) testWithSampleInput(
 	}
 
 	// Create synthetic span
-	syntheticSpan := s.createSyntheticSpan(rule.ProjectID.String(), sample)
+	syntheticSpan := s.createSyntheticSpan(rule.ProjectID, sample)
 
 	// Resolve variables from synthetic span
 	resolvedVars := resolveVariables(rule.VariableMapping, syntheticSpan)
@@ -898,7 +898,7 @@ func (s *evaluatorService) testWithSampleInput(
 }
 
 // createSyntheticSpan creates an in-memory span from TestSampleInput for dry-run testing.
-func (s *evaluatorService) createSyntheticSpan(projectID string, sample *evaluation.TestSampleInput) *observability.Span {
+func (s *evaluatorService) createSyntheticSpan(projectID uuid.UUID, sample *evaluation.TestSampleInput) *observability.Span {
 	now := time.Now()
 	syntheticID := uid.New().String()
 

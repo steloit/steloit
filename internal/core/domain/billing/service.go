@@ -26,7 +26,7 @@ type BillingService interface {
 	CheckUsageQuotas(ctx context.Context, orgID uuid.UUID) (*QuotaStatus, error)
 
 	// Health monitoring
-	GetHealth() map[string]interface{}
+	GetHealth() map[string]any
 }
 
 // OrganizationService provides organization-related data for billing context

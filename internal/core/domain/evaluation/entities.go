@@ -28,7 +28,7 @@ type ScoreConfig struct {
 	MinValue    *float64               `json:"min_value,omitempty"`
 	MaxValue    *float64               `json:"max_value,omitempty"`
 	Categories  []string               `json:"categories,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
 	CreatedAt   time.Time              `json:"created_at"`
 	UpdatedAt   time.Time              `json:"updated_at"`
 }
@@ -40,7 +40,7 @@ func NewScoreConfig(projectID uuid.UUID, name string, scoreType ScoreType) *Scor
 		ProjectID: projectID,
 		Name:      name,
 		Type:      scoreType,
-		Metadata:  make(map[string]interface{}),
+		Metadata:  make(map[string]any),
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -85,7 +85,7 @@ type CreateScoreConfigRequest struct {
 	MinValue    *float64               `json:"min_value,omitempty"`
 	MaxValue    *float64               `json:"max_value,omitempty"`
 	Categories  []string               `json:"categories,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
 }
 
 type UpdateScoreConfigRequest struct {
@@ -95,27 +95,27 @@ type UpdateScoreConfigRequest struct {
 	MinValue    *float64               `json:"min_value,omitempty"`
 	MaxValue    *float64               `json:"max_value,omitempty"`
 	Categories  []string               `json:"categories,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
 }
 
 type ScoreConfigResponse struct {
-	ID          string                 `json:"id"`
-	ProjectID   string                 `json:"project_id"`
-	Name        string                 `json:"name"`
-	Description *string                `json:"description,omitempty"`
-	Type        ScoreType              `json:"type"`
-	MinValue    *float64               `json:"min_value,omitempty"`
-	MaxValue    *float64               `json:"max_value,omitempty"`
-	Categories  []string               `json:"categories,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
-	CreatedAt   time.Time              `json:"created_at"`
-	UpdatedAt   time.Time              `json:"updated_at"`
+	ID          uuid.UUID      `json:"id"`
+	ProjectID   uuid.UUID      `json:"project_id"`
+	Name        string         `json:"name"`
+	Description *string        `json:"description,omitempty"`
+	Type        ScoreType      `json:"type"`
+	MinValue    *float64       `json:"min_value,omitempty"`
+	MaxValue    *float64       `json:"max_value,omitempty"`
+	Categories  []string       `json:"categories,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
 }
 
 func (sc *ScoreConfig) ToResponse() *ScoreConfigResponse {
 	return &ScoreConfigResponse{
-		ID:          sc.ID.String(),
-		ProjectID:   sc.ProjectID.String(),
+		ID:          sc.ID,
+		ProjectID:   sc.ProjectID,
 		Name:        sc.Name,
 		Description: sc.Description,
 		Type:        sc.Type,
@@ -134,7 +134,7 @@ type Dataset struct {
 	ProjectID        uuid.UUID              `json:"project_id"`
 	Name             string                 `json:"name"`
 	Description      *string                `json:"description,omitempty"`
-	Metadata         map[string]interface{} `json:"metadata,omitempty"`
+	Metadata         map[string]any `json:"metadata,omitempty"`
 	CurrentVersionID *uuid.UUID             `json:"current_version_id,omitempty"` // Pinned version (nil = use latest)
 	CreatedAt        time.Time              `json:"created_at"`
 	UpdatedAt        time.Time              `json:"updated_at"`
@@ -146,7 +146,7 @@ func NewDataset(projectID uuid.UUID, name string) *Dataset {
 		ID:        uid.New(),
 		ProjectID: projectID,
 		Name:      name,
-		Metadata:  make(map[string]interface{}),
+		Metadata:  make(map[string]any),
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -168,39 +168,34 @@ func (d *Dataset) Validate() []ValidationError {
 type CreateDatasetRequest struct {
 	Name        string                 `json:"name" binding:"required,min=1,max=255"`
 	Description *string                `json:"description,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
 }
 
 type UpdateDatasetRequest struct {
 	Name        *string                `json:"name,omitempty" binding:"omitempty,min=1,max=255"`
 	Description *string                `json:"description,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
 }
 
 type DatasetResponse struct {
-	ID               string                 `json:"id"`
-	ProjectID        string                 `json:"project_id"`
-	Name             string                 `json:"name"`
-	Description      *string                `json:"description,omitempty"`
-	Metadata         map[string]interface{} `json:"metadata,omitempty"`
-	CurrentVersionID *string                `json:"current_version_id,omitempty"`
-	CreatedAt        time.Time              `json:"created_at"`
-	UpdatedAt        time.Time              `json:"updated_at"`
+	ID               uuid.UUID      `json:"id"`
+	ProjectID        uuid.UUID      `json:"project_id"`
+	Name             string         `json:"name"`
+	Description      *string        `json:"description,omitempty"`
+	Metadata         map[string]any `json:"metadata,omitempty"`
+	CurrentVersionID *uuid.UUID     `json:"current_version_id,omitempty"`
+	CreatedAt        time.Time      `json:"created_at"`
+	UpdatedAt        time.Time      `json:"updated_at"`
 }
 
 func (d *Dataset) ToResponse() *DatasetResponse {
-	var currentVersionID *string
-	if d.CurrentVersionID != nil {
-		id := d.CurrentVersionID.String()
-		currentVersionID = &id
-	}
 	return &DatasetResponse{
-		ID:               d.ID.String(),
-		ProjectID:        d.ProjectID.String(),
+		ID:               d.ID,
+		ProjectID:        d.ProjectID,
 		Name:             d.Name,
 		Description:      d.Description,
 		Metadata:         d.Metadata,
-		CurrentVersionID: currentVersionID,
+		CurrentVersionID: d.CurrentVersionID,
 		CreatedAt:        d.CreatedAt,
 		UpdatedAt:        d.UpdatedAt,
 	}
@@ -233,9 +228,9 @@ func (s DatasetItemSource) IsValid() bool {
 type DatasetItem struct {
 	ID            uuid.UUID              `json:"id"`
 	DatasetID     uuid.UUID              `json:"dataset_id"`
-	Input         map[string]interface{} `json:"input"`
-	Expected      map[string]interface{} `json:"expected,omitempty"`
-	Metadata      map[string]interface{} `json:"metadata,omitempty"`
+	Input         map[string]any `json:"input"`
+	Expected      map[string]any `json:"expected,omitempty"`
+	Metadata      map[string]any `json:"metadata,omitempty"`
 	Source        DatasetItemSource      `json:"source"`
 	SourceTraceID *string                `json:"source_trace_id,omitempty"`
 	SourceSpanID  *string                `json:"source_span_id,omitempty"`
@@ -243,24 +238,24 @@ type DatasetItem struct {
 	CreatedAt     time.Time              `json:"created_at"`
 }
 
-func NewDatasetItem(datasetID uuid.UUID, input map[string]interface{}) *DatasetItem {
+func NewDatasetItem(datasetID uuid.UUID, input map[string]any) *DatasetItem {
 	return &DatasetItem{
 		ID:        uid.New(),
 		DatasetID: datasetID,
 		Input:     input,
-		Metadata:  make(map[string]interface{}),
+		Metadata:  make(map[string]any),
 		Source:    DatasetItemSourceManual,
 		CreatedAt: time.Now(),
 	}
 }
 
 // NewDatasetItemWithSource creates a new dataset item with explicit source tracking.
-func NewDatasetItemWithSource(datasetID uuid.UUID, input map[string]interface{}, source DatasetItemSource) *DatasetItem {
+func NewDatasetItemWithSource(datasetID uuid.UUID, input map[string]any, source DatasetItemSource) *DatasetItem {
 	return &DatasetItem{
 		ID:        uid.New(),
 		DatasetID: datasetID,
 		Input:     input,
-		Metadata:  make(map[string]interface{}),
+		Metadata:  make(map[string]any),
 		Source:    source,
 		CreatedAt: time.Now(),
 	}
@@ -277,9 +272,9 @@ func (di *DatasetItem) Validate() []ValidationError {
 }
 
 type CreateDatasetItemRequest struct {
-	Input    map[string]interface{} `json:"input" binding:"required"`
-	Expected map[string]interface{} `json:"expected,omitempty"`
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
+	Input    map[string]any `json:"input" binding:"required"`
+	Expected map[string]any `json:"expected,omitempty"`
+	Metadata map[string]any `json:"metadata,omitempty"`
 }
 
 type CreateDatasetItemsBatchRequest struct {
@@ -321,7 +316,7 @@ type CreateDatasetItemsFromSpansRequest struct {
 
 // ImportDatasetItemsFromJSONRequest is the request to import dataset items from JSON data.
 type ImportDatasetItemsFromJSONRequest struct {
-	Items       []map[string]interface{} `json:"items" binding:"required,min=1"`
+	Items       []map[string]any `json:"items" binding:"required,min=1"`
 	KeysMapping *KeysMapping             `json:"keys_mapping,omitempty"`
 	Deduplicate bool                     `json:"deduplicate"`
 	Source      DatasetItemSource        `json:"source,omitempty"`
@@ -356,21 +351,21 @@ type ExportDatasetItemsRequest struct {
 }
 
 type DatasetItemResponse struct {
-	ID            string                 `json:"id"`
-	DatasetID     string                 `json:"dataset_id"`
-	Input         map[string]interface{} `json:"input"`
-	Expected      map[string]interface{} `json:"expected,omitempty"`
-	Metadata      map[string]interface{} `json:"metadata,omitempty"`
-	Source        DatasetItemSource      `json:"source"`
-	SourceTraceID *string                `json:"source_trace_id,omitempty"`
-	SourceSpanID  *string                `json:"source_span_id,omitempty"`
-	CreatedAt     time.Time              `json:"created_at"`
+	ID            uuid.UUID         `json:"id"`
+	DatasetID     uuid.UUID         `json:"dataset_id"`
+	Input         map[string]any    `json:"input"`
+	Expected      map[string]any    `json:"expected,omitempty"`
+	Metadata      map[string]any    `json:"metadata,omitempty"`
+	Source        DatasetItemSource `json:"source"`
+	SourceTraceID *string           `json:"source_trace_id,omitempty"` // W3C hex
+	SourceSpanID  *string           `json:"source_span_id,omitempty"`  // W3C hex
+	CreatedAt     time.Time         `json:"created_at"`
 }
 
 func (di *DatasetItem) ToResponse() *DatasetItemResponse {
 	return &DatasetItemResponse{
-		ID:            di.ID.String(),
-		DatasetID:     di.DatasetID.String(),
+		ID:            di.ID,
+		DatasetID:     di.DatasetID,
 		Input:         di.Input,
 		Expected:      di.Expected,
 		Metadata:      di.Metadata,
@@ -403,7 +398,7 @@ type Experiment struct {
 	Status      ExperimentStatus       `json:"status"`
 	Source      ExperimentSource       `json:"source"`
 	ConfigID    *uuid.UUID             `json:"config_id,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
 	// Progress tracking fields
 	TotalItems     int        `json:"total_items"`
 	CompletedItems int        `json:"completed_items"`
@@ -425,7 +420,7 @@ func NewExperiment(projectID uuid.UUID, name string) *Experiment {
 		Name:      name,
 		Status:    ExperimentStatusPending,
 		Source:    ExperimentSourceSDK, // Default to SDK for backwards compatibility
-		Metadata:  make(map[string]interface{}),
+		Metadata:  make(map[string]any),
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -440,7 +435,7 @@ func NewExperimentFromDashboard(projectID uuid.UUID, name string) *Experiment {
 		Name:      name,
 		Status:    ExperimentStatusPending,
 		Source:    ExperimentSourceDashboard,
-		Metadata:  make(map[string]interface{}),
+		Metadata:  make(map[string]any),
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -469,7 +464,7 @@ type CreateExperimentRequest struct {
 	Name        string                 `json:"name" binding:"required,min=1,max=255"`
 	DatasetID   *string                `json:"dataset_id,omitempty"`
 	Description *string                `json:"description,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
 }
 
 // RerunExperimentRequest is the request to create a new experiment based on an existing one.
@@ -477,14 +472,14 @@ type CreateExperimentRequest struct {
 type RerunExperimentRequest struct {
 	Name        *string                `json:"name,omitempty" binding:"omitempty,min=1,max=255"`
 	Description *string                `json:"description,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
 }
 
 type UpdateExperimentRequest struct {
 	Name        *string                `json:"name,omitempty" binding:"omitempty,min=1,max=255"`
 	Description *string                `json:"description,omitempty"`
 	Status      *ExperimentStatus      `json:"status,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
 }
 
 type ExperimentFilter struct {
@@ -500,46 +495,34 @@ type DatasetFilter struct {
 }
 
 type ExperimentResponse struct {
-	ID             string                 `json:"id"`
-	ProjectID      string                 `json:"project_id"`
-	DatasetID      *string                `json:"dataset_id,omitempty"`
-	Name           string                 `json:"name"`
-	Description    *string                `json:"description,omitempty"`
-	Status         ExperimentStatus       `json:"status"`
-	Source         ExperimentSource       `json:"source"`
-	ConfigID       *string                `json:"config_id,omitempty"`
-	Metadata       map[string]interface{} `json:"metadata,omitempty"`
-	TotalItems     int                    `json:"total_items"`
-	CompletedItems int                    `json:"completed_items"`
-	FailedItems    int                    `json:"failed_items"`
-	StartedAt      *time.Time             `json:"started_at,omitempty"`
-	CompletedAt    *time.Time             `json:"completed_at,omitempty"`
-	CreatedAt      time.Time              `json:"created_at"`
-	UpdatedAt      time.Time              `json:"updated_at"`
+	ID             uuid.UUID        `json:"id"`
+	ProjectID      uuid.UUID        `json:"project_id"`
+	DatasetID      *uuid.UUID       `json:"dataset_id,omitempty"`
+	Name           string           `json:"name"`
+	Description    *string          `json:"description,omitempty"`
+	Status         ExperimentStatus `json:"status"`
+	Source         ExperimentSource `json:"source"`
+	ConfigID       *uuid.UUID       `json:"config_id,omitempty"`
+	Metadata       map[string]any   `json:"metadata,omitempty"`
+	TotalItems     int              `json:"total_items"`
+	CompletedItems int              `json:"completed_items"`
+	FailedItems    int              `json:"failed_items"`
+	StartedAt      *time.Time       `json:"started_at,omitempty"`
+	CompletedAt    *time.Time       `json:"completed_at,omitempty"`
+	CreatedAt      time.Time        `json:"created_at"`
+	UpdatedAt      time.Time        `json:"updated_at"`
 }
 
 func (e *Experiment) ToResponse() *ExperimentResponse {
-	var datasetID *string
-	if e.DatasetID != nil {
-		id := e.DatasetID.String()
-		datasetID = &id
-	}
-
-	var configID *string
-	if e.ConfigID != nil {
-		id := e.ConfigID.String()
-		configID = &id
-	}
-
 	return &ExperimentResponse{
-		ID:             e.ID.String(),
-		ProjectID:      e.ProjectID.String(),
-		DatasetID:      datasetID,
+		ID:             e.ID,
+		ProjectID:      e.ProjectID,
+		DatasetID:      e.DatasetID,
 		Name:           e.Name,
 		Description:    e.Description,
 		Status:         e.Status,
 		Source:         e.Source,
-		ConfigID:       configID,
+		ConfigID:       e.ConfigID,
 		Metadata:       e.Metadata,
 		TotalItems:     e.TotalItems,
 		CompletedItems: e.CompletedItems,
@@ -553,7 +536,7 @@ func (e *Experiment) ToResponse() *ExperimentResponse {
 
 // ExperimentProgressResponse is a lightweight response for progress polling.
 type ExperimentProgressResponse struct {
-	ID             string           `json:"id"`
+	ID             uuid.UUID        `json:"id"`
 	Status         ExperimentStatus `json:"status"`
 	TotalItems     int              `json:"total_items"`
 	CompletedItems int              `json:"completed_items"`
@@ -569,7 +552,7 @@ type ExperimentProgressResponse struct {
 // ToProgressResponse creates a progress response with derived fields.
 func (e *Experiment) ToProgressResponse() *ExperimentProgressResponse {
 	resp := &ExperimentProgressResponse{
-		ID:             e.ID.String(),
+		ID:             e.ID,
 		Status:         e.Status,
 		TotalItems:     e.TotalItems,
 		CompletedItems: e.CompletedItems,
@@ -622,22 +605,22 @@ type ExperimentItem struct {
 	ExperimentID  uuid.UUID              `json:"experiment_id"`
 	DatasetItemID *uuid.UUID             `json:"dataset_item_id,omitempty"`
 	TraceID       *string                `json:"trace_id,omitempty"`
-	Input         map[string]interface{} `json:"input"`
-	Output        interface{}            `json:"output,omitempty"`
-	Expected      interface{}            `json:"expected,omitempty"`
+	Input         map[string]any `json:"input"`
+	Output        any            `json:"output,omitempty"`
+	Expected      any            `json:"expected,omitempty"`
 	TrialNumber   int                    `json:"trial_number"`
-	Metadata      map[string]interface{} `json:"metadata,omitempty"`
+	Metadata      map[string]any `json:"metadata,omitempty"`
 	Error         *string                `json:"error,omitempty"`
 	CreatedAt     time.Time              `json:"created_at"`
 }
 
-func NewExperimentItem(experimentID uuid.UUID, input map[string]interface{}) *ExperimentItem {
+func NewExperimentItem(experimentID uuid.UUID, input map[string]any) *ExperimentItem {
 	return &ExperimentItem{
 		ID:           uid.New(),
 		ExperimentID: experimentID,
 		Input:        input,
 		TrialNumber:  1,
-		Metadata:     make(map[string]interface{}),
+		Metadata:     make(map[string]any),
 		CreatedAt:    time.Now(),
 	}
 }
@@ -663,18 +646,18 @@ type ExperimentItemScore struct {
 	Type          string                 `json:"type,omitempty"` // NUMERIC, CATEGORICAL, BOOLEAN
 	StringValue   *string                `json:"string_value,omitempty"`
 	Reason        *string                `json:"reason,omitempty"`
-	Metadata      map[string]interface{} `json:"metadata,omitempty"`
+	Metadata      map[string]any `json:"metadata,omitempty"`
 	ScoringFailed *bool                  `json:"scoring_failed,omitempty"`
 }
 
 type CreateExperimentItemRequest struct {
 	DatasetItemID *string                `json:"dataset_item_id,omitempty"`
 	TraceID       *string                `json:"trace_id,omitempty"`
-	Input         map[string]interface{} `json:"input" binding:"required"`
-	Output        interface{}            `json:"output,omitempty"`
-	Expected      interface{}            `json:"expected,omitempty"`
+	Input         map[string]any `json:"input" binding:"required"`
+	Output        any            `json:"output,omitempty"`
+	Expected      any            `json:"expected,omitempty"`
 	TrialNumber   *int                   `json:"trial_number,omitempty"`
-	Metadata      map[string]interface{} `json:"metadata,omitempty"`
+	Metadata      map[string]any `json:"metadata,omitempty"`
 	// Scores computed by SDK evaluators, bundled with the experiment item
 	Scores []ExperimentItemScore `json:"scores,omitempty"`
 	// Error message if task execution failed
@@ -686,29 +669,24 @@ type CreateExperimentItemsBatchRequest struct {
 }
 
 type ExperimentItemResponse struct {
-	ID            string                 `json:"id"`
-	ExperimentID  string                 `json:"experiment_id"`
-	DatasetItemID *string                `json:"dataset_item_id,omitempty"`
-	TraceID       *string                `json:"trace_id,omitempty"`
-	Input         map[string]interface{} `json:"input"`
-	Output        interface{}            `json:"output,omitempty"`
-	Expected      interface{}            `json:"expected,omitempty"`
-	TrialNumber   int                    `json:"trial_number"`
-	Metadata      map[string]interface{} `json:"metadata,omitempty"`
-	Error         *string                `json:"error,omitempty"`
-	CreatedAt     time.Time              `json:"created_at"`
+	ID            uuid.UUID      `json:"id"`
+	ExperimentID  uuid.UUID      `json:"experiment_id"`
+	DatasetItemID *uuid.UUID     `json:"dataset_item_id,omitempty"`
+	TraceID       *string        `json:"trace_id,omitempty"` // W3C hex
+	Input         map[string]any `json:"input"`
+	Output        any            `json:"output,omitempty"`
+	Expected      any            `json:"expected,omitempty"`
+	TrialNumber   int            `json:"trial_number"`
+	Metadata      map[string]any `json:"metadata,omitempty"`
+	Error         *string        `json:"error,omitempty"`
+	CreatedAt     time.Time      `json:"created_at"`
 }
 
 func (ei *ExperimentItem) ToResponse() *ExperimentItemResponse {
-	var datasetItemID *string
-	if ei.DatasetItemID != nil {
-		id := ei.DatasetItemID.String()
-		datasetItemID = &id
-	}
 	return &ExperimentItemResponse{
-		ID:            ei.ID.String(),
-		ExperimentID:  ei.ExperimentID.String(),
-		DatasetItemID: datasetItemID,
+		ID:            ei.ID,
+		ExperimentID:  ei.ExperimentID,
+		DatasetItemID: ei.DatasetItemID,
 		TraceID:       ei.TraceID,
 		Input:         ei.Input,
 		Output:        ei.Output,
@@ -807,7 +785,7 @@ type DatasetVersion struct {
 	Version     int                    `json:"version"`
 	ItemCount   int                    `json:"item_count"`
 	Description *string                `json:"description,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
 	CreatedBy   *uuid.UUID             `json:"created_by,omitempty"`
 	CreatedAt   time.Time              `json:"created_at"`
 }
@@ -819,7 +797,7 @@ func NewDatasetVersion(datasetID uuid.UUID, version int, itemCount int) *Dataset
 		DatasetID: datasetID,
 		Version:   version,
 		ItemCount: itemCount,
-		Metadata:  make(map[string]interface{}),
+		Metadata:  make(map[string]any),
 		CreatedAt: time.Now(),
 	}
 }
@@ -839,30 +817,25 @@ func (dv *DatasetVersion) Validate() []ValidationError {
 
 // DatasetVersionResponse is the API response for a dataset version.
 type DatasetVersionResponse struct {
-	ID          string                 `json:"id"`
-	DatasetID   string                 `json:"dataset_id"`
-	Version     int                    `json:"version"`
-	ItemCount   int                    `json:"item_count"`
-	Description *string                `json:"description,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
-	CreatedBy   *string                `json:"created_by,omitempty"`
-	CreatedAt   time.Time              `json:"created_at"`
+	ID          uuid.UUID      `json:"id"`
+	DatasetID   uuid.UUID      `json:"dataset_id"`
+	Version     int            `json:"version"`
+	ItemCount   int            `json:"item_count"`
+	Description *string        `json:"description,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
+	CreatedBy   *uuid.UUID     `json:"created_by,omitempty"`
+	CreatedAt   time.Time      `json:"created_at"`
 }
 
 func (dv *DatasetVersion) ToResponse() *DatasetVersionResponse {
-	var createdBy *string
-	if dv.CreatedBy != nil {
-		id := dv.CreatedBy.String()
-		createdBy = &id
-	}
 	return &DatasetVersionResponse{
-		ID:          dv.ID.String(),
-		DatasetID:   dv.DatasetID.String(),
+		ID:          dv.ID,
+		DatasetID:   dv.DatasetID,
 		Version:     dv.Version,
 		ItemCount:   dv.ItemCount,
 		Description: dv.Description,
 		Metadata:    dv.Metadata,
-		CreatedBy:   createdBy,
+		CreatedBy:   dv.CreatedBy,
 		CreatedAt:   dv.CreatedAt,
 	}
 }
@@ -876,12 +849,12 @@ type DatasetItemVersion struct {
 // CreateDatasetVersionRequest is the request to create a new version manually.
 type CreateDatasetVersionRequest struct {
 	Description *string                `json:"description,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
 }
 
 // PinDatasetVersionRequest is the request to pin a dataset to a specific version.
 type PinDatasetVersionRequest struct {
-	VersionID *string `json:"version_id"` // nil to unpin (use latest)
+	VersionID *uuid.UUID `json:"version_id"` // nil to unpin (use latest)
 }
 
 // DatasetVersionFilter is used for filtering versions.
@@ -891,16 +864,16 @@ type DatasetVersionFilter struct {
 
 // DatasetWithVersion extends Dataset to include version info in responses.
 type DatasetWithVersionResponse struct {
-	ID               string                 `json:"id"`
-	ProjectID        string                 `json:"project_id"`
-	Name             string                 `json:"name"`
-	Description      *string                `json:"description,omitempty"`
-	Metadata         map[string]interface{} `json:"metadata,omitempty"`
-	CurrentVersionID *string                `json:"current_version_id,omitempty"`
-	CurrentVersion   *int                   `json:"current_version,omitempty"`
-	LatestVersion    *int                   `json:"latest_version,omitempty"`
-	CreatedAt        time.Time              `json:"created_at"`
-	UpdatedAt        time.Time              `json:"updated_at"`
+	ID               uuid.UUID      `json:"id"`
+	ProjectID        uuid.UUID      `json:"project_id"`
+	Name             string         `json:"name"`
+	Description      *string        `json:"description,omitempty"`
+	Metadata         map[string]any `json:"metadata,omitempty"`
+	CurrentVersionID *uuid.UUID     `json:"current_version_id,omitempty"`
+	CurrentVersion   *int           `json:"current_version,omitempty"`
+	LatestVersion    *int           `json:"latest_version,omitempty"`
+	CreatedAt        time.Time      `json:"created_at"`
+	UpdatedAt        time.Time      `json:"updated_at"`
 }
 
 // ============================================================================
@@ -914,7 +887,7 @@ type DatasetWithVersionResponse struct {
 // ExperimentMetricsResponse is the response for GET /experiments/{id}/metrics.
 // It provides comprehensive metrics including progress, performance, and scores.
 type ExperimentMetricsResponse struct {
-	ExperimentID string                       `json:"experiment_id"`
+	ExperimentID uuid.UUID                    `json:"experiment_id"`
 	Status       ExperimentStatus             `json:"status"`
 	Progress     ExperimentProgressMetrics    `json:"progress"`
 	Performance  ExperimentPerformanceMetrics `json:"performance"`
@@ -957,31 +930,26 @@ type DatasetWithItemCount struct {
 
 // DatasetWithItemCountResponse is the API response for a dataset with item count.
 type DatasetWithItemCountResponse struct {
-	ID               string                 `json:"id"`
-	ProjectID        string                 `json:"project_id"`
-	Name             string                 `json:"name"`
-	Description      *string                `json:"description,omitempty"`
-	Metadata         map[string]interface{} `json:"metadata,omitempty"`
-	CurrentVersionID *string                `json:"current_version_id,omitempty"`
-	ItemCount        int64                  `json:"item_count"`
-	CreatedAt        time.Time              `json:"created_at"`
-	UpdatedAt        time.Time              `json:"updated_at"`
+	ID               uuid.UUID      `json:"id"`
+	ProjectID        uuid.UUID      `json:"project_id"`
+	Name             string         `json:"name"`
+	Description      *string        `json:"description,omitempty"`
+	Metadata         map[string]any `json:"metadata,omitempty"`
+	CurrentVersionID *uuid.UUID     `json:"current_version_id,omitempty"`
+	ItemCount        int64          `json:"item_count"`
+	CreatedAt        time.Time      `json:"created_at"`
+	UpdatedAt        time.Time      `json:"updated_at"`
 }
 
 // ToResponse converts DatasetWithItemCount to its API response format.
 func (d *DatasetWithItemCount) ToResponse() *DatasetWithItemCountResponse {
-	var currentVersionID *string
-	if d.CurrentVersionID != nil {
-		id := d.CurrentVersionID.String()
-		currentVersionID = &id
-	}
 	return &DatasetWithItemCountResponse{
-		ID:               d.ID.String(),
-		ProjectID:        d.ProjectID.String(),
+		ID:               d.ID,
+		ProjectID:        d.ProjectID,
 		Name:             d.Name,
 		Description:      d.Description,
 		Metadata:         d.Metadata,
-		CurrentVersionID: currentVersionID,
+		CurrentVersionID: d.CurrentVersionID,
 		ItemCount:        d.ItemCount,
 		CreatedAt:        d.CreatedAt,
 		UpdatedAt:        d.UpdatedAt,

@@ -79,7 +79,7 @@ type ExecuteRequest struct {
 	ProjectID       uuid.UUID
 	OrganizationID  uuid.UUID // Required for organization-scoped credential resolution
 	SessionID       *uuid.UUID
-	Template        interface{}
+	Template        any
 	PromptType      prompt.PromptType
 	Variables       map[string]string
 	ConfigOverrides *prompt.ModelConfig
@@ -87,7 +87,7 @@ type ExecuteRequest struct {
 
 // ExecuteResponse wraps execution result with metadata.
 type ExecuteResponse struct {
-	CompiledPrompt interface{}         `json:"compiled_prompt"`
+	CompiledPrompt any         `json:"compiled_prompt"`
 	Response       *prompt.LLMResponse `json:"response,omitempty"`
 	LatencyMs      int64               `json:"latency_ms"`
 	Error          string              `json:"error,omitempty"`
@@ -98,7 +98,7 @@ type StreamRequest struct {
 	ProjectID       uuid.UUID
 	OrganizationID  uuid.UUID // Required for organization-scoped credential resolution
 	SessionID       *uuid.UUID
-	Template        interface{}
+	Template        any
 	PromptType      prompt.PromptType
 	Variables       map[string]string
 	ConfigOverrides *prompt.ModelConfig

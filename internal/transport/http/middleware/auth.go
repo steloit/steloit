@@ -318,14 +318,6 @@ func (m *AuthMiddleware) extractToken(c *gin.Context) (string, error) {
 	return token, nil
 }
 
-// Helper function for min
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 // Helper functions to get auth data from Gin context.
 //
 // Each context value has a Get* form (returns `(value, ok)`) and a Must* form

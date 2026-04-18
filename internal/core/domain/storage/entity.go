@@ -1,8 +1,20 @@
 package storage
 
-import "time"
+import (
+	"time"
 
-// BlobStorageFileLog represents a reference to S3-stored data
+	"github.com/google/uuid"
+)
+
+// BlobStorageFileLog represents a reference to S3-stored data.
+//
+// Go field types mirror the ClickHouse column types exactly:
+//   - ID (String)           : blob-local opaque id
+//   - EntityID (String)     : polymorphic by EntityType — W3C hex trace/span
+//                             id for per-span archives, UUID-as-string for
+//                             archive-batch rows
+//   - EventID (String)      : worker-provided stream record id, not always a UUID
+//   - ProjectID (UUID)      : tenant scope; strongly typed
 type BlobStorageFileLog struct {
 	CreatedAt     time.Time `json:"created_at" db:"created_at"`
 	FileSizeBytes *uint64   `json:"file_size_bytes,omitempty" db:"file_size_bytes"`
@@ -14,7 +26,7 @@ type BlobStorageFileLog struct {
 	EventID       string    `json:"event_id" db:"event_id"`
 	ID            string    `json:"id" db:"id"`
 	EntityType    string    `json:"entity_type" db:"entity_type"`
-	ProjectID     string    `json:"project_id" db:"project_id"`
+	ProjectID     uuid.UUID `json:"project_id" db:"project_id"`
 }
 
 // GetS3URI returns the full S3 URI for this blob

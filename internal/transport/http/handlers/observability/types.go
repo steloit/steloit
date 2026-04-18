@@ -2,6 +2,8 @@ package observability
 
 import (
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type CreateSpanRequest struct {
@@ -200,16 +202,16 @@ type CreateAnnotationRequest struct {
 
 // AnnotationResponse represents a score returned from the annotation API
 type AnnotationResponse struct {
-	ID          string   `json:"id"`
-	ProjectID   string   `json:"project_id"`
-	TraceID     *string  `json:"trace_id,omitempty"`
-	SpanID      *string  `json:"span_id,omitempty"`
-	Name        string   `json:"name"`
-	Value       *float64 `json:"value,omitempty"`
-	StringValue *string  `json:"string_value,omitempty"`
-	DataType    string   `json:"type"`
-	Source      string   `json:"source"`
-	Reason      *string  `json:"reason,omitempty"`
-	CreatedBy   *string  `json:"created_by,omitempty"`
-	Timestamp   string   `json:"timestamp"`
+	ID          uuid.UUID `json:"id"`
+	ProjectID   uuid.UUID `json:"project_id"`
+	TraceID     *string   `json:"trace_id,omitempty"` // W3C hex
+	SpanID      *string   `json:"span_id,omitempty"`  // W3C hex
+	Name        string    `json:"name"`
+	Value       *float64  `json:"value,omitempty"`
+	StringValue *string   `json:"string_value,omitempty"`
+	DataType    string    `json:"type"`
+	Source      string    `json:"source"`
+	Reason      *string   `json:"reason,omitempty"`
+	CreatedBy   *string   `json:"created_by,omitempty"`
+	Timestamp   string    `json:"timestamp"`
 }

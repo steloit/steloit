@@ -1,6 +1,10 @@
 package observability
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // ==================================
 // OTLP GenAI Events Entity
@@ -33,9 +37,9 @@ type GenAIEvent struct {
 	EvaluationScore       *float32  `ch:"evaluation_score"`       // Nullable - quality score (0.0-1.0)
 	EvaluationLabel       *string   `ch:"evaluation_label"`       // Nullable - pass/fail/warning
 	EvaluationExplanation *string   `ch:"evaluation_explanation"` // Nullable - ZSTD compressed
-	ProjectID             string    `ch:"project_id"`             // Multi-tenancy
-	UserID                string    `ch:"user_id"`                // User who triggered the event
-	SessionID             string    `ch:"session_id"`             // Session grouping
+	ProjectID             uuid.UUID `ch:"project_id"`             // Multi-tenancy
+	UserID                string    `ch:"user_id"`                // CH LowCardinality(String) — free-form from OTLP attrs
+	SessionID             string    `ch:"session_id"`             // CH LowCardinality(String) — free-form session id
 }
 
 // ==================================

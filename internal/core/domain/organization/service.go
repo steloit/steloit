@@ -102,14 +102,14 @@ type OrganizationSettingsService interface {
 	// Settings CRUD operations
 	CreateSetting(ctx context.Context, orgID uuid.UUID, userID uuid.UUID, req *CreateOrganizationSettingRequest) (*OrganizationSettings, error)
 	GetSetting(ctx context.Context, orgID uuid.UUID, key string) (*OrganizationSettings, error)
-	GetAllSettings(ctx context.Context, orgID uuid.UUID) (map[string]interface{}, error)
+	GetAllSettings(ctx context.Context, orgID uuid.UUID) (map[string]any, error)
 	UpdateSetting(ctx context.Context, orgID uuid.UUID, key string, userID uuid.UUID, req *UpdateOrganizationSettingRequest) (*OrganizationSettings, error)
 	DeleteSetting(ctx context.Context, orgID uuid.UUID, key string, userID uuid.UUID) error
 
 	// Bulk operations
-	UpsertSetting(ctx context.Context, orgID uuid.UUID, key string, value interface{}, userID uuid.UUID) (*OrganizationSettings, error)
-	CreateMultipleSettings(ctx context.Context, orgID uuid.UUID, userID uuid.UUID, settings map[string]interface{}) error
-	GetSettingsByKeys(ctx context.Context, orgID uuid.UUID, keys []string) (map[string]interface{}, error)
+	UpsertSetting(ctx context.Context, orgID uuid.UUID, key string, value any, userID uuid.UUID) (*OrganizationSettings, error)
+	CreateMultipleSettings(ctx context.Context, orgID uuid.UUID, userID uuid.UUID, settings map[string]any) error
+	GetSettingsByKeys(ctx context.Context, orgID uuid.UUID, keys []string) (map[string]any, error)
 	DeleteMultipleSettings(ctx context.Context, orgID uuid.UUID, keys []string, userID uuid.UUID) error
 
 	// Access validation
@@ -118,6 +118,6 @@ type OrganizationSettingsService interface {
 
 	// Settings management
 	ResetToDefaults(ctx context.Context, orgID uuid.UUID, userID uuid.UUID) error
-	ExportSettings(ctx context.Context, orgID uuid.UUID, userID uuid.UUID) (map[string]interface{}, error)
-	ImportSettings(ctx context.Context, orgID uuid.UUID, userID uuid.UUID, settings map[string]interface{}) error
+	ExportSettings(ctx context.Context, orgID uuid.UUID, userID uuid.UUID) (map[string]any, error)
+	ImportSettings(ctx context.Context, orgID uuid.UUID, userID uuid.UUID, settings map[string]any) error
 }

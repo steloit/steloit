@@ -1,6 +1,10 @@
 package annotation
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // Queue request/response types
 
@@ -10,7 +14,7 @@ type CreateQueueRequest struct {
 	Name           string         `json:"name" binding:"required,min=1,max=255"`
 	Description    *string        `json:"description,omitempty"`
 	Instructions   *string        `json:"instructions,omitempty"`
-	ScoreConfigIDs []string       `json:"score_config_ids,omitempty"`
+	ScoreConfigIDs []uuid.UUID    `json:"score_config_ids,omitempty"`
 	Settings       *QueueSettings `json:"settings,omitempty"`
 }
 
@@ -20,7 +24,7 @@ type UpdateQueueRequest struct {
 	Name           *string        `json:"name,omitempty" binding:"omitempty,min=1,max=255"`
 	Description    *string        `json:"description,omitempty"`
 	Instructions   *string        `json:"instructions,omitempty"`
-	ScoreConfigIDs *[]string      `json:"score_config_ids,omitempty"` // Pointer to distinguish nil (no change) from empty (clear all)
+	ScoreConfigIDs *[]uuid.UUID   `json:"score_config_ids,omitempty"` // Pointer to distinguish nil (no change) from empty (clear all)
 	Status         *string        `json:"status,omitempty" binding:"omitempty,oneof=active paused archived"`
 	Settings       *QueueSettings `json:"settings,omitempty"`
 }
@@ -35,15 +39,15 @@ type QueueSettings struct {
 // QueueResponse represents an annotation queue in API responses.
 // @Description Annotation queue data
 type QueueResponse struct {
-	ID             string         `json:"id"`
-	ProjectID      string         `json:"project_id"`
+	ID             uuid.UUID      `json:"id"`
+	ProjectID      uuid.UUID      `json:"project_id"`
 	Name           string         `json:"name"`
 	Description    *string        `json:"description,omitempty"`
 	Instructions   *string        `json:"instructions,omitempty"`
-	ScoreConfigIDs []string       `json:"score_config_ids"`
+	ScoreConfigIDs []uuid.UUID    `json:"score_config_ids"`
 	Status         string         `json:"status"`
 	Settings       *QueueSettings `json:"settings"`
-	CreatedBy      *string        `json:"created_by,omitempty"`
+	CreatedBy      *uuid.UUID     `json:"created_by,omitempty"`
 	CreatedAt      time.Time      `json:"created_at"`
 	UpdatedAt      time.Time      `json:"updated_at"`
 }
@@ -70,10 +74,10 @@ type StatsResponse struct {
 // AddItemRequest represents a single item to add to a queue.
 // @Description Add item to queue request
 type AddItemRequest struct {
-	ObjectID   string                 `json:"object_id" binding:"required"`
-	ObjectType string                 `json:"object_type" binding:"required,oneof=trace span"`
-	Priority   int                    `json:"priority,omitempty"`
-	Metadata   map[string]interface{} `json:"metadata,omitempty"`
+	ObjectID   string         `json:"object_id" binding:"required"` // W3C hex trace/span ID
+	ObjectType string         `json:"object_type" binding:"required,oneof=trace span"`
+	Priority   int            `json:"priority,omitempty"`
+	Metadata   map[string]any `json:"metadata,omitempty"`
 }
 
 // AddItemsBatchRequest represents a batch request to add items to a queue.
@@ -85,7 +89,7 @@ type AddItemsBatchRequest struct {
 // ClaimNextRequest represents the request to claim the next item.
 // @Description Claim next item request
 type ClaimNextRequest struct {
-	SeenItemIDs []string `json:"seen_item_ids,omitempty"`
+	SeenItemIDs []uuid.UUID `json:"seen_item_ids,omitempty"`
 }
 
 // CompleteItemRequest represents the request to complete an item.
@@ -95,11 +99,13 @@ type CompleteItemRequest struct {
 }
 
 // ScoreSubmission represents a score to submit with item completion.
+// Value is polymorphic (float64, string, or bool) per the referenced
+// score config's data type — validated at the service layer.
 // @Description Score submission
 type ScoreSubmission struct {
-	ScoreConfigID string      `json:"score_config_id" binding:"required"`
-	Value         interface{} `json:"value" binding:"required"`
-	Comment       *string     `json:"comment,omitempty"`
+	ScoreConfigID uuid.UUID `json:"score_config_id" binding:"required"`
+	Value         any       `json:"value" binding:"required"`
+	Comment       *string   `json:"comment,omitempty"`
 }
 
 // SkipItemRequest represents the request to skip an item.
@@ -111,19 +117,19 @@ type SkipItemRequest struct {
 // ItemResponse represents a queue item in API responses.
 // @Description Queue item data
 type ItemResponse struct {
-	ID              string                 `json:"id"`
-	QueueID         string                 `json:"queue_id"`
-	ObjectID        string                 `json:"object_id"`
-	ObjectType      string                 `json:"object_type"`
-	Status          string                 `json:"status"`
-	Priority        int                    `json:"priority"`
-	LockedAt        *time.Time             `json:"locked_at,omitempty"`
-	LockedByUserID  *string                `json:"locked_by_user_id,omitempty"`
-	AnnotatorUserID *string                `json:"annotator_user_id,omitempty"`
-	CompletedAt     *time.Time             `json:"completed_at,omitempty"`
-	Metadata        map[string]interface{} `json:"metadata,omitempty"`
-	CreatedAt       time.Time              `json:"created_at"`
-	UpdatedAt       time.Time              `json:"updated_at"`
+	ID              uuid.UUID      `json:"id"`
+	QueueID         uuid.UUID      `json:"queue_id"`
+	ObjectID        string         `json:"object_id"` // W3C hex trace/span ID
+	ObjectType      string         `json:"object_type"`
+	Status          string         `json:"status"`
+	Priority        int            `json:"priority"`
+	LockedAt        *time.Time     `json:"locked_at,omitempty"`
+	LockedByUserID  *uuid.UUID     `json:"locked_by_user_id,omitempty"`
+	AnnotatorUserID *uuid.UUID     `json:"annotator_user_id,omitempty"`
+	CompletedAt     *time.Time     `json:"completed_at,omitempty"`
+	Metadata        map[string]any `json:"metadata,omitempty"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
 }
 
 // BatchAddItemsResponse represents the response for batch item creation.
@@ -137,17 +143,17 @@ type BatchAddItemsResponse struct {
 // AssignUserRequest represents the request to assign a user to a queue.
 // @Description Assign user to queue request
 type AssignUserRequest struct {
-	UserID string `json:"user_id" binding:"required"`
-	Role   string `json:"role" binding:"required,oneof=annotator reviewer admin"`
+	UserID uuid.UUID `json:"user_id" binding:"required"`
+	Role   string    `json:"role" binding:"required,oneof=annotator reviewer admin"`
 }
 
 // AssignmentResponse represents a queue assignment in API responses.
 // @Description Queue assignment data
 type AssignmentResponse struct {
-	ID         string    `json:"id"`
-	QueueID    string    `json:"queue_id"`
-	UserID     string    `json:"user_id"`
-	Role       string    `json:"role"`
-	AssignedAt time.Time `json:"assigned_at"`
-	AssignedBy *string   `json:"assigned_by,omitempty"`
+	ID         uuid.UUID  `json:"id"`
+	QueueID    uuid.UUID  `json:"queue_id"`
+	UserID     uuid.UUID  `json:"user_id"`
+	Role       string     `json:"role"`
+	AssignedAt time.Time  `json:"assigned_at"`
+	AssignedBy *uuid.UUID `json:"assigned_by,omitempty"`
 }
