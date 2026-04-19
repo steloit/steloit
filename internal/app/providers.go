@@ -776,11 +776,13 @@ func ProvideServer(core *CoreContainer) (*ServerContainer, error) {
 		OrgMember:  core.Services.Auth.OrganizationMembers,
 		APIKey:     core.Services.Auth.APIKey,
 		Project:    core.Services.ProjectService,
-		Auth:         core.Services.Auth.Auth,
-		User:         core.Services.User.User,
-		Registration: core.Services.Registration,
-		Session:      core.Services.Auth.Sessions,
-		Website:      core.Services.Website,
+		Auth:          core.Services.Auth.Auth,
+		User:          core.Services.User.User,
+		Profile:       core.Services.User.Profile,
+		Registration:  core.Services.Registration,
+		Session:       core.Services.Auth.Sessions,
+		OAuthProvider: core.Services.Auth.OAuthProvider,
+		Website:       core.Services.Website,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTP server: %w", err)

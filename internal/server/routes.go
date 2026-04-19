@@ -77,22 +77,26 @@ func addRoutes(r chi.Router, apiPublic, apiAdmin huma.API, d Deps, ready *readyS
 	rateLimitD := d.rateLimitMiddlewareDeps()
 	sdkAuthD := d.sdkAuthMiddlewareDeps()
 
-	// /v1/auth/validate-key is the exception that runs WITHOUT
-	// RequireSDKAuth (it accepts a raw key for introspection). Defend
-	// against distributed brute force with IP + hashed-key-prefix
-	// limits.
-	r.With(
-		middleware.LimitByIP(rateLimitD),
-		middleware.LimitByKeyPrefix(rateLimitD),
-	).Post(publicAPIPrefix+"/auth/validate-key", todoNotImplemented("validate-key conversion pending Step 4"))
+	// /v1/auth/validate-key is registered below by
+	// authHandler.RegisterSDKRoutes alongside the rest of the
+	// SDK-plane public surface.
+
+	// SDK-plane auth ops run WITHOUT RequireSDKAuth — validate-key
+	// accepts a raw key and must be reachable by unauthenticated
+	// callers. Rate-limit by IP + key-prefix hash keeps the surface
+	// brute-force resistant.
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.LimitByIP(rateLimitD))
+		r.Use(middleware.LimitByKeyPrefix(rateLimitD))
+		authHandler.RegisterSDKRoutes(apiPublic, d.APIKey, d.Logger)
+	})
 
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.RequireSDKAuth(sdkAuthD))
 		r.Use(middleware.LimitByAPIKey(rateLimitD))
-		// Per-domain SDK route registrations land here as Step 4
-		// converts handlers. apiPublic is the Huma instance carrying
-		// the /v1/openapi.json spec.
-		_ = apiPublic // Suppress "declared and not used" until first SDK domain registers.
+		// Per-domain authed SDK route registrations land here as
+		// Step 4 converts handlers — observability, prompt, etc.
+		_ = apiPublic
 	})
 
 	// 5. Dashboard plane: /api/v1/* — apiAdmin Huma operations.
@@ -107,10 +111,18 @@ func addRoutes(r chi.Router, apiPublic, apiAdmin huma.API, d Deps, ready *readyS
 		// return 403.
 		r.Use(crossOriginProtection().Handler)
 
-		// Public dashboard routes — login, password reset, website
-		// contact form. No auth required; rate limit + CSRF still
-		// apply at the route-group level.
-		authHandler.RegisterPublicRoutes(apiAdmin, d.Auth, d.User, d.Registration, d.Session, d.Config, d.Logger)
+		// Public dashboard routes — login, signup, password reset,
+		// OAuth, website contact form. No auth required; rate limit
+		// + CSRF still apply at the route-group level.
+		authHandler.RegisterPublicRoutes(apiAdmin, authHandler.PublicDeps{
+			Auth:          d.Auth,
+			User:          d.User,
+			Registration:  d.Registration,
+			Session:       d.Session,
+			OAuthProvider: d.OAuthProvider,
+			Config:        d.Config,
+			Logger:        d.Logger,
+		})
 		websiteHandler.RegisterRoutes(apiAdmin, d.Website, d.Logger)
 
 		// Authed dashboard routes — everything requiring a valid
@@ -119,7 +131,16 @@ func addRoutes(r chi.Router, apiPublic, apiAdmin huma.API, d Deps, ready *readyS
 			r.Use(middleware.RequireAuth(d.authMiddlewareDeps()))
 			r.Use(middleware.LimitByUser(rateLimitD))
 
-			authHandler.RegisterProtectedRoutes(apiAdmin, d.Auth, d.User, d.Registration, d.Session, d.Config, d.Logger)
+			authHandler.RegisterProtectedRoutes(apiAdmin, authHandler.ProtectedDeps{
+				Auth:          d.Auth,
+				User:          d.User,
+				Profile:       d.Profile,
+				Registration:  d.Registration,
+				Session:       d.Session,
+				OAuthProvider: d.OAuthProvider,
+				Config:        d.Config,
+				Logger:        d.Logger,
+			})
 			// Per-domain authed dashboard registrations land here.
 			// organization.RegisterRoutes(apiAdmin, d.Organization, d.OrgMember)  // Step 4
 			// project.RegisterRoutes(apiAdmin, d.Project)                          // Step 4

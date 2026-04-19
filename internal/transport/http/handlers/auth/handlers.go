@@ -37,23 +37,25 @@ import (
 	"brokle/internal/config"
 	authDomain "brokle/internal/core/domain/auth"
 	"brokle/internal/core/domain/user"
+	authService "brokle/internal/core/services/auth"
 	"brokle/internal/core/services/registration"
 	"brokle/internal/transport/http/httpctx"
 	appErrors "brokle/pkg/errors"
 )
 
-// handler bundles the auth service + user service + registration
-// service + session service + config + logger so the operation
-// methods don't repeat them on every signature. Package-private;
-// the only public surface is RegisterPublicRoutes /
-// RegisterProtectedRoutes.
+// handler bundles every service an auth operation needs. Package-
+// private; the only public surface is RegisterPublicRoutes /
+// RegisterProtectedRoutes (dashboard plane). SDK-plane operations
+// have their own lighter-weight sdkHandler in sdk.go.
 type handler struct {
-	authSvc    authDomain.AuthService
-	userSvc    user.UserService
-	regSvc     registration.RegistrationService
-	sessionSvc authDomain.SessionService
-	cfg        *config.Config
-	logger     *slog.Logger
+	authSvc       authDomain.AuthService
+	userSvc       user.UserService
+	profileSvc    user.ProfileService
+	regSvc        registration.RegistrationService
+	sessionSvc    authDomain.SessionService
+	oauthProvider *authService.OAuthProviderService
+	cfg           *config.Config
+	logger        *slog.Logger
 }
 
 // ----- login ---------------------------------------------------------
@@ -274,6 +276,81 @@ func (h *handler) getProfile(ctx context.Context, _ *struct{}) (*GetProfileOutpu
 		return nil, err
 	}
 	return &GetProfileOutput{Body: u}, nil
+}
+
+// ----- update-profile -----------------------------------------------
+
+type UpdateProfileInput struct {
+	Body updateProfileBody
+}
+
+// updateProfileBody mirrors user.UpdateProfileRequest. All fields
+// are pointer-typed because a missing field means "leave this
+// field alone" rather than "clear this field" — only fields the
+// client explicitly sets are updated. The body covers profile-
+// record fields (bio, location, social URLs, preferences); name/
+// email changes flow through a separate user-update endpoint
+// (not yet converted).
+type updateProfileBody struct {
+	Bio         *string `json:"bio,omitempty" maxLength:"500" doc:"Free-form profile bio"`
+	Location    *string `json:"location,omitempty" maxLength:"100" doc:"City / country string"`
+	Website     *string `json:"website,omitempty" format:"uri" doc:"Personal website URL"`
+	TwitterURL  *string `json:"twitter_url,omitempty" format:"uri" doc:"Twitter / X profile URL"`
+	LinkedInURL *string `json:"linkedin_url,omitempty" format:"uri" doc:"LinkedIn profile URL"`
+	GitHubURL   *string `json:"github_url,omitempty" format:"uri" doc:"GitHub profile URL"`
+	AvatarURL   *string `json:"avatar_url,omitempty" format:"uri" doc:"Avatar image URL"`
+	Phone       *string `json:"phone,omitempty" maxLength:"50" doc:"Phone number"`
+	Timezone    *string `json:"timezone,omitempty" doc:"IANA timezone identifier (e.g. 'America/New_York')"`
+	Language    *string `json:"language,omitempty" minLength:"2" maxLength:"2" doc:"ISO 639-1 two-letter language code"`
+	Theme       *string `json:"theme,omitempty" enum:"light,dark,auto" doc:"Dashboard colour theme preference"`
+
+	EmailNotifications    *bool `json:"email_notifications,omitempty" doc:"Receive email notifications"`
+	PushNotifications     *bool `json:"push_notifications,omitempty" doc:"Receive push notifications"`
+	MarketingEmails       *bool `json:"marketing_emails,omitempty" doc:"Receive product-marketing emails"`
+	WeeklyReports         *bool `json:"weekly_reports,omitempty" doc:"Receive weekly usage reports"`
+	MonthlyReports        *bool `json:"monthly_reports,omitempty" doc:"Receive monthly usage reports"`
+	SecurityAlerts        *bool `json:"security_alerts,omitempty" doc:"Receive security alerts"`
+	BillingAlerts         *bool `json:"billing_alerts,omitempty" doc:"Receive billing alerts"`
+	UsageThresholdPercent *int  `json:"usage_threshold_percent,omitempty" minimum:"0" maximum:"100" doc:"Percent-of-quota threshold that triggers a usage alert"`
+}
+
+type UpdateProfileOutput struct {
+	Body any `json:"profile" doc:"Updated user profile record"`
+}
+
+func (h *handler) updateProfile(ctx context.Context, in *UpdateProfileInput) (*UpdateProfileOutput, error) {
+	userID := httpctx.MustGetUserID(ctx)
+
+	req := &user.UpdateProfileRequest{
+		Bio:         in.Body.Bio,
+		Location:    in.Body.Location,
+		Website:     in.Body.Website,
+		TwitterURL:  in.Body.TwitterURL,
+		LinkedInURL: in.Body.LinkedInURL,
+		GitHubURL:   in.Body.GitHubURL,
+		AvatarURL:   in.Body.AvatarURL,
+		Phone:       in.Body.Phone,
+		Timezone:    in.Body.Timezone,
+		Language:    in.Body.Language,
+		Theme:       in.Body.Theme,
+
+		EmailNotifications:    in.Body.EmailNotifications,
+		PushNotifications:     in.Body.PushNotifications,
+		MarketingEmails:       in.Body.MarketingEmails,
+		WeeklyReports:         in.Body.WeeklyReports,
+		MonthlyReports:        in.Body.MonthlyReports,
+		SecurityAlerts:        in.Body.SecurityAlerts,
+		BillingAlerts:         in.Body.BillingAlerts,
+		UsageThresholdPercent: in.Body.UsageThresholdPercent,
+	}
+
+	profile, err := h.profileSvc.UpdateProfile(ctx, userID, req)
+	if err != nil {
+		h.logger.WarnContext(ctx, "update-profile failed", "user_id", userID, "error", err)
+		return nil, err
+	}
+
+	return &UpdateProfileOutput{Body: profile}, nil
 }
 
 // ----- sessions list -------------------------------------------------

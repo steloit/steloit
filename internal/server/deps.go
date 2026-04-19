@@ -13,6 +13,7 @@ import (
 	orgDomain "brokle/internal/core/domain/organization"
 	userDomain "brokle/internal/core/domain/user"
 	websiteDomain "brokle/internal/core/domain/website"
+	authService "brokle/internal/core/services/auth"
 	"brokle/internal/core/services/registration"
 	"brokle/internal/transport/http/middleware"
 )
@@ -53,15 +54,17 @@ type Deps struct {
 	// but-unreachable rule).
 
 	// Auth domain handlers — login, signup, logout, refresh, password
-	// mgmt, /me, profile, sessions. Distinct from the middleware-
-	// facing JWT/Blacklist/OrgMember services above: those carry
-	// invariant checks for every protected route; Auth/User/
-	// Registration/Session are the "business logic" services the
-	// auth handler operations invoke.
-	Auth         authDomain.AuthService
-	User         userDomain.UserService
-	Registration registration.RegistrationService
-	Session      authDomain.SessionService
+	// mgmt, /me, profile, sessions, OAuth. Distinct from the
+	// middleware-facing JWT/Blacklist/OrgMember services above:
+	// those carry invariant checks for every protected route;
+	// Auth/User/Profile/Registration/Session/OAuth are the
+	// "business logic" services the auth handler operations invoke.
+	Auth          authDomain.AuthService
+	User          userDomain.UserService
+	Profile       userDomain.ProfileService
+	Registration  registration.RegistrationService
+	Session       authDomain.SessionService
+	OAuthProvider *authService.OAuthProviderService
 
 	// Website contact-form handler.
 	Website websiteDomain.WebsiteService
