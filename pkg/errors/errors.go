@@ -43,6 +43,13 @@ func (e *AppError) Unwrap() error {
 	return e.Err
 }
 
+// GetStatus returns the HTTP status code associated with the error. It
+// satisfies huma.StatusError, allowing AppError values to flow directly out
+// of Huma operation handlers without translation.
+func (e *AppError) GetStatus() int {
+	return e.StatusCode
+}
+
 func NewAppError(errorType AppErrorType, message, details string, err error) *AppError {
 	appErr := &AppError{
 		Type:    errorType,
