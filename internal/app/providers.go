@@ -65,9 +65,8 @@ import (
 	websiteRepo "brokle/internal/infrastructure/repository/website"
 	"brokle/internal/infrastructure/storage"
 	"brokle/internal/infrastructure/streams"
+	"brokle/internal/server"
 	grpcTransport "brokle/internal/transport/grpc"
-	"brokle/internal/transport/http"
-	"brokle/internal/transport/http/handlers"
 	"brokle/internal/workers"
 	annotationWorker "brokle/internal/workers/annotation"
 	evaluationWorker "brokle/internal/workers/evaluation"
@@ -94,7 +93,7 @@ type CoreContainer struct {
 }
 
 type ServerContainer struct {
-	HTTPServer *http.Server
+	HTTPServer *server.Server
 	GRPCServer *grpcTransport.Server
 }
 
@@ -740,70 +739,48 @@ func ProvideServer(core *CoreContainer) (*ServerContainer, error) {
 		templateSvc = core.Services.Dashboard.Template
 	}
 
-	httpHandlers := handlers.NewHandlers(
-		core.Config,
-		core.Logger,
-		core.Services.Auth.Auth,
-		core.Services.Auth.APIKey,
-		core.Services.Registration,       // Registration service for signup
-		core.Services.Auth.OAuthProvider, // OAuth provider for Google/GitHub signup
-		core.Services.User.User,
-		core.Services.User.Profile,
-		core.Services.OrganizationService,
-		core.Services.MemberService,
-		core.Services.ProjectService,
-		core.Services.InvitationService,
-		core.Services.SettingsService,
-		core.Services.Auth.Role,
-		core.Services.Auth.Permission,
-		core.Services.Auth.OrganizationMembers,
-		core.Services.Auth.Scope,
-		core.Services.Observability,
-		core.Services.Prompt.Prompt,
-		core.Services.Prompt.Compiler,
-		credentialsSvc,
-		modelCatalogSvc,
-		playgroundSvc,
-		scoreConfigSvc,
-		datasetSvc,
-		datasetItemSvc,
-		datasetVersionSvc,
-		experimentSvc,
-		experimentItemSvc,
-		experimentWizardSvc,
-		evaluatorSvc,
-		evaluatorExecutionSvc,
-		dashboardSvc,
-		widgetQuerySvc,
-		templateSvc,
-		core.Services.Analytics.Overview,
-		// Usage-based billing services
-		core.Services.Billing.BillableUsage,
-		core.Services.Billing.Budget,
-		// Enterprise custom pricing services
-		core.Services.Billing.Contract,
-		core.Services.Billing.Pricing,
-		// Annotation queue services (HITL evaluation)
-		core.Services.Annotation.Queue,
-		core.Services.Annotation.Item,
-		core.Services.Annotation.Assignment,
-		// Comment service
-		core.Services.Comment,
-		// Website service
-		core.Services.Website,
-	)
+	// Build the server dep set. Each handler domain that has been
+	// converted to a Huma operation (Step 4 of the chi+Huma migration)
+	// adds its service to the Deps struct here and self-registers via
+	// RegisterRoutes in internal/server/routes.go. Un-converted
+	// handler domains are NOT listed here — they will appear as they
+	// migrate, not before (CLAUDE.md scaffolded-but-unreachable rule).
+	//
+	// Suppress unused variables for services whose handler domain
+	// hasn't been ported yet. They are referenced by the core service
+	// wiring above and will land in Deps as their domains migrate.
+	_ = credentialsSvc
+	_ = modelCatalogSvc
+	_ = playgroundSvc
+	_ = scoreConfigSvc
+	_ = datasetSvc
+	_ = datasetItemSvc
+	_ = datasetVersionSvc
+	_ = experimentSvc
+	_ = experimentItemSvc
+	_ = experimentWizardSvc
+	_ = evaluatorSvc
+	_ = evaluatorExecutionSvc
+	_ = dashboardSvc
+	_ = widgetQuerySvc
+	_ = templateSvc
 
-	httpServer := http.NewServer(
-		core.Config,
-		core.Logger,
-		httpHandlers,
-		core.Services.Auth.JWT,
-		core.Services.Auth.BlacklistedTokens,
-		core.Services.Auth.OrganizationMembers,
-		core.Services.ProjectService,
-		core.Services.Auth.APIKey,
-		core.Databases.Redis.Client,
-	)
+	httpServer, err := server.New(server.Deps{
+		Config:     core.Config,
+		Logger:     core.Logger,
+		DB:         core.Databases.Pool,
+		Redis:      core.Databases.Redis.Client,
+		ClickHouse: core.Databases.ClickHouse.Conn,
+		JWT:        core.Services.Auth.JWT,
+		Blacklist:  core.Services.Auth.BlacklistedTokens,
+		OrgMember:  core.Services.Auth.OrganizationMembers,
+		APIKey:     core.Services.Auth.APIKey,
+		Project:    core.Services.ProjectService,
+		Website:    core.Services.Website,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create HTTP server: %w", err)
+	}
 
 	slogLogger := core.Logger
 

@@ -11,7 +11,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"brokle/internal/config"
-	httpTransport "brokle/internal/transport/http"
+	"brokle/internal/server"
 	"brokle/pkg/logging"
 )
 
@@ -20,7 +20,7 @@ type App struct {
 	config       *config.Config
 	logger       *slog.Logger
 	providers    *ProviderContainer
-	httpServer   *httpTransport.Server
+	httpServer   *server.Server
 	mode         DeploymentMode
 	shutdownOnce sync.Once
 }
