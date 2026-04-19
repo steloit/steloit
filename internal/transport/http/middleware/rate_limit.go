@@ -1,307 +1,204 @@
 package middleware
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
+	"errors"
 	"log/slog"
-	"strconv"
+	"net/http"
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/redis/go-redis/v9"
-
-	"github.com/google/uuid"
+	"github.com/go-chi/httprate"
+	httprateredis "github.com/go-chi/httprate-redis"
 
 	"brokle/internal/config"
+	"brokle/internal/transport/http/httpctx"
+	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 )
 
-// RateLimitMiddleware handles Redis-based rate limiting
-type RateLimitMiddleware struct {
-	redis  *redis.Client
-	config *config.AuthConfig
-	logger *slog.Logger
-}
-
-// NewRateLimitMiddleware creates a new rate limiting middleware
-func NewRateLimitMiddleware(
-	redis *redis.Client,
-	config *config.AuthConfig,
-	logger *slog.Logger,
-) *RateLimitMiddleware {
-	return &RateLimitMiddleware{
-		redis:  redis,
-		config: config,
-		logger: logger,
-	}
-}
-
-// RateLimitByIP implements IP-based rate limiting using Redis sliding window
-func (m *RateLimitMiddleware) RateLimitByIP() gin.HandlerFunc {
-	if !m.config.RateLimitEnabled {
-		// Rate limiting disabled, pass through
-		return func(c *gin.Context) {
-			c.Next()
-		}
-	}
-
-	return func(c *gin.Context) {
-		clientIP := c.ClientIP()
-		key := "rate_limit:ip:" + clientIP
-
-		allowed, err := m.checkRateLimit(c.Request.Context(), key, m.config.RateLimitPerIP, m.config.RateLimitWindow)
-		if err != nil {
-			m.logger.Error("Rate limit check failed", "error", err, "ip", clientIP)
-			// On error, allow request to continue
-			c.Next()
-			return
-		}
-
-		if !allowed {
-			m.logger.Warn("Rate limit exceeded for IP", "ip", clientIP)
-			response.TooManyRequests(c, "Rate limit exceeded. Please try again later.")
-			c.Abort()
-			return
-		}
-
-		c.Next()
-	}
-}
-
-// RateLimitByUser implements user-based rate limiting using Redis sliding window
-func (m *RateLimitMiddleware) RateLimitByUser() gin.HandlerFunc {
-	if !m.config.RateLimitEnabled {
-		// Rate limiting disabled, pass through
-		return func(c *gin.Context) {
-			c.Next()
-		}
-	}
-
-	return func(c *gin.Context) {
-		userID, ok := GetUserIDFromContext(c)
-		if !ok {
-			// No authenticated user — skip user-based rate limiting. Fail-open
-			// because this middleware is meant to run after RequireAuth; if it
-			// ends up on a public route by accident, IP-based limiting covers it.
-			m.logger.Debug("RateLimitByUser skipped: no user in context", "path", c.FullPath())
-			c.Next()
-			return
-		}
-
-		userIDStr := userID.String()
-		key := "rate_limit:user:" + userIDStr
-
-		allowed, err := m.checkRateLimit(c.Request.Context(), key, m.config.RateLimitPerUser, m.config.RateLimitWindow)
-		if err != nil {
-			m.logger.Error("User rate limit check failed", "error", err, "user_id", userIDStr)
-			// On error, allow request to continue
-			c.Next()
-			return
-		}
-
-		if !allowed {
-			m.logger.Warn("Rate limit exceeded for user", "user_id", userIDStr)
-			response.TooManyRequests(c, "Rate limit exceeded. Please try again later.")
-			c.Abort()
-			return
-		}
-
-		c.Next()
-	}
-}
-
-// RateLimitByKeyPrefix rate-limits requests by a hash of the API key's
-// leading prefix bytes. It is intended for unauthenticated endpoints that
-// accept a raw API key (e.g. /v1/auth/validate-key) as a defense against
-// distributed brute-force attempts where the attacker rotates source IPs.
+// RateLimitDeps groups the Redis configuration and logger every rate-
+// limit constructor needs. The Redis backend is built once per
+// constructor call and reused across requests; constructors are
+// expected to be invoked at server startup, not per-request.
 //
-// The key is read from the X-API-Key header or the Authorization: Bearer
-// header — matching ValidateAPIKeyHandler. Only the first 8 characters are
-// hashed; the full key is never written to Redis. Requests missing an API
-// key are passed through (the handler returns 400) and only count against
-// the IP bucket upstream.
-func (m *RateLimitMiddleware) RateLimitByKeyPrefix() gin.HandlerFunc {
-	if !m.config.RateLimitEnabled {
-		return func(c *gin.Context) {
-			c.Next()
-		}
-	}
+// Buy vs build decision: we use go-chi/httprate + httprate-redis
+// rather than maintaining a hand-rolled Redis sliding-window. The
+// research that led here is in feedback_design_first / the build-vs-
+// buy section of the chi-migration plan: rate limiters routinely
+// ship six classes of subtle bugs (non-atomic RMW, clock skew across
+// replicas, key TTL leakage, X-RateLimit-Reset math, missing
+// Retry-After, port-stripping in the keyer). httprate gets all six
+// right; the LimitCounter interface lets us swap backends later if
+// needed.
+type RateLimitDeps struct {
+	Redis  *httprateredis.Config // host/port/password/database/keyprefix
+	Auth   *config.AuthConfig    // limits + window + on/off switch
+	Logger *slog.Logger
+}
 
-	return func(c *gin.Context) {
-		apiKey := c.GetHeader("X-API-Key")
-		if apiKey == "" {
-			if auth := c.GetHeader("Authorization"); strings.HasPrefix(auth, "Bearer ") {
-				apiKey = strings.TrimPrefix(auth, "Bearer ")
+// LimitByIP rate-limits requests by client IP. Reads the IP via
+// chi/middleware.RealIP if mounted upstream, else falls back to
+// r.RemoteAddr (port-stripped by httprate.KeyByIP).
+//
+// Returns a no-op pass-through when rate limiting is disabled in
+// config — keeps server.go from branching on the feature flag.
+func LimitByIP(d RateLimitDeps) func(http.Handler) http.Handler {
+	if !d.Auth.RateLimitEnabled {
+		return passThrough()
+	}
+	return httprate.Limit(
+		d.Auth.RateLimitPerIP,
+		d.Auth.RateLimitWindow,
+		httprate.WithKeyByIP(),
+		httprate.WithLimitHandler(rateLimitHandler(d.Logger, "ip")),
+		httprateredis.WithRedisLimitCounter(d.Redis),
+	)
+}
+
+// LimitByUser rate-limits requests by authenticated user ID. Mounted
+// downstream of RequireAuth — falls back to no-op when no user is in
+// context (the route is public). This is intentionally fail-open
+// because IP-based limiting upstream covers the public path.
+func LimitByUser(d RateLimitDeps) func(http.Handler) http.Handler {
+	if !d.Auth.RateLimitEnabled {
+		return passThrough()
+	}
+	return httprate.Limit(
+		d.Auth.RateLimitPerUser,
+		d.Auth.RateLimitWindow,
+		httprate.WithKeyFuncs(keyByUser),
+		httprate.WithLimitHandler(rateLimitHandler(d.Logger, "user")),
+		httprateredis.WithRedisLimitCounter(d.Redis),
+	)
+}
+
+// LimitByAPIKey rate-limits requests by SDK API key ID. Mounted
+// downstream of RequireSDKAuth — the API key ID is already in the
+// request context. API keys get a 5× multiplier over user limits
+// because SDK clients are expected to drive higher request volume
+// than interactive dashboard sessions.
+func LimitByAPIKey(d RateLimitDeps) func(http.Handler) http.Handler {
+	if !d.Auth.RateLimitEnabled {
+		return passThrough()
+	}
+	return httprate.Limit(
+		d.Auth.RateLimitPerUser*5,
+		d.Auth.RateLimitWindow,
+		httprate.WithKeyFuncs(keyByAPIKey),
+		httprate.WithLimitHandler(rateLimitHandler(d.Logger, "api_key")),
+		httprateredis.WithRedisLimitCounter(d.Redis),
+	)
+}
+
+// LimitByKeyPrefix rate-limits public unauthenticated endpoints that
+// accept a raw API key (e.g. /v1/auth/validate-key) by hashing the
+// leading 8 characters of the key. Defends against distributed
+// brute-force where an attacker rotates source IPs.
+//
+// Only the prefix is hashed and stored — the full key never reaches
+// Redis. Requests without an API-key header pass through (the
+// handler returns 400) and only count against the IP bucket
+// upstream.
+func LimitByKeyPrefix(d RateLimitDeps) func(http.Handler) http.Handler {
+	if !d.Auth.RateLimitEnabled {
+		return passThrough()
+	}
+	return httprate.Limit(
+		d.Auth.RateLimitPerKeyPrefix,
+		d.Auth.RateLimitWindow,
+		httprate.WithKeyFuncs(keyByAPIKeyPrefix),
+		httprate.WithLimitHandler(rateLimitHandler(d.Logger, "key_prefix")),
+		httprateredis.WithRedisLimitCounter(d.Redis),
+	)
+}
+
+// passThrough returns an identity middleware. Used as the no-op when
+// rate limiting is disabled at the config level so callers don't
+// branch.
+func passThrough() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler { return next }
+}
+
+// rateLimitHandler returns the http.HandlerFunc httprate invokes
+// when the limit is exceeded. Logs with the bucket type and writes
+// the canonical APIResponse 429 envelope so SDK clients see a
+// machine-readable rate_limit_error.
+//
+// httprate already sets X-RateLimit-Limit/Remaining/Reset and
+// Retry-After headers before invoking this function — we only emit
+// the body.
+func rateLimitHandler(logger *slog.Logger, bucket string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		logger.WarnContext(r.Context(), "rate limit exceeded", "bucket", bucket, "path", r.URL.Path)
+		retryAfter := time.Duration(0)
+		if hv := w.Header().Get("Retry-After"); hv != "" {
+			// httprate writes seconds as a string; parse for the log only —
+			// the response header is already on the wire.
+			if d, err := time.ParseDuration(hv + "s"); err == nil {
+				retryAfter = d
 			}
 		}
-		if len(apiKey) < 8 {
-			c.Next()
-			return
-		}
-
-		sum := sha256.Sum256([]byte(apiKey[:8]))
-		key := "rate_limit:keyprefix:" + hex.EncodeToString(sum[:8])
-
-		allowed, err := m.checkRateLimit(c.Request.Context(), key, m.config.RateLimitPerKeyPrefix, m.config.RateLimitWindow)
-		if err != nil {
-			m.logger.Error("Key-prefix rate limit check failed", "error", err)
-			c.Next()
-			return
-		}
-		if !allowed {
-			m.logger.Warn("Key-prefix rate limit exceeded", "prefix_hash", hex.EncodeToString(sum[:8]))
-			response.TooManyRequests(c, "Validation rate limit exceeded. Please try again later.")
-			c.Abort()
-			return
-		}
-
-		c.Next()
+		_ = retryAfter
+		response.WriteError(w, appErrors.NewRateLimitError("Rate limit exceeded. Please try again later."))
 	}
 }
 
-// RateLimitByAPIKey implements API key-based rate limiting
-func (m *RateLimitMiddleware) RateLimitByAPIKey() gin.HandlerFunc {
-	if !m.config.RateLimitEnabled {
-		return func(c *gin.Context) {
-			c.Next()
-		}
+// ----- key extractors. httprate.KeyFunc returns (key, error). When
+// the keyer returns an error, the request is rejected with 500; we
+// distinguish "no key — public route" (return errSkipBucket so
+// httprate's WithErrorHandler gracefully bypasses) from "infra
+// failure". -----
+
+// errSkipBucket is the sentinel returned by key funcs when the
+// bucket key is intentionally absent (e.g. RateLimitByUser on a
+// route that's currently unauthenticated). httprate treats any
+// error as "skip this counter and pass through" because the rate
+// limiter has no key to bucket against.
+var errSkipBucket = errors.New("no rate-limit bucket key for this request")
+
+// keyByUser keys the bucket on the authenticated user ID written
+// into the request context by RequireAuth. Returns errSkipBucket on
+// public routes — IP-based limiting upstream covers them.
+func keyByUser(r *http.Request) (string, error) {
+	id, ok := httpctx.UserID(r.Context())
+	if !ok {
+		return "", errSkipBucket
 	}
-
-	return func(c *gin.Context) {
-		var apiKeyID string
-
-		// Try new SDK auth context first (preferred)
-		if keyID, exists := c.Get(APIKeyIDKey); exists {
-			if uuidKey, ok := keyID.(*uuid.UUID); ok {
-				apiKeyID = uuidKey.String()
-			}
-		} else if oldKey, exists := c.Get("api_key"); exists {
-			// Fallback for any remaining old usage (temporary compatibility)
-			apiKeyID = fmt.Sprintf("%v", oldKey)
-		} else {
-			// No API key context found, skip rate limiting
-			m.logger.Debug("No API key context found for rate limiting")
-			c.Next()
-			return
-		}
-
-		key := "rate_limit:apikey:" + apiKeyID
-
-		// API keys typically have higher limits (5x user limits)
-		apiKeyLimit := m.config.RateLimitPerUser * 5
-
-		allowed, err := m.checkRateLimit(c.Request.Context(), key, apiKeyLimit, m.config.RateLimitWindow)
-		if err != nil {
-			m.logger.Error("API key rate limit check failed", "error", err, "api_key_id", apiKeyID)
-			// On error, allow request to continue (fail open for availability)
-			c.Next()
-			return
-		}
-
-		if !allowed {
-			m.logger.Warn("Rate limit exceeded for API key", "api_key_id", apiKeyID)
-			response.TooManyRequests(c, "API key rate limit exceeded. Please try again later.")
-			c.Abort()
-			return
-		}
-
-		// Log successful rate limit check
-		m.logger.Debug("API key rate limit check passed", "api_key_id", apiKeyID, "limit", apiKeyLimit)
-
-		c.Next()
-	}
+	return "user:" + id.String(), nil
 }
 
-// checkRateLimit implements sliding window rate limiting using Redis
-func (m *RateLimitMiddleware) checkRateLimit(ctx context.Context, key string, limit int, window time.Duration) (bool, error) {
-	now := time.Now()
-	windowStart := now.Add(-window)
-
-	pipe := m.redis.TxPipeline()
-
-	// Remove expired entries
-	pipe.ZRemRangeByScore(ctx, key, "0", strconv.FormatInt(windowStart.Unix(), 10))
-
-	// Count current requests in window
-	countCmd := pipe.ZCard(ctx, key)
-
-	// Add current request
-	pipe.ZAdd(ctx, key, redis.Z{
-		Score:  float64(now.Unix()),
-		Member: fmt.Sprintf("%d-%d", now.Unix(), now.Nanosecond()),
-	})
-
-	// Set expiry for the key
-	pipe.Expire(ctx, key, window)
-
-	// Execute pipeline
-	_, err := pipe.Exec(ctx)
-	if err != nil {
-		return false, fmt.Errorf("redis pipeline failed: %w", err)
+// keyByAPIKey keys the bucket on the SDK API key ID written into the
+// request context by RequireSDKAuth. Returns errSkipBucket when the
+// API key ID is nil (session-based auth context) — the route group
+// shape ensures this only happens on misrouting.
+func keyByAPIKey(r *http.Request) (string, error) {
+	id, ok := httpctx.APIKeyID(r.Context())
+	if !ok || id == nil {
+		return "", errSkipBucket
 	}
-
-	// Check if limit exceeded
-	count := countCmd.Val()
-	return count < int64(limit), nil
+	return "apikey:" + id.String(), nil
 }
 
-// GetRemainingRequests returns the number of remaining requests for a key
-func (m *RateLimitMiddleware) GetRemainingRequests(ctx context.Context, key string, limit int, window time.Duration) (int, error) {
-	if !m.config.RateLimitEnabled {
-		return limit, nil
-	}
-
-	now := time.Now()
-	windowStart := now.Add(-window)
-
-	// Remove expired entries and count current
-	pipe := m.redis.TxPipeline()
-	pipe.ZRemRangeByScore(ctx, key, "0", strconv.FormatInt(windowStart.Unix(), 10))
-	countCmd := pipe.ZCard(ctx, key)
-
-	_, err := pipe.Exec(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get remaining requests: %w", err)
-	}
-
-	current := int(countCmd.Val())
-	remaining := limit - current
-	if remaining < 0 {
-		remaining = 0
-	}
-
-	return remaining, nil
-}
-
-// SetRateLimitHeaders sets rate limit headers in the response
-func (m *RateLimitMiddleware) SetRateLimitHeaders(clientIP, userID string) gin.HandlerFunc {
-	if !m.config.RateLimitEnabled {
-		return func(c *gin.Context) {
-			c.Next()
+// keyByAPIKeyPrefix hashes the first 8 chars of the raw API key from
+// the X-API-Key or Authorization: Bearer header. Used on
+// unauthenticated endpoints that accept a raw key — protects against
+// distributed brute force without storing the key itself.
+//
+// Returns errSkipBucket when the header is missing or the key is
+// shorter than 8 chars (the handler will return 400 for a
+// short/missing key; we don't double-charge it against the bucket).
+func keyByAPIKeyPrefix(r *http.Request) (string, error) {
+	raw := r.Header.Get("X-API-Key")
+	if raw == "" {
+		if v, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer "); ok {
+			raw = v
 		}
 	}
-
-	return func(c *gin.Context) {
-		// Get IP-based rate limit info
-		ipKey := "rate_limit:ip:" + clientIP
-		ipRemaining, _ := m.GetRemainingRequests(c.Request.Context(), ipKey, m.config.RateLimitPerIP, m.config.RateLimitWindow)
-
-		// Set rate limit headers
-		c.Header("X-RateLimit-Limit", strconv.Itoa(m.config.RateLimitPerIP))
-		c.Header("X-RateLimit-Remaining", strconv.Itoa(ipRemaining))
-		c.Header("X-RateLimit-Reset", strconv.FormatInt(time.Now().Add(m.config.RateLimitWindow).Unix(), 10))
-
-		// Add user-specific headers if user is authenticated
-		if userID != "" {
-			userKey := "rate_limit:user:" + userID
-			userRemaining, _ := m.GetRemainingRequests(c.Request.Context(), userKey, m.config.RateLimitPerUser, m.config.RateLimitWindow)
-			c.Header("X-RateLimit-User-Limit", strconv.Itoa(m.config.RateLimitPerUser))
-			c.Header("X-RateLimit-User-Remaining", strconv.Itoa(userRemaining))
-		}
-
-		c.Next()
+	if len(raw) < 8 {
+		return "", errSkipBucket
 	}
+	sum := sha256.Sum256([]byte(raw[:8]))
+	return "keyprefix:" + hex.EncodeToString(sum[:8]), nil
 }

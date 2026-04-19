@@ -1,506 +1,317 @@
 package middleware
 
 import (
+	"context"
 	"errors"
 	"log/slog"
+	"net/http"
 
-	"github.com/gin-gonic/gin"
-
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
 	"brokle/internal/core/domain/auth"
 	orgDomain "brokle/internal/core/domain/organization"
+	"brokle/internal/transport/http/httpctx"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
 )
 
-// AuthMiddleware handles JWT token authentication and authorization
-type AuthMiddleware struct {
-	jwtService        auth.JWTService
-	blacklistedTokens auth.BlacklistedTokenService
-	orgMemberService  auth.OrganizationMemberService
-	projectService    orgDomain.ProjectService
-	logger            *slog.Logger
+// AuthDeps groups the services and logger every dashboard auth
+// middleware needs. The struct is populated once at server startup
+// (server.go) and threaded into each constructor — keeps the
+// constructor signatures tight and lets tests pass a single argument.
+//
+// Constructor functions (RequireAuth, OptionalAuth, RequirePermission,
+// …) capture an AuthDeps by value via closure and return the chi
+// middleware. This is the canonical chi shape — see go-chi/jwtauth's
+// Verifier(*JWTAuth), go-chi/oauth's NewBearerAuthentication.
+type AuthDeps struct {
+	JWT       auth.JWTService
+	Blacklist auth.BlacklistedTokenService
+	OrgMember auth.OrganizationMemberService
+	Project   orgDomain.ProjectService
+	Logger    *slog.Logger
 }
 
-// NewAuthMiddleware creates a new stateless authentication middleware
-func NewAuthMiddleware(
-	jwtService auth.JWTService,
-	blacklistedTokens auth.BlacklistedTokenService,
-	orgMemberService auth.OrganizationMemberService,
-	projectService orgDomain.ProjectService,
-	logger *slog.Logger,
-) *AuthMiddleware {
-	return &AuthMiddleware{
-		jwtService:        jwtService,
-		blacklistedTokens: blacklistedTokens,
-		orgMemberService:  orgMemberService,
-		projectService:    projectService,
-		logger:            logger,
+// RequireAuth enforces a valid dashboard JWT (delivered via the
+// access_token httpOnly cookie) for the wrapped handler. On success
+// it writes the auth context, user ID, and JWT claims into the
+// request context via httpctx so handlers can read them with
+// MustGetAuthContext / MustGetUserID / MustGetTokenClaims.
+//
+// Failure paths:
+//   - missing/empty cookie         → 401 authentication_error
+//   - JWT decode/signature failure → 401 authentication_error
+//   - blacklisted JWT              → 401 (revocation check)
+//   - user-wide token revocation   → 401 (GDPR/SOC2 compliance check)
+//   - blacklist lookup failure     → 500 api_error (infra failure)
+//
+// All failures emit a structured slog record with the request_id
+// (correlated by middleware.RequestID) so traces are easy to find.
+func RequireAuth(d AuthDeps) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			token, err := tokenFromCookie(r)
+			if err != nil {
+				d.Logger.WarnContext(r.Context(), "authentication: missing access_token cookie", "error", err)
+				response.WriteError(w, appErrors.NewUnauthorizedError("Authentication token required"))
+				return
+			}
+
+			claims, err := d.JWT.ValidateAccessToken(r.Context(), token)
+			if err != nil {
+				d.Logger.WarnContext(r.Context(), "authentication: invalid JWT", "error", err)
+				response.WriteError(w, appErrors.NewUnauthorizedError("Invalid authentication token"))
+				return
+			}
+
+			// Per-token blacklist (immediate revocation by jti).
+			revoked, err := d.Blacklist.IsTokenBlacklisted(r.Context(), claims.JWTID)
+			if err != nil {
+				d.Logger.ErrorContext(r.Context(), "authentication: blacklist lookup failed", "error", err, "jti", claims.JWTID)
+				response.WriteError(w, appErrors.NewInternalError("Authentication verification failed", err))
+				return
+			}
+			if revoked {
+				d.Logger.WarnContext(r.Context(), "authentication: blacklisted JWT", "jti", claims.JWTID, "user_id", claims.UserID)
+				response.WriteError(w, appErrors.NewUnauthorizedError("Authentication token has been revoked"))
+				return
+			}
+
+			// User-wide timestamp blacklist (revoke-all-sessions, GDPR/SOC2).
+			revokedByUser, err := d.Blacklist.IsUserBlacklistedAfterTimestamp(r.Context(), claims.UserID, claims.IssuedAt)
+			if err != nil {
+				d.Logger.ErrorContext(r.Context(), "authentication: user-wide blacklist lookup failed", "error", err, "user_id", claims.UserID)
+				response.WriteError(w, appErrors.NewInternalError("Authentication verification failed", err))
+				return
+			}
+			if revokedByUser {
+				d.Logger.WarnContext(r.Context(), "authentication: user sessions revoked", "user_id", claims.UserID, "iat", claims.IssuedAt)
+				response.WriteError(w, appErrors.NewUnauthorizedError("All user sessions have been revoked"))
+				return
+			}
+
+			ctx := r.Context()
+			ctx = httpctx.WithAuthContext(ctx, claims.GetUserContext())
+			ctx = httpctx.WithUserID(ctx, claims.UserID)
+			ctx = httpctx.WithTokenClaims(ctx, claims)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
 	}
 }
 
-// Context keys for storing authentication data in Gin context
+// OptionalAuth populates the auth context if a valid JWT is present
+// but never rejects the request — used for endpoints that have both
+// public and authenticated behaviour (e.g. landing-page personalisation,
+// audit-log entries that record actor when known).
+//
+// Distinct constructor rather than a flag on RequireAuth so the call
+// site reads correctly: a route guarded by OptionalAuth is visibly
+// different from one guarded by RequireAuth.
+func OptionalAuth(d AuthDeps) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			token, err := tokenFromCookie(r)
+			if err != nil {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			claims, err := d.JWT.ValidateAccessToken(r.Context(), token)
+			if err != nil {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			revoked, err := d.Blacklist.IsTokenBlacklisted(r.Context(), claims.JWTID)
+			if err != nil || revoked {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			ctx := r.Context()
+			ctx = httpctx.WithAuthContext(ctx, claims.GetUserContext())
+			ctx = httpctx.WithUserID(ctx, claims.UserID)
+			ctx = httpctx.WithTokenClaims(ctx, claims)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+// RequirePermission enforces that the authenticated user has the
+// supplied permission. Must be mounted downstream of RequireAuth —
+// the user-ID invariant is enforced via httpctx.MustGetUserID, so a
+// misconfigured route panics into the recoverer (HTTP 500 with stack)
+// instead of silently returning a misleading 401. This mirrors
+// regexp.MustCompile / template.Must (CLAUDE.md gotcha #6).
+//
+// Designed for chi's `r.With()` composition:
+//
+//	r.With(mw.RequirePermission(deps, "orgs:read")).Get("/", handler)
+func RequirePermission(d AuthDeps, permission string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			userID := httpctx.MustGetUserID(r.Context())
+			if !checkPermissions(r.Context(), w, d, userID, []string{permission}, allRequired) {
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// RequireAnyPermission enforces that the authenticated user has at
+// least one of the supplied permissions. Variadic so callers can list
+// permissions inline:
+//
+//	r.With(mw.RequireAnyPermission(deps, "orgs:read", "orgs:admin")).Get(...)
+func RequireAnyPermission(d AuthDeps, permissions ...string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			userID := httpctx.MustGetUserID(r.Context())
+			if !checkPermissions(r.Context(), w, d, userID, permissions, anyOf) {
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// RequireAllPermissions enforces that the authenticated user has
+// every permission in the supplied list. Variadic for symmetry with
+// RequireAnyPermission.
+func RequireAllPermissions(d AuthDeps, permissions ...string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			userID := httpctx.MustGetUserID(r.Context())
+			if !checkPermissions(r.Context(), w, d, userID, permissions, allRequired) {
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// permissionMode controls how a list of permissions is evaluated by
+// checkPermissions. Single-permission RequirePermission uses
+// allRequired with a single-element slice — semantically equivalent
+// to "the one permission is required".
+type permissionMode int
+
 const (
-	AuthContextKey = "auth_context"
-	UserIDKey      = "user_id"
-	TokenClaimsKey = "token_claims"
+	allRequired permissionMode = iota
+	anyOf
 )
 
-// RequireAuth middleware ensures valid JWT token with stateless authentication
-func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
-	return gin.HandlerFunc(func(c *gin.Context) {
-		// Extract token from Authorization header
-		token, err := m.extractToken(c)
-		if err != nil {
-			m.logger.Warn("Failed to extract authentication token", "error", err)
-			response.Unauthorized(c, "Authentication token required")
-			c.Abort()
-			return
-		}
-
-		// Validate JWT token structure and signature
-		claims, err := m.jwtService.ValidateAccessToken(c.Request.Context(), token)
-		if err != nil {
-			m.logger.Warn("Invalid JWT token", "error", err, "token_prefix", token[:min(len(token), 10)])
-			response.Unauthorized(c, "Invalid authentication token")
-			c.Abort()
-			return
-		}
-
-		// Check if token is blacklisted (immediate revocation check)
-		isBlacklisted, err := m.blacklistedTokens.IsTokenBlacklisted(c.Request.Context(), claims.JWTID)
-		if err != nil {
-			m.logger.Error("Failed to check token blacklist status", "error", err, "jti", claims.JWTID)
-			response.InternalServerError(c, "Authentication verification failed")
-			c.Abort()
-			return
-		}
-
-		if isBlacklisted {
-			m.logger.Warn("Blacklisted token attempted access", "jti", claims.JWTID, "user_id", claims.UserID)
-			response.Unauthorized(c, "Authentication token has been revoked")
-			c.Abort()
-			return
-		}
-
-		// GDPR/SOC2 Compliance: Check user-wide timestamp blacklisting
-		// This ensures ALL tokens issued before user revocation are blocked
-		isUserBlacklisted, err := m.blacklistedTokens.IsUserBlacklistedAfterTimestamp(
-			c.Request.Context(), claims.UserID, claims.IssuedAt)
-		if err != nil {
-			m.logger.Error("Failed to check user timestamp blacklist status", "error", err, "user_id", claims.UserID, "iat", claims.IssuedAt)
-			response.InternalServerError(c, "Authentication verification failed")
-			c.Abort()
-			return
-		}
-
-		if isUserBlacklisted {
-			m.logger.Warn("User token revoked - all sessions were revoked", "user_id", claims.UserID, "jti", claims.JWTID, "iat", claims.IssuedAt)
-			response.Unauthorized(c, "All user sessions have been revoked")
-			c.Abort()
-			return
-		}
-
-		// Store clean authentication data in Gin context
-		authContext := claims.GetUserContext()
-		c.Set(AuthContextKey, authContext)
-		c.Set(UserIDKey, claims.UserID)
-		c.Set(TokenClaimsKey, claims)
-
-		// Log successful authentication
-		m.logger.Debug("Authentication successful", "user_id", claims.UserID, "jti", claims.JWTID)
-
-		c.Next()
-	})
-}
-
-// RequirePermission middleware ensures user has specific permission with effective permissions
-func (m *AuthMiddleware) RequirePermission(permission string) gin.HandlerFunc {
-	return gin.HandlerFunc(func(c *gin.Context) {
-		userID := MustGetUserID(c)
-
-		hasPermission, err := m.orgMemberService.CheckUserPermissions(
-			c.Request.Context(),
-			userID,
-			[]string{permission},
-		)
-		if err != nil {
-			m.logger.Error("Failed to check user permissions", "error", err, "user_id", userID, "permission", permission)
-			response.InternalServerError(c, "Permission verification failed")
-			c.Abort()
-			return
-		}
-
-		if !hasPermission[permission] {
-			m.logger.Warn("Insufficient permissions", "user_id", userID, "permission", permission)
-			response.Forbidden(c, "Insufficient permissions")
-			c.Abort()
-			return
-		}
-
-		c.Next()
-	})
-}
-
-// RequireProjectAccess ensures the authenticated user is a member of the
-// organization that owns the project identified by either the ":projectId"
-// path parameter (preferred) or the "project_id" query string.
+// checkPermissions runs the RBAC service lookup for a permission
+// list and writes a 403 envelope on failure. Returns true when the
+// caller should continue, false when a response has already been
+// written.
 //
-// Must be mounted downstream of RequireAuth; the user-ID invariant is
-// enforced via MustGetUserID, so a misconfigured route panics → Recovery → 500.
-//
-// Responses:
-//   - 400 if the project identifier is missing or malformed;
-//   - 403 if the caller is authenticated but has no org-level membership;
-//   - 404 if the project does not exist;
-//   - 500 on infrastructure errors or invariant violations (missing RequireAuth).
-//
-// On success, the resolved project UUID is pinned to the Gin context under
-// ProjectIDKey so downstream handlers can read it via MustGetProjectID without
-// re-parsing.
-func (m *AuthMiddleware) RequireProjectAccess() gin.HandlerFunc {
-	return gin.HandlerFunc(func(c *gin.Context) {
-		userID := MustGetUserID(c)
+// Centralised so RequirePermission, RequireAnyPermission, and
+// RequireAllPermissions share one error-response shape and one set of
+// log fields.
+func checkPermissions(ctx context.Context, w http.ResponseWriter, d AuthDeps, userID uuid.UUID, perms []string, mode permissionMode) bool {
+	results, err := d.OrgMember.CheckUserPermissions(ctx, userID, perms)
+	if err != nil {
+		d.Logger.ErrorContext(ctx, "authorization: permission check failed", "error", err, "user_id", userID, "permissions", perms)
+		response.WriteError(w, appErrors.NewInternalError("Permission verification failed", err))
+		return false
+	}
 
-		raw := c.Param("projectId")
-		if raw == "" {
-			raw = c.Query("project_id")
+	switch mode {
+	case anyOf:
+		for _, p := range perms {
+			if results[p] {
+				return true
+			}
 		}
-		if raw == "" {
-			response.Error(c, appErrors.NewValidationError(
-				"Missing project ID", "project_id is required"))
-			c.Abort()
-			return
-		}
-		projectID, err := uuid.Parse(raw)
-		if err != nil {
-			response.Error(c, appErrors.NewValidationError(
-				"Invalid project ID", "project_id must be a valid UUID"))
-			c.Abort()
-			return
-		}
-
-		canAccess, err := m.projectService.CanUserAccessProject(c.Request.Context(), userID, projectID)
-		if err != nil {
-			// projectService returns AppError constructors: forward the mapped
-			// status (404 / 500) rather than dropping it to a generic 500.
-			m.logger.Warn("project access check failed",
-				"error", err, "user_id", userID, "project_id", projectID)
-			response.Error(c, err)
-			c.Abort()
-			return
-		}
-		if !canAccess {
-			m.logger.Warn("project access denied",
-				"user_id", userID, "project_id", projectID)
-			response.Error(c, appErrors.NewForbiddenError("Access denied to project"))
-			c.Abort()
-			return
-		}
-
-		c.Set(ProjectIDKey, projectID)
-		c.Next()
-	})
-}
-
-// RequireAnyPermission middleware ensures user has at least one of the specified permissions
-func (m *AuthMiddleware) RequireAnyPermission(permissions []string) gin.HandlerFunc {
-	return gin.HandlerFunc(func(c *gin.Context) {
-		userID := MustGetUserID(c)
-
-		hasPermission, err := m.orgMemberService.CheckUserPermissions(
-			c.Request.Context(),
-			userID,
-			permissions,
-		)
-		if err != nil {
-			m.logger.Error("Failed to check user permissions", "error", err, "user_id", userID, "permissions", permissions)
-			response.InternalServerError(c, "Permission verification failed")
-			c.Abort()
-			return
-		}
-
-		hasAnyPermission := false
-		for _, permission := range permissions {
-			if hasPermission[permission] {
-				hasAnyPermission = true
+	case allRequired:
+		missing := ""
+		for _, p := range perms {
+			if !results[p] {
+				missing = p
 				break
 			}
 		}
-
-		if !hasAnyPermission {
-			m.logger.Warn("Insufficient permissions - none of the required permissions found", "user_id", userID, "permissions", permissions)
-			response.Forbidden(c, "Insufficient permissions")
-			c.Abort()
-			return
+		if missing == "" {
+			return true
 		}
+		d.Logger.WarnContext(ctx, "authorization: missing permission", "user_id", userID, "permissions", perms, "missing", missing)
+		response.WriteError(w, appErrors.NewForbiddenError("Insufficient permissions"))
+		return false
+	}
 
-		c.Next()
-	})
+	d.Logger.WarnContext(ctx, "authorization: none of required permissions held", "user_id", userID, "permissions", perms)
+	response.WriteError(w, appErrors.NewForbiddenError("Insufficient permissions"))
+	return false
 }
 
-// RequireAllPermissions middleware ensures user has ALL specified permissions
-func (m *AuthMiddleware) RequireAllPermissions(permissions []string) gin.HandlerFunc {
-	return gin.HandlerFunc(func(c *gin.Context) {
-		userID := MustGetUserID(c)
+// RequireProjectAccess ensures the authenticated user is a member of
+// the organization that owns the project identified by either the
+// `:projectId` path parameter (preferred) or the `project_id` query
+// string. Mounted downstream of RequireAuth.
+//
+// Responses:
+//   - 422 invalid_request_error if project ID is missing or malformed
+//   - 403 permission_error      if the caller has no org-level membership
+//   - 404 not_found_error       if the project does not exist
+//   - 500 api_error             on infrastructure failures or invariant violations
+//
+// On success, the resolved project UUID is written into the request
+// context via httpctx.WithProjectID so downstream handlers can read
+// it with httpctx.MustGetProjectID without re-parsing.
+func RequireProjectAccess(d AuthDeps) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			userID := httpctx.MustGetUserID(r.Context())
 
-		hasPermission, err := m.orgMemberService.CheckUserPermissions(
-			c.Request.Context(),
-			userID,
-			permissions,
-		)
-		if err != nil {
-			m.logger.Error("Failed to check user permissions", "error", err, "user_id", userID, "permissions", permissions)
-			response.InternalServerError(c, "Permission verification failed")
-			c.Abort()
-			return
-		}
-
-		for _, permission := range permissions {
-			if !hasPermission[permission] {
-				m.logger.Warn("Insufficient permissions - missing required permission", "user_id", userID, "permissions", permissions, "failed_on", permission)
-				response.Forbidden(c, "Insufficient permissions")
-				c.Abort()
+			raw := chi.URLParam(r, "projectId")
+			if raw == "" {
+				raw = r.URL.Query().Get("project_id")
+			}
+			if raw == "" {
+				response.WriteError(w, appErrors.NewValidationError("Missing project ID", "project_id is required"))
 				return
 			}
-		}
-
-		c.Next()
-	})
-}
-
-// OptionalAuth middleware extracts auth info if present but doesn't require it
-func (m *AuthMiddleware) OptionalAuth() gin.HandlerFunc {
-	return gin.HandlerFunc(func(c *gin.Context) {
-		// Try to extract token
-		token, err := m.extractToken(c)
-		if err != nil {
-			// No token present, continue without auth context
-			c.Next()
-			return
-		}
-
-		// Validate token if present
-		claims, err := m.jwtService.ValidateAccessToken(c.Request.Context(), token)
-		if err != nil {
-			// Invalid token, continue without auth context
-			c.Next()
-			return
-		}
-
-		// Check blacklist
-		isBlacklisted, err := m.blacklistedTokens.IsTokenBlacklisted(c.Request.Context(), claims.JWTID)
-		if err != nil || isBlacklisted {
-			// Blacklisted or error, continue without auth context
-			c.Next()
-			return
-		}
-
-		// Store clean auth context for valid token
-		authContext := claims.GetUserContext()
-		c.Set(AuthContextKey, authContext)
-		c.Set(UserIDKey, claims.UserID)
-		c.Set(TokenClaimsKey, claims)
-
-		c.Next()
-	})
-}
-
-// extractToken extracts JWT token from httpOnly cookie
-func (m *AuthMiddleware) extractToken(c *gin.Context) (string, error) {
-	// Read token from httpOnly cookie only (secure, XSS-protected)
-	token, err := c.Cookie("access_token")
-	if err != nil || token == "" {
-		return "", errors.New("authentication token required in cookie")
-	}
-
-	return token, nil
-}
-
-// Helper functions to get auth data from Gin context.
-//
-// Each context value has a Get* form (returns `(value, ok)`) and a Must* form
-// (panics on missing/wrong type — caught by Recovery → 500). Use Must* in
-// handlers protected by RequireAuth where the value is a guaranteed invariant;
-// use Get* only on routes that legitimately run without auth (OptionalAuth).
-
-// GetAuthContext returns the dashboard auth context if present.
-func GetAuthContext(c *gin.Context) (*auth.AuthContext, bool) {
-	v, exists := c.Get(AuthContextKey)
-	if !exists {
-		return nil, false
-	}
-	ctx, ok := v.(*auth.AuthContext)
-	return ctx, ok
-}
-
-// MustGetAuthContext returns the dashboard auth context. Panics if missing —
-// signals a handler attached outside RequireAuth. Caught by Recovery → 500.
-func MustGetAuthContext(c *gin.Context) *auth.AuthContext {
-	ctx, ok := GetAuthContext(c)
-	if !ok {
-		panic("middleware.MustGetAuthContext: auth context not found — protected route is missing RequireAuth middleware")
-	}
-	return ctx
-}
-
-// GetTokenClaims returns the JWT claims for the current request if present.
-func GetTokenClaims(c *gin.Context) (*auth.JWTClaims, bool) {
-	v, exists := c.Get(TokenClaimsKey)
-	if !exists {
-		return nil, false
-	}
-	claims, ok := v.(*auth.JWTClaims)
-	return claims, ok
-}
-
-// MustGetTokenClaims returns the JWT claims for the current request. Panics if
-// missing — signals a handler attached outside RequireAuth. Caught by
-// Recovery → 500.
-func MustGetTokenClaims(c *gin.Context) *auth.JWTClaims {
-	claims, ok := GetTokenClaims(c)
-	if !ok {
-		panic("middleware.MustGetTokenClaims: token claims not found — protected route is missing RequireAuth middleware")
-	}
-	return claims
-}
-
-// GetUserIDFromContext retrieves the authenticated user's ID from Gin context.
-// Returns the zero UUID and false if no user is present or the value has the
-// wrong type. Use this when a handler legitimately supports both authenticated
-// and unauthenticated callers (routes with OptionalAuth).
-//
-// For routes guaranteed to have run RequireAuth, prefer MustGetUserID — it
-// removes boilerplate and surfaces misconfiguration loudly via panic/Recovery.
-func GetUserIDFromContext(c *gin.Context) (uuid.UUID, bool) {
-	userID, exists := c.Get(UserIDKey)
-	if !exists {
-		return uuid.UUID{}, false
-	}
-
-	id, ok := userID.(uuid.UUID)
-	return id, ok
-}
-
-// MustGetUserID returns the authenticated user's ID from the Gin context.
-//
-// It assumes RequireAuth has run and set UserIDKey to a uuid.UUID. If the key
-// is missing or has the wrong type, MustGetUserID panics with a descriptive
-// message — this signals a programming bug (a protected route was registered
-// without RequireAuth). The panic is caught by the Recovery middleware and
-// returned to the client as an HTTP 500 with a request ID for log correlation.
-//
-// This follows the idiomatic Go Must* convention (regexp.MustCompile,
-// template.Must, uuid.Must) and Gin's own BasicAuth pattern
-// (c.MustGet(gin.AuthUserKey)): terminate loudly when an invariant the code
-// structurally depends on is violated, rather than paper over a misconfigured
-// route with a misleading 401.
-//
-// Use GetUserIDFromContext instead on routes protected by OptionalAuth.
-func MustGetUserID(c *gin.Context) uuid.UUID {
-	id, ok := GetUserIDFromContext(c)
-	if !ok {
-		panic("middleware.MustGetUserID: user not found in context — protected route is missing RequireAuth middleware")
-	}
-	return id
-}
-
-// Context Resolution Helper Functions
-
-// ContextType represents the type of context to resolve
-type ContextType string
-
-const (
-	ContextOrg     ContextType = "org"
-	ContextProject ContextType = "project"
-	ContextEnv     ContextType = "env"
-)
-
-// ContextResolver resolves context IDs from headers or URL parameters
-type ContextResolver struct {
-	OrganizationID *uuid.UUID
-	ProjectID      *uuid.UUID
-	Environment    string // Environment tag (e.g., "production", "staging")
-}
-
-// ResolveContext resolves specified context types (variadic - any combination is optional)
-func ResolveContext(c *gin.Context, contextTypes ...ContextType) *ContextResolver {
-	resolver := &ContextResolver{}
-
-	// Build a set for faster lookup
-	typeSet := make(map[ContextType]bool)
-	for _, ctxType := range contextTypes {
-		typeSet[ctxType] = true
-	}
-
-	// If no types specified, resolve all (backward compatibility)
-	if len(contextTypes) == 0 {
-		typeSet[ContextOrg] = true
-		typeSet[ContextProject] = true
-		typeSet[ContextEnv] = true
-	}
-
-	// Resolve organization ID if requested
-	if typeSet[ContextOrg] {
-		// Try X-Org-ID header first
-		if orgIDHeader := c.GetHeader("X-Org-ID"); orgIDHeader != "" {
-			if orgID, err := uuid.Parse(orgIDHeader); err == nil {
-				resolver.OrganizationID = &orgID
+			projectID, err := uuid.Parse(raw)
+			if err != nil {
+				response.WriteError(w, appErrors.NewValidationError("Invalid project ID", "project_id must be a valid UUID"))
+				return
 			}
-		}
-		// Try orgId URL parameter if header failed
-		if resolver.OrganizationID == nil {
-			if orgIDParam := c.Param("orgId"); orgIDParam != "" {
-				if orgID, err := uuid.Parse(orgIDParam); err == nil {
-					resolver.OrganizationID = &orgID
-				}
+
+			canAccess, err := d.Project.CanUserAccessProject(r.Context(), userID, projectID)
+			if err != nil {
+				// Project service returns AppError — preserve its mapped
+				// status (404 / 500) rather than dropping to a generic 500.
+				d.Logger.WarnContext(r.Context(), "authorization: project access check failed", "error", err, "user_id", userID, "project_id", projectID)
+				response.WriteError(w, err)
+				return
 			}
-		}
-	}
-
-	// Resolve project ID if requested
-	if typeSet[ContextProject] {
-		// Try X-Project-ID header first
-		if projectIDHeader := c.GetHeader("X-Project-ID"); projectIDHeader != "" {
-			if projectID, err := uuid.Parse(projectIDHeader); err == nil {
-				resolver.ProjectID = &projectID
+			if !canAccess {
+				d.Logger.WarnContext(r.Context(), "authorization: project access denied", "user_id", userID, "project_id", projectID)
+				response.WriteError(w, appErrors.NewForbiddenError("Access denied to project"))
+				return
 			}
-		}
-		// Try projectId URL parameter if header failed
-		if resolver.ProjectID == nil {
-			if projectIDParam := c.Param("projectId"); projectIDParam != "" {
-				if projectID, err := uuid.Parse(projectIDParam); err == nil {
-					resolver.ProjectID = &projectID
-				}
-			}
-		}
+
+			next.ServeHTTP(w, r.WithContext(httpctx.WithProjectID(r.Context(), projectID)))
+		})
 	}
+}
 
-	// Resolve environment tag if requested
-	if typeSet[ContextEnv] {
-		// Try environment query parameter
-		if envParam := c.Query("environment"); envParam != "" {
-			resolver.Environment = envParam
-		}
-		// Default to "default" if no environment specified
-		if resolver.Environment == "" {
-			resolver.Environment = "default"
-		}
+// tokenFromCookie reads the access_token httpOnly cookie. Returns
+// errMissingCookie when the cookie is absent or empty so callers
+// (RequireAuth vs OptionalAuth) can branch on a typed sentinel
+// instead of string-comparing error messages.
+func tokenFromCookie(r *http.Request) (string, error) {
+	c, err := r.Cookie("access_token")
+	if err != nil {
+		return "", errMissingCookie
 	}
-
-	return resolver
+	if c.Value == "" {
+		return "", errMissingCookie
+	}
+	return c.Value, nil
 }
 
-// Convenience functions for single context resolution
-func ResolveOrganizationID(c *gin.Context) *uuid.UUID {
-	return ResolveContext(c, ContextOrg).OrganizationID
-}
-
-func ResolveProjectID(c *gin.Context) *uuid.UUID {
-	return ResolveContext(c, ContextProject).ProjectID
-}
-
-func ResolveEnvironment(c *gin.Context) string {
-	return ResolveContext(c, ContextEnv).Environment
-}
+var errMissingCookie = errors.New("authentication token required in cookie")

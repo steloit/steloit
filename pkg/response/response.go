@@ -1,6 +1,7 @@
 package response
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
@@ -159,6 +160,31 @@ func Error(c *gin.Context, err error) {
 		Success: false,
 		Error:   apiError,
 		Meta:    getMeta(c),
+	})
+}
+
+// WriteError writes the canonical APIResponse error envelope directly
+// to a stdlib http.ResponseWriter. Used by chi-router middleware that
+// rejects a request (auth failure, rate limit, panic) before it reaches
+// a Huma operation, where there is no *gin.Context in scope.
+//
+// HTTP status is derived from AppError.Type via the canonical mapping;
+// non-AppError errors surface as TypeAPIError (HTTP 500).
+//
+// Skips encoding the body when status is 204 (RFC 9110 §15.3.5
+// requires no body) or when the request is HEAD. Errors from the JSON
+// encoder are intentionally swallowed — the response is already
+// committed and there is nothing useful to do at that point.
+func WriteError(w http.ResponseWriter, err error) {
+	apiError, statusCode := buildAPIError(err)
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(statusCode)
+	if statusCode == http.StatusNoContent {
+		return
+	}
+	_ = json.NewEncoder(w).Encode(APIResponse{
+		Success: false,
+		Error:   apiError,
 	})
 }
 
