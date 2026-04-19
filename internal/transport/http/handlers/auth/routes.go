@@ -9,6 +9,7 @@ import (
 	"brokle/internal/config"
 	authDomain "brokle/internal/core/domain/auth"
 	"brokle/internal/core/domain/user"
+	"brokle/internal/core/services/registration"
 )
 
 // RegisterPublicRoutes registers every unauthenticated auth
@@ -23,10 +24,11 @@ func RegisterPublicRoutes(
 	api huma.API,
 	authSvc authDomain.AuthService,
 	userSvc user.UserService,
+	regSvc registration.RegistrationService,
 	cfg *config.Config,
 	logger *slog.Logger,
 ) {
-	h := &handler{authSvc: authSvc, userSvc: userSvc, cfg: cfg, logger: logger}
+	h := &handler{authSvc: authSvc, userSvc: userSvc, regSvc: regSvc, cfg: cfg, logger: logger}
 
 	huma.Register(api, huma.Operation{
 		OperationID: "login",
@@ -39,6 +41,16 @@ func RegisterPublicRoutes(
 			"object plus expiry metadata in milliseconds. The tokens do NOT " +
 			"appear in the JSON body — they ride the Set-Cookie header.",
 	}, h.login)
+
+	huma.Register(api, huma.Operation{
+		OperationID:   "signup",
+		Method:        http.MethodPost,
+		Path:          "/api/v1/auth/signup",
+		Tags:          []string{"auth"},
+		Summary:       "Register a new user and set session cookies",
+		Description:   "Creates a new user with either a new organization (when organization_name is set) or by joining an existing organization via invitation_token. Sets the same three cookies as login on success.",
+		DefaultStatus: http.StatusCreated,
+	}, h.signup)
 
 	huma.Register(api, huma.Operation{
 		OperationID: "refresh-tokens",
@@ -84,10 +96,21 @@ func RegisterProtectedRoutes(
 	api huma.API,
 	authSvc authDomain.AuthService,
 	userSvc user.UserService,
+	regSvc registration.RegistrationService,
 	cfg *config.Config,
 	logger *slog.Logger,
 ) {
-	h := &handler{authSvc: authSvc, userSvc: userSvc, cfg: cfg, logger: logger}
+	h := &handler{authSvc: authSvc, userSvc: userSvc, regSvc: regSvc, cfg: cfg, logger: logger}
+
+	huma.Register(api, huma.Operation{
+		OperationID: "get-current-user",
+		Method:      http.MethodGet,
+		Path:        "/api/v1/auth/me",
+		Tags:        []string{"auth"},
+		Summary:     "Get the currently authenticated user",
+		Description: "Returns the authenticated user object plus access-token expiry metadata in milliseconds. The dashboard uses the expiry values to schedule a proactive refresh before the next request bounces off a 401.",
+		Security:    []map[string][]string{{"bearerAuth": {}}},
+	}, h.getCurrentUser)
 
 	huma.Register(api, huma.Operation{
 		OperationID: "logout",

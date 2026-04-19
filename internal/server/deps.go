@@ -13,6 +13,7 @@ import (
 	orgDomain "brokle/internal/core/domain/organization"
 	userDomain "brokle/internal/core/domain/user"
 	websiteDomain "brokle/internal/core/domain/website"
+	"brokle/internal/core/services/registration"
 	"brokle/internal/transport/http/middleware"
 )
 
@@ -51,13 +52,14 @@ type Deps struct {
 	// to Huma operations are NOT listed here (CLAUDE.md scaffolded-
 	// but-unreachable rule).
 
-	// Auth domain handlers — login, logout, refresh, password mgmt.
-	// Distinct from the middleware-facing JWT/Blacklist/OrgMember
-	// services above: those carry invariant checks for every
-	// protected route; Auth is the "business logic" service the
-	// auth handler operations invoke.
-	Auth authDomain.AuthService
-	User userDomain.UserService
+	// Auth domain handlers — login, signup, logout, refresh, password
+	// mgmt, /me. Distinct from the middleware-facing JWT/Blacklist/
+	// OrgMember services above: those carry invariant checks for
+	// every protected route; Auth/User/Registration are the
+	// "business logic" services the auth handler operations invoke.
+	Auth         authDomain.AuthService
+	User         userDomain.UserService
+	Registration registration.RegistrationService
 
 	// Website contact-form handler.
 	Website websiteDomain.WebsiteService

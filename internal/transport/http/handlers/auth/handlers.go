@@ -37,19 +37,21 @@ import (
 	"brokle/internal/config"
 	authDomain "brokle/internal/core/domain/auth"
 	"brokle/internal/core/domain/user"
+	"brokle/internal/core/services/registration"
 	"brokle/internal/transport/http/httpctx"
 	appErrors "brokle/pkg/errors"
 )
 
-// handler bundles the auth service + user service + config + logger
-// so the operation methods don't repeat them on every signature.
-// Package-private; the only public surface is
-// RegisterPublicRoutes / RegisterProtectedRoutes.
+// handler bundles the auth service + user service + registration
+// service + config + logger so the operation methods don't repeat
+// them on every signature. Package-private; the only public surface
+// is RegisterPublicRoutes / RegisterProtectedRoutes.
 type handler struct {
-	authSvc authDomain.AuthService
-	userSvc user.UserService
-	cfg     *config.Config
-	logger  *slog.Logger
+	authSvc   authDomain.AuthService
+	userSvc   user.UserService
+	regSvc    registration.RegistrationService
+	cfg       *config.Config
+	logger    *slog.Logger
 }
 
 // ----- login ---------------------------------------------------------
@@ -122,6 +124,131 @@ func (h *handler) login(ctx context.Context, in *LoginInput) (*LoginOutput, erro
 	return &LoginOutput{
 		SetCookie: cookies,
 		Body:      expiryResponse(loginResp, u),
+	}, nil
+}
+
+// ----- signup --------------------------------------------------------
+//
+// Fresh signup (creates a new organization) and invitation-based
+// signup (joins an existing org via token) share this one endpoint.
+// The service layer routes on the presence of InvitationToken. On
+// success the handler issues the same three cookies as login so the
+// user is authenticated immediately — no "check your email" step for
+// the password flow.
+
+type SignupInput struct {
+	Body signupBody
+}
+
+// signupBody validates the "at least one of org-name / invitation-
+// token must be provided" rule in the handler because Huma's
+// declarative constraints don't express mutual-or-either
+// requirements. The gin handler had the same check at auth.go:173.
+type signupBody struct {
+	Email            string  `json:"email" format:"email" doc:"User email address"`
+	Password         string  `json:"password" minLength:"8" doc:"Password (minimum 8 characters)"`
+	FirstName        string  `json:"first_name" minLength:"1" maxLength:"100" doc:"User first name"`
+	LastName         string  `json:"last_name" minLength:"1" maxLength:"100" doc:"User last name"`
+	Role             string  `json:"role" enum:"engineer,product,designer,executive,other" doc:"Self-declared role"`
+	OrganizationName *string `json:"organization_name,omitempty" doc:"Organization name — required for fresh signup, omit when InvitationToken is present"`
+	InvitationToken  *string `json:"invitation_token,omitempty" doc:"Invitation token — when present, joins the existing organization instead of creating one"`
+	ReferralSource   *string `json:"referral_source,omitempty" doc:"Optional referral source for product analytics"`
+}
+
+type SignupOutput struct {
+	SetCookie []http.Cookie `header:"Set-Cookie"`
+	Body      loginResponse
+}
+
+func (h *handler) signup(ctx context.Context, in *SignupInput) (*SignupOutput, error) {
+	if in.Body.InvitationToken == nil && in.Body.OrganizationName == nil {
+		return nil, appErrors.NewValidationError(
+			"Signup requires either organization_name or invitation_token",
+			"Provide organization_name for a fresh signup, or invitation_token to join an existing organization",
+		)
+	}
+
+	regReq := &registration.RegisterRequest{
+		Email:            in.Body.Email,
+		Password:         in.Body.Password,
+		FirstName:        in.Body.FirstName,
+		LastName:         in.Body.LastName,
+		Role:             in.Body.Role,
+		ReferralSource:   in.Body.ReferralSource,
+		OrganizationName: in.Body.OrganizationName,
+		InvitationToken:  in.Body.InvitationToken,
+		IsOAuthUser:      false,
+	}
+
+	var (
+		regResp *registration.RegistrationResponse
+		err     error
+	)
+	if in.Body.InvitationToken != nil {
+		regResp, err = h.regSvc.RegisterWithInvitation(ctx, regReq)
+	} else {
+		regResp, err = h.regSvc.RegisterWithOrganization(ctx, regReq)
+	}
+	if err != nil {
+		h.logger.WarnContext(ctx, "signup failed", "email", in.Body.Email, "error", err)
+		return nil, err
+	}
+
+	csrfToken, err := generateCSRFToken()
+	if err != nil {
+		h.logger.ErrorContext(ctx, "signup: CSRF token generation failed", "error", err)
+		return nil, appErrors.NewInternalError("Authentication setup failed", err)
+	}
+
+	cookies := buildAuthCookies(
+		regResp.LoginTokens.AccessToken,
+		regResp.LoginTokens.RefreshToken,
+		csrfToken,
+		h.cfg.Server.CookieDomain,
+	)
+
+	h.logger.InfoContext(ctx, "signup successful", "email", in.Body.Email, "user_id", regResp.User.ID)
+
+	return &SignupOutput{
+		SetCookie: cookies,
+		Body:      expiryResponse(regResp.LoginTokens, regResp.User),
+	}, nil
+}
+
+// ----- get-current-user (/me) ---------------------------------------
+//
+// Returns the authenticated user object plus access-token expiry
+// metadata so the dashboard can schedule a proactive refresh before
+// the next request bounces off a 401. This is the most-called
+// dashboard endpoint.
+
+type GetCurrentUserOutput struct {
+	Body loginResponse
+}
+
+func (h *handler) getCurrentUser(ctx context.Context, _ *struct{}) (*GetCurrentUserOutput, error) {
+	userID := httpctx.MustGetUserID(ctx)
+	claims := httpctx.MustGetTokenClaims(ctx)
+
+	u, err := h.userSvc.GetUser(ctx, userID)
+	if err != nil {
+		h.logger.WarnContext(ctx, "get-current-user: user fetch failed", "user_id", userID, "error", err)
+		return nil, err
+	}
+
+	// Expiry math: JWT exp is Unix seconds; the response uses
+	// milliseconds to match the format login/refresh emit, so the
+	// dashboard's schedule code has one consistent timestamp type
+	// to consume.
+	expiresAtMs := claims.ExpiresAt * 1000
+	expiresInMs := expiresAtMs - time.Now().UnixMilli()
+
+	return &GetCurrentUserOutput{
+		Body: loginResponse{
+			User:      u,
+			ExpiresAt: expiresAtMs,
+			ExpiresIn: expiresInMs,
+		},
 	}, nil
 }
 
