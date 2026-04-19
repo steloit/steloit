@@ -9,6 +9,7 @@ import (
 	"github.com/jub0bs/cors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	authHandler "brokle/internal/transport/http/handlers/auth"
 	websiteHandler "brokle/internal/transport/http/handlers/website"
 	"brokle/internal/transport/http/middleware"
 )
@@ -106,20 +107,23 @@ func addRoutes(r chi.Router, apiPublic, apiAdmin huma.API, d Deps, ready *readyS
 		// return 403.
 		r.Use(crossOriginProtection().Handler)
 
-		// Public dashboard routes — login, signup, password reset,
-		// website contact form. No auth required; rate limit + CSRF
-		// still apply.
+		// Public dashboard routes — login, password reset, website
+		// contact form. No auth required; rate limit + CSRF still
+		// apply at the route-group level.
+		authHandler.RegisterPublicRoutes(apiAdmin, d.Auth, d.User, d.Config, d.Logger)
 		websiteHandler.RegisterRoutes(apiAdmin, d.Website, d.Logger)
-		// auth.RegisterPublicRoutes(apiAdmin, d.AuthService)  // Step 4
 
-		// Authed dashboard routes — everything else.
+		// Authed dashboard routes — everything requiring a valid
+		// JWT cookie.
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireAuth(d.authMiddlewareDeps()))
 			r.Use(middleware.LimitByUser(rateLimitD))
+
+			authHandler.RegisterProtectedRoutes(apiAdmin, d.Auth, d.User, d.Config, d.Logger)
 			// Per-domain authed dashboard registrations land here.
 			// organization.RegisterRoutes(apiAdmin, d.Organization, d.OrgMember)  // Step 4
 			// project.RegisterRoutes(apiAdmin, d.Project)                          // Step 4
-			// ... 22 more domains
+			// ... 20 more domains
 		})
 	})
 }

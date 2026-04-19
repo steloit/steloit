@@ -11,6 +11,7 @@ import (
 	"brokle/internal/config"
 	authDomain "brokle/internal/core/domain/auth"
 	orgDomain "brokle/internal/core/domain/organization"
+	userDomain "brokle/internal/core/domain/user"
 	websiteDomain "brokle/internal/core/domain/website"
 	"brokle/internal/transport/http/middleware"
 )
@@ -46,9 +47,19 @@ type Deps struct {
 	Project orgDomain.ProjectService
 
 	// Domain services. Add as handler domains migrate to Huma. The
-	// list is intentionally small today — Step 4's vertical slice
-	// covers website only; subsequent slices add organization,
-	// project, observability, etc.
+	// list grows with each vertical slice; domains not yet converted
+	// to Huma operations are NOT listed here (CLAUDE.md scaffolded-
+	// but-unreachable rule).
+
+	// Auth domain handlers — login, logout, refresh, password mgmt.
+	// Distinct from the middleware-facing JWT/Blacklist/OrgMember
+	// services above: those carry invariant checks for every
+	// protected route; Auth is the "business logic" service the
+	// auth handler operations invoke.
+	Auth authDomain.AuthService
+	User userDomain.UserService
+
+	// Website contact-form handler.
 	Website websiteDomain.WebsiteService
 }
 
