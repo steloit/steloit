@@ -14,7 +14,7 @@ CREATE TABLE contracts (
     end_date TIMESTAMP WITH TIME ZONE,  -- NULL = no end date
 
     -- Financial terms
-    minimum_commit_amount DECIMAL(18, 6),
+    minimum_commit_amount NUMERIC(18, 6),
     currency VARCHAR(3) NOT NULL DEFAULT 'USD',
 
     -- Account management
@@ -28,15 +28,15 @@ CREATE TABLE contracts (
     -- Custom pricing overrides (NULL = use plan default)
     -- Spans dimension
     custom_free_spans BIGINT,
-    custom_price_per_100k_spans DECIMAL(10, 4),
+    custom_price_per_100k_spans NUMERIC(10, 4),
 
     -- Bytes dimension
-    custom_free_gb DECIMAL(10, 4),
-    custom_price_per_gb DECIMAL(10, 4),
+    custom_free_gb NUMERIC(10, 4),
+    custom_price_per_gb NUMERIC(10, 4),
 
     -- Scores dimension
     custom_free_scores BIGINT,
-    custom_price_per_1k_scores DECIMAL(10, 4),
+    custom_price_per_1k_scores NUMERIC(10, 4),
 
     -- Audit trail
     created_by UUID,

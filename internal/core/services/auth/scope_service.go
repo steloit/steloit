@@ -242,10 +242,14 @@ func (s *scopeService) GetScopesByCategory(ctx context.Context) ([]authDomain.Sc
 	categoryMap := make(map[string]*authDomain.ScopeCategory)
 
 	for _, perm := range allPermissions {
-		category := perm.Category
-		if category == "" {
-			category = "other"
+		// nil Category means "no category" — such permissions don't belong
+		// to any group and are excluded from the category listing.
+		// Callers that need uncategorized permissions should query them
+		// directly instead of through this grouped endpoint.
+		if perm.Category == nil || *perm.Category == "" {
+			continue
 		}
+		category := *perm.Category
 
 		if _, exists := categoryMap[category]; !exists {
 			categoryMap[category] = &authDomain.ScopeCategory{

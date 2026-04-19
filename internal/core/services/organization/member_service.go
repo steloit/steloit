@@ -2,7 +2,7 @@ package organization
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -110,7 +110,10 @@ func (s *memberService) RemoveMember(ctx context.Context, orgID, userID uuid.UUI
 	if err == nil && user.DefaultOrganizationID != nil && *user.DefaultOrganizationID == orgID {
 		err = s.userRepo.SetDefaultOrganization(ctx, userID, uuid.UUID{})
 		if err != nil {
-			fmt.Printf("Failed to clear default organization: %v\n", err)
+			slog.Error("failed to clear default organization",
+				"user_id", userID,
+				"organization_id", orgID,
+				"error", err)
 		}
 	}
 

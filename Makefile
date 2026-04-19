@@ -208,11 +208,14 @@ test-integration: ## Run integration tests only
 
 ##@ Code Quality
 
-lint: lint-go lint-frontend ## Run all linters
+lint: lint-conventions lint-go lint-frontend ## Run all linters
 
 lint-go: ## Run Go linter
 	@echo "🔍 Running Go linter..."
 	golangci-lint run --config .golangci.yml
+
+lint-conventions: ## Run project-convention lint (DDL, filename, etc.)
+	@bash scripts/lint-conventions.sh
 
 lint-frontend: ## Run frontend linter
 	@echo "🔍 Running frontend linter..."

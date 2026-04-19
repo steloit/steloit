@@ -11,8 +11,8 @@ CREATE TABLE IF NOT EXISTS score_configs (
     description     TEXT,
     data_type       VARCHAR(20) NOT NULL DEFAULT 'NUMERIC'
                     CHECK (data_type IN ('NUMERIC', 'CATEGORICAL', 'BOOLEAN')),
-    min_value       DECIMAL(10,4),         -- For NUMERIC type: minimum allowed value
-    max_value       DECIMAL(10,4),         -- For NUMERIC type: maximum allowed value
+    min_value       NUMERIC(10,4),         -- For NUMERIC type: minimum allowed value
+    max_value       NUMERIC(10,4),         -- For NUMERIC type: maximum allowed value
     categories      JSONB,                 -- For CATEGORICAL type: ["positive", "negative", "neutral"]
     metadata        JSONB DEFAULT '{}',
     created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),

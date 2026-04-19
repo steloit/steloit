@@ -92,9 +92,9 @@ func (r *permissionRepository) runPermissionSearch(ctx context.Context, query st
 		); err != nil {
 			return nil, 0, fmt.Errorf("scan permissions row: %w", err)
 		}
-		p.Description = derefString(description)
+		p.Description = description
 		p.ScopeLevel = authDomain.ScopeLevel(scopeLevel)
-		p.Category = derefString(category)
+		p.Category = category
 		out = append(out, p)
 	}
 	if err := rows.Err(); err != nil {

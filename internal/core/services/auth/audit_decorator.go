@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
 	"github.com/google/uuid"
@@ -52,7 +51,7 @@ func (a *auditDecorator) Login(ctx context.Context, req *authDomain.LoginRequest
 
 		// For user_not_found, we don't have a userID, for others we might need to look it up
 		auditLog := authDomain.NewAuditLog(userID, nil, "auth.login.failed", "user", "",
-			fmt.Sprintf(`{"email": "%s", "reason": "%s"}`, req.Email, reason), "", "")
+			map[string]any{"email": req.Email, "reason": reason}, "", "")
 		if createErr := a.auditRepo.Create(ctx, auditLog); createErr != nil {
 			a.logger.Error("Failed to create login failure audit log", "error", createErr)
 		}
@@ -60,7 +59,7 @@ func (a *auditDecorator) Login(ctx context.Context, req *authDomain.LoginRequest
 		// Success audit - we can get user ID from the response context
 		// For now, we'll need to look up the user or modify the service to return user info
 		auditLog := authDomain.NewAuditLog(nil, nil, "auth.login.success", "user", "",
-			fmt.Sprintf(`{"email": "%s"}`, req.Email), "", "")
+			map[string]any{"email": req.Email}, "", "")
 		if createErr := a.auditRepo.Create(ctx, auditLog); createErr != nil {
 			a.logger.Error("Failed to create login success audit log", "error", createErr)
 		}
@@ -88,13 +87,13 @@ func (a *auditDecorator) RefreshToken(ctx context.Context, req *authDomain.Refre
 		}
 
 		auditLog := authDomain.NewAuditLog(nil, nil, "auth.refresh_token.failed", "token", "",
-			fmt.Sprintf(`{"reason": "%s"}`, reason), "", "")
+			map[string]any{"reason": reason}, "", "")
 		if createErr := a.auditRepo.Create(ctx, auditLog); createErr != nil {
 			a.logger.Error("Failed to create refresh token failure audit log", "error", createErr)
 		}
 	} else {
 		// Success audit
-		auditLog := authDomain.NewAuditLog(nil, nil, "auth.refresh_token.success", "token", "", `{}`, "", "")
+		auditLog := authDomain.NewAuditLog(nil, nil, "auth.refresh_token.success", "token", "", nil, "", "")
 		if createErr := a.auditRepo.Create(ctx, auditLog); createErr != nil {
 			a.logger.Error("Failed to create refresh token success audit log", "error", createErr)
 		}
@@ -110,14 +109,14 @@ func (a *auditDecorator) Logout(ctx context.Context, jti string, userID uuid.UUI
 	// Audit based on result
 	if err != nil {
 		auditLog := authDomain.NewAuditLog(&userID, nil, "auth.logout.failed", "user", userID.String(),
-			fmt.Sprintf(`{"jti": "%s"}`, jti), "", "")
+			map[string]any{"jti": jti}, "", "")
 		if createErr := a.auditRepo.Create(ctx, auditLog); createErr != nil {
 			a.logger.Error("Failed to create logout failure audit log", "error", createErr)
 		}
 	} else {
 		// Success audit
 		auditLog := authDomain.NewAuditLog(&userID, nil, "auth.logout.success", "user", userID.String(),
-			fmt.Sprintf(`{"jti": "%s"}`, jti), "", "")
+			map[string]any{"jti": jti}, "", "")
 		if createErr := a.auditRepo.Create(ctx, auditLog); createErr != nil {
 			a.logger.Error("Failed to create logout success audit log", "error", createErr)
 		}

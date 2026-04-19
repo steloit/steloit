@@ -125,7 +125,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize migration manager: %v", err)
 	}
-	defer manager.Shutdown()
+	defer func() {
+		if err := manager.Shutdown(); err != nil {
+			fmt.Fprintf(os.Stderr, "migration manager shutdown: %v\n", err)
+		}
+	}()
 
 	ctx := context.Background()
 
@@ -583,7 +587,11 @@ func runSeeding(ctx context.Context, cfg *config.Config, reset, dryRun, verbose 
 	if err != nil {
 		return fmt.Errorf("failed to initialize seeder: %w", err)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "seeder close: %v\n", err)
+		}
+	}()
 
 	// Configure seeder options
 	options := &seeder.Options{
@@ -623,7 +631,11 @@ func runPricingSeeding(ctx context.Context, cfg *config.Config, reset, dryRun, v
 	if err != nil {
 		return fmt.Errorf("failed to initialize seeder: %w", err)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "seeder close: %v\n", err)
+		}
+	}()
 
 	// Configure seeder options
 	options := &seeder.Options{
@@ -650,7 +662,11 @@ func runRBACSeeding(ctx context.Context, cfg *config.Config, reset, dryRun, verb
 	if err != nil {
 		return fmt.Errorf("failed to initialize seeder: %w", err)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "seeder close: %v\n", err)
+		}
+	}()
 
 	// Configure seeder options
 	options := &seeder.Options{
@@ -677,7 +693,11 @@ func runTemplateSeeding(ctx context.Context, cfg *config.Config, reset, dryRun, 
 	if err != nil {
 		return fmt.Errorf("failed to initialize seeder: %w", err)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "seeder close: %v\n", err)
+		}
+	}()
 
 	// Configure seeder options
 	options := &seeder.Options{

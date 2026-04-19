@@ -13,7 +13,7 @@ CREATE TABLE volume_discount_tiers (
     tier_max BIGINT,  -- NULL = unlimited
 
     -- Pricing
-    price_per_unit DECIMAL(10, 4) NOT NULL,
+    price_per_unit NUMERIC(10, 4) NOT NULL,
     priority INTEGER NOT NULL DEFAULT 0,
 
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

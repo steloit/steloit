@@ -9,7 +9,7 @@ CREATE TABLE evaluation_rules (
     target_scope VARCHAR(20) NOT NULL DEFAULT 'span',
     filter JSONB NOT NULL DEFAULT '[]',
     span_names TEXT[] DEFAULT '{}',
-    sampling_rate DECIMAL(5,4) NOT NULL DEFAULT 1.0,
+    sampling_rate NUMERIC(5,4) NOT NULL DEFAULT 1.0,
     scorer_type VARCHAR(20) NOT NULL,
     scorer_config JSONB NOT NULL,
     variable_mapping JSONB NOT NULL DEFAULT '[]',

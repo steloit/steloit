@@ -5,6 +5,7 @@
 package auth
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -80,9 +81,9 @@ type Role struct {
 	CreatedAt       time.Time        `json:"created_at"`
 	UpdatedAt       time.Time        `json:"updated_at"`
 	ScopeID         *uuid.UUID       `json:"scope_id,omitempty"`
+	Description     *string          `json:"description,omitempty"`
 	Name            string           `json:"name"`
 	ScopeType       string           `json:"scope_type"`
-	Description     string           `json:"description"`
 	Permissions     []Permission     `json:"permissions,omitempty"`
 	RolePermissions []RolePermission `json:"role_permissions,omitempty"`
 	ID              uuid.UUID        `json:"id"`
@@ -203,12 +204,12 @@ const (
 // Permission represents a normalized permission using resource:action format
 type Permission struct {
 	CreatedAt   time.Time  `json:"created_at"`
+	Description *string    `json:"description,omitempty"`
+	Category    *string    `json:"category,omitempty"`
 	Name        string     `json:"name"`
 	Resource    string     `json:"resource"`
 	Action      string     `json:"action"`
-	Description string     `json:"description"`
 	ScopeLevel  ScopeLevel `json:"scope_level"`
-	Category    string     `json:"category"`
 	Roles       []Role     `json:"roles,omitempty"`
 	ID          uuid.UUID  `json:"id"`
 }
@@ -270,17 +271,21 @@ type RolePermission struct {
 }
 
 // AuditLog represents an audit log entry for compliance.
+//
+// Field types mirror the Postgres schema exactly so pgx can scan directly
+// into this struct via RowToAddrOfStructByName. Nullable columns are
+// pointers; Metadata is raw JSON preserved end-to-end without re-parsing.
 type AuditLog struct {
-	CreatedAt      time.Time  `json:"created_at"`
-	UserID         *uuid.UUID `json:"user_id,omitempty"`
-	OrganizationID *uuid.UUID `json:"organization_id,omitempty"`
-	Action         string     `json:"action"`
-	Resource       string     `json:"resource"`
-	ResourceID     string     `json:"resource_id"`
-	Metadata       string     `json:"metadata"`
-	IPAddress      string     `json:"ip_address"`
-	UserAgent      string     `json:"user_agent"`
-	ID             uuid.UUID  `json:"id"`
+	CreatedAt      time.Time       `json:"created_at" db:"created_at"`
+	UserID         *uuid.UUID      `json:"user_id,omitempty" db:"user_id"`
+	OrganizationID *uuid.UUID      `json:"organization_id,omitempty" db:"organization_id"`
+	ResourceID     *string         `json:"resource_id,omitempty" db:"resource_id"`
+	IPAddress      *string         `json:"ip_address,omitempty" db:"ip_address"`
+	UserAgent      *string         `json:"user_agent,omitempty" db:"user_agent"`
+	Action         string          `json:"action" db:"action"`
+	Resource       string          `json:"resource" db:"resource"`
+	Metadata       json.RawMessage `json:"metadata" db:"metadata" swaggertype:"object"`
+	ID             uuid.UUID       `json:"id" db:"id"`
 }
 
 // Request/Response DTOs
@@ -445,7 +450,7 @@ func NewRole(name, scopeType, description string) *Role {
 		Name:        name,
 		ScopeType:   scopeType,
 		ScopeID:     nil, // System/template role
-		Description: description,
+		Description: nilIfEmpty(description),
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
@@ -458,10 +463,20 @@ func NewCustomRole(name, scopeType, description string, scopeID uuid.UUID) *Role
 		Name:        name,
 		ScopeType:   scopeType,
 		ScopeID:     &scopeID,
-		Description: description,
+		Description: nilIfEmpty(description),
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
+}
+
+// nilIfEmpty returns nil if s is empty, otherwise a pointer to s. Used at
+// ingress boundaries where callers pass "" to mean "not provided" and the
+// domain/schema model "not provided" as NULL.
+func nilIfEmpty(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }
 
 func NewOrganizationMember(userID, organizationID, roleID uuid.UUID, invitedBy *uuid.UUID) *OrganizationMember {
@@ -493,9 +508,9 @@ func NewPermission(resource, action, description string) *Permission {
 		Name:        name,
 		Resource:    resource,
 		Action:      action,
-		Description: description,
+		Description: nilIfEmpty(description),
 		ScopeLevel:  ScopeLevelOrganization, // Default to organization level
-		Category:    resource,               // Default category to resource name
+		Category:    nilIfEmpty(resource),   // Default category to resource name
 		CreatedAt:   time.Now(),
 	}
 }
@@ -509,9 +524,9 @@ func NewPermissionWithScope(resource, action, description string, scopeLevel Sco
 		Name:        name,
 		Resource:    resource,
 		Action:      action,
-		Description: description,
+		Description: nilIfEmpty(description),
 		ScopeLevel:  scopeLevel,
-		Category:    category,
+		Category:    nilIfEmpty(category),
 		CreatedAt:   time.Now(),
 	}
 }
@@ -527,19 +542,34 @@ type PasswordResetToken struct {
 	UserID    uuid.UUID  `json:"user_id"`
 }
 
-func NewAuditLog(userID, orgID *uuid.UUID, action, resource, resourceID, metadata, ipAddress, userAgent string) *AuditLog {
-	return &AuditLog{
+// NewAuditLog constructs an audit log entry. Optional fields (resource_id,
+// ip_address, user_agent) are zero-value strings that the repository maps to
+// SQL NULL; metadata is marshalled from a typed map so callers never hand-craft
+// JSON strings with fmt.Sprintf.
+func NewAuditLog(userID, orgID *uuid.UUID, action, resource, resourceID string, metadata map[string]any, ipAddress, userAgent string) *AuditLog {
+	log := &AuditLog{
 		ID:             uid.New(),
 		UserID:         userID,
 		OrganizationID: orgID,
 		Action:         action,
 		Resource:       resource,
-		ResourceID:     resourceID,
-		Metadata:       metadata,
-		IPAddress:      ipAddress,
-		UserAgent:      userAgent,
 		CreatedAt:      time.Now(),
 	}
+	if resourceID != "" {
+		log.ResourceID = &resourceID
+	}
+	if ipAddress != "" {
+		log.IPAddress = &ipAddress
+	}
+	if userAgent != "" {
+		log.UserAgent = &userAgent
+	}
+	if len(metadata) > 0 {
+		if raw, err := json.Marshal(metadata); err == nil {
+			log.Metadata = raw
+		}
+	}
+	return log
 }
 
 func NewPasswordResetToken(userID uuid.UUID, token string, expiresAt time.Time) *PasswordResetToken {

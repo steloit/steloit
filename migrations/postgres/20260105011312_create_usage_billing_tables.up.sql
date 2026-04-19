@@ -10,15 +10,15 @@ CREATE TABLE pricing_configs (
 
     -- Span pricing (per 100K)
     free_spans BIGINT NOT NULL DEFAULT 0,
-    price_per_100k_spans DECIMAL(10, 4),
+    price_per_100k_spans NUMERIC(10, 4),
 
     -- Data volume pricing (per GB)
-    free_gb DECIMAL(10, 4) NOT NULL DEFAULT 0,
-    price_per_gb DECIMAL(10, 4),
+    free_gb NUMERIC(10, 4) NOT NULL DEFAULT 0,
+    price_per_gb NUMERIC(10, 4),
 
     -- Score pricing (per 1K)
     free_scores BIGINT NOT NULL DEFAULT 0,
-    price_per_1k_scores DECIMAL(10, 4),
+    price_per_1k_scores NUMERIC(10, 4),
 
     is_active BOOLEAN DEFAULT true,
     is_default BOOLEAN DEFAULT false,
@@ -42,7 +42,7 @@ CREATE TABLE organization_billings (
     current_period_scores BIGINT NOT NULL DEFAULT 0,
 
     -- Calculated cost this period
-    current_period_cost DECIMAL(18, 6) DEFAULT 0,
+    current_period_cost NUMERIC(18, 6) DEFAULT 0,
 
     -- Free tier remaining (three dimensions)
     free_spans_remaining BIGINT DEFAULT 1000000,
@@ -70,13 +70,13 @@ CREATE TABLE usage_budgets (
     span_limit BIGINT,
     bytes_limit BIGINT,
     score_limit BIGINT,
-    cost_limit DECIMAL(18, 6),
+    cost_limit NUMERIC(18, 6),
 
     -- Current usage
     current_spans BIGINT NOT NULL DEFAULT 0,
     current_bytes BIGINT NOT NULL DEFAULT 0,
     current_scores BIGINT NOT NULL DEFAULT 0,
-    current_cost DECIMAL(18, 6) NOT NULL DEFAULT 0,
+    current_cost NUMERIC(18, 6) NOT NULL DEFAULT 0,
 
     -- Alert thresholds (flexible array of percentages, e.g., {50, 80, 100})
     alert_thresholds INTEGER[] NOT NULL DEFAULT '{50,80,100}',
@@ -102,7 +102,7 @@ CREATE TABLE usage_alerts (
     severity VARCHAR(20) NOT NULL CHECK (severity IN ('info', 'warning', 'critical')),
     threshold_value BIGINT NOT NULL,
     actual_value BIGINT NOT NULL,
-    percent_used DECIMAL(5, 2) NOT NULL,
+    percent_used NUMERIC(5, 2) NOT NULL,
     status VARCHAR(20) DEFAULT 'triggered' CHECK (status IN ('triggered', 'acknowledged', 'resolved')),
     triggered_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     acknowledged_at TIMESTAMP WITH TIME ZONE,

@@ -73,7 +73,7 @@ func (s *roleService) UpdateRole(ctx context.Context, roleID uuid.UUID, req *aut
 
 	// Update fields
 	if req.Description != nil {
-		role.Description = *req.Description
+		role.Description = req.Description
 	}
 
 	// Save changes
@@ -209,7 +209,7 @@ func (s *roleService) UpdateCustomRole(ctx context.Context, roleID uuid.UUID, re
 
 	// Update fields
 	if req.Description != nil {
-		role.Description = *req.Description
+		role.Description = req.Description
 	}
 
 	// Save changes

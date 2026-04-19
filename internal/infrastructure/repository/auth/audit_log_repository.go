@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -17,6 +16,10 @@ import (
 // authDomain.AuditLogRepository. Dynamic-filter reads live in
 // audit_log_filter.go (squirrel); aggregate stats live in
 // audit_log_stats.go.
+//
+// The domain AuditLog mirrors the Postgres schema exactly (nullable columns
+// are pointers, metadata is raw JSON), so pgx/sqlc scans directly into the
+// struct with no adapter helpers.
 type auditLogRepository struct {
 	tm *db.TxManager
 }
@@ -27,20 +30,16 @@ func NewAuditLogRepository(tm *db.TxManager) authDomain.AuditLogRepository {
 }
 
 func (r *auditLogRepository) Create(ctx context.Context, log *authDomain.AuditLog) error {
-	meta := json.RawMessage(log.Metadata)
-	if len(meta) == 0 {
-		meta = nil
-	}
 	if err := r.tm.Queries(ctx).CreateAuditLog(ctx, gen.CreateAuditLogParams{
 		ID:             log.ID,
 		UserID:         log.UserID,
 		OrganizationID: log.OrganizationID,
 		Action:         log.Action,
 		Resource:       log.Resource,
-		ResourceID:     emptyToNilString(log.ResourceID),
-		Metadata:       meta,
-		IpAddress:      emptyToNilString(log.IPAddress),
-		UserAgent:      emptyToNilString(log.UserAgent),
+		ResourceID:     log.ResourceID,
+		Metadata:       log.Metadata,
+		IpAddress:      log.IPAddress,
+		UserAgent:      log.UserAgent,
 		CreatedAt:      log.CreatedAt,
 	}); err != nil {
 		return fmt.Errorf("create audit_log: %w", err)
@@ -84,9 +83,13 @@ func (r *auditLogRepository) GetByOrganizationID(ctx context.Context, orgID uuid
 }
 
 func (r *auditLogRepository) GetByResource(ctx context.Context, resource, resourceID string, limit, offset int) ([]*authDomain.AuditLog, error) {
+	var rid *string
+	if resourceID != "" {
+		rid = &resourceID
+	}
 	rows, err := r.tm.Queries(ctx).ListAuditLogsByResource(ctx, gen.ListAuditLogsByResourceParams{
 		Resource:   resource,
-		ResourceID: emptyToNilString(resourceID),
+		ResourceID: rid,
 		Limit:      int32(limit),
 		Offset:     int32(offset),
 	})
@@ -122,7 +125,7 @@ func (r *auditLogRepository) GetByDateRange(ctx context.Context, startDate, endD
 }
 
 // Search is a domain alias that delegates to GetByFilters.
-func (r *auditLogRepository) Search(ctx context.Context, filters *authDomain.AuditLogFilters) ([]*authDomain.AuditLog, int, error) {
+func (r *auditLogRepository) Search(ctx context.Context, filters *authDomain.AuditLogFilters) ([]*authDomain.AuditLog, int64, error) {
 	return r.GetByFilters(ctx, filters)
 }
 
@@ -135,9 +138,8 @@ func (r *auditLogRepository) CleanupOldLogs(ctx context.Context, olderThan time.
 
 // ----- gen ↔ domain boundary -----------------------------------------
 
-// auditLogFromRow adapts a sqlc-generated row to the domain type. The
-// domain surface has always used `string` for nullable text columns, so
-// NULLs are surfaced as "".
+// auditLogFromRow adapts a sqlc-generated row to the domain type. Field
+// types are aligned so this is a direct copy, no nil-coalescing.
 func auditLogFromRow(row *gen.AuditLog) *authDomain.AuditLog {
 	return &authDomain.AuditLog{
 		ID:             row.ID,
@@ -145,10 +147,10 @@ func auditLogFromRow(row *gen.AuditLog) *authDomain.AuditLog {
 		OrganizationID: row.OrganizationID,
 		Action:         row.Action,
 		Resource:       row.Resource,
-		ResourceID:     derefString(row.ResourceID),
-		Metadata:       string(row.Metadata),
-		IPAddress:      derefString(row.IpAddress),
-		UserAgent:      derefString(row.UserAgent),
+		ResourceID:     row.ResourceID,
+		Metadata:       row.Metadata,
+		IPAddress:      row.IpAddress,
+		UserAgent:      row.UserAgent,
 		CreatedAt:      row.CreatedAt,
 	}
 }
@@ -159,18 +161,4 @@ func auditLogsFromRows(rows []gen.AuditLog) []*authDomain.AuditLog {
 		out = append(out, auditLogFromRow(&rows[i]))
 	}
 	return out
-}
-
-func emptyToNilString(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
-}
-
-func derefString(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
 }

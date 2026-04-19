@@ -258,7 +258,7 @@ type AuditLogRepository interface {
 	GetByDateRange(ctx context.Context, startDate, endDate time.Time, limit, offset int) ([]*AuditLog, error)
 
 	// Advanced queries
-	Search(ctx context.Context, filters *AuditLogFilters) ([]*AuditLog, int, error)
+	Search(ctx context.Context, filters *AuditLogFilters) ([]*AuditLog, int64, error)
 
 	// Statistics
 	GetAuditLogStats(ctx context.Context) (*AuditLogStats, error)

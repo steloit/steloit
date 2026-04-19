@@ -15,8 +15,8 @@
 CREATE TABLE IF NOT EXISTS dataset_versions (
     id UUID PRIMARY KEY,
     dataset_id UUID NOT NULL REFERENCES datasets(id) ON DELETE CASCADE,
-    version INT NOT NULL,
-    item_count INT NOT NULL DEFAULT 0,
+    version INTEGER NOT NULL,
+    item_count INTEGER NOT NULL DEFAULT 0,
     description TEXT,
     metadata JSONB DEFAULT '{}',
     created_by UUID,  -- User who created this version (nullable for auto-created)

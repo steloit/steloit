@@ -71,7 +71,7 @@ func (s *permissionService) UpdatePermission(ctx context.Context, permissionID u
 
 	// Update fields
 	if req.Description != nil {
-		permission.Description = *req.Description
+		permission.Description = req.Description
 	}
 
 	return s.permissionRepo.Update(ctx, permission)
@@ -164,8 +164,12 @@ func (s *permissionService) SearchPermissions(ctx context.Context, query string,
 	// Filter permissions by query
 	filteredPermissions := make([]*authDomain.Permission, 0)
 	for _, perm := range allPermissions {
+		desc := ""
+		if perm.Description != nil {
+			desc = *perm.Description
+		}
 		if strings.Contains(strings.ToLower(perm.Name), strings.ToLower(query)) ||
-			strings.Contains(strings.ToLower(perm.Description), strings.ToLower(query)) ||
+			strings.Contains(strings.ToLower(desc), strings.ToLower(query)) ||
 			strings.Contains(strings.ToLower(perm.Resource), strings.ToLower(query)) ||
 			strings.Contains(strings.ToLower(perm.Action), strings.ToLower(query)) {
 			filteredPermissions = append(filteredPermissions, perm)

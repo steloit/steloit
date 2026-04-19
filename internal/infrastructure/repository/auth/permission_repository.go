@@ -31,9 +31,9 @@ func (r *permissionRepository) Create(ctx context.Context, p *authDomain.Permiss
 		Name:        p.Name,
 		Resource:    p.Resource,
 		Action:      p.Action,
-		Description: emptyToNilString(p.Description),
+		Description: p.Description,
 		ScopeLevel:  string(p.ScopeLevel),
-		Category:    emptyToNilString(p.Category),
+		Category:    p.Category,
 		CreatedAt:   p.CreatedAt,
 	}); err != nil {
 		return fmt.Errorf("create permission %s: %w", p.Name, err)
@@ -83,9 +83,9 @@ func (r *permissionRepository) Update(ctx context.Context, p *authDomain.Permiss
 		Name:        p.Name,
 		Resource:    p.Resource,
 		Action:      p.Action,
-		Description: emptyToNilString(p.Description),
+		Description: p.Description,
 		ScopeLevel:  string(p.ScopeLevel),
-		Category:    emptyToNilString(p.Category),
+		Category:    p.Category,
 	}); err != nil {
 		return fmt.Errorf("update permission %s: %w", p.ID, err)
 	}
@@ -320,9 +320,9 @@ func (r *permissionRepository) BulkCreate(ctx context.Context, permissions []*au
 				Name:        p.Name,
 				Resource:    p.Resource,
 				Action:      p.Action,
-				Description: emptyToNilString(p.Description),
+				Description: p.Description,
 				ScopeLevel:  string(p.ScopeLevel),
-				Category:    emptyToNilString(p.Category),
+				Category:    p.Category,
 				CreatedAt:   p.CreatedAt,
 			}); err != nil {
 				return fmt.Errorf("bulk-create permission %s: %w", p.Name, err)
@@ -344,9 +344,9 @@ func (r *permissionRepository) BulkUpdate(ctx context.Context, permissions []*au
 				Name:        p.Name,
 				Resource:    p.Resource,
 				Action:      p.Action,
-				Description: emptyToNilString(p.Description),
+				Description: p.Description,
 				ScopeLevel:  string(p.ScopeLevel),
-				Category:    emptyToNilString(p.Category),
+				Category:    p.Category,
 			}); err != nil {
 				return fmt.Errorf("bulk-update permission %s: %w", p.ID, err)
 			}
@@ -373,9 +373,9 @@ func permissionFromRow(row *gen.Permission) *authDomain.Permission {
 		Name:        row.Name,
 		Resource:    row.Resource,
 		Action:      row.Action,
-		Description: derefString(row.Description),
+		Description: row.Description,
 		ScopeLevel:  authDomain.ScopeLevel(row.ScopeLevel),
-		Category:    derefString(row.Category),
+		Category:    row.Category,
 		CreatedAt:   row.CreatedAt,
 	}
 }

@@ -235,7 +235,7 @@ type AuditLogService interface {
 	GetUserAuditLogs(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*AuditLog, error)
 	GetOrganizationAuditLogs(ctx context.Context, orgID uuid.UUID, limit, offset int) ([]*AuditLog, error)
 	GetResourceAuditLogs(ctx context.Context, resource, resourceID string, limit, offset int) ([]*AuditLog, error)
-	SearchAuditLogs(ctx context.Context, filters *AuditLogFilters) ([]*AuditLog, int, error)
+	SearchAuditLogs(ctx context.Context, filters *AuditLogFilters) ([]*AuditLog, int64, error)
 
 	// Audit log maintenance
 	CleanupOldAuditLogs(ctx context.Context, olderThan time.Time) error

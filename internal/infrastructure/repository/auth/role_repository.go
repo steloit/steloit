@@ -32,7 +32,7 @@ func (r *roleRepository) Create(ctx context.Context, role *authDomain.Role) erro
 		Name:        role.Name,
 		ScopeType:   role.ScopeType,
 		ScopeID:     role.ScopeID,
-		Description: emptyToNilStringAuth(role.Description),
+		Description: role.Description,
 		CreatedAt:   role.CreatedAt,
 		UpdatedAt:   role.UpdatedAt,
 	}); err != nil {
@@ -90,7 +90,7 @@ func (r *roleRepository) Update(ctx context.Context, role *authDomain.Role) erro
 		Name:        role.Name,
 		ScopeType:   role.ScopeType,
 		ScopeID:     role.ScopeID,
-		Description: emptyToNilStringAuth(role.Description),
+		Description: role.Description,
 	}); err != nil {
 		return fmt.Errorf("update role %s: %w", role.ID, err)
 	}
@@ -273,7 +273,7 @@ func (r *roleRepository) BulkCreate(ctx context.Context, roles []*authDomain.Rol
 				Name:        role.Name,
 				ScopeType:   role.ScopeType,
 				ScopeID:     role.ScopeID,
-				Description: emptyToNilStringAuth(role.Description),
+				Description: role.Description,
 				CreatedAt:   role.CreatedAt,
 				UpdatedAt:   role.UpdatedAt,
 			}); err != nil {
@@ -292,7 +292,7 @@ func roleFromRow(row *gen.Role) *authDomain.Role {
 		Name:        row.Name,
 		ScopeType:   row.ScopeType,
 		ScopeID:     row.ScopeID,
-		Description: derefString(row.Description),
+		Description: row.Description,
 		CreatedAt:   row.CreatedAt,
 		UpdatedAt:   row.UpdatedAt,
 	}
@@ -306,12 +306,3 @@ func rolesFromRows(rows []gen.Role) []*authDomain.Role {
 	return out
 }
 
-// emptyToNilStringAuth mirrors organization/helpers.go's emptyToNilString
-// but lives in this package because we still have GORM-era repos in
-// repository/auth/ and they don't share a helpers file yet.
-func emptyToNilStringAuth(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
-}

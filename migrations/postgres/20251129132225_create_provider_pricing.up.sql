@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS provider_prices (
     usage_type VARCHAR(100) NOT NULL,
 
     -- Price per 1 million units (what providers charge)
-    price DECIMAL(20,12) NOT NULL,
+    price NUMERIC(20,12) NOT NULL,
 
     -- Constraints
     CONSTRAINT provider_prices_unique_usage UNIQUE(provider_model_id, usage_type),

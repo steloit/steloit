@@ -1,5 +1,14 @@
-# golangci-lint configuration for Brokle
-# Enhanced for Go 1.25 migration - focus on nil pointer dereference detection
+# golangci-lint v2 configuration for Brokle.
+#
+# Policy notes:
+# - fieldalignment disabled: reordering for a few bytes of struct padding
+#   ruins logical grouping in domain types. Enable per-file with
+#   //lint:file-ignore on measured hot paths if ever needed.
+# - shadow disabled: false positives on idiomatic `err := ...; err := ...`.
+# - perfsprint disabled: the `fmt.Sprintf` → `strconv` suggestions are
+#   noise in services where the bottleneck is I/O.
+# - forbidigo enabled: encodes house rules that golangci-lint doesn't
+#   express natively (see linters.settings.forbidigo below).
 
 version: "2"
 
@@ -11,223 +20,224 @@ run:
     - enterprise
   modules-download-mode: readonly
 
-output:
-  formats:
-    colored-line-number:
-      path: stdout
-  print-issued-lines: true
-  print-linter-name: true
-  sort-results: true
+linters:
+  enable:
+    # Error handling
+    - errcheck
+    - errorlint
+    - nilerr
+
+    # Nil pointer detection
+    - nilnil
+    - staticcheck
+
+    # Code quality
+    - revive
+    - govet
+    - ineffassign
+    - unconvert
+    - unparam
+    - unused
+
+    # Convention enforcement (our house rules; see settings.forbidigo)
+    - forbidigo
+
+    # Performance
+    - prealloc
+
+    # Modern Go (1.22+)
+    - copyloopvar
+    - intrange
+
+    # Style
+    - misspell
+
+    # Security
+    - gosec
+
+    # Bugs
+    - bodyclose
+    - contextcheck
+    - noctx
+    - rowserrcheck
+    - sqlclosecheck
+
+    # Complexity
+    - gocyclo
+    - nestif
+
+    # Testing
+    - testifylint
+
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+      exclude-functions:
+        - (*database/sql.Rows).Close
+        - (io.Closer).Close
+        - (*os.File).Close
+
+    revive:
+      rules:
+        - name: error-return
+          severity: error
+        - name: error-naming
+          severity: warning
+        - name: error-strings
+          severity: warning
+        - name: errorf
+          severity: warning
+        - name: if-return
+          severity: warning
+        - name: increment-decrement
+          severity: warning
+        - name: var-naming
+          severity: warning
+        - name: var-declaration
+          severity: warning
+        - name: package-comments
+          severity: warning
+        - name: dot-imports
+          severity: error
+        - name: blank-imports
+          severity: warning
+        - name: exported
+          severity: warning
+          arguments:
+            - "checkPrivateReceivers"
+            - "disableStutteringCheck"
+        - name: indent-error-flow
+          severity: error
+        - name: unexported-return
+          severity: warning
+        - name: time-naming
+          severity: warning
+        - name: context-as-argument
+          severity: warning
+        - name: context-keys-type
+          severity: warning
+
+    staticcheck:
+      checks:
+        - all
+        - "-SA1019"
+
+    gosec:
+      severity: medium
+      confidence: medium
+      excludes:
+        - G104
+        - G401
+
+    # Bumped from 15 → 20: switch-heavy dispatchers and HTTP routers
+    # trivially exceed 15 without being genuinely complex.
+    gocyclo:
+      min-complexity: 20
+
+    govet:
+      enable:
+        - nilness
+        - unusedwrite
+      disable:
+        - printf
+        # fieldalignment: disabled globally — see header comment.
+        # shadow: disabled globally — false positives on err patterns.
+
+    nestif:
+      min-complexity: 4
+
+    prealloc:
+      simple: true
+      range-loops: true
+      for-loops: true
+
+    copyloopvar:
+      check-alias: true
+
+    # House rules that only golangci-lint can reject at author time.
+    # When a new convention earns enforcement, add it here — not to a
+    # tribal-knowledge doc.
+    forbidigo:
+      analyze-types: true
+      forbid:
+        # Prefer Go 1.18+ `any` alias.
+        - pattern: '^interface\{\}$'
+          msg: "use 'any' instead of 'interface{}' (Go 1.18+)"
+
+        # `deref*` helpers signal a domain↔schema type mismatch. Align
+        # the domain type with the schema instead (pointer for nullable,
+        # value for NOT NULL) so pgx/sqlc can scan directly.
+        - pattern: '^deref[A-Z]\w*$'
+          msg: "deref* helpers indicate a domain↔schema type mismatch — align the domain type"
+
+        # context.TODO is a placeholder — surface it instead of shipping
+        # it. Anchored form + analyze-types matches the qualified
+        # identifier regardless of import alias.
+        - pattern: '^context\.TODO$'
+          msg: "context.TODO() is not allowed — pass the request context or context.Background() with a deadline"
+
+        # pgtype.Numeric leaking into domain code means the sqlc override
+        # missed a NUMERIC column (canonical override key is
+        # pg_catalog.numeric — see CLAUDE.md Mandatory Rules).
+        - pattern: '^pgtype\.Numeric$'
+          msg: "pgtype.Numeric in domain code → sqlc override missed a column; use shopspring.Decimal and add pg_catalog.numeric mapping in sqlc.yaml"
+
+        # pgtype.Timestamptz leaking in means DDL used TIMESTAMPTZ
+        # shorthand; sqlc canonicalises before matching overrides.
+        - pattern: '^pgtype\.Timestamptz$'
+          msg: "pgtype.Timestamptz in domain code → DDL used TIMESTAMPTZ shorthand; canonicalise to TIMESTAMP WITH TIME ZONE"
+
+        # emptyToNil* is the write-path sibling of deref* — same
+        # schema-lie signal. Prefer aligning the domain field with the
+        # schema (pointer for nullable, value + NOT NULL DEFAULT for
+        # non-null) so no helper is needed.
+        - pattern: '^emptyToNil[A-Z]\w*$'
+          msg: "emptyToNil* helpers indicate domain↔schema mismatch — align field (pointer for nullable, value + NOT NULL DEFAULT for non-null)"
+
+        # ulid package was removed in the UUIDv7 migration.
+        - pkg: '^github\.com/oklog/ulid'
+          msg: "ulid is banned — use pkg/uid (UUIDv7) for new IDs"
+
+        # lib/pq is banned; pgx v5 is the sole Postgres driver.
+        - pkg: '^github\.com/lib/pq'
+          msg: "lib/pq is banned — use pgx v5 (internal/infrastructure/db)"
+
+  exclusions:
+    # Paths excluded from all linting.
+    paths:
+      - vendor
+      - web
+      - sdk
+      - docs
+      - scripts
+      - deployments
+      - tests/load
+      - bin
+      - migrations
+      - seeds
+      - ".*\\.pb\\.go$"
+      - ".*\\.gen\\.go$"
+    rules:
+      # Tests get most linters; gocyclo/gosec/funlen/dupl relaxed because
+      # table-driven tests and fixtures balloon those naturally. errcheck
+      # stays on — tests that silently drop errors silently pass.
+      - path: _test\.go
+        linters:
+          - gocyclo
+          - dupl
+          - gosec
+          - funlen
+      - path: _test\.go
+        text: "dot imports"
+
 
 formatters:
   enable:
-    - gofmt              # Check whether code was gofmt-ed
-    - goimports          # Check import statements are formatted according to goimport
-
-linters:
-  enable:
-    # Error handling (CRITICAL for Go 1.25 nil pointer fix)
-    - errcheck           # Check for unchecked errors
-    - errorlint          # Find code that will cause problems with Go 1.13+ error wrapping
-    - nilerr             # Find code that returns nil even if it checks that the error is not nil
-
-    # Nil pointer detection
-    - nilnil             # Check there is no simultaneous return of nil error and an invalid value
-    - staticcheck        # Go vet on steroids (includes nil pointer checks)
-
-    # Code quality
-    - revive             # Fast, configurable linter (replaces golint)
-    - govet              # Official Go tool that examines Go source code
-    - ineffassign        # Detect ineffectual assignments
-    - unconvert          # Remove unnecessary type conversions
-    - unparam            # Report unused function parameters
-    - unused             # Check for unused constants, variables, functions and types (replaces deadcode/varcheck/structcheck)
-
-    # Performance
-    - prealloc           # Find slice declarations that could potentially be preallocated
-    - perfsprint         # Performance optimizations for string formatting
-
-    # Modern Go features (Go 1.22+)
-    - copyloopvar        # Detects loop variable copying issues
-    - intrange           # Suggests integer range loops
-
-    # Style
-    - misspell           # Find commonly misspelled English words
-
-    # Security
-    - gosec              # Inspect source code for security problems
-
-    # Bugs
-    - bodyclose          # Check whether HTTP response body is closed successfully
-    - contextcheck       # Check whether the function uses a non-inherited context
-    - noctx              # Find sending HTTP request without context.Context
-    - rowserrcheck       # Check whether Err of rows is checked successfully
-    - sqlclosecheck      # Check that sql.Rows and sql.Stmt are closed
-
-    # Complexity
-    - gocyclo            # Compute and check the cyclomatic complexity of functions
-    - nestif             # Report deeply nested if statements
-
-    # Testing (since codebase uses testify)
-    - testifylint        # Checks usage of github.com/stretchr/testify
-
-linters-settings:
-  # errcheck - CRITICAL for Go 1.25 migration
-  errcheck:
-    check-type-assertions: true
-    check-blank: true
-    exclude-functions:
-      # Allowed functions where ignoring errors is acceptable
-      - (*database/sql.Rows).Close
-      - (io.Closer).Close
-      - (*os.File).Close
-
-  # revive - Focus on error handling patterns
-  revive:
-    rules:
-      # Detect potential nil pointer dereferences
-      - name: error-return
-        severity: error
-      - name: error-naming
-        severity: warning
-      - name: error-strings
-        severity: warning
-      - name: errorf
-        severity: warning
-      - name: if-return
-        severity: warning
-      - name: increment-decrement
-        severity: warning
-      - name: var-naming
-        severity: warning
-      - name: var-declaration
-        severity: warning
-      - name: package-comments
-        severity: warning
-      - name: dot-imports
-        severity: error
-      - name: blank-imports
-        severity: warning
-      - name: exported
-        severity: warning
-        arguments:
-          - "checkPrivateReceivers"
-          - "disableStutteringCheck"
-      - name: indent-error-flow
-        severity: error  # CRITICAL: Forces early returns, prevents nil access
-      - name: unexported-return
-        severity: warning
-      - name: time-naming
-        severity: warning
-      - name: context-as-argument
-        severity: warning
-      - name: context-keys-type
-        severity: warning
-
-  # staticcheck - Comprehensive static analysis
-  staticcheck:
-    checks:
-      - all
-      - "-SA1019"  # Don't warn about deprecated packages we still need
-
-  # gosec - Security scanning
-  gosec:
-    severity: medium
-    confidence: medium
-    excludes:
-      - G104  # Unhandled errors (covered by errcheck)
-      - G401  # SHA-1 usage (we use SHA-256 for API keys, SHA-1 only for git)
-
-  # gocyclo - Cyclomatic complexity
-  gocyclo:
-    min-complexity: 15  # Functions with complexity > 15 should be refactored
-
-  # govet settings
-  govet:
-    enable:
-      - nilness       # CRITICAL: Detects nil pointer dereferences
-      - shadow        # Report when a variable shadows another
-      - unusedwrite   # Checks for unused writes
-      - fieldalignment # Detects structs that can be rearranged to use less memory
-    disable:
-      - printf        # Already covered by other linters
-
-  # nestif - Detect deeply nested if statements
-  nestif:
-    min-complexity: 4
-
-  # prealloc - Slice preallocation
-  prealloc:
-    simple: true
-    range-loops: true
-    for-loops: true
-
-  # perfsprint - Performance optimizations for string formatting
-  perfsprint:
-    int-conversion: true
-    err-error: true
-    errorf: true
-    sprintf1: true
-
-  # copyloopvar - Loop variable issues
-  copyloopvar:
-    check-alias: true
+    - gofmt
+    - goimports
 
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
-  uniq-by-line: true  # Deduplicate issues by line (moved from output section)
-
-  exclude-rules:
-    # Exclude some linters from running on tests files
-    - path: _test\.go
-      linters:
-        - gocyclo
-        - errcheck
-        - dupl
-        - gosec
-        - funlen
-
-    # Exclude specific linters for migration files
-    - path: cmd/migrate/
-      linters:
-        - errcheck
-        - gosec
-
-    # Exclude specific linters for generated code
-    - path: docs/
-      linters:
-        - all
-
-    # Allow dot imports in tests
-    - path: _test\.go
-      text: "dot imports"
-
-  # Show all issues from a linter
-  exclude-use-default: false
-
-  # Independently from option `exclude` we use default exclude patterns,
-  # it can be disabled by this option. To list all excluded by default
-  # patterns execute `golangci-lint run --help`.
-  # Default: true
-  exclude-case-sensitive: false
-
-  # Which dirs to exclude: issues from them won't be reported
-  exclude-dirs:
-    - vendor
-    - web/node_modules
-    - web/.next
-    - web
-    - sdk
-    - docs
-    - scripts
-    - deployments
-    - tests/load
-    - bin
-    - migrations
-    - seeds
-
-  # Which files to exclude: issues from them won't be reported
-  exclude-files:
-    - ".*\\.pb\\.go$"
-    - ".*\\.gen\\.go$"
+  uniq-by-line: true

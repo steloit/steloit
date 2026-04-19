@@ -8,15 +8,15 @@ INSERT INTO provider_models (
     start_date, unit, tokenizer_id, tokenizer_config,
     created_at, updated_at
 ) VALUES (
-    $1, $2, $3, $4,
-    $5, $6,
-    $7, $8, $9, $10,
+    @id, @project_id, @model_name, @match_pattern,
+    @provider, @display_name,
+    @start_date, @unit, @tokenizer_id, @tokenizer_config,
     NOW(), NOW()
 );
 
 -- name: GetProviderModelByID :one
 SELECT * FROM provider_models
-WHERE id = $1
+WHERE id = @id
 LIMIT 1;
 
 -- name: ListProviderModelsGlobal :many
@@ -26,34 +26,34 @@ ORDER BY model_name ASC, start_date DESC;
 
 -- name: ListProviderModelsByProject :many
 SELECT * FROM provider_models
-WHERE project_id = $1
+WHERE project_id = @project_id
 ORDER BY model_name ASC, start_date DESC;
 
 -- name: ListProviderModelsByProviders :many
 -- Global (project_id IS NULL) models only, filtered to the requested
 -- providers — used to populate the model catalog in the UI.
 SELECT * FROM provider_models
-WHERE provider = ANY($1::text[])
+WHERE provider = ANY(@providers::text[])
   AND project_id IS NULL
 ORDER BY provider ASC, model_name ASC;
 
 -- name: UpdateProviderModel :exec
 UPDATE provider_models
-SET project_id       = $2,
-    model_name       = $3,
-    match_pattern    = $4,
-    provider         = $5,
-    display_name     = $6,
-    start_date       = $7,
-    unit             = $8,
-    tokenizer_id     = $9,
-    tokenizer_config = $10,
+SET project_id       = @project_id,
+    model_name       = @model_name,
+    match_pattern    = @match_pattern,
+    provider         = @provider,
+    display_name     = @display_name,
+    start_date       = @start_date,
+    unit             = @unit,
+    tokenizer_id     = @tokenizer_id,
+    tokenizer_config = @tokenizer_config,
     updated_at       = NOW()
-WHERE id = $1;
+WHERE id = @id;
 
 -- name: DeleteProviderModel :exec
 DELETE FROM provider_models
-WHERE id = $1;
+WHERE id = @id;
 
 -- name: CreateProviderPrice :exec
 INSERT INTO provider_prices (
@@ -61,14 +61,14 @@ INSERT INTO provider_prices (
     usage_type, price,
     created_at, updated_at
 ) VALUES (
-    $1, $2, $3,
-    $4, $5,
+    @id, @provider_model_id, @project_id,
+    @usage_type, @price,
     NOW(), NOW()
 );
 
 -- name: ListProviderPricesByModelGlobal :many
 SELECT * FROM provider_prices
-WHERE provider_model_id = $1
+WHERE provider_model_id = @provider_model_id
   AND project_id IS NULL;
 
 -- name: ListProviderPricesByModelAndProject :many
@@ -76,18 +76,18 @@ WHERE provider_model_id = $1
 -- repo layer deduplicates so project-specific overrides global per
 -- usage_type.
 SELECT * FROM provider_prices
-WHERE provider_model_id = $1
-  AND (project_id = $2 OR project_id IS NULL);
+WHERE provider_model_id = @provider_model_id
+  AND (project_id = @project_id OR project_id IS NULL);
 
 -- name: UpdateProviderPrice :exec
 UPDATE provider_prices
-SET provider_model_id = $2,
-    project_id        = $3,
-    usage_type        = $4,
-    price             = $5,
+SET provider_model_id = @provider_model_id,
+    project_id        = @project_id,
+    usage_type        = @usage_type,
+    price             = @price,
     updated_at        = NOW()
-WHERE id = $1;
+WHERE id = @id;
 
 -- name: DeleteProviderPrice :exec
 DELETE FROM provider_prices
-WHERE id = $1;
+WHERE id = @id;

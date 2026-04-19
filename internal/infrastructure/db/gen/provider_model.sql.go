@@ -185,8 +185,8 @@ ORDER BY provider ASC, model_name ASC
 
 // Global (project_id IS NULL) models only, filtered to the requested
 // providers — used to populate the model catalog in the UI.
-func (q *Queries) ListProviderModelsByProviders(ctx context.Context, dollar_1 []string) ([]ProviderModel, error) {
-	rows, err := q.db.Query(ctx, listProviderModelsByProviders, dollar_1)
+func (q *Queries) ListProviderModelsByProviders(ctx context.Context, providers []string) ([]ProviderModel, error) {
+	rows, err := q.db.Query(ctx, listProviderModelsByProviders, providers)
 	if err != nil {
 		return nil, err
 	}
@@ -335,21 +335,20 @@ func (q *Queries) ListProviderPricesByModelGlobal(ctx context.Context, providerM
 
 const updateProviderModel = `-- name: UpdateProviderModel :exec
 UPDATE provider_models
-SET project_id       = $2,
-    model_name       = $3,
-    match_pattern    = $4,
-    provider         = $5,
-    display_name     = $6,
-    start_date       = $7,
-    unit             = $8,
-    tokenizer_id     = $9,
-    tokenizer_config = $10,
+SET project_id       = $1,
+    model_name       = $2,
+    match_pattern    = $3,
+    provider         = $4,
+    display_name     = $5,
+    start_date       = $6,
+    unit             = $7,
+    tokenizer_id     = $8,
+    tokenizer_config = $9,
     updated_at       = NOW()
-WHERE id = $1
+WHERE id = $10
 `
 
 type UpdateProviderModelParams struct {
-	ID              uuid.UUID       `json:"id"`
 	ProjectID       *uuid.UUID      `json:"project_id"`
 	ModelName       string          `json:"model_name"`
 	MatchPattern    string          `json:"match_pattern"`
@@ -359,11 +358,11 @@ type UpdateProviderModelParams struct {
 	Unit            string          `json:"unit"`
 	TokenizerID     *string         `json:"tokenizer_id"`
 	TokenizerConfig json.RawMessage `json:"tokenizer_config"`
+	ID              uuid.UUID       `json:"id"`
 }
 
 func (q *Queries) UpdateProviderModel(ctx context.Context, arg UpdateProviderModelParams) error {
 	_, err := q.db.Exec(ctx, updateProviderModel,
-		arg.ID,
 		arg.ProjectID,
 		arg.ModelName,
 		arg.MatchPattern,
@@ -373,35 +372,36 @@ func (q *Queries) UpdateProviderModel(ctx context.Context, arg UpdateProviderMod
 		arg.Unit,
 		arg.TokenizerID,
 		arg.TokenizerConfig,
+		arg.ID,
 	)
 	return err
 }
 
 const updateProviderPrice = `-- name: UpdateProviderPrice :exec
 UPDATE provider_prices
-SET provider_model_id = $2,
-    project_id        = $3,
-    usage_type        = $4,
-    price             = $5,
+SET provider_model_id = $1,
+    project_id        = $2,
+    usage_type        = $3,
+    price             = $4,
     updated_at        = NOW()
-WHERE id = $1
+WHERE id = $5
 `
 
 type UpdateProviderPriceParams struct {
-	ID              uuid.UUID       `json:"id"`
 	ProviderModelID uuid.UUID       `json:"provider_model_id"`
 	ProjectID       *uuid.UUID      `json:"project_id"`
 	UsageType       string          `json:"usage_type"`
 	Price           decimal.Decimal `json:"price"`
+	ID              uuid.UUID       `json:"id"`
 }
 
 func (q *Queries) UpdateProviderPrice(ctx context.Context, arg UpdateProviderPriceParams) error {
 	_, err := q.db.Exec(ctx, updateProviderPrice,
-		arg.ID,
 		arg.ProviderModelID,
 		arg.ProjectID,
 		arg.UsageType,
 		arg.Price,
+		arg.ID,
 	)
 	return err
 }
