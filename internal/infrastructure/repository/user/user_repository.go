@@ -47,7 +47,7 @@ func (r *userRepository) Create(ctx context.Context, u *userDomain.User) error {
 		Email:                 u.Email,
 		FirstName:             u.FirstName,
 		LastName:              u.LastName,
-		Password:              emptyToNilString(u.Password),
+		Password:              u.Password,
 		IsActive:              u.IsActive,
 		IsEmailVerified:       u.IsEmailVerified,
 		EmailVerifiedAt:       u.EmailVerifiedAt,
@@ -105,7 +105,7 @@ func (r *userRepository) Update(ctx context.Context, u *userDomain.User) error {
 		Email:                 u.Email,
 		FirstName:             u.FirstName,
 		LastName:              u.LastName,
-		Password:              emptyToNilString(u.Password),
+		Password:              u.Password,
 		IsActive:              u.IsActive,
 		IsEmailVerified:       u.IsEmailVerified,
 		EmailVerifiedAt:       u.EmailVerifiedAt,
@@ -378,7 +378,7 @@ func userFromRow(row *gen.User) *userDomain.User {
 		Email:                 row.Email,
 		FirstName:             row.FirstName,
 		LastName:              row.LastName,
-		Password:              derefString(row.Password),
+		Password:              row.Password,
 		IsActive:              row.IsActive,
 		IsEmailVerified:       row.IsEmailVerified,
 		EmailVerifiedAt:       row.EmailVerifiedAt,
@@ -433,18 +433,3 @@ func profileFromRow(row *gen.UserProfile) *userDomain.UserProfile {
 	}
 }
 
-// helpers ------------------------------------------------------------
-
-func derefString(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
-}
-
-func emptyToNilString(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
-}

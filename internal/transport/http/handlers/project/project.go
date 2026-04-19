@@ -56,9 +56,9 @@ type ListRequest struct {
 type Project struct {
 	CreatedAt      time.Time `json:"created_at" example:"2024-01-01T00:00:00Z" description:"Creation timestamp"`
 	UpdatedAt      time.Time `json:"updated_at" example:"2024-01-01T00:00:00Z" description:"Last update timestamp"`
+	Description    *string   `json:"description,omitempty" example:"Customer support AI chatbot" description:"Optional project description"`
 	ID             uuid.UUID `json:"id" example:"proj_1234567890" description:"Unique project identifier"`
 	Name           string    `json:"name" example:"AI Chatbot" description:"Project name"`
-	Description    string    `json:"description,omitempty" example:"Customer support AI chatbot" description:"Optional project description"`
 	OrganizationID uuid.UUID `json:"organization_id" example:"org_1234567890" description:"Organization ID this project belongs to"`
 	Status         string    `json:"status" example:"active" description:"Project status (active, archived)"`
 }

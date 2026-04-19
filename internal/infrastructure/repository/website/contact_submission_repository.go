@@ -26,22 +26,15 @@ func (r *contactSubmissionRepository) Create(ctx context.Context, s *websiteDoma
 		ID:          s.ID,
 		Name:        s.Name,
 		Email:       s.Email,
-		Company:     emptyToNilString(s.Company),
+		Company:     s.Company,
 		Subject:     s.Subject,
 		Message:     s.Message,
-		InquiryType: emptyToNilString(s.InquiryType),
-		IpAddress:   emptyToNilString(s.IPAddress),
-		UserAgent:   emptyToNilString(s.UserAgent),
+		InquiryType: s.InquiryType,
+		IpAddress:   s.IPAddress,
+		UserAgent:   s.UserAgent,
 		CreatedAt:   s.CreatedAt,
 	}); err != nil {
 		return fmt.Errorf("create contact submission: %w", err)
 	}
 	return nil
-}
-
-func emptyToNilString(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
 }

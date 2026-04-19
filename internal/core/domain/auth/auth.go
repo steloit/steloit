@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"brokle/internal/core/domain/shared"
 	"brokle/pkg/uid"
 )
 
@@ -450,7 +451,7 @@ func NewRole(name, scopeType, description string) *Role {
 		Name:        name,
 		ScopeType:   scopeType,
 		ScopeID:     nil, // System/template role
-		Description: nilIfEmpty(description),
+		Description: shared.NilIfEmpty(description),
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
@@ -463,20 +464,10 @@ func NewCustomRole(name, scopeType, description string, scopeID uuid.UUID) *Role
 		Name:        name,
 		ScopeType:   scopeType,
 		ScopeID:     &scopeID,
-		Description: nilIfEmpty(description),
+		Description: shared.NilIfEmpty(description),
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
-}
-
-// nilIfEmpty returns nil if s is empty, otherwise a pointer to s. Used at
-// ingress boundaries where callers pass "" to mean "not provided" and the
-// domain/schema model "not provided" as NULL.
-func nilIfEmpty(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
 }
 
 func NewOrganizationMember(userID, organizationID, roleID uuid.UUID, invitedBy *uuid.UUID) *OrganizationMember {
@@ -508,9 +499,9 @@ func NewPermission(resource, action, description string) *Permission {
 		Name:        name,
 		Resource:    resource,
 		Action:      action,
-		Description: nilIfEmpty(description),
+		Description: shared.NilIfEmpty(description),
 		ScopeLevel:  ScopeLevelOrganization, // Default to organization level
-		Category:    nilIfEmpty(resource),   // Default category to resource name
+		Category:    shared.NilIfEmpty(resource),   // Default category to resource name
 		CreatedAt:   time.Now(),
 	}
 }
@@ -524,9 +515,9 @@ func NewPermissionWithScope(resource, action, description string, scopeLevel Sco
 		Name:        name,
 		Resource:    resource,
 		Action:      action,
-		Description: nilIfEmpty(description),
+		Description: shared.NilIfEmpty(description),
 		ScopeLevel:  scopeLevel,
-		Category:    nilIfEmpty(category),
+		Category:    shared.NilIfEmpty(category),
 		CreatedAt:   time.Now(),
 	}
 }

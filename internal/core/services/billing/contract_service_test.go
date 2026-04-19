@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"brokle/internal/core/domain/billing"
+	"brokle/internal/core/domain/shared"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/pointers"
 	"brokle/pkg/uid"
@@ -45,11 +46,11 @@ func TestContractService_CreateContract_Success(t *testing.T) {
 		EndDate:                 &endDate,
 		MinimumCommitAmount:     pointers.PtrDecimal(decimal.NewFromFloat(50000.0)),
 		Currency:                "USD",
-		AccountOwner:            "John Smith",
-		SalesRepEmail:           "sales@example.com",
+		AccountOwner:            shared.Ptr("John Smith"),
+		SalesRepEmail:           shared.Ptr("sales@example.com"),
 		CustomFreeSpans:         ptrInt64(50000000),
 		CustomPricePer100KSpans: pointers.PtrDecimal(decimal.NewFromFloat(0.25)),
-		Notes:                   "Annual enterprise contract",
+		Notes:                   shared.Ptr("Annual enterprise contract"),
 		Status:                  "",
 		CreatedBy:               uid.New().String(),
 	}
@@ -193,8 +194,8 @@ func TestContractService_UpdateContract_Success(t *testing.T) {
 		ID:                  contractID,
 		Status:              billing.ContractStatusDraft,
 		ContractName:        "Old Name",
-		AccountOwner:        "Old Owner",
-		SalesRepEmail:       "old@example.com",
+		AccountOwner:        shared.Ptr("Old Owner"),
+		SalesRepEmail:       shared.Ptr("old@example.com"),
 		MinimumCommitAmount: pointers.PtrDecimal(decimal.NewFromFloat(10000.0)),
 	}
 
@@ -202,10 +203,10 @@ func TestContractService_UpdateContract_Success(t *testing.T) {
 		ID:                  contractID,
 		Status:              billing.ContractStatusDraft,
 		ContractName:        "New Name",
-		AccountOwner:        "New Owner",
-		SalesRepEmail:       "new@example.com",
+		AccountOwner:        shared.Ptr("New Owner"),
+		SalesRepEmail:       shared.Ptr("new@example.com"),
 		MinimumCommitAmount: pointers.PtrDecimal(decimal.NewFromFloat(20000.0)),
-		Notes:               "Updated terms",
+		Notes:               shared.Ptr("Updated terms"),
 	}
 
 	contractRepo.On("GetByID", ctx, contractID).Return(existingContract, nil)
@@ -445,7 +446,7 @@ func TestContractService_GetContractHistory_Success(t *testing.T) {
 			ChangedBy:  uid.New().String(),
 			ChangedAt:  time.Now(),
 			Changes:    json.RawMessage(changesJSON),
-			Reason:     "Initial contract creation",
+			Reason:     shared.Ptr("Initial contract creation"),
 		},
 		{
 			ID:         uid.New(),
@@ -454,7 +455,7 @@ func TestContractService_GetContractHistory_Success(t *testing.T) {
 			ChangedBy:  uid.New().String(),
 			ChangedAt:  time.Now().Add(1 * time.Hour),
 			Changes:    json.RawMessage(changesJSON),
-			Reason:     "Activated contract",
+			Reason:     shared.Ptr("Activated contract"),
 		},
 	}
 

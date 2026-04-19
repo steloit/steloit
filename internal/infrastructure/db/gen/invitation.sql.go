@@ -376,44 +376,225 @@ func (q *Queries) ListInvitationsByOrganization(ctx context.Context, organizatio
 	return items, nil
 }
 
-const listPendingInvitationsByOrganization = `-- name: ListPendingInvitationsByOrganization :many
-SELECT id, organization_id, role_id, email, user_id, status, expires_at, accepted_at, created_at, updated_at, deleted_at, invited_by_id, token_hash, token_preview, message, resent_count, resent_at, accepted_by_id, revoked_at, revoked_by_id FROM user_invitations
-WHERE organization_id = $1
-  AND status = 'pending'
-  AND deleted_at IS NULL
-ORDER BY created_at DESC
+const listInvitationsWithDetailsByEmail = `-- name: ListInvitationsWithDetailsByEmail :many
+SELECT
+    i.id,
+    i.organization_id,
+    i.role_id,
+    i.email,
+    i.status,
+    i.expires_at,
+    i.accepted_at,
+    i.revoked_at,
+    i.resent_at,
+    i.created_at,
+    i.updated_at,
+    i.deleted_at,
+    i.invited_by_id,
+    i.accepted_by_id,
+    i.revoked_by_id,
+    i.token_hash,
+    i.token_preview,
+    i.message,
+    i.resent_count,
+    u.id         AS inviter_id,
+    u.email      AS inviter_email,
+    u.first_name AS inviter_first_name,
+    u.last_name  AS inviter_last_name,
+    r.id         AS role_name_id,
+    r.name       AS role_name
+FROM user_invitations i
+LEFT JOIN users u ON u.id = i.invited_by_id AND u.deleted_at IS NULL
+LEFT JOIN roles r ON r.id = i.role_id
+WHERE i.email = $1
+  AND i.deleted_at IS NULL
+ORDER BY i.created_at DESC
 `
 
-func (q *Queries) ListPendingInvitationsByOrganization(ctx context.Context, organizationID uuid.UUID) ([]UserInvitation, error) {
-	rows, err := q.db.Query(ctx, listPendingInvitationsByOrganization, organizationID)
+type ListInvitationsWithDetailsByEmailRow struct {
+	ID               uuid.UUID  `json:"id"`
+	OrganizationID   uuid.UUID  `json:"organization_id"`
+	RoleID           uuid.UUID  `json:"role_id"`
+	Email            string     `json:"email"`
+	Status           string     `json:"status"`
+	ExpiresAt        time.Time  `json:"expires_at"`
+	AcceptedAt       *time.Time `json:"accepted_at"`
+	RevokedAt        *time.Time `json:"revoked_at"`
+	ResentAt         *time.Time `json:"resent_at"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+	DeletedAt        *time.Time `json:"deleted_at"`
+	InvitedByID      *uuid.UUID `json:"invited_by_id"`
+	AcceptedByID     *uuid.UUID `json:"accepted_by_id"`
+	RevokedByID      *uuid.UUID `json:"revoked_by_id"`
+	TokenHash        string     `json:"token_hash"`
+	TokenPreview     *string    `json:"token_preview"`
+	Message          *string    `json:"message"`
+	ResentCount      int32      `json:"resent_count"`
+	InviterID        *uuid.UUID `json:"inviter_id"`
+	InviterEmail     *string    `json:"inviter_email"`
+	InviterFirstName *string    `json:"inviter_first_name"`
+	InviterLastName  *string    `json:"inviter_last_name"`
+	RoleNameID       *uuid.UUID `json:"role_name_id"`
+	RoleName         *string    `json:"role_name"`
+}
+
+// Same hydrated shape as ListPendingInvitationsWithDetailsByOrganization
+// but scoped by invitee email. Serves the "my invitations" endpoint for
+// authenticated users viewing invitations addressed to them.
+func (q *Queries) ListInvitationsWithDetailsByEmail(ctx context.Context, email string) ([]ListInvitationsWithDetailsByEmailRow, error) {
+	rows, err := q.db.Query(ctx, listInvitationsWithDetailsByEmail, email)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []UserInvitation{}
+	items := []ListInvitationsWithDetailsByEmailRow{}
 	for rows.Next() {
-		var i UserInvitation
+		var i ListInvitationsWithDetailsByEmailRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.OrganizationID,
 			&i.RoleID,
 			&i.Email,
-			&i.UserID,
 			&i.Status,
 			&i.ExpiresAt,
 			&i.AcceptedAt,
+			&i.RevokedAt,
+			&i.ResentAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
 			&i.InvitedByID,
+			&i.AcceptedByID,
+			&i.RevokedByID,
 			&i.TokenHash,
 			&i.TokenPreview,
 			&i.Message,
 			&i.ResentCount,
-			&i.ResentAt,
-			&i.AcceptedByID,
+			&i.InviterID,
+			&i.InviterEmail,
+			&i.InviterFirstName,
+			&i.InviterLastName,
+			&i.RoleNameID,
+			&i.RoleName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPendingInvitationsWithDetailsByOrganization = `-- name: ListPendingInvitationsWithDetailsByOrganization :many
+SELECT
+    i.id,
+    i.organization_id,
+    i.role_id,
+    i.email,
+    i.status,
+    i.expires_at,
+    i.accepted_at,
+    i.revoked_at,
+    i.resent_at,
+    i.created_at,
+    i.updated_at,
+    i.deleted_at,
+    i.invited_by_id,
+    i.accepted_by_id,
+    i.revoked_by_id,
+    i.token_hash,
+    i.token_preview,
+    i.message,
+    i.resent_count,
+    u.id         AS inviter_id,
+    u.email      AS inviter_email,
+    u.first_name AS inviter_first_name,
+    u.last_name  AS inviter_last_name,
+    r.id         AS role_name_id,
+    r.name       AS role_name
+FROM user_invitations i
+LEFT JOIN users u ON u.id = i.invited_by_id AND u.deleted_at IS NULL
+LEFT JOIN roles r ON r.id = i.role_id
+WHERE i.organization_id = $1
+  AND i.status = 'pending'
+  AND i.deleted_at IS NULL
+ORDER BY i.created_at DESC
+`
+
+type ListPendingInvitationsWithDetailsByOrganizationRow struct {
+	ID               uuid.UUID  `json:"id"`
+	OrganizationID   uuid.UUID  `json:"organization_id"`
+	RoleID           uuid.UUID  `json:"role_id"`
+	Email            string     `json:"email"`
+	Status           string     `json:"status"`
+	ExpiresAt        time.Time  `json:"expires_at"`
+	AcceptedAt       *time.Time `json:"accepted_at"`
+	RevokedAt        *time.Time `json:"revoked_at"`
+	ResentAt         *time.Time `json:"resent_at"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+	DeletedAt        *time.Time `json:"deleted_at"`
+	InvitedByID      *uuid.UUID `json:"invited_by_id"`
+	AcceptedByID     *uuid.UUID `json:"accepted_by_id"`
+	RevokedByID      *uuid.UUID `json:"revoked_by_id"`
+	TokenHash        string     `json:"token_hash"`
+	TokenPreview     *string    `json:"token_preview"`
+	Message          *string    `json:"message"`
+	ResentCount      int32      `json:"resent_count"`
+	InviterID        *uuid.UUID `json:"inviter_id"`
+	InviterEmail     *string    `json:"inviter_email"`
+	InviterFirstName *string    `json:"inviter_first_name"`
+	InviterLastName  *string    `json:"inviter_last_name"`
+	RoleNameID       *uuid.UUID `json:"role_name_id"`
+	RoleName         *string    `json:"role_name"`
+}
+
+// List pending invitations for a single organization, hydrating inviter
+// and role display fields via LEFT JOIN. Eliminates the N+1 loop that
+// previously called GetUser / GetRoleByID per row in the handler.
+//
+// LEFT JOIN on users is filtered by deleted_at IS NULL so a soft-deleted
+// inviter row does not leak through; combined with the FK ON DELETE SET
+// NULL on invited_by_id, the inviter_* columns are NULL whenever the
+// account is gone — the handler renders that as a nil Inviter ref.
+func (q *Queries) ListPendingInvitationsWithDetailsByOrganization(ctx context.Context, organizationID uuid.UUID) ([]ListPendingInvitationsWithDetailsByOrganizationRow, error) {
+	rows, err := q.db.Query(ctx, listPendingInvitationsWithDetailsByOrganization, organizationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPendingInvitationsWithDetailsByOrganizationRow{}
+	for rows.Next() {
+		var i ListPendingInvitationsWithDetailsByOrganizationRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrganizationID,
+			&i.RoleID,
+			&i.Email,
+			&i.Status,
+			&i.ExpiresAt,
+			&i.AcceptedAt,
 			&i.RevokedAt,
+			&i.ResentAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.InvitedByID,
+			&i.AcceptedByID,
 			&i.RevokedByID,
+			&i.TokenHash,
+			&i.TokenPreview,
+			&i.Message,
+			&i.ResentCount,
+			&i.InviterID,
+			&i.InviterEmail,
+			&i.InviterFirstName,
+			&i.InviterLastName,
+			&i.RoleNameID,
+			&i.RoleName,
 		); err != nil {
 			return nil, err
 		}

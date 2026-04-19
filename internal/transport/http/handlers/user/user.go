@@ -85,10 +85,10 @@ type OrganizationWithProjects struct {
 type ProjectSummary struct {
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
+	Description    *string   `json:"description,omitempty"`
 	ID             uuid.UUID `json:"id"`
 	Name           string    `json:"name"`
 	CompositeSlug  string    `json:"composite_slug"`
-	Description    string    `json:"description,omitempty"`
 	OrganizationID uuid.UUID `json:"organization_id"`
 	Status         string    `json:"status"`
 }

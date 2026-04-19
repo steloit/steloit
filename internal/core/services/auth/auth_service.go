@@ -81,11 +81,11 @@ func (s *authService) Login(ctx context.Context, req *authDomain.LoginRequest) (
 
 	// Verify password (only for password-based accounts)
 	if user.AuthMethod == "password" {
-		if user.Password == "" {
+		if !user.HasPassword() {
 			return nil, appErrors.NewUnauthorizedError("Invalid email or password")
 		}
 
-		err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password))
+		err = bcrypt.CompareHashAndPassword([]byte(*user.Password), []byte(req.Password))
 		if err != nil {
 			return nil, appErrors.NewUnauthorizedError("Invalid email or password")
 		}
@@ -330,7 +330,10 @@ func (s *authService) ChangePassword(ctx context.Context, userID uuid.UUID, curr
 	}
 
 	// Verify current password
-	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(currentPassword))
+	if !user.HasPassword() {
+		return appErrors.NewUnauthorizedError("User has no password set")
+	}
+	err = bcrypt.CompareHashAndPassword([]byte(*user.Password), []byte(currentPassword))
 	if err != nil {
 		return appErrors.NewUnauthorizedError("Current password is incorrect")
 	}

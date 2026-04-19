@@ -9,65 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// Usage & Billing Entities
-
-// Note: provider_id and model_id are now stored as text (no foreign keys to gateway tables)
-// These values come from ClickHouse spans for cost calculation
-type UsageRecord struct {
-	CreatedAt      time.Time       `json:"created_at"`
-	ProcessedAt    *time.Time      `json:"processed_at,omitempty"`
-	RequestType    string          `json:"request_type"`
-	BillingTier    string          `json:"billing_tier"`
-	Currency       string          `json:"currency"`
-	ProviderName   string          `json:"provider_name,omitempty"` // Human-readable provider name (e.g., "openai", "anthropic")
-	ModelName      string          `json:"model_name,omitempty"`    // Human-readable model name (e.g., "gpt-4", "claude-3-opus")
-	Cost           decimal.Decimal `json:"cost"`
-	NetCost        decimal.Decimal `json:"net_cost"`
-	Discounts      decimal.Decimal `json:"discounts"`
-	TotalTokens    int32           `json:"total_tokens"`
-	OutputTokens   int32           `json:"output_tokens"`
-	InputTokens    int32           `json:"input_tokens"`
-	ID             uuid.UUID       `json:"id"`
-	ModelID        uuid.UUID       `json:"model_id"`    // Model ID from models table (for pricing lookup)
-	ProviderID     uuid.UUID       `json:"provider_id"` // Provider identifier (text, not FK)
-	RequestID      uuid.UUID       `json:"request_id"`
-	OrganizationID uuid.UUID       `json:"organization_id"`
-}
-
-// UsageQuota represents organization usage quotas and limits
-type UsageQuota struct {
-	ResetDate           time.Time       `json:"reset_date"`
-	LastUpdated         time.Time       `json:"last_updated"`
-	BillingTier         string          `json:"billing_tier"`
-	Currency            string          `json:"currency"`
-	MonthlyRequestLimit int64           `json:"monthly_request_limit"`
-	MonthlyTokenLimit   int64           `json:"monthly_token_limit"`
-	MonthlyCostLimit    decimal.Decimal `json:"monthly_cost_limit"`
-	CurrentRequests     int64           `json:"current_requests"`
-	CurrentTokens       int64           `json:"current_tokens"`
-	CurrentCost         decimal.Decimal `json:"current_cost"`
-	OrganizationID      uuid.UUID       `json:"organization_id"`
-}
-
-// Clone returns a deep copy of the UsageQuota
-func (q *UsageQuota) Clone() *UsageQuota {
-	if q == nil {
-		return nil
-	}
-	return &UsageQuota{
-		OrganizationID:      q.OrganizationID,
-		BillingTier:         q.BillingTier,
-		Currency:            q.Currency,
-		MonthlyRequestLimit: q.MonthlyRequestLimit,
-		MonthlyTokenLimit:   q.MonthlyTokenLimit,
-		MonthlyCostLimit:    q.MonthlyCostLimit,
-		CurrentRequests:     q.CurrentRequests,
-		CurrentTokens:       q.CurrentTokens,
-		CurrentCost:         q.CurrentCost,
-		ResetDate:           q.ResetDate,
-		LastUpdated:         q.LastUpdated,
-	}
-}
+// Billing Entities
 
 type PaymentMethod struct {
 	CreatedAt      time.Time `json:"created_at"`
@@ -252,23 +194,6 @@ type BillingSummary struct {
 	OrganizationID    uuid.UUID              `json:"organization_id"`
 }
 
-// CostMetric represents cost tracking data (moved from deleted analytics worker)
-type CostMetric struct {
-	Timestamp      time.Time       `json:"timestamp"`
-	Provider       string          `json:"provider"`
-	Currency       string          `json:"currency"`
-	RequestType    string          `json:"request_type"`
-	Model          string          `json:"model"`
-	TotalCost      decimal.Decimal `json:"total_cost"`
-	OutputTokens   int32           `json:"output_tokens"`
-	InputTokens    int32           `json:"input_tokens"`
-	TotalTokens    int32           `json:"total_tokens"`
-	ModelID        uuid.UUID       `json:"model_id"`
-	RequestID      uuid.UUID       `json:"request_id"`
-	ProviderID     uuid.UUID       `json:"provider_id"`
-	ProjectID      uuid.UUID       `json:"project_id"`
-	OrganizationID uuid.UUID       `json:"organization_id"`
-}
 
 // Usage-Based Billing Entities
 
@@ -457,9 +382,9 @@ type Contract struct {
 	MinimumCommitAmount *decimal.Decimal `json:"minimum_commit_amount,omitempty"`
 	Currency            string           `json:"currency"`
 
-	// Account management
-	AccountOwner  string `json:"account_owner,omitempty"`
-	SalesRepEmail string `json:"sales_rep_email,omitempty"`
+	// Account management (both nullable VARCHAR)
+	AccountOwner  *string `json:"account_owner,omitempty"`
+	SalesRepEmail *string `json:"sales_rep_email,omitempty"`
 
 	// Status
 	Status ContractStatus `json:"status"`
@@ -476,7 +401,7 @@ type Contract struct {
 	CreatedBy string    `json:"created_by,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
-	Notes     string    `json:"notes,omitempty"`
+	Notes     *string   `json:"notes,omitempty"` // nullable TEXT
 
 	// Relations
 	VolumeTiers []VolumeDiscountTier `json:"volume_tiers,omitempty"`
@@ -512,14 +437,14 @@ const (
 )
 
 type ContractHistory struct {
-	ID             uuid.UUID      `json:"id"`
-	ContractID     uuid.UUID      `json:"contract_id"`
-	Action         ContractAction `json:"action"`
-	ChangedBy      string         `json:"changed_by,omitempty"`
-	ChangedByEmail string         `json:"changed_by_email,omitempty"`
-	ChangedAt      time.Time      `json:"changed_at"`
+	ID             uuid.UUID       `json:"id"`
+	ContractID     uuid.UUID       `json:"contract_id"`
+	Action         ContractAction  `json:"action"`
+	ChangedBy      string          `json:"changed_by,omitempty"`
+	ChangedByEmail *string         `json:"changed_by_email,omitempty"` // nullable: sales team may leave empty
+	ChangedAt      time.Time       `json:"changed_at"`
 	Changes        json.RawMessage `json:"changes" swaggertype:"object"`
-	Reason         string         `json:"reason,omitempty"`
+	Reason         *string         `json:"reason,omitempty"` // nullable TEXT
 }
 
 

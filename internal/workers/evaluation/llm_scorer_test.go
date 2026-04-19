@@ -5,9 +5,17 @@ import (
 
 	"brokle/internal/core/domain/evaluation"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// validCredentialID is a canonical UUID fixture for credential_id. The
+// parseConfig path calls uuid.Parse on the incoming string, so the
+// fixture must be a valid UUID (not a legacy ULID).
+const validCredentialIDStr = "01900000-0000-7000-8000-000000000000"
+
+var validCredentialID = uuid.MustParse(validCredentialIDStr)
 
 func TestLLMScorer_ParseConfig(t *testing.T) {
 	scorer := &LLMScorer{logger: newTestLogger()}
@@ -15,7 +23,7 @@ func TestLLMScorer_ParseConfig(t *testing.T) {
 	tests := []struct {
 		name       string
 		config     map[string]any
-		wantCredID string
+		wantCredID uuid.UUID
 		wantModel  string
 		wantMsgCnt int
 		wantTemp   float64
@@ -27,13 +35,13 @@ func TestLLMScorer_ParseConfig(t *testing.T) {
 		{
 			name: "valid minimal config",
 			config: map[string]any{
-				"credential_id": "01HNPXYZ123456789ABCDEFGH",
+				"credential_id": validCredentialIDStr,
 				"model":         "gpt-4o",
 				"messages": []any{
 					map[string]any{"role": "system", "content": "You are a judge."},
 				},
 			},
-			wantCredID: "01HNPXYZ123456789ABCDEFGH",
+			wantCredID: validCredentialID,
 			wantModel:  "gpt-4o",
 			wantMsgCnt: 1,
 			wantTemp:   0.0,
@@ -42,7 +50,7 @@ func TestLLMScorer_ParseConfig(t *testing.T) {
 		{
 			name: "valid full config",
 			config: map[string]any{
-				"credential_id":   "01HNPXYZ123456789ABCDEFGH",
+				"credential_id":   validCredentialIDStr,
 				"model":           "gpt-4o",
 				"temperature":     0.7,
 				"response_format": "text",
@@ -59,7 +67,7 @@ func TestLLMScorer_ParseConfig(t *testing.T) {
 					},
 				},
 			},
-			wantCredID: "01HNPXYZ123456789ABCDEFGH",
+			wantCredID: validCredentialID,
 			wantModel:  "gpt-4o",
 			wantMsgCnt: 2,
 			wantTemp:   0.7,
@@ -78,9 +86,21 @@ func TestLLMScorer_ParseConfig(t *testing.T) {
 			errContain: "credential_id is required",
 		},
 		{
+			name: "invalid credential_id format",
+			config: map[string]any{
+				"credential_id": "not-a-uuid",
+				"model":         "gpt-4o",
+				"messages": []any{
+					map[string]any{"role": "user", "content": "test"},
+				},
+			},
+			wantErr:    true,
+			errContain: "credential_id must be a valid UUID",
+		},
+		{
 			name: "missing model",
 			config: map[string]any{
-				"credential_id": "01HNPXYZ123456789ABCDEFGH",
+				"credential_id": validCredentialIDStr,
 				"messages": []any{
 					map[string]any{"role": "user", "content": "test"},
 				},
@@ -91,7 +111,7 @@ func TestLLMScorer_ParseConfig(t *testing.T) {
 		{
 			name: "missing messages",
 			config: map[string]any{
-				"credential_id": "01HNPXYZ123456789ABCDEFGH",
+				"credential_id": validCredentialIDStr,
 				"model":         "gpt-4o",
 			},
 			wantErr:    true,
@@ -100,7 +120,7 @@ func TestLLMScorer_ParseConfig(t *testing.T) {
 		{
 			name: "empty messages array",
 			config: map[string]any{
-				"credential_id": "01HNPXYZ123456789ABCDEFGH",
+				"credential_id": validCredentialIDStr,
 				"model":         "gpt-4o",
 				"messages":      []any{},
 			},
@@ -110,7 +130,7 @@ func TestLLMScorer_ParseConfig(t *testing.T) {
 		{
 			name: "message with empty role ignored",
 			config: map[string]any{
-				"credential_id": "01HNPXYZ123456789ABCDEFGH",
+				"credential_id": validCredentialIDStr,
 				"model":         "gpt-4o",
 				"messages": []any{
 					map[string]any{"role": "", "content": "test"},
@@ -122,7 +142,7 @@ func TestLLMScorer_ParseConfig(t *testing.T) {
 		{
 			name: "output schema with categories",
 			config: map[string]any{
-				"credential_id": "01HNPXYZ123456789ABCDEFGH",
+				"credential_id": validCredentialIDStr,
 				"model":         "gpt-4o",
 				"messages": []any{
 					map[string]any{"role": "user", "content": "test"},
@@ -135,7 +155,7 @@ func TestLLMScorer_ParseConfig(t *testing.T) {
 					},
 				},
 			},
-			wantCredID: "01HNPXYZ123456789ABCDEFGH",
+			wantCredID: validCredentialID,
 			wantModel:  "gpt-4o",
 			wantMsgCnt: 1,
 			wantFormat: "json",

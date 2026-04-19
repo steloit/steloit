@@ -27,7 +27,7 @@ func (r *organizationRepository) Create(ctx context.Context, org *orgDomain.Orga
 	if err := r.tm.Queries(ctx).CreateOrganization(ctx, gen.CreateOrganizationParams{
 		ID:                 org.ID,
 		Name:               org.Name,
-		BillingEmail:       emptyToNilString(org.BillingEmail),
+		BillingEmail:       org.BillingEmail,
 		Plan:               org.Plan,
 		SubscriptionStatus: org.SubscriptionStatus,
 		TrialEndsAt:        org.TrialEndsAt,
@@ -62,7 +62,7 @@ func (r *organizationRepository) Update(ctx context.Context, org *orgDomain.Orga
 	if err := r.tm.Queries(ctx).UpdateOrganization(ctx, gen.UpdateOrganizationParams{
 		ID:                 org.ID,
 		Name:               org.Name,
-		BillingEmail:       emptyToNilString(org.BillingEmail),
+		BillingEmail:       org.BillingEmail,
 		Plan:               org.Plan,
 		SubscriptionStatus: org.SubscriptionStatus,
 		TrialEndsAt:        org.TrialEndsAt,
@@ -138,14 +138,18 @@ func (r *organizationRepository) GetUserOrganizationsWithProjectsBatch(
 			continue
 		}
 
+		// ProjectID is non-nil (guarded above), so every NOT NULL project
+		// column in the LEFT JOIN row is also non-nil for this row. Safe
+		// to deref directly; only Description is genuinely nullable in
+		// the schema and flows through as *string.
 		orgMap[row.OrgID].Projects = append(orgMap[row.OrgID].Projects, &orgDomain.Project{
 			ID:             *row.ProjectID,
-			Name:           derefString(row.ProjectName),
-			Description:    derefString(row.ProjectDescription),
-			OrganizationID: derefUUID(row.ProjectOrganizationID),
-			Status:         derefString(row.ProjectStatus),
-			CreatedAt:      derefTime(row.ProjectCreatedAt),
-			UpdatedAt:      derefTime(row.ProjectUpdatedAt),
+			Name:           *row.ProjectName,
+			Description:    row.ProjectDescription,
+			OrganizationID: *row.ProjectOrganizationID,
+			Status:         *row.ProjectStatus,
+			CreatedAt:      *row.ProjectCreatedAt,
+			UpdatedAt:      *row.ProjectUpdatedAt,
 		})
 	}
 
@@ -162,7 +166,7 @@ func organizationFromRow(row *gen.Organization) *orgDomain.Organization {
 	return &orgDomain.Organization{
 		ID:                 row.ID,
 		Name:               row.Name,
-		BillingEmail:       derefString(row.BillingEmail),
+		BillingEmail:       row.BillingEmail,
 		Plan:               row.Plan,
 		SubscriptionStatus: row.SubscriptionStatus,
 		TrialEndsAt:        row.TrialEndsAt,

@@ -6,10 +6,12 @@ package organization
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 
+	"brokle/internal/core/domain/shared"
 	"brokle/pkg/uid"
 )
 
@@ -19,9 +21,9 @@ type Organization struct {
 	CreatedAt          time.Time  `json:"created_at"`
 	TrialEndsAt        *time.Time `json:"trial_ends_at,omitempty"`
 	DeletedAt          *time.Time `json:"deleted_at,omitempty"`
+	BillingEmail       *string    `json:"billing_email,omitempty"` // nullable: VARCHAR(255)
 	Plan               string     `json:"plan"`
 	SubscriptionStatus string     `json:"subscription_status"`
-	BillingEmail       string     `json:"billing_email,omitempty"`
 	Name               string     `json:"name"`
 	ID                 uuid.UUID  `json:"id"`
 }
@@ -44,14 +46,47 @@ type Project struct {
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`
 	DeletedAt      *time.Time `json:"deleted_at,omitempty"`
+	Description    *string    `json:"description,omitempty"` // nullable: TEXT
 	Name           string     `json:"name"`
-	Description    string     `json:"description,omitempty"`
 	Status         string     `json:"status"`
 	ID             uuid.UUID  `json:"id"`
 	OrganizationID uuid.UUID  `json:"organization_id"`
 }
 
+// InviterRef is a lightweight display reference to the user who sent
+// an invitation. Populated only by list-path repository methods that
+// LEFT JOIN user_invitations → users. Nil when the inviter account has
+// been deleted (FK ON DELETE SET NULL fires) or when the invitation
+// was fetched via a non-hydrating method (GetByID, GetByTokenHash).
+//
+// Matches the GitHub/GitLab/Stripe nested-actor JSON convention
+// (`"inviter": { ... } | null`) and Gitea's Comment.Poster pattern.
+type InviterRef struct {
+	ID        uuid.UUID `json:"id"`
+	Email     string    `json:"email"`
+	FirstName string    `json:"first_name"`
+	LastName  string    `json:"last_name"`
+}
+
+// FullName concatenates first and last name, trimmed. Empty names yield "".
+func (r *InviterRef) FullName() string {
+	return strings.TrimSpace(r.FirstName + " " + r.LastName)
+}
+
+// RoleRef is a lightweight display reference to the invited role.
+// Populated by the same list-path JOIN that populates InviterRef.
+type RoleRef struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
 // Invitation represents an invitation to join an organization.
+//
+// Inviter and Role are hydration-only fields: list-path repository
+// methods (GetPendingInvitations, GetByEmail) populate them via LEFT
+// JOIN; single-row read methods (GetByID, GetByTokenHash) leave them
+// nil. Nil on a list result means the inviter/role row does not exist
+// (ON DELETE SET NULL for inviter, soft-delete for role).
 type Invitation struct {
 	ExpiresAt      time.Time        `json:"expires_at"`
 	UpdatedAt      time.Time        `json:"updated_at"`
@@ -60,17 +95,19 @@ type Invitation struct {
 	RevokedAt      *time.Time       `json:"revoked_at,omitempty"`
 	ResentAt       *time.Time       `json:"resent_at,omitempty"`
 	DeletedAt      *time.Time       `json:"deleted_at,omitempty"`
-	Status         InvitationStatus `json:"status"`
-	TokenHash      string           `json:"-"`                        // SHA-256 hash for secure storage
-	TokenPreview   string           `json:"token_preview,omitempty"`  // First 12 chars for display: "inv_AbCd..."
-	Email          string           `json:"email"`
-	Message        *string          `json:"message,omitempty"`        // Personal message from inviter
-	ID             uuid.UUID        `json:"id"`
-	InvitedByID    uuid.UUID        `json:"invited_by_id"`
-	RoleID         uuid.UUID        `json:"role_id"`
-	OrganizationID uuid.UUID        `json:"organization_id"`
+	InvitedByID    *uuid.UUID       `json:"invited_by_id,omitempty"`  // nullable: inviter row may have been deleted
 	AcceptedByID   *uuid.UUID       `json:"accepted_by_id,omitempty"` // User who accepted (for audit)
 	RevokedByID    *uuid.UUID       `json:"revoked_by_id,omitempty"`  // User who revoked (for audit)
+	TokenPreview   *string          `json:"token_preview,omitempty"`  // First 12 chars for display: "inv_AbCd..."
+	Message        *string          `json:"message,omitempty"`        // Personal message from inviter
+	Inviter        *InviterRef      `json:"inviter,omitempty"`        // Hydrated by list-path methods; nil otherwise
+	Role           *RoleRef         `json:"role,omitempty"`           // Hydrated by list-path methods; nil otherwise
+	Status         InvitationStatus `json:"status"`
+	TokenHash      string           `json:"-"`                        // SHA-256 hash for secure storage
+	Email          string           `json:"email"`
+	ID             uuid.UUID        `json:"id"`
+	RoleID         uuid.UUID        `json:"role_id"`
+	OrganizationID uuid.UUID        `json:"organization_id"`
 	ResentCount    int              `json:"resent_count"`             // Track resend attempts
 }
 
@@ -130,7 +167,7 @@ func NewProject(orgID uuid.UUID, name, description string) *Project {
 		ID:             uid.New(),
 		OrganizationID: orgID,
 		Name:           name,
-		Description:    description,
+		Description:    shared.NilIfEmpty(description),
 		Status:         "active",
 		CreatedAt:      time.Now(),
 		UpdatedAt:      time.Now(),
@@ -158,10 +195,10 @@ func NewInvitation(orgID, roleID, invitedByID uuid.UUID, email, tokenHash, token
 		ID:             uid.New(),
 		OrganizationID: orgID,
 		RoleID:         roleID,
-		InvitedByID:    invitedByID,
+		InvitedByID:    &invitedByID,
 		Email:          email,
 		TokenHash:      tokenHash,
-		TokenPreview:   tokenPreview,
+		TokenPreview:   shared.NilIfEmpty(tokenPreview),
 		Status:         InvitationStatusPending,
 		ExpiresAt:      expiresAt,
 		CreatedAt:      time.Now(),

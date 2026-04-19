@@ -5,20 +5,23 @@ import (
 
 	"github.com/google/uuid"
 
+	"brokle/internal/core/domain/shared"
 	"brokle/pkg/uid"
 )
 
-// ContactSubmission represents a contact form submission from the marketing website.
+// ContactSubmission represents a contact form submission from the
+// marketing website. Optional fields are pointer-typed to mirror the
+// nullable columns in Postgres — nil means "not provided".
 type ContactSubmission struct {
 	ID          uuid.UUID
-	Name        string   
-	Email       string   
-	Company     string   
-	Subject     string   
-	Message     string   
-	InquiryType string   
-	IPAddress   string   
-	UserAgent   string   
+	Name        string
+	Email       string
+	Subject     string
+	Message     string
+	Company     *string
+	InquiryType *string
+	IPAddress   *string
+	UserAgent   *string
 	CreatedAt   time.Time
 }
 
@@ -32,18 +35,20 @@ type CreateContactSubmissionRequest struct {
 	InquiryType string `json:"inquiry_type" binding:"max=50"`
 }
 
-// NewContactSubmission creates a new ContactSubmission from the request.
+// NewContactSubmission builds a ContactSubmission from the ingress
+// request. Empty optional values are normalised to nil so the domain
+// struct never carries a non-nil pointer to "".
 func NewContactSubmission(req *CreateContactSubmissionRequest, ipAddress, userAgent string) *ContactSubmission {
 	return &ContactSubmission{
 		ID:          uid.New(),
 		Name:        req.Name,
 		Email:       req.Email,
-		Company:     req.Company,
 		Subject:     req.Subject,
 		Message:     req.Message,
-		InquiryType: req.InquiryType,
-		IPAddress:   ipAddress,
-		UserAgent:   userAgent,
+		Company:     shared.NilIfEmpty(req.Company),
+		InquiryType: shared.NilIfEmpty(req.InquiryType),
+		IPAddress:   shared.NilIfEmpty(ipAddress),
+		UserAgent:   shared.NilIfEmpty(userAgent),
 		CreatedAt:   time.Now(),
 	}
 }

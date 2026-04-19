@@ -10,6 +10,7 @@ import (
 
 	"brokle/internal/config"
 	"brokle/internal/core/domain/billing"
+	"brokle/internal/core/domain/shared"
 	"brokle/internal/transport/http/middleware"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/response"
@@ -150,8 +151,8 @@ func (h *ContractHandler) CreateContract(c *gin.Context) {
 		EndDate:                 req.ExpiresAt, // API ExpiresAt → DB EndDate
 		MinimumCommitAmount:     float64ToDecimalPtr(req.MinimumCommitAmount),
 		Currency:                "USD",
-		AccountOwner:            req.AccountOwner,
-		SalesRepEmail:           req.SalesRepEmail,
+		AccountOwner:            shared.NilIfEmpty(req.AccountOwner),
+		SalesRepEmail:           shared.NilIfEmpty(req.SalesRepEmail),
 		Status:                  billing.ContractStatusDraft,
 		CustomFreeSpans:         req.CustomFreeSpans,
 		CustomPricePer100KSpans: float64ToDecimalPtr(req.CustomPricePer100KSpans),
@@ -162,7 +163,7 @@ func (h *ContractHandler) CreateContract(c *gin.Context) {
 		CreatedBy:               userID.String(),
 		CreatedAt:               time.Now(),
 		UpdatedAt:               time.Now(),
-		Notes:                   req.Notes,
+		Notes:                   shared.NilIfEmpty(req.Notes),
 	}
 
 	if req.Currency != "" {
@@ -339,10 +340,10 @@ func (h *ContractHandler) UpdateContract(c *gin.Context) {
 		contract.MinimumCommitAmount = float64ToDecimalPtr(req.MinimumCommitAmount)
 	}
 	if req.AccountOwner != nil {
-		contract.AccountOwner = *req.AccountOwner
+		contract.AccountOwner = req.AccountOwner
 	}
 	if req.SalesRepEmail != nil {
-		contract.SalesRepEmail = *req.SalesRepEmail
+		contract.SalesRepEmail = req.SalesRepEmail
 	}
 	if req.CustomFreeSpans != nil {
 		contract.CustomFreeSpans = req.CustomFreeSpans
@@ -363,7 +364,7 @@ func (h *ContractHandler) UpdateContract(c *gin.Context) {
 		contract.CustomPricePer1KScores = float64ToDecimalPtr(req.CustomPricePer1KScores)
 	}
 	if req.Notes != nil {
-		contract.Notes = *req.Notes
+		contract.Notes = req.Notes
 	}
 
 	contract.UpdatedAt = time.Now()

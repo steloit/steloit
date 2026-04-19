@@ -76,7 +76,7 @@ func (s *projectService) UpdateProject(ctx context.Context, projectID uuid.UUID,
 		project.Name = *req.Name
 	}
 	if req.Description != nil {
-		project.Description = *req.Description
+		project.Description = req.Description
 	}
 
 	project.UpdatedAt = time.Now()

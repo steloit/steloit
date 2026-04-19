@@ -148,7 +148,7 @@ func (s *invitationService) InviteUser(ctx context.Context, orgID uuid.UUID, inv
 	go func() {
 		emailCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		s.sendInvitationEmail(emailCtx, invitation, org, tokenData.Token, inviterID)
+		s.sendInvitationEmail(emailCtx, invitation, org, tokenData.Token, &inviterID)
 	}()
 
 	s.logger.Info("invitation created",
@@ -221,7 +221,7 @@ func (s *invitationService) AcceptInvitation(ctx context.Context, tokenStr strin
 
 	// Add user as member
 	member := orgDomain.NewMember(invitation.OrganizationID, userID, invitation.RoleID)
-	member.InvitedBy = &invitation.InvitedByID
+	member.InvitedBy = invitation.InvitedByID
 	err = s.memberRepo.Create(ctx, member)
 	if err != nil {
 		return nil, appErrors.NewInternalError("Failed to add member", err)
@@ -476,17 +476,25 @@ func (s *invitationService) createAuditEvent(ctx context.Context, invitationID u
 	}
 }
 
-// sendInvitationEmail sends an invitation email asynchronously
-func (s *invitationService) sendInvitationEmail(ctx context.Context, invitation *orgDomain.Invitation, org *orgDomain.Organization, plainTextToken string, inviterID uuid.UUID) {
+// sendInvitationEmail sends an invitation email asynchronously. A nil
+// inviterID skips the email — the invitation still exists, but the
+// inviter row has been deleted so we can't render the "invited by" line.
+func (s *invitationService) sendInvitationEmail(ctx context.Context, invitation *orgDomain.Invitation, org *orgDomain.Organization, plainTextToken string, inviterID *uuid.UUID) {
 	if s.emailSender == nil {
 		s.logger.Debug("email sender not configured, skipping invitation email",
 			"invitation_id", invitation.ID,
 		)
 		return
 	}
+	if inviterID == nil {
+		s.logger.Warn("invitation has no inviter — skipping email",
+			"invitation_id", invitation.ID,
+		)
+		return
+	}
 
 	// Get inviter info
-	inviter, err := s.userRepo.GetByID(ctx, inviterID)
+	inviter, err := s.userRepo.GetByID(ctx, *inviterID)
 	if err != nil {
 		s.logger.Error("failed to get inviter for email",
 			"error", err,

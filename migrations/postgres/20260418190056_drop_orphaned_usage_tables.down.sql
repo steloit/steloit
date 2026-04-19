@@ -1,0 +1,7 @@
+-- Intentionally not reversible.
+--
+-- If the per-request billing model is ever resurrected, the canonical
+-- CREATE TABLE statements live in git history at
+-- migrations/postgres/20251011062836_create_billing_tables.up.sql
+-- (tables: usage_records, usage_quotas). Copy them into a new forward
+-- migration rather than trying to reverse this drop.

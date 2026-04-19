@@ -56,7 +56,7 @@ func (s *organizationService) CreateOrganization(ctx context.Context, userID uui
 	// Create organization (no slug - use UUID only)
 	org := orgDomain.NewOrganization(req.Name)
 	if req.BillingEmail != "" {
-		org.BillingEmail = req.BillingEmail
+		org.BillingEmail = &req.BillingEmail
 	}
 
 	err := s.orgRepo.Create(ctx, org)
@@ -159,7 +159,7 @@ func (s *organizationService) UpdateOrganization(ctx context.Context, orgID uuid
 		org.Name = *req.Name
 	}
 	if req.BillingEmail != nil {
-		org.BillingEmail = *req.BillingEmail
+		org.BillingEmail = req.BillingEmail
 	}
 	if req.Plan != nil {
 		org.Plan = *req.Plan

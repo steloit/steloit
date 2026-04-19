@@ -14,6 +14,7 @@ import (
 
 	"brokle/internal/core/domain/billing"
 	"brokle/internal/core/domain/common"
+	"brokle/internal/core/domain/shared"
 	appErrors "brokle/pkg/errors"
 	"brokle/pkg/uid"
 )
@@ -417,7 +418,7 @@ func (s *contractService) logContractAction(ctx context.Context, contractID uuid
 		ChangedBy:  changedBy,
 		ChangedAt:  time.Now(),
 		Changes:    changesJSON,
-		Reason:     reason,
+		Reason:     shared.NilIfEmpty(reason),
 	}
 
 	if err := s.historyRepo.Log(ctx, history); err != nil {
@@ -579,7 +580,7 @@ func (s *contractService) logContractActionTx(
 		ChangedBy:  changedBy,
 		ChangedAt:  time.Now(),
 		Changes:    json.RawMessage(changesJSON),
-		Reason:     reason,
+		Reason:     shared.NilIfEmpty(reason),
 	}
 
 	if err := historyRepo.Log(ctx, history); err != nil {

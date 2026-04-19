@@ -27,7 +27,7 @@ func (r *projectRepository) Create(ctx context.Context, project *orgDomain.Proje
 		ID:             project.ID,
 		OrganizationID: project.OrganizationID,
 		Name:           project.Name,
-		Description:    emptyToNilString(project.Description),
+		Description:    project.Description,
 		Status:         project.Status,
 		CreatedAt:      project.CreatedAt,
 		UpdatedAt:      project.UpdatedAt,
@@ -59,7 +59,7 @@ func (r *projectRepository) Update(ctx context.Context, project *orgDomain.Proje
 	if err := r.tm.Queries(ctx).UpdateProject(ctx, gen.UpdateProjectParams{
 		ID:          project.ID,
 		Name:        project.Name,
-		Description: emptyToNilString(project.Description),
+		Description: project.Description,
 		Status:      project.Status,
 	}); err != nil {
 		return fmt.Errorf("update project %s: %w", project.ID, err)
@@ -120,7 +120,7 @@ func projectFromRow(row *gen.Project) *orgDomain.Project {
 		ID:             row.ID,
 		OrganizationID: row.OrganizationID,
 		Name:           row.Name,
-		Description:    derefString(row.Description),
+		Description:    row.Description,
 		Status:         row.Status,
 		CreatedAt:      row.CreatedAt,
 		UpdatedAt:      row.UpdatedAt,

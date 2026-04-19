@@ -521,9 +521,9 @@ func (w *UsageAggregationWorker) sendAlertNotification(ctx context.Context, org 
 	}
 
 	// Send email notification
-	if org.BillingEmail != "" {
+	if org.BillingEmail != nil && *org.BillingEmail != "" {
 		w.notificationWorker.QueueEmail(EmailJob{
-			To:       []string{org.BillingEmail},
+			To:       []string{*org.BillingEmail},
 			Subject:  "Usage Alert: " + string(alert.Dimension) + " threshold exceeded",
 			Template: "usage_alert",
 			TemplateData: map[string]any{

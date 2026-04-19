@@ -917,46 +917,6 @@ type UsageBudget struct {
 	UpdatedAt       time.Time        `json:"updated_at"`
 }
 
-// Organization usage quotas and limits
-type UsageQuota struct {
-	OrganizationID      uuid.UUID       `json:"organization_id"`
-	BillingTier         string          `json:"billing_tier"`
-	MonthlyRequestLimit int64           `json:"monthly_request_limit"`
-	MonthlyTokenLimit   int64           `json:"monthly_token_limit"`
-	MonthlyCostLimit    decimal.Decimal `json:"monthly_cost_limit"`
-	CurrentRequests     int64           `json:"current_requests"`
-	CurrentTokens       int64           `json:"current_tokens"`
-	CurrentCost         decimal.Decimal `json:"current_cost"`
-	Currency            string          `json:"currency"`
-	// When monthly quotas reset (typically first of month)
-	ResetDate   time.Time `json:"reset_date"`
-	LastUpdated time.Time `json:"last_updated"`
-}
-
-// Individual usage records for billing and analytics
-type UsageRecord struct {
-	ID             uuid.UUID `json:"id"`
-	OrganizationID uuid.UUID `json:"organization_id"`
-	// Reference to the original gateway request
-	RequestID    uuid.UUID       `json:"request_id"`
-	ProviderID   uuid.UUID       `json:"provider_id"`
-	ProviderName *string         `json:"provider_name"`
-	ModelID      uuid.UUID       `json:"model_id"`
-	ModelName    *string         `json:"model_name"`
-	RequestType  string          `json:"request_type"`
-	InputTokens  int32           `json:"input_tokens"`
-	OutputTokens int32           `json:"output_tokens"`
-	TotalTokens  int32           `json:"total_tokens"`
-	Cost         decimal.Decimal `json:"cost"`
-	Currency     string          `json:"currency"`
-	// Billing tier at time of request (free, pro, business, enterprise)
-	BillingTier string          `json:"billing_tier"`
-	Discounts   decimal.Decimal `json:"discounts"`
-	NetCost     decimal.Decimal `json:"net_cost"`
-	CreatedAt   time.Time       `json:"created_at"`
-	ProcessedAt *time.Time      `json:"processed_at"`
-}
-
 type User struct {
 	ID                    uuid.UUID  `json:"id"`
 	Email                 string     `json:"email"`

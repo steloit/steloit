@@ -72,7 +72,7 @@ func scanUser(row rowScanner) (*userDomain.User, error) {
 	); err != nil {
 		return nil, err
 	}
-	u.Password = derefString(password)
+	u.Password = password
 	u.EmailVerifiedAt = emailVerifiedAt
 	u.LastLoginAt = lastLoginAt
 	u.DefaultOrganizationID = defaultOrgID

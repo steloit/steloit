@@ -80,7 +80,8 @@ type ProviderCredential struct {
 	// Encrypted custom HTTP headers (JSON string)
 	// Used for proxy authentication or custom endpoints
 	// Never serialized to JSON, never returned to frontend
-	Headers string `json:"-"`
+	// nil when no custom headers are configured (matches nullable schema)
+	Headers *string `json:"-"`
 
 	// Custom models defined by user (fine-tuned, private deployments, custom provider models)
 	// For standard providers: optional fine-tuned models (e.g., "ft:gpt-4o:my-org")

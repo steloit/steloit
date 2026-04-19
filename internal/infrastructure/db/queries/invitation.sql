@@ -67,12 +67,85 @@ WHERE organization_id = $1
   AND deleted_at IS NULL
 LIMIT 1;
 
--- name: ListPendingInvitationsByOrganization :many
-SELECT * FROM user_invitations
-WHERE organization_id = $1
-  AND status = 'pending'
-  AND deleted_at IS NULL
-ORDER BY created_at DESC;
+-- name: ListPendingInvitationsWithDetailsByOrganization :many
+-- List pending invitations for a single organization, hydrating inviter
+-- and role display fields via LEFT JOIN. Eliminates the N+1 loop that
+-- previously called GetUser / GetRoleByID per row in the handler.
+--
+-- LEFT JOIN on users is filtered by deleted_at IS NULL so a soft-deleted
+-- inviter row does not leak through; combined with the FK ON DELETE SET
+-- NULL on invited_by_id, the inviter_* columns are NULL whenever the
+-- account is gone — the handler renders that as a nil Inviter ref.
+SELECT
+    i.id,
+    i.organization_id,
+    i.role_id,
+    i.email,
+    i.status,
+    i.expires_at,
+    i.accepted_at,
+    i.revoked_at,
+    i.resent_at,
+    i.created_at,
+    i.updated_at,
+    i.deleted_at,
+    i.invited_by_id,
+    i.accepted_by_id,
+    i.revoked_by_id,
+    i.token_hash,
+    i.token_preview,
+    i.message,
+    i.resent_count,
+    u.id         AS inviter_id,
+    u.email      AS inviter_email,
+    u.first_name AS inviter_first_name,
+    u.last_name  AS inviter_last_name,
+    r.id         AS role_name_id,
+    r.name       AS role_name
+FROM user_invitations i
+LEFT JOIN users u ON u.id = i.invited_by_id AND u.deleted_at IS NULL
+LEFT JOIN roles r ON r.id = i.role_id
+WHERE i.organization_id = @organization_id
+  AND i.status = 'pending'
+  AND i.deleted_at IS NULL
+ORDER BY i.created_at DESC;
+
+-- name: ListInvitationsWithDetailsByEmail :many
+-- Same hydrated shape as ListPendingInvitationsWithDetailsByOrganization
+-- but scoped by invitee email. Serves the "my invitations" endpoint for
+-- authenticated users viewing invitations addressed to them.
+SELECT
+    i.id,
+    i.organization_id,
+    i.role_id,
+    i.email,
+    i.status,
+    i.expires_at,
+    i.accepted_at,
+    i.revoked_at,
+    i.resent_at,
+    i.created_at,
+    i.updated_at,
+    i.deleted_at,
+    i.invited_by_id,
+    i.accepted_by_id,
+    i.revoked_by_id,
+    i.token_hash,
+    i.token_preview,
+    i.message,
+    i.resent_count,
+    u.id         AS inviter_id,
+    u.email      AS inviter_email,
+    u.first_name AS inviter_first_name,
+    u.last_name  AS inviter_last_name,
+    r.id         AS role_name_id,
+    r.name       AS role_name
+FROM user_invitations i
+LEFT JOIN users u ON u.id = i.invited_by_id AND u.deleted_at IS NULL
+LEFT JOIN roles r ON r.id = i.role_id
+WHERE i.email = @email
+  AND i.deleted_at IS NULL
+ORDER BY i.created_at DESC;
 
 -- name: MarkInvitationAccepted :exec
 UPDATE user_invitations

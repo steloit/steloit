@@ -41,10 +41,10 @@ func (r *contractHistoryRepository) Log(ctx context.Context, h *billingDomain.Co
 		ContractID:     h.ContractID,
 		Action:         string(h.Action),
 		ChangedBy:      actor,
-		ChangedByEmail: emptyToNilString(h.ChangedByEmail),
+		ChangedByEmail: h.ChangedByEmail,
 		ChangedAt:      h.ChangedAt,
 		Changes:        h.Changes,
-		Reason:         emptyToNilString(h.Reason),
+		Reason:         h.Reason,
 	}); err != nil {
 		return fmt.Errorf("log contract history (contract=%s): %w", h.ContractID, err)
 	}
@@ -75,10 +75,10 @@ func contractHistoryFromRow(row *gen.ContractHistory) *billingDomain.ContractHis
 		ContractID:     row.ContractID,
 		Action:         billingDomain.ContractAction(row.Action),
 		ChangedBy:      changedBy,
-		ChangedByEmail: derefStringBilling(row.ChangedByEmail),
+		ChangedByEmail: row.ChangedByEmail,
 		ChangedAt:      row.ChangedAt,
 		Changes:        row.Changes,
-		Reason:         derefStringBilling(row.Reason),
+		Reason:         row.Reason,
 	}
 }
 
@@ -98,20 +98,3 @@ func parseActorID(s string) (*uuid.UUID, error) {
 	return &id, nil
 }
 
-// Package-local deref helpers for billing repositories. Duplicated
-// from the organization package because the two don't share a helpers
-// file yet — consolidate during Phase 3 cleanup if the copies diverge.
-
-func derefStringBilling(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
-}
-
-func emptyToNilString(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
-}

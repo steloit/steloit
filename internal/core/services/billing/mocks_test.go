@@ -203,16 +203,8 @@ func newTestLogger() *slog.Logger {
 	}))
 }
 
-func ptrFloat64(v float64) *float64 {
-	return &v
-}
-
 func ptrInt64(v int64) *int64 {
 	return &v
-}
-
-func strPtr(s string) *string {
-	return &s
 }
 
 // parseTimePtr parses RFC3339 time string to pointer

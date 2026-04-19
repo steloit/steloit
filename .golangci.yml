@@ -204,18 +204,20 @@ linters:
           msg: "lib/pq is banned — use pgx v5 (internal/infrastructure/db)"
 
   exclusions:
-    # Paths excluded from all linting.
+
+    # Paths excluded from all linting. Anchored to prevent substring
+    # matches (e.g., `web` was silently excluding `repository/website/`).
     paths:
-      - vendor
-      - web
-      - sdk
-      - docs
-      - scripts
-      - deployments
-      - tests/load
-      - bin
-      - migrations
-      - seeds
+      - ^vendor/
+      - ^web/
+      - ^sdk/
+      - ^docs/
+      - ^scripts/
+      - ^deployments/
+      - ^tests/load/
+      - ^bin/
+      - ^migrations/
+      - ^seeds/
       - ".*\\.pb\\.go$"
       - ".*\\.gen\\.go$"
     rules:
@@ -231,6 +233,13 @@ linters:
       - path: _test\.go
         text: "dot imports"
 
+      # codecs.go IS the legitimate pgtype ↔ domain bridge — it exists to
+      # convert pgtype.Numeric/Timestamptz into shopspring.Decimal and
+      # time.Time. The forbidigo rules ban those pgtype symbols in
+      # "domain code"; this file is infrastructure, not domain.
+      - path: ^internal/infrastructure/db/codecs\.go$
+        linters:
+          - forbidigo
 
 formatters:
   enable:

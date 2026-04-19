@@ -279,7 +279,10 @@ func (s *userService) ChangePassword(ctx context.Context, userID uuid.UUID, curr
 	}
 
 	// Verify current password
-	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(currentPassword))
+	if !user.HasPassword() {
+		return appErrors.NewUnauthorizedError("User has no password set")
+	}
+	err = bcrypt.CompareHashAndPassword([]byte(*user.Password), []byte(currentPassword))
 	if err != nil {
 		return appErrors.NewUnauthorizedError("Current password is incorrect")
 	}
@@ -290,8 +293,7 @@ func (s *userService) ChangePassword(ctx context.Context, userID uuid.UUID, curr
 		return appErrors.NewInternalError("Failed to hash password", err)
 	}
 
-	user.Password = string(hashedPassword)
-	user.UpdatedAt = time.Now()
+	user.SetPassword(string(hashedPassword))
 
 	err = s.userRepo.Update(ctx, user)
 	if err != nil {

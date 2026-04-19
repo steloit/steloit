@@ -104,7 +104,7 @@ func (r *organizationRepository) List(ctx context.Context, filters *orgDomain.Or
 		); err != nil {
 			return nil, fmt.Errorf("scan organizations row: %w", err)
 		}
-		o.BillingEmail = derefString(billingEmail)
+		o.BillingEmail = billingEmail
 		o.DeletedAt = deletedAt
 		out = append(out, o)
 	}

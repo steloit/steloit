@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	orgDomain "brokle/internal/core/domain/organization"
+	"brokle/internal/core/domain/shared"
 	"brokle/internal/infrastructure/db"
 	"brokle/internal/infrastructure/db/gen"
 	"brokle/pkg/token"
@@ -41,7 +42,6 @@ func (r *invitationRepository) Create(ctx context.Context, inv *orgDomain.Invita
 	if inv.Status == "" {
 		inv.Status = orgDomain.InvitationStatusPending
 	}
-	invitedBy := inv.InvitedByID
 	if err := r.tm.Queries(ctx).CreateInvitation(ctx, gen.CreateInvitationParams{
 		ID:             inv.ID,
 		OrganizationID: inv.OrganizationID,
@@ -51,9 +51,9 @@ func (r *invitationRepository) Create(ctx context.Context, inv *orgDomain.Invita
 		ExpiresAt:      inv.ExpiresAt,
 		CreatedAt:      inv.CreatedAt,
 		UpdatedAt:      inv.UpdatedAt,
-		InvitedByID:    &invitedBy,
+		InvitedByID:    inv.InvitedByID,
 		TokenHash:      inv.TokenHash,
-		TokenPreview:   emptyToNilString(inv.TokenPreview),
+		TokenPreview:   inv.TokenPreview,
 		Message:        inv.Message,
 		ResentCount:    int32(inv.ResentCount),
 	}); err != nil {
@@ -106,7 +106,7 @@ func (r *invitationRepository) Update(ctx context.Context, inv *orgDomain.Invita
 		ResentCount:    int32(inv.ResentCount),
 		Message:        inv.Message,
 		TokenHash:      inv.TokenHash,
-		TokenPreview:   emptyToNilString(inv.TokenPreview),
+		TokenPreview:   inv.TokenPreview,
 	}); err != nil {
 		return fmt.Errorf("update invitation %s: %w", inv.ID, err)
 	}
@@ -131,11 +131,15 @@ func (r *invitationRepository) GetByOrganizationID(ctx context.Context, orgID uu
 }
 
 func (r *invitationRepository) GetByEmail(ctx context.Context, email string) ([]*orgDomain.Invitation, error) {
-	rows, err := r.tm.Queries(ctx).ListInvitationsByEmail(ctx, email)
+	rows, err := r.tm.Queries(ctx).ListInvitationsWithDetailsByEmail(ctx, email)
 	if err != nil {
 		return nil, fmt.Errorf("list invitations for email %s: %w", email, err)
 	}
-	return invitationsFromRows(rows), nil
+	out := make([]*orgDomain.Invitation, 0, len(rows))
+	for i := range rows {
+		out = append(out, invitationFromInvitationsWithDetailsByEmailRow(&rows[i]))
+	}
+	return out, nil
 }
 
 func (r *invitationRepository) GetPendingByEmail(ctx context.Context, orgID uuid.UUID, email string) (*orgDomain.Invitation, error) {
@@ -153,11 +157,15 @@ func (r *invitationRepository) GetPendingByEmail(ctx context.Context, orgID uuid
 }
 
 func (r *invitationRepository) GetPendingInvitations(ctx context.Context, orgID uuid.UUID) ([]*orgDomain.Invitation, error) {
-	rows, err := r.tm.Queries(ctx).ListPendingInvitationsByOrganization(ctx, orgID)
+	rows, err := r.tm.Queries(ctx).ListPendingInvitationsWithDetailsByOrganization(ctx, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("list pending invitations for org %s: %w", orgID, err)
 	}
-	return invitationsFromRows(rows), nil
+	out := make([]*orgDomain.Invitation, 0, len(rows))
+	for i := range rows {
+		out = append(out, invitationFromPendingWithDetailsByOrgRow(&rows[i]))
+	}
+	return out, nil
 }
 
 // ----- Status transitions --------------------------------------------
@@ -236,7 +244,7 @@ func (r *invitationRepository) UpdateTokenHash(ctx context.Context, id uuid.UUID
 	if err := r.tm.Queries(ctx).UpdateInvitationTokenHash(ctx, gen.UpdateInvitationTokenHashParams{
 		ID:           id,
 		TokenHash:    tokenHash,
-		TokenPreview: emptyToNilString(tokenPreview),
+		TokenPreview: shared.NilIfEmpty(tokenPreview),
 	}); err != nil {
 		return fmt.Errorf("update invitation token hash %s: %w", id, err)
 	}
@@ -310,11 +318,11 @@ func invitationFromRow(row *gen.UserInvitation) *orgDomain.Invitation {
 		CreatedAt:      row.CreatedAt,
 		UpdatedAt:      row.UpdatedAt,
 		DeletedAt:      row.DeletedAt,
-		InvitedByID:    derefUUID(row.InvitedByID),
+		InvitedByID:    row.InvitedByID,
 		AcceptedByID:   row.AcceptedByID,
 		RevokedByID:    row.RevokedByID,
 		TokenHash:      row.TokenHash,
-		TokenPreview:   derefString(row.TokenPreview),
+		TokenPreview:   row.TokenPreview,
 		Message:        row.Message,
 		ResentCount:    int(row.ResentCount),
 	}
@@ -326,6 +334,91 @@ func invitationsFromRows(rows []gen.UserInvitation) []*orgDomain.Invitation {
 		out = append(out, invitationFromRow(&rows[i]))
 	}
 	return out
+}
+
+// inviterRefFromJoin builds an InviterRef from LEFT JOIN columns.
+// Returns nil when the join matched no row (invited_by_id IS NULL, or
+// the inviter was soft-deleted), so the domain `Inviter` pointer stays
+// nil and clients see `"inviter": null`.
+func inviterRefFromJoin(id *uuid.UUID, email, first, last *string) *orgDomain.InviterRef {
+	if id == nil {
+		return nil
+	}
+	ref := &orgDomain.InviterRef{ID: *id}
+	if email != nil {
+		ref.Email = *email
+	}
+	if first != nil {
+		ref.FirstName = *first
+	}
+	if last != nil {
+		ref.LastName = *last
+	}
+	return ref
+}
+
+// roleRefFromJoin builds a RoleRef from LEFT JOIN columns. Nil on miss.
+func roleRefFromJoin(id *uuid.UUID, name *string) *orgDomain.RoleRef {
+	if id == nil {
+		return nil
+	}
+	ref := &orgDomain.RoleRef{ID: *id}
+	if name != nil {
+		ref.Name = *name
+	}
+	return ref
+}
+
+func invitationFromPendingWithDetailsByOrgRow(row *gen.ListPendingInvitationsWithDetailsByOrganizationRow) *orgDomain.Invitation {
+	return &orgDomain.Invitation{
+		ID:             row.ID,
+		OrganizationID: row.OrganizationID,
+		RoleID:         row.RoleID,
+		Email:          row.Email,
+		Status:         orgDomain.InvitationStatus(row.Status),
+		ExpiresAt:      row.ExpiresAt,
+		AcceptedAt:     row.AcceptedAt,
+		RevokedAt:      row.RevokedAt,
+		ResentAt:       row.ResentAt,
+		CreatedAt:      row.CreatedAt,
+		UpdatedAt:      row.UpdatedAt,
+		DeletedAt:      row.DeletedAt,
+		InvitedByID:    row.InvitedByID,
+		AcceptedByID:   row.AcceptedByID,
+		RevokedByID:    row.RevokedByID,
+		TokenHash:      row.TokenHash,
+		TokenPreview:   row.TokenPreview,
+		Message:        row.Message,
+		ResentCount:    int(row.ResentCount),
+		Inviter:        inviterRefFromJoin(row.InviterID, row.InviterEmail, row.InviterFirstName, row.InviterLastName),
+		Role:           roleRefFromJoin(row.RoleNameID, row.RoleName),
+	}
+}
+
+func invitationFromInvitationsWithDetailsByEmailRow(row *gen.ListInvitationsWithDetailsByEmailRow) *orgDomain.Invitation {
+	return &orgDomain.Invitation{
+		ID:             row.ID,
+		OrganizationID: row.OrganizationID,
+		RoleID:         row.RoleID,
+		Email:          row.Email,
+		Status:         orgDomain.InvitationStatus(row.Status),
+		ExpiresAt:      row.ExpiresAt,
+		AcceptedAt:     row.AcceptedAt,
+		RevokedAt:      row.RevokedAt,
+		ResentAt:       row.ResentAt,
+		CreatedAt:      row.CreatedAt,
+		UpdatedAt:      row.UpdatedAt,
+		DeletedAt:      row.DeletedAt,
+		InvitedByID:    row.InvitedByID,
+		AcceptedByID:   row.AcceptedByID,
+		RevokedByID:    row.RevokedByID,
+		TokenHash:      row.TokenHash,
+		TokenPreview:   row.TokenPreview,
+		Message:        row.Message,
+		ResentCount:    int(row.ResentCount),
+		Inviter:        inviterRefFromJoin(row.InviterID, row.InviterEmail, row.InviterFirstName, row.InviterLastName),
+		Role:           roleRefFromJoin(row.RoleNameID, row.RoleName),
+	}
 }
 
 func auditEventFromRow(row *gen.InvitationAuditEvent) *orgDomain.InvitationAuditEvent {

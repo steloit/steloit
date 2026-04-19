@@ -32,11 +32,11 @@ type InvitationResponse struct {
 	ID             uuid.UUID  `json:"id" example:"01HX..."`
 	Email          string     `json:"email" example:"john@acme.com"`
 	Status         string     `json:"status" example:"pending"`
-	TokenPreview   string     `json:"token_preview,omitempty" example:"inv_AbCd..."`
+	TokenPreview   *string    `json:"token_preview,omitempty" example:"inv_AbCd..."`
 	RoleID         uuid.UUID  `json:"role_id" example:"01HX..."`
 	RoleName       string     `json:"role_name" example:"developer"`
 	Message        *string    `json:"message,omitempty"`
-	InvitedByID    uuid.UUID  `json:"invited_by_id" example:"01HX..."`
+	InvitedByID    *uuid.UUID `json:"invited_by_id,omitempty" example:"01HX..."`
 	InvitedByEmail string     `json:"invited_by_email" example:"admin@acme.com"`
 	InvitedByName  string     `json:"invited_by_name" example:"Admin User"`
 	ResentCount    int        `json:"resent_count" example:"0"`
@@ -204,21 +204,20 @@ func (h *Handler) GetPendingInvitations(c *gin.Context) {
 		return
 	}
 
-	// Convert to response format
+	// Convert to response format. inv.Inviter and inv.Role are
+	// pre-loaded via LEFT JOIN in the repository — no extra queries
+	// here, and a nil pointer is a valid state (deleted inviter/role).
 	respInvitations := make([]InvitationResponse, 0, len(invitations))
 	for _, inv := range invitations {
-		// Get role name
 		roleName := "Member"
-		if role, err := h.roleService.GetRoleByID(c.Request.Context(), inv.RoleID); err == nil {
-			roleName = role.Name
+		if inv.Role != nil {
+			roleName = inv.Role.Name
 		}
-
-		// Get inviter details
 		inviterEmail := ""
 		inviterName := ""
-		if inviter, err := h.userService.GetUser(c.Request.Context(), inv.InvitedByID); err == nil {
-			inviterEmail = inviter.Email
-			inviterName = inviter.GetFullName()
+		if inv.Inviter != nil {
+			inviterEmail = inv.Inviter.Email
+			inviterName = inv.Inviter.FullName()
 		}
 
 		respInvitations = append(respInvitations, InvitationResponse{
@@ -287,12 +286,16 @@ func (h *Handler) ResendInvitation(c *gin.Context) {
 		roleName = role.Name
 	}
 
-	// Get inviter details
+	// Get inviter details. invitation.InvitedByID is nullable — the FK
+	// is ON DELETE SET NULL, so a valid invitation can exist without an
+	// inviter row. Skip the lookup when it's nil.
 	inviterEmail := ""
 	inviterName := ""
-	if inviter, err := h.userService.GetUser(c.Request.Context(), invitation.InvitedByID); err == nil {
-		inviterEmail = inviter.Email
-		inviterName = inviter.GetFullName()
+	if invitation.InvitedByID != nil {
+		if inviter, err := h.userService.GetUser(c.Request.Context(), *invitation.InvitedByID); err == nil {
+			inviterEmail = inviter.Email
+			inviterName = inviter.GetFullName()
+		}
 	}
 
 	resp := InvitationResponse{
@@ -459,22 +462,18 @@ func (h *Handler) GetUserInvitations(c *gin.Context) {
 			continue
 		}
 
-		// Get organization name
+		// inv.Role / inv.Inviter pre-loaded via LEFT JOIN.
 		orgName := ""
 		if org, err := h.organizationService.GetOrganization(c.Request.Context(), inv.OrganizationID); err == nil {
 			orgName = org.Name
 		}
-
-		// Get role name
 		roleName := "Member"
-		if role, err := h.roleService.GetRoleByID(c.Request.Context(), inv.RoleID); err == nil {
-			roleName = role.Name
+		if inv.Role != nil {
+			roleName = inv.Role.Name
 		}
-
-		// Get inviter name
 		inviterName := ""
-		if inviter, err := h.userService.GetUser(c.Request.Context(), inv.InvitedByID); err == nil {
-			inviterName = inviter.GetFullName()
+		if inv.Inviter != nil {
+			inviterName = inv.Inviter.FullName()
 		}
 
 		respInvitations = append(respInvitations, UserInvitationResponse{

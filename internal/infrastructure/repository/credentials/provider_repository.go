@@ -43,7 +43,7 @@ func (r *providerCredentialRepository) Create(ctx context.Context, c *credential
 		KeyPreview:     c.KeyPreview,
 		BaseUrl:        c.BaseURL,
 		Config:         cfg,
-		Headers:        emptyToNilStringCreds(c.Headers),
+		Headers:        c.Headers,
 		CustomModels:   c.CustomModels,
 		CreatedBy:      c.CreatedBy,
 		CreatedAt:      c.CreatedAt,
@@ -121,7 +121,7 @@ func (r *providerCredentialRepository) Update(ctx context.Context, c *credential
 		BaseUrl:        c.BaseURL,
 		Config:         cfg,
 		CustomModels:   c.CustomModels,
-		Headers:        emptyToNilStringCreds(c.Headers),
+		Headers:        c.Headers,
 	})
 	if err != nil {
 		if appErrors.IsUniqueViolation(err) {
@@ -167,10 +167,6 @@ func credentialFromRow(row *gen.ProviderCredential) (*credentialsDomain.Provider
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
 	}
-	var headers string
-	if row.Headers != nil {
-		headers = *row.Headers
-	}
 	return &credentialsDomain.ProviderCredential{
 		ID:             row.ID,
 		OrganizationID: row.OrganizationID,
@@ -180,7 +176,7 @@ func credentialFromRow(row *gen.ProviderCredential) (*credentialsDomain.Provider
 		KeyPreview:     row.KeyPreview,
 		BaseURL:        row.BaseUrl,
 		Config:         cfg,
-		Headers:        headers,
+		Headers:        row.Headers,
 		CustomModels:   row.CustomModels,
 		CreatedBy:      row.CreatedBy,
 		CreatedAt:      row.CreatedAt,
@@ -220,9 +216,3 @@ func unmarshalConfig(raw json.RawMessage) (map[string]any, error) {
 	return m, nil
 }
 
-func emptyToNilStringCreds(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
-}

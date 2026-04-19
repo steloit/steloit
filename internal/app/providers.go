@@ -8,9 +8,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/shopspring/decimal"
-
-	"github.com/google/uuid"
 
 	"brokle/internal/config"
 	"brokle/internal/core/domain/analytics"
@@ -214,9 +211,7 @@ type StorageRepositories struct {
 }
 
 type BillingRepositories struct {
-	Usage         billing.UsageRepository
 	BillingRecord billing.BillingRecordRepository
-	Quota         billing.QuotaRepository
 	// Usage-based billing repositories (Spans + GB + Scores)
 	BillableUsage       billing.BillableUsageRepository
 	Plan                billing.PlanRepository
@@ -297,7 +292,6 @@ type AuthServices struct {
 }
 
 type BillingServices struct {
-	Billing *billingService.BillingService
 	// Usage-based billing services (Spans + GB + Scores)
 	BillableUsage billing.BillableUsageService
 	Budget        billing.BudgetService
@@ -909,9 +903,7 @@ func ProvideStorageRepositories(clickhouseDB *database.ClickHouseDB) *StorageRep
 
 func ProvideBillingRepositories(tm *db.TxManager, clickhouseDB *database.ClickHouseDB, logger *slog.Logger) *BillingRepositories {
 	return &BillingRepositories{
-		Usage:         billingRepo.NewUsageRepository(tm, logger),
 		BillingRecord: billingRepo.NewBillingRecordRepository(tm, logger),
-		Quota:         billingRepo.NewQuotaRepository(tm, logger),
 		// Usage-based billing repositories
 		BillableUsage:       billingRepo.NewBillableUsageRepository(clickhouseDB.Conn),
 		Plan:                billingRepo.NewPlanRepository(tm),
@@ -1246,16 +1238,6 @@ func ProvideBillingServices(
 	orgRepos *OrganizationRepositories,
 	logger *slog.Logger,
 ) *BillingServices {
-	orgService := &simpleBillingOrgService{logger: logger}
-	billingServiceImpl := billingService.NewBillingService(
-		logger,
-		nil,                        // config - use defaults
-		billingRepos.Usage,         // UsageRepository
-		billingRepos.BillingRecord, // BillingRecordRepository
-		billingRepos.Quota,         // QuotaRepository
-		orgService,
-	)
-
 	// Enterprise custom pricing service (contract overrides + volume tiers)
 	pricingService := billingService.NewPricingService(
 		billingRepos.OrganizationBilling,
@@ -1292,7 +1274,6 @@ func ProvideBillingServices(
 	)
 
 	return &BillingServices{
-		Billing:       billingServiceImpl,
 		BillableUsage: billableUsageService,
 		Budget:        budgetService,
 		Pricing:       pricingService,
@@ -1545,25 +1526,6 @@ func ProvideAnnotationServices(
 		Item:       itemSvc,
 		Assignment: assignmentSvc,
 	}
-}
-
-type simpleBillingOrgService struct {
-	logger *slog.Logger
-}
-
-func (s *simpleBillingOrgService) GetBillingTier(ctx context.Context, orgID uuid.UUID) (string, error) {
-	// Default to free tier for now - in production this would query the org service
-	return "free", nil
-}
-
-func (s *simpleBillingOrgService) GetDiscountRate(ctx context.Context, orgID uuid.UUID) (decimal.Decimal, error) {
-	// Default to no discount - in production this would query the org service
-	return decimal.Zero, nil
-}
-
-func (s *simpleBillingOrgService) GetPaymentMethod(ctx context.Context, orgID uuid.UUID) (*billing.PaymentMethod, error) {
-	// No payment method by default - in production this would query the org service
-	return nil, nil
 }
 
 func ProvideEnterpriseServices(cfg *config.Config, logger *slog.Logger) *EnterpriseContainer {

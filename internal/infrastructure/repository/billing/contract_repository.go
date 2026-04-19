@@ -53,8 +53,8 @@ func (r *contractRepository) Create(ctx context.Context, c *billingDomain.Contra
 		EndDate:                 c.EndDate,
 		MinimumCommitAmount:     c.MinimumCommitAmount,
 		Currency:                c.Currency,
-		AccountOwner:            emptyToNilString(c.AccountOwner),
-		SalesRepEmail:           emptyToNilString(c.SalesRepEmail),
+		AccountOwner:            c.AccountOwner,
+		SalesRepEmail:           c.SalesRepEmail,
 		Status:                  string(c.Status),
 		CustomFreeSpans:         c.CustomFreeSpans,
 		CustomPricePer100kSpans: c.CustomPricePer100KSpans,
@@ -65,7 +65,7 @@ func (r *contractRepository) Create(ctx context.Context, c *billingDomain.Contra
 		CreatedBy:               createdBy,
 		CreatedAt:               c.CreatedAt,
 		UpdatedAt:               c.UpdatedAt,
-		Notes:                   emptyToNilString(c.Notes),
+		Notes:                   c.Notes,
 	}); err != nil {
 		return fmt.Errorf("create contract %s: %w", c.ID, err)
 	}
@@ -130,8 +130,8 @@ func (r *contractRepository) Update(ctx context.Context, c *billingDomain.Contra
 		EndDate:                 c.EndDate,
 		MinimumCommitAmount:     c.MinimumCommitAmount,
 		Currency:                c.Currency,
-		AccountOwner:            emptyToNilString(c.AccountOwner),
-		SalesRepEmail:           emptyToNilString(c.SalesRepEmail),
+		AccountOwner:            c.AccountOwner,
+		SalesRepEmail:           c.SalesRepEmail,
 		Status:                  string(c.Status),
 		CustomFreeSpans:         c.CustomFreeSpans,
 		CustomPricePer100kSpans: c.CustomPricePer100KSpans,
@@ -139,7 +139,7 @@ func (r *contractRepository) Update(ctx context.Context, c *billingDomain.Contra
 		CustomPricePerGb:        c.CustomPricePerGB,
 		CustomFreeScores:        c.CustomFreeScores,
 		CustomPricePer1kScores:  c.CustomPricePer1KScores,
-		Notes:                   emptyToNilString(c.Notes),
+		Notes:                   c.Notes,
 	}); err != nil {
 		return fmt.Errorf("update contract %s: %w", c.ID, err)
 	}
@@ -216,8 +216,8 @@ func contractFromRow(row *gen.Contract) *billingDomain.Contract {
 		EndDate:                 row.EndDate,
 		MinimumCommitAmount:     row.MinimumCommitAmount,
 		Currency:                row.Currency,
-		AccountOwner:            derefStringBilling(row.AccountOwner),
-		SalesRepEmail:           derefStringBilling(row.SalesRepEmail),
+		AccountOwner:            row.AccountOwner,
+		SalesRepEmail:           row.SalesRepEmail,
 		Status:                  billingDomain.ContractStatus(row.Status),
 		CustomFreeSpans:         row.CustomFreeSpans,
 		CustomPricePer100KSpans: row.CustomPricePer100kSpans,
@@ -228,6 +228,6 @@ func contractFromRow(row *gen.Contract) *billingDomain.Contract {
 		CreatedBy:               createdBy,
 		CreatedAt:               row.CreatedAt,
 		UpdatedAt:               row.UpdatedAt,
-		Notes:                   derefStringBilling(row.Notes),
+		Notes:                   row.Notes,
 	}
 }

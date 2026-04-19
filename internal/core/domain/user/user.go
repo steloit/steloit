@@ -27,7 +27,7 @@ type User struct {
 	Language              string     `json:"language"`
 	Role                  string     `json:"role"`
 	Timezone              string     `json:"timezone"`
-	Password              string     `json:"-"`
+	Password              *string    `json:"-"`
 	LastName              string     `json:"last_name"`
 	FirstName             string     `json:"first_name"`
 	Email                 string     `json:"email"`
@@ -155,10 +155,20 @@ func (u *User) UpdateLastLogin() {
 	u.UpdatedAt = now
 }
 
-// SetPassword sets the user's password hash.
+// SetPassword sets the user's password hash. Pass the empty string to
+// clear the password (SSO/OAuth users have no password → stored as NULL).
 func (u *User) SetPassword(hashedPassword string) {
-	u.Password = hashedPassword
+	if hashedPassword == "" {
+		u.Password = nil
+	} else {
+		u.Password = &hashedPassword
+	}
 	u.UpdatedAt = time.Now()
+}
+
+// HasPassword reports whether the user has a password hash stored.
+func (u *User) HasPassword() bool {
+	return u.Password != nil && *u.Password != ""
 }
 
 // SetDefaultOrganization sets the user's default organization.

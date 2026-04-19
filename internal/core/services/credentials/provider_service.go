@@ -111,16 +111,17 @@ func (s *providerCredentialService) Create(ctx context.Context, req *credentials
 	keyPreview := credentialsDomain.MaskAPIKey(req.APIKey)
 
 	// Encrypt headers if provided
-	var encryptedHeaders string
+	var encryptedHeaders *string
 	if len(req.Headers) > 0 {
 		headersJSON, err := json.Marshal(req.Headers)
 		if err != nil {
 			return nil, appErrors.NewInternalError("Failed to serialize headers", err)
 		}
-		encryptedHeaders, err = s.encryptor.Encrypt(string(headersJSON))
+		h, err := s.encryptor.Encrypt(string(headersJSON))
 		if err != nil {
 			return nil, appErrors.NewInternalError("Failed to secure headers", err)
 		}
+		encryptedHeaders = &h
 	}
 
 	credential := &credentialsDomain.ProviderCredential{
@@ -236,10 +237,10 @@ func (s *providerCredentialService) Update(ctx context.Context, id uuid.UUID, or
 			if err != nil {
 				return nil, appErrors.NewInternalError("Failed to secure headers", err)
 			}
-			credential.Headers = encryptedHeaders
+			credential.Headers = &encryptedHeaders
 		} else {
 			// Empty map explicitly clears headers
-			credential.Headers = ""
+			credential.Headers = nil
 		}
 	}
 
@@ -342,8 +343,8 @@ func (s *providerCredentialService) toResponseWithHeaders(credential *credential
 	resp := credential.ToResponse()
 
 	// Decrypt headers if present
-	if credential.Headers != "" {
-		decryptedHeaders, err := s.encryptor.Decrypt(credential.Headers)
+	if credential.Headers != nil && *credential.Headers != "" {
+		decryptedHeaders, err := s.encryptor.Decrypt(*credential.Headers)
 		if err != nil {
 			s.logger.Warn("failed to decrypt headers for response",
 				"error", err,
@@ -386,8 +387,8 @@ func (s *providerCredentialService) decryptCredential(credential *credentialsDom
 	}
 
 	// Decrypt custom headers if present
-	if credential.Headers != "" {
-		decryptedHeaders, err := s.encryptor.Decrypt(credential.Headers)
+	if credential.Headers != nil && *credential.Headers != "" {
+		decryptedHeaders, err := s.encryptor.Decrypt(*credential.Headers)
 		if err != nil {
 			s.logger.Warn("failed to decrypt custom headers",
 				"error", err,

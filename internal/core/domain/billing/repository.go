@@ -10,15 +10,8 @@ import (
 )
 
 // ============================================================================
-// Usage & Billing Repositories
+// Billing Repositories
 // ============================================================================
-
-// UsageRepository handles usage tracking data access
-type UsageRepository interface {
-	InsertUsageRecord(ctx context.Context, record *UsageRecord) error
-	GetUsageRecords(ctx context.Context, orgID uuid.UUID, start, end time.Time) ([]*UsageRecord, error)
-	UpdateUsageRecord(ctx context.Context, recordID uuid.UUID, record *UsageRecord) error
-}
 
 // BillingRecordRepository handles billing records and summaries persistence
 type BillingRecordRepository interface {
@@ -32,12 +25,6 @@ type BillingRecordRepository interface {
 	InsertBillingSummary(ctx context.Context, summary *BillingSummary) error
 	GetBillingSummary(ctx context.Context, orgID uuid.UUID, period string) (*BillingSummary, error)
 	GetBillingSummaryHistory(ctx context.Context, orgID uuid.UUID, start, end time.Time) ([]*BillingSummary, error)
-}
-
-// QuotaRepository handles usage quota management
-type QuotaRepository interface {
-	GetUsageQuota(ctx context.Context, orgID uuid.UUID) (*UsageQuota, error)
-	UpdateUsageQuota(ctx context.Context, orgID uuid.UUID, quota *UsageQuota) error
 }
 
 // ============================================================================

@@ -918,11 +918,19 @@ func (h *Handler) ValidateInvitationToken(c *gin.Context) {
 		return
 	}
 
-	// Get inviter details
-	inviter, err := h.userService.GetUser(c.Request.Context(), invitation.InvitedByID)
-	if err != nil {
-		h.logger.Warn("Failed to get inviter details", "error", err)
-		// Non-critical - continue with unknown inviter
+	// Get inviter details. invitation.InvitedByID is nullable — if the
+	// inviter account has been deleted (ON DELETE SET NULL), the lookup
+	// is skipped and the response falls through to the "Unknown"
+	// sentinel below. Dereferencing without the nil-check previously
+	// panicked the handler.
+	var inviter *user.User
+	if invitation.InvitedByID != nil {
+		var err error
+		inviter, err = h.userService.GetUser(c.Request.Context(), *invitation.InvitedByID)
+		if err != nil {
+			h.logger.Warn("Failed to get inviter details", "error", err)
+			// Non-critical - continue with unknown inviter
+		}
 	}
 
 	// Get role details

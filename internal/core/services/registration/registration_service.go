@@ -133,7 +133,7 @@ func (s *registrationService) RegisterWithOrganization(ctx context.Context, req 
 			newUser.AuthMethod = "oauth"
 			newUser.OAuthProvider = &req.Provider
 			newUser.OAuthProviderID = &req.ProviderID
-			newUser.Password = "" // NULL password for OAuth users
+			newUser.Password = nil // NULL password for OAuth users
 
 			// OAuth emails are pre-verified by provider
 			now := time.Now()
@@ -161,7 +161,7 @@ func (s *registrationService) RegisterWithOrganization(ctx context.Context, req 
 
 		// 2. Create organization
 		org = orgDomain.NewOrganization(*req.OrganizationName)
-		org.BillingEmail = req.Email
+		org.BillingEmail = &req.Email
 		org.Plan = "free"
 		org.SubscriptionStatus = "active"
 
@@ -290,7 +290,7 @@ func (s *registrationService) RegisterWithInvitation(ctx context.Context, req *R
 			newUser.AuthMethod = "oauth"
 			newUser.OAuthProvider = &req.Provider
 			newUser.OAuthProviderID = &req.ProviderID
-			newUser.Password = "" // NULL password for OAuth users
+			newUser.Password = nil // NULL password for OAuth users
 
 			// OAuth emails are pre-verified by provider
 			now := time.Now()
