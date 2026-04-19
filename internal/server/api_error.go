@@ -1,4 +1,4 @@
-package http
+package server
 
 import (
 	"encoding/json"
@@ -21,6 +21,9 @@ import (
 // https://huma.rocks/features/response-errors/. Setting it in init
 // keeps the override applied for the entire process lifetime,
 // including tests that import this package transitively.
+//
+// The override is global, applied to every huma.API instance — both
+// apiPublic and apiAdmin emit the same envelope shape.
 func init() {
 	huma.NewError = newHumaError
 }
