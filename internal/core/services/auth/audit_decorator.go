@@ -38,9 +38,9 @@ func (a *auditDecorator) Login(ctx context.Context, req *authDomain.LoginRequest
 		// Determine reason based on error type
 		if appErr, ok := appErrors.IsAppError(err); ok {
 			switch appErr.Type {
-			case appErrors.UnauthorizedError:
+			case appErrors.TypeAuthentication:
 				reason = "invalid_credentials"
-			case appErrors.ForbiddenError:
+			case appErrors.TypePermission:
 				reason = "account_inactive"
 			default:
 				reason = "system_error"
@@ -77,7 +77,7 @@ func (a *auditDecorator) RefreshToken(ctx context.Context, req *authDomain.Refre
 		var reason string
 		if appErr, ok := appErrors.IsAppError(err); ok {
 			switch appErr.Type {
-			case appErrors.UnauthorizedError:
+			case appErrors.TypeAuthentication:
 				reason = "invalid_token"
 			default:
 				reason = "system_error"

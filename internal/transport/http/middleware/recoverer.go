@@ -7,8 +7,6 @@ import (
 	"runtime/debug"
 
 	"github.com/go-chi/chi/v5/middleware"
-
-	appErrors "brokle/pkg/errors"
 )
 
 // Recoverer is the chi-shape panic recovery middleware that replaces the
@@ -66,20 +64,18 @@ func Recoverer(logger *slog.Logger) func(http.Handler) http.Handler {
 	}
 }
 
-// writePanicResponse emits a 500 envelope shaped like every other error
-// response in the codebase — uses appErrors.NewInternalError so a future
-// rev of the envelope only needs to change in one place.
+// internalErrorBody is the canonical 500 envelope written by the
+// recoverer when a panic is caught. Hand-written constant rather than a
+// runtime AppError construction — the body is fixed, the path is hot,
+// and the recoverer must stay functional through the pkg/response
+// rewrite that lands later in the Chi migration.
+const internalErrorBody = `{"success":false,"error":{"type":"api_error","code":"api_error","message":"Internal server error"}}`
+
+// writePanicResponse emits the canonical 500 envelope.
 func writePanicResponse(w http.ResponseWriter, _ *http.Request) {
-	err := appErrors.NewInternalError("Internal server error", nil)
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(err.StatusCode)
-	// Hand-write the envelope here rather than reach into pkg/response —
-	// the response package will be rewritten in a later step and this
-	// recoverer must remain functional through that transition. The shape
-	// is the documented APIResponse envelope:
-	//   {"success":false,"error":{"code":"INTERNAL_ERROR","message":"Internal server error","type":"INTERNAL_ERROR"}}
-	const body = `{"success":false,"error":{"code":"INTERNAL_ERROR","message":"Internal server error","type":"INTERNAL_ERROR"}}`
-	_, _ = w.Write([]byte(body))
+	w.WriteHeader(http.StatusInternalServerError)
+	_, _ = w.Write([]byte(internalErrorBody))
 }
 
 // headersWritten reports whether the response headers have already been

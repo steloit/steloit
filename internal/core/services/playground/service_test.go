@@ -89,7 +89,7 @@ func (m *MockSessionRepository) ExistsByProjectID(ctx context.Context, sessionID
 // Test Helpers
 // ============================================================================
 
-func assertAppErrorType(t *testing.T, err error, expectedType appErrors.AppErrorType) {
+func assertAppErrorType(t *testing.T, err error, expectedType appErrors.ErrorType) {
 	t.Helper()
 	appErr, ok := appErrors.IsAppError(err)
 	assert.True(t, ok, "expected AppError but got: %v", err)
@@ -116,7 +116,7 @@ func TestPlaygroundService_CreateSession(t *testing.T) {
 		request         *playgroundDomain.CreateSessionRequest
 		mockSetup       func(*MockSessionRepository)
 		expectErr       bool
-		expectedErrType appErrors.AppErrorType
+		expectedErrType appErrors.ErrorType
 		checkResult     func(*testing.T, *playgroundDomain.SessionResponse)
 	}{
 		{
@@ -152,7 +152,7 @@ func TestPlaygroundService_CreateSession(t *testing.T) {
 			},
 			mockSetup:       func(repo *MockSessionRepository) {},
 			expectErr:       true,
-			expectedErrType: appErrors.ValidationError,
+			expectedErrType: appErrors.TypeValidation,
 			checkResult:     nil,
 		},
 		{
@@ -164,7 +164,7 @@ func TestPlaygroundService_CreateSession(t *testing.T) {
 			},
 			mockSetup:       func(repo *MockSessionRepository) {},
 			expectErr:       true,
-			expectedErrType: appErrors.ValidationError,
+			expectedErrType: appErrors.TypeValidation,
 			checkResult:     nil,
 		},
 		{
@@ -177,7 +177,7 @@ func TestPlaygroundService_CreateSession(t *testing.T) {
 			},
 			mockSetup:       func(repo *MockSessionRepository) {},
 			expectErr:       true,
-			expectedErrType: appErrors.ValidationError,
+			expectedErrType: appErrors.TypeValidation,
 			checkResult:     nil,
 		},
 	}
@@ -220,7 +220,7 @@ func TestPlaygroundService_UpdateSession(t *testing.T) {
 		request         *playgroundDomain.UpdateSessionRequest
 		mockSetup       func(*MockSessionRepository)
 		expectErr       bool
-		expectedErrType appErrors.AppErrorType
+		expectedErrType appErrors.ErrorType
 		checkResult     func(*testing.T, *playgroundDomain.SessionResponse)
 	}{
 		{
@@ -264,7 +264,7 @@ func TestPlaygroundService_UpdateSession(t *testing.T) {
 				repo.On("GetByID", mock.Anything, sessionID).Return(nil, playgroundDomain.ErrSessionNotFound)
 			},
 			expectErr:       true,
-			expectedErrType: appErrors.NotFoundError,
+			expectedErrType: appErrors.TypeNotFound,
 			checkResult:     nil,
 		},
 		{
@@ -287,7 +287,7 @@ func TestPlaygroundService_UpdateSession(t *testing.T) {
 				repo.On("GetByID", mock.Anything, sessionID).Return(session, nil)
 			},
 			expectErr:       true,
-			expectedErrType: appErrors.ValidationError,
+			expectedErrType: appErrors.TypeValidation,
 			checkResult:     nil,
 		},
 	}

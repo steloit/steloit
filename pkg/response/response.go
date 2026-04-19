@@ -11,31 +11,41 @@ import (
 	"brokle/pkg/pagination"
 )
 
-// All API endpoints should use the helpers in this package (Success, Error, NoContent, etc.)
-// to return responses wrapped in the standard APIResponse envelope.
+// All API endpoints should use the helpers in this package (Success,
+// Error, NoContent, etc.) to return responses wrapped in the standard
+// APIResponse envelope.
 //
 // Intentional exceptions that use c.JSON() directly:
-//   - Health endpoints (/health, /health/ready, /health/live): infrastructure endpoints
-//     consumed by K8s probes and monitoring tools that expect flat responses.
-//   - Billing export JSON (usage_handler.go exportJSON): file download endpoint where
-//     Content-Disposition is set and the raw JSON is the downloadable file content.
+//   - Health endpoints (/health, /health/ready, /health/live):
+//     infrastructure endpoints consumed by K8s probes and monitoring
+//     tools that expect flat responses.
+//   - Billing export JSON (usage_handler.go exportJSON): file download
+//     endpoint where Content-Disposition is set and the raw JSON is the
+//     downloadable file content.
 
 // APIResponse represents the standard API response format
 // @Description Standard API response wrapper
 type APIResponse struct {
-	Data    any `json:"data,omitempty" description:"Response data payload"`
-	Error   *APIError   `json:"error,omitempty" description:"Error information if request failed"`
-	Meta    *Meta       `json:"meta,omitempty" description:"Response metadata"`
-	Success bool        `json:"success" example:"true" description:"Indicates if the request was successful"`
+	Data    any       `json:"data,omitempty" description:"Response data payload"`
+	Error   *APIError `json:"error,omitempty" description:"Error information if request failed"`
+	Meta    *Meta     `json:"meta,omitempty" description:"Response metadata"`
+	Success bool      `json:"success" example:"true" description:"Indicates if the request was successful"`
 }
 
-// APIError represents error information in API responses
+// APIError represents error information in API responses. The shape
+// mirrors Stripe / OpenAI / Anthropic — Type is the closed coarse
+// classification (clients switch on it for retry / alert / SDK-class
+// behaviour), Code is the open fine-grained identifier (per-error SDK
+// subclasses, observability), Param optionally points at the input
+// field that failed.
+//
 // @Description Error details for failed API requests
 type APIError struct {
-	Code    string `json:"code" example:"validation_error" description:"Error code identifier"`
+	Type    string `json:"type" example:"validation_error" description:"Closed coarse error classification (retry/alert key)"`
+	Code    string `json:"code,omitempty" example:"project_not_found" description:"Open fine-grained domain code (snake_case)"`
 	Message string `json:"message" example:"Invalid request data" description:"Human-readable error message"`
-	Details string `json:"details,omitempty" example:"Field 'email' is required" description:"Additional error details"`
-	Type    string `json:"type,omitempty" example:"validation_error" description:"Error type category"`
+	Details string `json:"details,omitempty" example:"projectId must be a valid UUID" description:"Additional error context"`
+	Param   string `json:"param,omitempty" example:"projectId" description:"Input field that triggered the error, when applicable"`
 }
 
 // Pagination represents offset-based pagination metadata
@@ -133,29 +143,18 @@ func NoContent(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// Error returns an error response based on AppError type
+// Error renders err as the canonical APIResponse error envelope. err
+// must be (or wrap) an *AppError; non-AppError errors surface as the
+// catch-all TypeAPIError (HTTP 500) so the response stays well-formed
+// but the path is treated as a bug — services and handlers should
+// always construct a typed AppError before forwarding.
+//
+// HTTP status is derived from AppError.Type via the canonical
+// HTTPStatus() mapping, never from a stored field. This is the
+// invariant that eliminates the status / type misclassification
+// regression class.
 func Error(c *gin.Context, err error) {
-	var statusCode int
-	var apiError *APIError
-
-	if appErr, ok := appErrors.IsAppError(err); ok {
-		statusCode = appErr.StatusCode
-		apiError = &APIError{
-			Code:    string(appErr.Type),
-			Message: appErr.Message,
-			Details: appErr.Details,
-			Type:    string(appErr.Type),
-		}
-	} else {
-		statusCode = http.StatusInternalServerError
-		apiError = &APIError{
-			Code:    string(appErrors.InternalError),
-			Message: "Internal server error",
-			Details: "",
-			Type:    string(appErrors.InternalError),
-		}
-	}
-
+	apiError, statusCode := buildAPIError(err)
 	c.JSON(statusCode, APIResponse{
 		Success: false,
 		Error:   apiError,
@@ -163,11 +162,41 @@ func Error(c *gin.Context, err error) {
 	})
 }
 
-// ErrorWithStatus returns an error response with custom status code
+// buildAPIError renders an arbitrary error into the wire APIError plus
+// the HTTP status to write. Centralised so the post-Chi-migration
+// stdlib-http handler layer can share it without duplicating the
+// Type → Status derivation.
+func buildAPIError(err error) (*APIError, int) {
+	if appErr := appErrors.AsAppError(err); appErr != nil {
+		return &APIError{
+			Type:    string(appErr.Type),
+			Code:    appErr.CodeOrType(),
+			Message: appErr.Message,
+			Details: appErr.Details,
+			Param:   appErr.Param,
+		}, appErr.HTTPStatus()
+	}
+	return &APIError{
+		Type:    string(appErrors.TypeAPIError),
+		Code:    string(appErrors.TypeAPIError),
+		Message: "Internal server error",
+	}, http.StatusInternalServerError
+}
+
+// ErrorWithStatus writes a custom-status error response. The Type is
+// derived from statusCode via appErrors.FromHTTPStatus so the on-wire
+// envelope still carries a semantically correct closed-enum Type, even
+// for ad-hoc statuses callers reach for outside the typed AppError
+// constructors. code is the open-enum domain code (snake_case).
+//
+// Used by infrastructure middleware (CSRF, OTLP HTTP receiver, scope
+// resolver) where callers know the exact HTTP status they want to
+// emit. Handlers should prefer Error(c, appErrors.New*Error(...)).
 func ErrorWithStatus(c *gin.Context, statusCode int, code, message, details string) {
 	c.JSON(statusCode, APIResponse{
 		Success: false,
 		Error: &APIError{
+			Type:    string(appErrors.FromHTTPStatus(statusCode, message).Type),
 			Code:    code,
 			Message: message,
 			Details: details,
@@ -176,14 +205,19 @@ func ErrorWithStatus(c *gin.Context, statusCode int, code, message, details stri
 	})
 }
 
+// The named-status helpers below are convenience shims for middleware
+// and infrastructure code that needs to emit a specific HTTP status
+// without first constructing an AppError. Handler code MUST use
+// Error(c, appErrors.New*Error(...)) instead — see CLAUDE.md gotcha #4.
+
 // BadRequest returns a 400 Bad Request error
 func BadRequest(c *gin.Context, message, details string) {
-	ErrorWithStatus(c, http.StatusBadRequest, string(appErrors.BadRequestError), message, details)
+	ErrorWithStatus(c, http.StatusBadRequest, string(appErrors.TypeInvalidRequest), message, details)
 }
 
 // NotFound returns a 404 Not Found error
 func NotFound(c *gin.Context, resource string) {
-	ErrorWithStatus(c, http.StatusNotFound, string(appErrors.NotFoundError), resource+" not found", "")
+	ErrorWithStatus(c, http.StatusNotFound, string(appErrors.TypeNotFound), resource+" not found", "")
 }
 
 // Unauthorized returns a 401 Unauthorized error
@@ -191,7 +225,7 @@ func Unauthorized(c *gin.Context, message string) {
 	if message == "" {
 		message = "Unauthorized access"
 	}
-	ErrorWithStatus(c, http.StatusUnauthorized, string(appErrors.UnauthorizedError), message, "")
+	ErrorWithStatus(c, http.StatusUnauthorized, string(appErrors.TypeAuthentication), message, "")
 }
 
 // Forbidden returns a 403 Forbidden error
@@ -199,17 +233,18 @@ func Forbidden(c *gin.Context, message string) {
 	if message == "" {
 		message = "Access forbidden"
 	}
-	ErrorWithStatus(c, http.StatusForbidden, string(appErrors.ForbiddenError), message, "")
+	ErrorWithStatus(c, http.StatusForbidden, string(appErrors.TypePermission), message, "")
 }
 
 // Conflict returns a 409 Conflict error
 func Conflict(c *gin.Context, message string) {
-	ErrorWithStatus(c, http.StatusConflict, string(appErrors.ConflictError), message, "")
+	ErrorWithStatus(c, http.StatusConflict, string(appErrors.TypeConflict), message, "")
 }
 
-// ValidationError returns a 400 Bad Request error for validation failures
+// ValidationError returns a 422 Unprocessable Entity error for
+// declarative-validation failures.
 func ValidationError(c *gin.Context, message, details string) {
-	ErrorWithStatus(c, http.StatusBadRequest, string(appErrors.ValidationError), message, details)
+	ErrorWithStatus(c, http.StatusUnprocessableEntity, string(appErrors.TypeValidation), message, details)
 }
 
 // InternalServerError returns a 500 Internal Server Error
@@ -217,7 +252,7 @@ func InternalServerError(c *gin.Context, message string) {
 	if message == "" {
 		message = "Internal server error"
 	}
-	ErrorWithStatus(c, http.StatusInternalServerError, string(appErrors.InternalError), message, "")
+	ErrorWithStatus(c, http.StatusInternalServerError, string(appErrors.TypeAPIError), message, "")
 }
 
 // RateLimit returns a 429 Too Many Requests error
@@ -225,7 +260,7 @@ func RateLimit(c *gin.Context, message string) {
 	if message == "" {
 		message = "Rate limit exceeded"
 	}
-	ErrorWithStatus(c, http.StatusTooManyRequests, string(appErrors.RateLimitError), message, "")
+	ErrorWithStatus(c, http.StatusTooManyRequests, string(appErrors.TypeRateLimit), message, "")
 }
 
 // TooManyRequests is an alias for RateLimit for better readability
@@ -238,23 +273,26 @@ func PaymentRequired(c *gin.Context, message string) {
 	if message == "" {
 		message = "Payment required"
 	}
-	ErrorWithStatus(c, http.StatusPaymentRequired, string(appErrors.PaymentRequiredError), message, "")
+	ErrorWithStatus(c, http.StatusPaymentRequired, string(appErrors.TypePaymentRequired), message, "")
 }
 
-// QuotaExceeded returns a 429 Too Many Requests error for quota limits
+// QuotaExceeded returns a 429 Too Many Requests error for quota limits.
+// Surfaces with the distinct "quota_exceeded" code so SDK consumers can
+// render a "you've used your quota" message instead of "slow down".
 func QuotaExceeded(c *gin.Context, message string) {
 	if message == "" {
 		message = "Quota exceeded"
 	}
-	ErrorWithStatus(c, http.StatusTooManyRequests, string(appErrors.QuotaExceededError), message, "")
+	ErrorWithStatus(c, http.StatusTooManyRequests, appErrors.CodeQuotaExceeded, message, "")
 }
 
-// AIProviderError returns a 502 Bad Gateway error for AI provider failures
+// AIProviderError returns a 502 Bad Gateway error for upstream LLM
+// provider failures.
 func AIProviderError(c *gin.Context, message string) {
 	if message == "" {
 		message = "AI provider error"
 	}
-	ErrorWithStatus(c, http.StatusBadGateway, string(appErrors.AIProviderError), message, "")
+	ErrorWithStatus(c, http.StatusBadGateway, string(appErrors.TypeUpstreamProvider), message, "")
 }
 
 // ServiceUnavailable returns a 503 Service Unavailable error
@@ -262,22 +300,7 @@ func ServiceUnavailable(c *gin.Context, message string) {
 	if message == "" {
 		message = "Service temporarily unavailable"
 	}
-	ErrorWithStatus(c, http.StatusServiceUnavailable, string(appErrors.ServiceUnavailable), message, "")
-}
-
-// ErrorWithCode creates an error response using predefined error codes
-func ErrorWithCode(c *gin.Context, statusCode int, code string, details string) {
-	appErr := appErrors.NewErrorWithCode(code, details)
-	c.JSON(statusCode, APIResponse{
-		Success: false,
-		Error: &APIError{
-			Code:    code,
-			Message: appErr.Message,
-			Details: details,
-			Type:    string(appErr.Type),
-		},
-		Meta: getMeta(c),
-	})
+	ErrorWithStatus(c, http.StatusServiceUnavailable, string(appErrors.TypeServiceUnavailable), message, "")
 }
 
 // NewPagination creates offset pagination metadata
