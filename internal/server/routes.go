@@ -110,7 +110,7 @@ func addRoutes(r chi.Router, apiPublic, apiAdmin huma.API, d Deps, ready *readyS
 		// Public dashboard routes — login, password reset, website
 		// contact form. No auth required; rate limit + CSRF still
 		// apply at the route-group level.
-		authHandler.RegisterPublicRoutes(apiAdmin, d.Auth, d.User, d.Registration, d.Config, d.Logger)
+		authHandler.RegisterPublicRoutes(apiAdmin, d.Auth, d.User, d.Registration, d.Session, d.Config, d.Logger)
 		websiteHandler.RegisterRoutes(apiAdmin, d.Website, d.Logger)
 
 		// Authed dashboard routes — everything requiring a valid
@@ -119,7 +119,7 @@ func addRoutes(r chi.Router, apiPublic, apiAdmin huma.API, d Deps, ready *readyS
 			r.Use(middleware.RequireAuth(d.authMiddlewareDeps()))
 			r.Use(middleware.LimitByUser(rateLimitD))
 
-			authHandler.RegisterProtectedRoutes(apiAdmin, d.Auth, d.User, d.Registration, d.Config, d.Logger)
+			authHandler.RegisterProtectedRoutes(apiAdmin, d.Auth, d.User, d.Registration, d.Session, d.Config, d.Logger)
 			// Per-domain authed dashboard registrations land here.
 			// organization.RegisterRoutes(apiAdmin, d.Organization, d.OrgMember)  // Step 4
 			// project.RegisterRoutes(apiAdmin, d.Project)                          // Step 4

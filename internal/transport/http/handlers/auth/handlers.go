@@ -43,15 +43,17 @@ import (
 )
 
 // handler bundles the auth service + user service + registration
-// service + config + logger so the operation methods don't repeat
-// them on every signature. Package-private; the only public surface
-// is RegisterPublicRoutes / RegisterProtectedRoutes.
+// service + session service + config + logger so the operation
+// methods don't repeat them on every signature. Package-private;
+// the only public surface is RegisterPublicRoutes /
+// RegisterProtectedRoutes.
 type handler struct {
-	authSvc   authDomain.AuthService
-	userSvc   user.UserService
-	regSvc    registration.RegistrationService
-	cfg       *config.Config
-	logger    *slog.Logger
+	authSvc    authDomain.AuthService
+	userSvc    user.UserService
+	regSvc     registration.RegistrationService
+	sessionSvc authDomain.SessionService
+	cfg        *config.Config
+	logger     *slog.Logger
 }
 
 // ----- login ---------------------------------------------------------
@@ -249,6 +251,133 @@ func (h *handler) getCurrentUser(ctx context.Context, _ *struct{}) (*GetCurrentU
 			ExpiresAt: expiresAtMs,
 			ExpiresIn: expiresInMs,
 		},
+	}, nil
+}
+
+// ----- get-profile ---------------------------------------------------
+//
+// Returns the authenticated user record. Distinct from
+// get-current-user (/me) because /me includes access-token expiry
+// metadata the dashboard uses for refresh scheduling, while
+// /profile is the "user record for rendering a profile page"
+// endpoint — no session metadata, just the persistent fields.
+
+type GetProfileOutput struct {
+	Body any `json:"user" doc:"Authenticated user profile record"`
+}
+
+func (h *handler) getProfile(ctx context.Context, _ *struct{}) (*GetProfileOutput, error) {
+	userID := httpctx.MustGetUserID(ctx)
+	u, err := h.userSvc.GetUser(ctx, userID)
+	if err != nil {
+		h.logger.WarnContext(ctx, "get-profile: user fetch failed", "user_id", userID, "error", err)
+		return nil, err
+	}
+	return &GetProfileOutput{Body: u}, nil
+}
+
+// ----- sessions list -------------------------------------------------
+
+type ListSessionsOutput struct {
+	Body listSessionsResponse
+}
+
+type listSessionsResponse struct {
+	Sessions []*authDomain.UserSession `json:"sessions" doc:"All sessions owned by the authenticated user"`
+}
+
+func (h *handler) listSessions(ctx context.Context, _ *struct{}) (*ListSessionsOutput, error) {
+	userID := httpctx.MustGetUserID(ctx)
+	sessions, err := h.sessionSvc.GetUserSessions(ctx, userID)
+	if err != nil {
+		h.logger.WarnContext(ctx, "list-sessions: fetch failed", "user_id", userID, "error", err)
+		return nil, err
+	}
+	return &ListSessionsOutput{Body: listSessionsResponse{Sessions: sessions}}, nil
+}
+
+// ----- session get ---------------------------------------------------
+
+type GetSessionInput struct {
+	SessionID uuid.UUID `path:"session_id" doc:"Session identifier"`
+}
+
+type GetSessionOutput struct {
+	Body *authDomain.UserSession
+}
+
+func (h *handler) getSession(ctx context.Context, in *GetSessionInput) (*GetSessionOutput, error) {
+	// The session service returns the session regardless of owner;
+	// enforce owner-match at the handler layer so a compromised or
+	// predicted UUID can't read another user's session.
+	userID := httpctx.MustGetUserID(ctx)
+	sess, err := h.sessionSvc.GetSession(ctx, in.SessionID)
+	if err != nil {
+		return nil, err
+	}
+	if sess.UserID != userID {
+		h.logger.WarnContext(ctx, "get-session: cross-user access attempt", "actor", userID, "session_id", in.SessionID, "owner", sess.UserID)
+		return nil, appErrors.NewNotFoundError("Session")
+	}
+	return &GetSessionOutput{Body: sess}, nil
+}
+
+// ----- session revoke -----------------------------------------------
+//
+// Revokes a single session by ID. Owner-enforcement mirrors
+// get-session — a user can only revoke their own sessions.
+
+type RevokeSessionInput struct {
+	SessionID uuid.UUID `path:"session_id" doc:"Session identifier to revoke"`
+}
+
+type RevokeSessionOutput struct {
+	Body messageResponse
+}
+
+func (h *handler) revokeSession(ctx context.Context, in *RevokeSessionInput) (*RevokeSessionOutput, error) {
+	userID := httpctx.MustGetUserID(ctx)
+	sess, err := h.sessionSvc.GetSession(ctx, in.SessionID)
+	if err != nil {
+		return nil, err
+	}
+	if sess.UserID != userID {
+		h.logger.WarnContext(ctx, "revoke-session: cross-user access attempt", "actor", userID, "session_id", in.SessionID, "owner", sess.UserID)
+		return nil, appErrors.NewNotFoundError("Session")
+	}
+	if err := h.sessionSvc.RevokeSession(ctx, in.SessionID); err != nil {
+		h.logger.WarnContext(ctx, "revoke-session: failed", "user_id", userID, "session_id", in.SessionID, "error", err)
+		return nil, err
+	}
+	h.logger.InfoContext(ctx, "session revoked", "user_id", userID, "session_id", in.SessionID)
+	return &RevokeSessionOutput{Body: messageResponse{Message: "Session revoked successfully"}}, nil
+}
+
+// ----- sessions revoke-all ------------------------------------------
+//
+// Bulk revokes every session the authenticated user owns AND
+// clears the caller's own auth cookies so the current browser
+// drops its client-side session state alongside the server-side
+// invalidation. GDPR/SOC2 "log me out everywhere" flow — the
+// backend writes a user-wide timestamp blacklist internally so all
+// tokens issued before this call are rejected even if they haven't
+// hit the per-JTI blacklist yet.
+
+type RevokeAllSessionsOutput struct {
+	SetCookie []http.Cookie `header:"Set-Cookie"`
+	Body      messageResponse
+}
+
+func (h *handler) revokeAllSessions(ctx context.Context, _ *struct{}) (*RevokeAllSessionsOutput, error) {
+	userID := httpctx.MustGetUserID(ctx)
+	if err := h.authSvc.RevokeAllSessions(ctx, userID); err != nil {
+		h.logger.WarnContext(ctx, "revoke-all-sessions: failed", "user_id", userID, "error", err)
+		return nil, err
+	}
+	h.logger.InfoContext(ctx, "all sessions revoked", "user_id", userID)
+	return &RevokeAllSessionsOutput{
+		SetCookie: buildClearAuthCookies(h.cfg.Server.CookieDomain),
+		Body:      messageResponse{Message: "All sessions revoked successfully"},
 	}, nil
 }
 

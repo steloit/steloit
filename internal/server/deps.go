@@ -53,13 +53,15 @@ type Deps struct {
 	// but-unreachable rule).
 
 	// Auth domain handlers — login, signup, logout, refresh, password
-	// mgmt, /me. Distinct from the middleware-facing JWT/Blacklist/
-	// OrgMember services above: those carry invariant checks for
-	// every protected route; Auth/User/Registration are the
-	// "business logic" services the auth handler operations invoke.
+	// mgmt, /me, profile, sessions. Distinct from the middleware-
+	// facing JWT/Blacklist/OrgMember services above: those carry
+	// invariant checks for every protected route; Auth/User/
+	// Registration/Session are the "business logic" services the
+	// auth handler operations invoke.
 	Auth         authDomain.AuthService
 	User         userDomain.UserService
 	Registration registration.RegistrationService
+	Session      authDomain.SessionService
 
 	// Website contact-form handler.
 	Website websiteDomain.WebsiteService

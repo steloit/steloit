@@ -25,10 +25,11 @@ func RegisterPublicRoutes(
 	authSvc authDomain.AuthService,
 	userSvc user.UserService,
 	regSvc registration.RegistrationService,
+	sessionSvc authDomain.SessionService,
 	cfg *config.Config,
 	logger *slog.Logger,
 ) {
-	h := &handler{authSvc: authSvc, userSvc: userSvc, regSvc: regSvc, cfg: cfg, logger: logger}
+	h := &handler{authSvc: authSvc, userSvc: userSvc, regSvc: regSvc, sessionSvc: sessionSvc, cfg: cfg, logger: logger}
 
 	huma.Register(api, huma.Operation{
 		OperationID: "login",
@@ -97,10 +98,11 @@ func RegisterProtectedRoutes(
 	authSvc authDomain.AuthService,
 	userSvc user.UserService,
 	regSvc registration.RegistrationService,
+	sessionSvc authDomain.SessionService,
 	cfg *config.Config,
 	logger *slog.Logger,
 ) {
-	h := &handler{authSvc: authSvc, userSvc: userSvc, regSvc: regSvc, cfg: cfg, logger: logger}
+	h := &handler{authSvc: authSvc, userSvc: userSvc, regSvc: regSvc, sessionSvc: sessionSvc, cfg: cfg, logger: logger}
 
 	huma.Register(api, huma.Operation{
 		OperationID: "get-current-user",
@@ -136,4 +138,54 @@ func RegisterProtectedRoutes(
 			"are NOT rotated — the new password takes effect on next login.",
 		Security: []map[string][]string{{"bearerAuth": {}}},
 	}, h.changePassword)
+
+	huma.Register(api, huma.Operation{
+		OperationID: "get-profile",
+		Method:      http.MethodGet,
+		Path:        "/api/v1/auth/profile",
+		Tags:        []string{"auth"},
+		Summary:     "Get the authenticated user's profile",
+		Description: "Returns the persistent user record without session metadata. For the refresh-aware /me variant, use get-current-user.",
+		Security:    []map[string][]string{{"bearerAuth": {}}},
+	}, h.getProfile)
+
+	huma.Register(api, huma.Operation{
+		OperationID: "list-sessions",
+		Method:      http.MethodGet,
+		Path:        "/api/v1/auth/sessions",
+		Tags:        []string{"auth"},
+		Summary:     "List all sessions owned by the authenticated user",
+		Description: "Returns every UserSession row for the current user. The dashboard renders this list in the security settings page so the user can review and revoke individual sessions.",
+		Security:    []map[string][]string{{"bearerAuth": {}}},
+	}, h.listSessions)
+
+	huma.Register(api, huma.Operation{
+		OperationID: "get-session",
+		Method:      http.MethodGet,
+		Path:        "/api/v1/auth/sessions/{session_id}",
+		Tags:        []string{"auth"},
+		Summary:     "Get one session by ID",
+		Description: "Owner-enforced — returns 404 when the session belongs to a different user so a predicted UUID can't reveal another user's session metadata.",
+		Security:    []map[string][]string{{"bearerAuth": {}}},
+	}, h.getSession)
+
+	huma.Register(api, huma.Operation{
+		OperationID: "revoke-session",
+		Method:      http.MethodPost,
+		Path:        "/api/v1/auth/sessions/{session_id}/revoke",
+		Tags:        []string{"auth"},
+		Summary:     "Revoke a single session by ID",
+		Description: "Owner-enforced. Revoking the caller's current session via this endpoint leaves the caller's cookies intact — use logout or revoke-all-sessions for a self-logout flow.",
+		Security:    []map[string][]string{{"bearerAuth": {}}},
+	}, h.revokeSession)
+
+	huma.Register(api, huma.Operation{
+		OperationID: "revoke-all-sessions",
+		Method:      http.MethodPost,
+		Path:        "/api/v1/auth/sessions/revoke-all",
+		Tags:        []string{"auth"},
+		Summary:     "Revoke every session the caller owns and clear their cookies",
+		Description: "GDPR/SOC2 'log me out everywhere' flow. Writes a user-wide timestamp blacklist on the server so tokens issued before the call are rejected even if their jti hasn't been per-token-blacklisted yet. Clears the caller's three auth cookies in the response.",
+		Security:    []map[string][]string{{"bearerAuth": {}}},
+	}, h.revokeAllSessions)
 }
