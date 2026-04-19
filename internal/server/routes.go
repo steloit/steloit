@@ -9,8 +9,8 @@ import (
 	"github.com/jub0bs/cors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"brokle/internal/transport/http/middleware"
 	websiteHandler "brokle/internal/transport/http/handlers/website"
+	"brokle/internal/transport/http/middleware"
 )
 
 // addRoutes wires the full HTTP surface area onto a chi router. Run
@@ -54,6 +54,14 @@ func addRoutes(r chi.Router, apiPublic, apiAdmin huma.API, d Deps, ready *readyS
 	// 2. Global middleware — order is intentional.
 	r.Use(chimw.RequestID)
 	r.Use(chimw.RealIP)
+	// RequestMetadata runs after RealIP (which normalises
+	// r.RemoteAddr) so the IP stuffed into httpctx is already the
+	// proxy-resolved value. Nil resolver = trust r.RemoteAddr
+	// verbatim, which is safe here because RealIP has already done
+	// the header-to-RemoteAddr rewrite when the peer is in the
+	// trust boundary. TODO: wire a *clientip.Resolver with
+	// configured trusted-proxy CIDRs once the config field exists.
+	r.Use(middleware.RequestMetadata(nil))
 	r.Use(middleware.RequestLogger(d.Logger))
 	r.Use(middleware.Recoverer(d.Logger))
 	r.Use(middleware.Metrics())

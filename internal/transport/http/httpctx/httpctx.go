@@ -42,6 +42,8 @@ type (
 	projectIDKey      struct{}
 	organizationIDKey struct{}
 	environmentKey    struct{}
+	clientIPKey       struct{}
+	userAgentKey      struct{}
 )
 
 // ----- Dashboard auth context (set by RequireAuth / OptionalAuth) -----
@@ -209,4 +211,45 @@ func WithEnvironment(ctx context.Context, env string) context.Context {
 func Environment(ctx context.Context) (string, bool) {
 	env, ok := ctx.Value(environmentKey{}).(string)
 	return env, ok
+}
+
+// ----- Client IP + User-Agent (set by RequestMetadata middleware) -----
+//
+// These carry the trusted-proxy-resolved client IP and the raw
+// User-Agent header through the request context so Huma operation
+// handlers (which receive only context.Context, not *http.Request)
+// can emit audit-log rows with the real caller metadata without
+// reaching for an http.ResponseWriter.
+//
+// Both values are always present once the global middleware chain
+// has run (ClientIP falls back to r.RemoteAddr host, UserAgent
+// falls back to "" — the empty string is a legitimate value, not a
+// misconfiguration signal — so these values do NOT expose a Must*
+// variant).
+
+// WithClientIP returns a derived context carrying the resolved
+// client IP.
+func WithClientIP(ctx context.Context, ip string) context.Context {
+	return context.WithValue(ctx, clientIPKey{}, ip)
+}
+
+// ClientIP returns the resolved client IP for the current request,
+// or "" when the metadata middleware didn't run (tests calling
+// handlers directly without a full HTTP chain).
+func ClientIP(ctx context.Context) string {
+	ip, _ := ctx.Value(clientIPKey{}).(string)
+	return ip
+}
+
+// WithUserAgent returns a derived context carrying the request's
+// User-Agent header verbatim.
+func WithUserAgent(ctx context.Context, ua string) context.Context {
+	return context.WithValue(ctx, userAgentKey{}, ua)
+}
+
+// UserAgent returns the request's User-Agent header, or "" when
+// absent or when the metadata middleware didn't run.
+func UserAgent(ctx context.Context) string {
+	ua, _ := ctx.Value(userAgentKey{}).(string)
+	return ua
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 
 	"brokle/internal/core/domain/website"
+	"brokle/internal/transport/http/httpctx"
 )
 
 // prefix is the dashboard-plane base path for website routes. Lives
@@ -101,14 +102,12 @@ type submitContactResponse struct {
 // to the canonical APIResponse envelope, so service errors carry
 // their Type / Code / Message / Details intact.
 //
-// IP + User-Agent capture for audit logging is deferred until the
-// chi+huma migration adds a request-metadata middleware that stuffs
-// the resolved client IP into r.Context() (httpctx.WithClientIP).
-// Once that lands, replace the empty-string placeholders here with
-// httpctx.ClientIP(ctx) / httpctx.UserAgent(ctx). The current
-// behaviour matches the gin handler's failure mode when the IP
-// resolver returns "" (audit row records empty values, submission
-// still succeeds).
+// IP + User-Agent come from the request context via httpctx —
+// populated by the RequestMetadata middleware in the global chain
+// (internal/server/routes.go). Returns "" for each when the
+// middleware didn't run (tests calling the handler directly
+// without a full HTTP chain); the audit row records the empty
+// value rather than crashing.
 func (h *handler) submitContact(ctx context.Context, in *SubmitContactInput) (*SubmitContactOutput, error) {
 	req := &website.CreateContactSubmissionRequest{
 		Name:        in.Body.Name,
@@ -119,7 +118,7 @@ func (h *handler) submitContact(ctx context.Context, in *SubmitContactInput) (*S
 		InquiryType: in.Body.InquiryType,
 	}
 
-	if err := h.svc.SubmitContactForm(ctx, req, "", ""); err != nil {
+	if err := h.svc.SubmitContactForm(ctx, req, httpctx.ClientIP(ctx), httpctx.UserAgent(ctx)); err != nil {
 		h.logger.WarnContext(ctx, "contact-form submission rejected",
 			"error", err,
 			"email", req.Email,
